@@ -1,0 +1,6 @@
+*.DS_Store
+.idea
+.vscode
+*.env
+*.log*
+rbac-service

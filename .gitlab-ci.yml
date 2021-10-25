@@ -1,0 +1,13 @@
+include:
+  - file: "/build/golang/template-app-go.yml"
+    project: "platform/pipelines-templates"
+    ref: "master"
+  - file: "/build/golang/template-app-go-test-latest.yml"
+    project: "platform/pipelines-templates"
+    ref: "master"
+
+default:
+  image: golang:1.15.15
+
+variables:
+  IMAGE_NAME: platform-development/rbac-service
