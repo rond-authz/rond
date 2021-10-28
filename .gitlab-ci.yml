@@ -10,4 +10,4 @@ default:
   image: golang:1.15.15
 
 variables:
-  IMAGE_NAME: platform-development/rbac-service
+  IMAGE_NAME: core/rbac-service
