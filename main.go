@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path"
 	"syscall"
 
 	"rbac-service/helpers"
@@ -29,7 +28,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/configlib"
 	"github.com/mia-platform/glogger"
+	"github.com/sirupsen/logrus"
 )
+
+const HTTPScheme = "http"
 
 func main() {
 	entrypoint(make(chan os.Signal, 1))
@@ -54,14 +56,24 @@ func entrypoint(shutdown chan os.Signal) {
 	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
 	StatusRoutes(router, "rbac-service", env.ServiceVersion)
 
-	serviceRouter := router
-	if env.ServicePrefix != "" && env.ServicePrefix != "/" {
-		serviceRouter = router.PathPrefix(fmt.Sprintf("%s/", path.Clean(env.ServicePrefix))).Subrouter()
-	}
-
 	router.Use(RequestMiddlewareEnvironments(env))
 
-	setupRoutes(serviceRouter)
+	documentationURL := fmt.Sprintf("%s://%s%s", HTTPScheme, env.TargetServiceHost, env.TargetServiceOASPath)
+	oas, err := fetchOpenAPI(documentationURL)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"targetServiceHost": env.TargetServiceHost,
+			"targetOASPath":     env.TargetServiceOASPath,
+		}).Fatalf("failed OAS fetch: %s", err.Error())
+	}
+
+	setupRoutes(router, oas)
+
+	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		path, _ := route.GetPathTemplate()
+		log.Infof("Registered path: %s", path)
+		return nil
+	})
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:%s", env.HTTPPort),

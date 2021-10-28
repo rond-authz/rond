@@ -17,13 +17,13 @@ import (
 func TestRequestMiddlewareEnvironments(t *testing.T) {
 	t.Run(`RequestMiddlewareEnvironments properly sets env variables into request context`, func(t *testing.T) {
 		middleware := RequestMiddlewareEnvironments(EnvironmentVariables{
-			HostURL: "localhost:3000",
+			TargetServiceHost: "localhost:3000",
 		})
 
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			env, ok := r.Context().Value(envKey{}).(EnvironmentVariables)
 			assert.Assert(t, ok, "Unexpected type in context.")
-			assert.Equal(t, env.HostURL, "localhost:3000", "Unexpected session duration seconds env variable.")
+			assert.Equal(t, env.TargetServiceHost, "localhost:3000", "Unexpected session duration seconds env variable.")
 			w.WriteHeader(http.StatusOK)
 		}))
 
@@ -45,10 +45,10 @@ func TestGetEnv(t *testing.T) {
 
 	t.Run(`GetEnv returns EnvVariables from context`, func(t *testing.T) {
 		ctx := context.WithValue(context.Background(), envKey{}, EnvironmentVariables{
-			HostURL: "localhost:3000",
+			TargetServiceHost: "localhost:3000",
 		})
 		env, err := GetEnv(ctx)
 		assert.Equal(t, err, nil, "Unexpected error.")
-		assert.Equal(t, env.HostURL, "localhost:3000", "Unexpected session duration seconds env variable.")
+		assert.Equal(t, env.TargetServiceHost, "localhost:3000", "Unexpected session duration seconds env variable.")
 	})
 }

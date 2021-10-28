@@ -26,7 +26,7 @@ func TestDirectProxyHandler(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 		ctx := context.WithValue(context.Background(), envKey{}, EnvironmentVariables{
-			HostURL: serverURL.Host,
+			TargetServiceHost: serverURL.Host,
 		})
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
@@ -54,7 +54,7 @@ func TestDirectProxyHandler(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 		ctx := context.WithValue(context.Background(), envKey{}, EnvironmentVariables{
-			HostURL: serverURL.Host,
+			TargetServiceHost: serverURL.Host,
 		})
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
@@ -87,7 +87,7 @@ func TestDirectProxyHandler(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 		ctx := context.WithValue(context.Background(), envKey{}, EnvironmentVariables{
-			HostURL: serverURL.Host,
+			TargetServiceHost: serverURL.Host,
 		})
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)

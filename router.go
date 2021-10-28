@@ -17,14 +17,12 @@
 package main
 
 import (
-	"net/http"
-
 	"github.com/gorilla/mux"
 )
 
-func setupRoutes(router *mux.Router) {
-	// Setup your routes here.
-	router.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-	})
-	router.HandleFunc("/endpoint", rbacHandler)
+func setupRoutes(router *mux.Router, oas *OpenAPISpec) {
+	for key := range oas.Paths {
+		router.HandleFunc(key, rbacHandler)
+	}
+	router.PathPrefix("/").HandlerFunc(rbacHandler)
 }
