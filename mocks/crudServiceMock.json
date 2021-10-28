@@ -1,0 +1,1993 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Crud Service",
+        "description": "HTTP interface to perform CRUD operations on MongoDB collections defined in the API Console",
+        "version": "3.2.3"
+    },
+    "paths": {
+        "/users/": {
+            "get": {
+                "summary": "Get a list of users",
+                "description": "The list can be filtered specifying the following parameters",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "pattern": "^[a-fA-F\\d]{24}$",
+                        "description": "Hexadecimal identifier of the document in the collection",
+                        "example": "617973697254f500156168e3",
+                        "required": false,
+                        "name": "_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "creatorId",
+                        "required": false,
+                        "name": "creatorId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "createdAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "createdAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "updaterId",
+                        "required": false,
+                        "name": "updaterId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "updatedAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "updatedAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "name of the user",
+                        "required": false,
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Additional query part to forward to MongoDB",
+                        "required": false,
+                        "name": "_q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^((_id|creatorId|createdAt|updaterId|updatedAt|__STATE__|name|address),)*(_id|creatorId|createdAt|updaterId|updatedAt|__STATE__|name|address)$",
+                        "description": "Return only the properties specified in a comma separated list",
+                        "required": false,
+                        "name": "_p",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "(PUBLIC|DRAFT|TRASH|DELETED)(,(PUBLIC|DRAFT|TRASH|DELETED))*",
+                        "default": "PUBLIC",
+                        "description": "Filter by \\_\\_STATE__, multiple states can be specified in OR by providing a comma separated list",
+                        "required": false,
+                        "name": "_st",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Limits the number of documents, max 200 elements, minimum 1",
+                        "default": 25,
+                        "maximum": 200,
+                        "required": false,
+                        "name": "_l",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Skip the specified number of documents",
+                        "required": false,
+                        "name": "_sk",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^-?(_id|creatorId|createdAt|updaterId|updatedAt|__STATE__|name)$",
+                        "description": "Sort by the specified property (Start with a \"-\" to invert the sort order)",
+                        "required": false,
+                        "name": "_s",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "_id": {
+                                        "type": "string",
+                                        "pattern": "^[a-fA-F\\d]{24}$",
+                                        "description": "_id",
+                                        "example": "617973697254f500156168e2"
+                                    },
+                                    "creatorId": {
+                                        "type": "string",
+                                        "description": "creatorId"
+                                    },
+                                    "createdAt": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2020-09-16T12:00:00.000Z",
+                                        "description": "createdAt"
+                                    },
+                                    "updaterId": {
+                                        "type": "string",
+                                        "description": "updaterId"
+                                    },
+                                    "updatedAt": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2020-09-16T12:00:00.000Z",
+                                        "description": "updatedAt"
+                                    },
+                                    "__STATE__": {
+                                        "type": "string",
+                                        "description": "__STATE__"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "description": "name of the user"
+                                    },
+                                    "address": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "number"
+                                        },
+                                        "description": "address of the user"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Default Response"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Add a new item to the users collection",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "name",
+                                "address"
+                            ],
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "description": "name of the user"
+                                },
+                                "address": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "minItems": 2,
+                                    "maxItems": 3,
+                                    "description": "address of the user"
+                                },
+                                "__STATE__": {
+                                    "type": "string",
+                                    "enum": [
+                                        "PUBLIC",
+                                        "DRAFT",
+                                        "TRASH",
+                                        "DELETED"
+                                    ],
+                                    "description": "The state of the document",
+                                    "default": "DRAFT"
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "_id": {
+                                    "type": "string",
+                                    "pattern": "^[a-fA-F\\d]{24}$",
+                                    "description": "Hexadecimal identifier of the document in the collection",
+                                    "example": "617973697254f5001561690e"
+                                }
+                            }
+                        },
+                        "description": "Default Response"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete items from the users collection",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "creatorId",
+                        "required": false,
+                        "name": "creatorId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "createdAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "createdAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "updaterId",
+                        "required": false,
+                        "name": "updaterId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "updatedAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "updatedAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "name of the user",
+                        "required": false,
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Additional query part to forward to MongoDB",
+                        "required": false,
+                        "name": "_q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "(PUBLIC|DRAFT|TRASH|DELETED)(,(PUBLIC|DRAFT|TRASH|DELETED))*",
+                        "default": "PUBLIC",
+                        "description": "Filter by \\_\\_STATE__, multiple states can be specified in OR by providing a comma separated list",
+                        "required": false,
+                        "name": "_st",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Default Response"
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Update the items of the users collection that match the query",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "pattern": "^[a-fA-F\\d]{24}$",
+                        "description": "Hexadecimal identifier of the document in the collection",
+                        "example": "617973697254f500156168e5",
+                        "required": false,
+                        "name": "_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "creatorId",
+                        "required": false,
+                        "name": "creatorId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "createdAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "createdAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "updaterId",
+                        "required": false,
+                        "name": "updaterId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "updatedAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "updatedAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "name of the user",
+                        "required": false,
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Additional query part to forward to MongoDB",
+                        "required": false,
+                        "name": "_q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "(PUBLIC|DRAFT|TRASH|DELETED)(,(PUBLIC|DRAFT|TRASH|DELETED))*",
+                        "default": "PUBLIC",
+                        "description": "Filter by \\_\\_STATE__, multiple states can be specified in OR by providing a comma separated list",
+                        "required": false,
+                        "name": "_st",
+                        "in": "query"
+                    },
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "$set": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {
+                                            "type": "string",
+                                            "description": "name of the user"
+                                        },
+                                        "address": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "number"
+                                            },
+                                            "minItems": 2,
+                                            "maxItems": 3,
+                                            "description": "address of the user"
+                                        }
+                                    },
+                                    "additionalProperties": false,
+                                    "patternProperties": {}
+                                },
+                                "$unset": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false,
+                                    "patternProperties": {}
+                                },
+                                "$inc": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false,
+                                    "patternProperties": {}
+                                },
+                                "$mul": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false,
+                                    "patternProperties": {}
+                                },
+                                "$currentDate": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false
+                                },
+                                "$push": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "schema": {
+                            "type": "number",
+                            "description": "the number of documents that were modified"
+                        },
+                        "description": "the number of documents that were modified"
+                    }
+                }
+            }
+        },
+        "/users/export": {
+            "get": {
+                "summary": "Export the users collection",
+                "description": "The exported documents are sent as newline separated JSON objects to facilitate large dataset streaming and parsing",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "pattern": "^[a-fA-F\\d]{24}$",
+                        "description": "Hexadecimal identifier of the document in the collection",
+                        "example": "617973697254f500156168e4",
+                        "required": false,
+                        "name": "_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "creatorId",
+                        "required": false,
+                        "name": "creatorId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "createdAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "createdAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "updaterId",
+                        "required": false,
+                        "name": "updaterId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "updatedAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "updatedAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "name of the user",
+                        "required": false,
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Additional query part to forward to MongoDB",
+                        "required": false,
+                        "name": "_q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^((_id|creatorId|createdAt|updaterId|updatedAt|__STATE__|name|address),)*(_id|creatorId|createdAt|updaterId|updatedAt|__STATE__|name|address)$",
+                        "description": "Return only the properties specified in a comma separated list",
+                        "required": false,
+                        "name": "_p",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "(PUBLIC|DRAFT|TRASH|DELETED)(,(PUBLIC|DRAFT|TRASH|DELETED))*",
+                        "default": "PUBLIC",
+                        "description": "Filter by \\_\\_STATE__, multiple states can be specified in OR by providing a comma separated list",
+                        "required": false,
+                        "name": "_st",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Limits the number of documents",
+                        "required": false,
+                        "name": "_l",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Skip the specified number of documents",
+                        "required": false,
+                        "name": "_sk",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^-?(_id|creatorId|createdAt|updaterId|updatedAt|__STATE__|name)$",
+                        "description": "Sort by the specified property (Start with a \"-\" to invert the sort order)",
+                        "required": false,
+                        "name": "_s",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Default Response"
+                    }
+                }
+            }
+        },
+        "/users/{id}": {
+            "get": {
+                "summary": "Find one item from the users collection by ID",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "creatorId",
+                        "required": false,
+                        "name": "creatorId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "createdAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "createdAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "updaterId",
+                        "required": false,
+                        "name": "updaterId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "updatedAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "updatedAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "name of the user",
+                        "required": false,
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Additional query part to forward to MongoDB",
+                        "required": false,
+                        "name": "_q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^((_id|creatorId|createdAt|updaterId|updatedAt|__STATE__|name|address),)*(_id|creatorId|createdAt|updaterId|updatedAt|__STATE__|name|address)$",
+                        "description": "Return only the properties specified in a comma separated list",
+                        "required": false,
+                        "name": "_p",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "(PUBLIC|DRAFT|TRASH|DELETED)(,(PUBLIC|DRAFT|TRASH|DELETED))*",
+                        "default": "PUBLIC",
+                        "description": "Filter by \\_\\_STATE__, multiple states can be specified in OR by providing a comma separated list",
+                        "required": false,
+                        "name": "_st",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "the doc _id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "_id": {
+                                    "type": "string",
+                                    "pattern": "^[a-fA-F\\d]{24}$",
+                                    "description": "_id",
+                                    "example": "617973697254f500156168e2"
+                                },
+                                "creatorId": {
+                                    "type": "string",
+                                    "description": "creatorId"
+                                },
+                                "createdAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "example": "2020-09-16T12:00:00.000Z",
+                                    "description": "createdAt"
+                                },
+                                "updaterId": {
+                                    "type": "string",
+                                    "description": "updaterId"
+                                },
+                                "updatedAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "example": "2020-09-16T12:00:00.000Z",
+                                    "description": "updatedAt"
+                                },
+                                "__STATE__": {
+                                    "type": "string",
+                                    "description": "__STATE__"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "description": "name of the user"
+                                },
+                                "address": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "description": "address of the user"
+                                }
+                            }
+                        },
+                        "description": "Default Response"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete an item from the users collection",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "creatorId",
+                        "required": false,
+                        "name": "creatorId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "createdAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "createdAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "updaterId",
+                        "required": false,
+                        "name": "updaterId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "updatedAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "updatedAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "name of the user",
+                        "required": false,
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Additional query part to forward to MongoDB",
+                        "required": false,
+                        "name": "_q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "(PUBLIC|DRAFT|TRASH|DELETED)(,(PUBLIC|DRAFT|TRASH|DELETED))*",
+                        "default": "PUBLIC",
+                        "description": "Filter by \\_\\_STATE__, multiple states can be specified in OR by providing a comma separated list",
+                        "required": false,
+                        "name": "_st",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "the doc _id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Default Response"
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Update an item of the users collection by ID",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "creatorId",
+                        "required": false,
+                        "name": "creatorId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "createdAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "createdAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "updaterId",
+                        "required": false,
+                        "name": "updaterId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "updatedAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "updatedAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "name of the user",
+                        "required": false,
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Additional query part to forward to MongoDB",
+                        "required": false,
+                        "name": "_q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "(PUBLIC|DRAFT|TRASH|DELETED)(,(PUBLIC|DRAFT|TRASH|DELETED))*",
+                        "default": "PUBLIC",
+                        "description": "Filter by \\_\\_STATE__, multiple states can be specified in OR by providing a comma separated list",
+                        "required": false,
+                        "name": "_st",
+                        "in": "query"
+                    },
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "$set": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {
+                                            "type": "string",
+                                            "description": "name of the user"
+                                        },
+                                        "address": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "number"
+                                            },
+                                            "minItems": 2,
+                                            "maxItems": 3,
+                                            "description": "address of the user"
+                                        }
+                                    },
+                                    "additionalProperties": false,
+                                    "patternProperties": {}
+                                },
+                                "$unset": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false,
+                                    "patternProperties": {}
+                                },
+                                "$inc": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false,
+                                    "patternProperties": {}
+                                },
+                                "$mul": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false,
+                                    "patternProperties": {}
+                                },
+                                "$currentDate": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false
+                                },
+                                "$push": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "the doc _id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "_id": {
+                                    "type": "string",
+                                    "pattern": "^[a-fA-F\\d]{24}$",
+                                    "description": "_id",
+                                    "example": "617973697254f500156168e2"
+                                },
+                                "creatorId": {
+                                    "type": "string",
+                                    "description": "creatorId"
+                                },
+                                "createdAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "example": "2020-09-16T12:00:00.000Z",
+                                    "description": "createdAt"
+                                },
+                                "updaterId": {
+                                    "type": "string",
+                                    "description": "updaterId"
+                                },
+                                "updatedAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "example": "2020-09-16T12:00:00.000Z",
+                                    "description": "updatedAt"
+                                },
+                                "__STATE__": {
+                                    "type": "string",
+                                    "description": "__STATE__"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "description": "name of the user"
+                                },
+                                "address": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "description": "address of the user"
+                                }
+                            }
+                        },
+                        "description": "Default Response"
+                    }
+                }
+            }
+        },
+        "/users/validate": {
+            "post": {
+                "summary": "Return 200 if the body is valid for an insertion in the users collection",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "name",
+                                "address"
+                            ],
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "description": "name of the user"
+                                },
+                                "address": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "minItems": 2,
+                                    "maxItems": 3,
+                                    "description": "address of the user"
+                                },
+                                "__STATE__": {
+                                    "type": "string",
+                                    "enum": [
+                                        "PUBLIC",
+                                        "DRAFT",
+                                        "TRASH",
+                                        "DELETED"
+                                    ],
+                                    "description": "The state of the document",
+                                    "default": "DRAFT"
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "result": {
+                                    "type": "string",
+                                    "enum": [
+                                        "ok"
+                                    ]
+                                }
+                            }
+                        },
+                        "description": "Default Response"
+                    }
+                }
+            }
+        },
+        "/users/count": {
+            "get": {
+                "summary": "Count the number of users",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "pattern": "^[a-fA-F\\d]{24}$",
+                        "description": "Hexadecimal identifier of the document in the collection",
+                        "example": "617973697254f500156168e5",
+                        "required": false,
+                        "name": "_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "creatorId",
+                        "required": false,
+                        "name": "creatorId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "createdAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "createdAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "updaterId",
+                        "required": false,
+                        "name": "updaterId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "updatedAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "updatedAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "name of the user",
+                        "required": false,
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Additional query part to forward to MongoDB",
+                        "required": false,
+                        "name": "_q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "(PUBLIC|DRAFT|TRASH|DELETED)(,(PUBLIC|DRAFT|TRASH|DELETED))*",
+                        "default": "PUBLIC",
+                        "description": "Filter by \\_\\_STATE__, multiple states can be specified in OR by providing a comma separated list",
+                        "required": false,
+                        "name": "_st",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "description": "Default Response"
+                    }
+                }
+            }
+        },
+        "/users/upsert-one": {
+            "post": {
+                "summary": "Update an item of users if it is present, otherwise insert it",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "creatorId",
+                        "required": false,
+                        "name": "creatorId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "createdAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "createdAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "updaterId",
+                        "required": false,
+                        "name": "updaterId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "updatedAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "updatedAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "name of the user",
+                        "required": false,
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Additional query part to forward to MongoDB",
+                        "required": false,
+                        "name": "_q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "(PUBLIC|DRAFT|TRASH|DELETED)(,(PUBLIC|DRAFT|TRASH|DELETED))*",
+                        "default": "PUBLIC",
+                        "description": "Filter by \\_\\_STATE__, multiple states can be specified in OR by providing a comma separated list",
+                        "required": false,
+                        "name": "_st",
+                        "in": "query"
+                    },
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "$set": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {
+                                            "type": "string",
+                                            "description": "name of the user"
+                                        },
+                                        "address": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "number"
+                                            },
+                                            "minItems": 2,
+                                            "maxItems": 3,
+                                            "description": "address of the user"
+                                        }
+                                    },
+                                    "additionalProperties": false,
+                                    "patternProperties": {}
+                                },
+                                "$unset": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false,
+                                    "patternProperties": {}
+                                },
+                                "$inc": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false,
+                                    "patternProperties": {}
+                                },
+                                "$mul": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false,
+                                    "patternProperties": {}
+                                },
+                                "$currentDate": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false
+                                },
+                                "$push": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false
+                                },
+                                "$setOnInsert": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {
+                                            "type": "string",
+                                            "description": "name of the user"
+                                        },
+                                        "address": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "number"
+                                            },
+                                            "minItems": 2,
+                                            "maxItems": 3,
+                                            "description": "address of the user"
+                                        }
+                                    },
+                                    "additionalProperties": false
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "_id": {
+                                    "type": "string",
+                                    "pattern": "^[a-fA-F\\d]{24}$",
+                                    "description": "_id",
+                                    "example": "617973697254f500156168e2"
+                                },
+                                "creatorId": {
+                                    "type": "string",
+                                    "description": "creatorId"
+                                },
+                                "createdAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "example": "2020-09-16T12:00:00.000Z",
+                                    "description": "createdAt"
+                                },
+                                "updaterId": {
+                                    "type": "string",
+                                    "description": "updaterId"
+                                },
+                                "updatedAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "example": "2020-09-16T12:00:00.000Z",
+                                    "description": "updatedAt"
+                                },
+                                "__STATE__": {
+                                    "type": "string",
+                                    "description": "__STATE__"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "description": "name of the user"
+                                },
+                                "address": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "description": "address of the user"
+                                }
+                            }
+                        },
+                        "description": "Default Response"
+                    }
+                }
+            }
+        },
+        "/users/bulk": {
+            "post": {
+                "summary": "Insert new users",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": [
+                                    "name",
+                                    "address"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "description": "name of the user"
+                                    },
+                                    "address": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "number"
+                                        },
+                                        "minItems": 2,
+                                        "maxItems": 3,
+                                        "description": "address of the user"
+                                    },
+                                    "__STATE__": {
+                                        "type": "string",
+                                        "enum": [
+                                            "PUBLIC",
+                                            "DRAFT",
+                                            "TRASH",
+                                            "DELETED"
+                                        ],
+                                        "description": "The state of the document",
+                                        "default": "DRAFT"
+                                    }
+                                },
+                                "additionalProperties": false
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "_id": {
+                                        "type": "string",
+                                        "pattern": "^[a-fA-F\\d]{24}$",
+                                        "description": "Hexadecimal identifier of the document in the collection",
+                                        "example": "617973697254f5001561690f"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "Default Response"
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Update multiple items of users, each one with its own modifications",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "filter": {
+                                        "type": "object",
+                                        "properties": {
+                                            "_id": {
+                                                "type": "string",
+                                                "pattern": "^[a-fA-F\\d]{24}$",
+                                                "description": "Hexadecimal identifier of the document in the collection",
+                                                "example": "617973697254f50015616910"
+                                            },
+                                            "_st": {
+                                                "type": "string",
+                                                "pattern": "(PUBLIC|DRAFT|TRASH|DELETED)(,(PUBLIC|DRAFT|TRASH|DELETED))*",
+                                                "default": "PUBLIC",
+                                                "description": "Filter by \\_\\_STATE__, multiple states can be specified in OR by providing a comma separated list"
+                                            },
+                                            "creatorId": {
+                                                "type": "string",
+                                                "description": "creatorId"
+                                            },
+                                            "createdAt": {
+                                                "type": "string",
+                                                "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                                                "description": "createdAt",
+                                                "example": "2020-09-16T12:00:00.000Z"
+                                            },
+                                            "updaterId": {
+                                                "type": "string",
+                                                "description": "updaterId"
+                                            },
+                                            "updatedAt": {
+                                                "type": "string",
+                                                "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                                                "description": "updatedAt",
+                                                "example": "2020-09-16T12:00:00.000Z"
+                                            },
+                                            "name": {
+                                                "type": "string",
+                                                "description": "name of the user"
+                                            },
+                                            "_q": {
+                                                "type": "string",
+                                                "description": "Additional query part to forward to MongoDB"
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    },
+                                    "update": {
+                                        "type": "object",
+                                        "properties": {
+                                            "$set": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string",
+                                                        "description": "name of the user"
+                                                    },
+                                                    "address": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "number"
+                                                        },
+                                                        "minItems": 2,
+                                                        "maxItems": 3,
+                                                        "description": "address of the user"
+                                                    }
+                                                },
+                                                "additionalProperties": false,
+                                                "patternProperties": {}
+                                            },
+                                            "$unset": {
+                                                "type": "object",
+                                                "properties": {},
+                                                "additionalProperties": false,
+                                                "patternProperties": {}
+                                            },
+                                            "$inc": {
+                                                "type": "object",
+                                                "properties": {},
+                                                "additionalProperties": false,
+                                                "patternProperties": {}
+                                            },
+                                            "$mul": {
+                                                "type": "object",
+                                                "properties": {},
+                                                "additionalProperties": false,
+                                                "patternProperties": {}
+                                            },
+                                            "$currentDate": {
+                                                "type": "object",
+                                                "properties": {},
+                                                "additionalProperties": false
+                                            },
+                                            "$push": {
+                                                "type": "object",
+                                                "properties": {},
+                                                "additionalProperties": false
+                                            }
+                                        },
+                                        "additionalProperties": false
+                                    }
+                                },
+                                "required": [
+                                    "filter",
+                                    "update"
+                                ]
+                            },
+                            "minItems": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "description": "Default Response"
+                    }
+                }
+            }
+        },
+        "/users/{id}/state": {
+            "post": {
+                "summary": "Change state of an item of users",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "creatorId",
+                        "required": false,
+                        "name": "creatorId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "createdAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "createdAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "updaterId",
+                        "required": false,
+                        "name": "updaterId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                        "description": "updatedAt",
+                        "example": "2020-09-16T12:00:00.000Z",
+                        "required": false,
+                        "name": "updatedAt",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "name of the user",
+                        "required": false,
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Additional query part to forward to MongoDB",
+                        "required": false,
+                        "name": "_q",
+                        "in": "query"
+                    },
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "stateTo"
+                            ],
+                            "properties": {
+                                "stateTo": {
+                                    "type": "string",
+                                    "enum": [
+                                        "PUBLIC",
+                                        "TRASH",
+                                        "DRAFT",
+                                        "DELETED"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "the doc _id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Default Response"
+                    }
+                }
+            }
+        },
+        "/users/state": {
+            "post": {
+                "summary": "Change state of items of users",
+                "tags": [
+                    "Users"
+                ],
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "filter": {
+                                        "type": "object",
+                                        "required": [
+                                            "_id"
+                                        ],
+                                        "properties": {
+                                            "_id": {
+                                                "type": "string",
+                                                "pattern": "^[a-fA-F\\d]{24}$",
+                                                "description": "Hexadecimal identifier of the document in the collection",
+                                                "example": "617973697254f50015616911"
+                                            },
+                                            "creatorId": {
+                                                "type": "string",
+                                                "description": "creatorId"
+                                            },
+                                            "createdAt": {
+                                                "type": "string",
+                                                "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                                                "description": "createdAt",
+                                                "example": "2020-09-16T12:00:00.000Z"
+                                            },
+                                            "updaterId": {
+                                                "type": "string",
+                                                "description": "updaterId"
+                                            },
+                                            "updatedAt": {
+                                                "type": "string",
+                                                "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+                                                "description": "updatedAt",
+                                                "example": "2020-09-16T12:00:00.000Z"
+                                            },
+                                            "name": {
+                                                "type": "string",
+                                                "description": "name of the user"
+                                            }
+                                        }
+                                    },
+                                    "stateTo": {
+                                        "type": "string",
+                                        "enum": [
+                                            "PUBLIC",
+                                            "DRAFT",
+                                            "TRASH",
+                                            "DELETED"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "filter",
+                                    "stateTo"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "minItems": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Number of updated users"
+                        },
+                        "description": "Number of updated users"
+                    }
+                }
+            }
+        },
+        "/join/one-to-one/{from}/{to}/export": {
+            "post": {
+                "tags": [
+                    "CRUD Join"
+                ],
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "asField",
+                                "localField",
+                                "foreignField"
+                            ],
+                            "properties": {
+                                "fromQueryFilter": {
+                                    "type": "object",
+                                    "default": {}
+                                },
+                                "toQueryFilter": {
+                                    "type": "object",
+                                    "default": {}
+                                },
+                                "asField": {
+                                    "type": "string"
+                                },
+                                "localField": {
+                                    "type": "string"
+                                },
+                                "foreignField": {
+                                    "type": "string"
+                                },
+                                "fromProjectBefore": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "fromProjectAfter": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "toProjectBefore": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "toProjectAfter": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "toMerge": {
+                                    "type": "boolean",
+                                    "default": false
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "name": "from",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "to",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Default Response"
+                    }
+                }
+            }
+        },
+        "/join/one-to-one/{from}/{to}/": {
+            "post": {
+                "tags": [
+                    "CRUD Join"
+                ],
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "asField",
+                                "localField",
+                                "foreignField"
+                            ],
+                            "properties": {
+                                "fromQueryFilter": {
+                                    "type": "object",
+                                    "default": {}
+                                },
+                                "toQueryFilter": {
+                                    "type": "object",
+                                    "default": {}
+                                },
+                                "asField": {
+                                    "type": "string"
+                                },
+                                "localField": {
+                                    "type": "string"
+                                },
+                                "foreignField": {
+                                    "type": "string"
+                                },
+                                "fromProjectBefore": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "fromProjectAfter": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "toProjectBefore": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "toProjectAfter": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "toMerge": {
+                                    "type": "boolean",
+                                    "default": false
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "name": "from",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "to",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Default Response"
+                    }
+                }
+            }
+        },
+        "/join/one-to-many/{from}/{to}/export": {
+            "post": {
+                "tags": [
+                    "CRUD Join"
+                ],
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "asField",
+                                "localField",
+                                "foreignField"
+                            ],
+                            "properties": {
+                                "fromQueryFilter": {
+                                    "type": "object",
+                                    "default": {}
+                                },
+                                "toQueryFilter": {
+                                    "type": "object",
+                                    "default": {}
+                                },
+                                "asField": {
+                                    "type": "string"
+                                },
+                                "localField": {
+                                    "type": "string"
+                                },
+                                "foreignField": {
+                                    "type": "string"
+                                },
+                                "fromProjectBefore": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "fromProjectAfter": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "toProjectBefore": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "toProjectAfter": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "name": "from",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "to",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Default Response"
+                    }
+                }
+            }
+        },
+        "/join/many-to-many/{from}/{to}/export": {
+            "post": {
+                "tags": [
+                    "CRUD Join"
+                ],
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "asField",
+                                "localField",
+                                "foreignField"
+                            ],
+                            "properties": {
+                                "fromQueryFilter": {
+                                    "type": "object",
+                                    "default": {}
+                                },
+                                "toQueryFilter": {
+                                    "type": "object",
+                                    "default": {}
+                                },
+                                "asField": {
+                                    "type": "string"
+                                },
+                                "localField": {
+                                    "type": "string"
+                                },
+                                "foreignField": {
+                                    "type": "string"
+                                },
+                                "fromProjectBefore": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "fromProjectAfter": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "toProjectBefore": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "toProjectAfter": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "name": "from",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "to",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Default Response"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -24,13 +24,29 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"gopkg.in/h2non/gock.v1"
 )
 
 func TestEntryPoint(t *testing.T) {
 	t.Run("opens server on port 3000", func(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
+		defer gock.Off()
+		gock.EnableNetworking()
+		gock.NetworkingFilter(func(r *http.Request) bool {
+			if r.URL.Path == "/documentation/json" {
+				return false
+			}
+
+			return true
+		})
+		gock.New("http://localhost:3001").
+			Get("/documentation/json").
+			Reply(200).
+			File("./mocks/simplifiedMock.json")
 
 		os.Setenv("HTTP_PORT", "3000")
+		os.Setenv("TARGET_SERVICE_HOST", "localhost:3001")
+		os.Setenv("TARGET_SERVICE_OAS_PATH", "/documentation/json")
 
 		go func() {
 			entrypoint(shutdown)
@@ -41,32 +57,20 @@ func TestEntryPoint(t *testing.T) {
 		}()
 
 		time.Sleep(1 * time.Second)
-
-		resp, err := http.DefaultClient.Get("http://localhost:3000/")
-		require.Equal(t, nil, err)
-		require.Equal(t, 200, resp.StatusCode)
-	})
-
-	t.Run("sets correct path prefix", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-
-		os.Setenv("SERVICE_PREFIX", "/prefix")
-		go func() {
-			entrypoint(shutdown)
-		}()
-		defer func() {
-			os.Unsetenv("SERVICE_PREFIX")
-			shutdown <- syscall.SIGTERM
-		}()
-
-		time.Sleep(1 * time.Second)
-
-		resp, err := http.DefaultClient.Get("http://localhost:8080/prefix/")
+		resp, err := http.DefaultClient.Get("http://localhost:3000/-/ready")
 		require.Equal(t, nil, err)
 		require.Equal(t, 200, resp.StatusCode)
 	})
 
 	t.Run("GracefulShutdown works properly", func(t *testing.T) {
+		gock.New("http://localhost:3001").
+			Get("/documentation/json").
+			Reply(200).
+			File("./mocks/simplifiedMock.json")
+
+		os.Setenv("HTTP_PORT", "3000")
+		os.Setenv("TARGET_SERVICE_HOST", "localhost:3001")
+		os.Setenv("TARGET_SERVICE_OAS_PATH", "/documentation/json")
 		os.Setenv("DELAY_SHUTDOWN_SECONDS", "3")
 
 		shutdown := make(chan os.Signal, 1)

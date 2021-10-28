@@ -20,9 +20,9 @@ type EnvironmentVariables struct {
 	LogLevel               string
 	HTTPPort               string
 	OriginalProtocolHeader string
-	ServicePrefix          string
 	ServiceVersion         string
-	HostURL                string
+	TargetServiceHost      string
+	TargetServiceOASPath   string
 
 	DelayShutdownSeconds int
 }
@@ -39,11 +39,6 @@ var envVariablesConfig = []configlib.EnvConfig{
 		DefaultValue: "8080",
 	},
 	{
-		Key:          "SERVICE_PREFIX",
-		Variable:     "ServicePrefix",
-		DefaultValue: "",
-	},
-	{
 		Key:      "SESSION_SCOPE",
 		Variable: "SessionScope",
 	},
@@ -56,8 +51,14 @@ var envVariablesConfig = []configlib.EnvConfig{
 		Variable: "ServiceVersion",
 	},
 	{
-		Key:      "HOST_URL",
-		Variable: "HostURL",
+		Key:      "TARGET_SERVICE_HOST",
+		Variable: "TargetServiceHost",
+		Required: true,
+	},
+	{
+		Key:      "TARGET_SERVICE_OAS_PATH",
+		Variable: "TargetServiceOASPath",
+		Required: true,
 	},
 	{
 		Key:          "DELAY_SHUTDOWN_SECONDS",
