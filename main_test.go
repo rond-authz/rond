@@ -17,12 +17,13 @@
 package main
 
 import (
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"os"
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestEntryPoint(t *testing.T) {
