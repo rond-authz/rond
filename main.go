@@ -28,7 +28,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/configlib"
-	"github.com/mia-platform/glogger"
+	"github.com/mia-platform/glogger/v2"
 	"github.com/sirupsen/logrus"
 )
 
