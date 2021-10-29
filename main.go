@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"rbac-service/helpers"
 
@@ -59,12 +60,18 @@ func entrypoint(shutdown chan os.Signal) {
 	router.Use(RequestMiddlewareEnvironments(env))
 
 	documentationURL := fmt.Sprintf("%s://%s%s", HTTPScheme, env.TargetServiceHost, env.TargetServiceOASPath)
-	oas, err := fetchOpenAPI(documentationURL)
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"targetServiceHost": env.TargetServiceHost,
-			"targetOASPath":     env.TargetServiceOASPath,
-		}).Fatalf("failed OAS fetch: %s", err.Error())
+	var oas *OpenAPISpec
+	for {
+		oas, err = fetchOpenAPI(documentationURL)
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"targetServiceHost": env.TargetServiceHost,
+				"targetOASPath":     env.TargetServiceOASPath,
+			}).Warnf("failed OAS fetch: %s", err.Error())
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		break
 	}
 
 	setupRoutes(router, oas)
