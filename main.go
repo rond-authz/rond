@@ -67,7 +67,10 @@ func entrypoint(shutdown chan os.Signal) {
 			log.WithFields(logrus.Fields{
 				"targetServiceHost": env.TargetServiceHost,
 				"targetOASPath":     env.TargetServiceOASPath,
-			}).Warnf("failed OAS fetch: %s", err.Error())
+				"error": logrus.Fields{
+					"message": err.Error(),
+				},
+			}).Warnf("failed OAS fetch")
 			time.Sleep(1 * time.Second)
 			continue
 		}
