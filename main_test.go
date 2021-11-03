@@ -28,6 +28,18 @@ import (
 )
 
 func TestEntryPoint(t *testing.T) {
+	t.Run("fails for invalid module path, no module found", func(t *testing.T) {
+		os.Setenv("HTTP_PORT", "3000")
+		os.Setenv("TARGET_SERVICE_HOST", "localhost:3001")
+		os.Setenv("TARGET_SERVICE_OAS_PATH", "/documentation/json")
+		os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/empty-dir")
+
+		shutdown := make(chan os.Signal, 1)
+
+		entrypoint(shutdown)
+		require.True(t, true, "If we get here the service has not started")
+	})
+
 	t.Run("opens server on port 3000", func(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 		defer gock.Off()
@@ -47,6 +59,7 @@ func TestEntryPoint(t *testing.T) {
 		os.Setenv("HTTP_PORT", "3000")
 		os.Setenv("TARGET_SERVICE_HOST", "localhost:3001")
 		os.Setenv("TARGET_SERVICE_OAS_PATH", "/documentation/json")
+		os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/rego-policies")
 
 		go func() {
 			entrypoint(shutdown)

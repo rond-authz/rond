@@ -59,6 +59,24 @@ func entrypoint(shutdown chan os.Signal) {
 
 	router.Use(RequestMiddlewareEnvironments(env))
 
+	// Load OPA module file.
+	if _, err := os.Stat(env.OPAModulesDirectory); err != nil {
+		log.WithFields(logrus.Fields{
+			"error":        logrus.Fields{"message": err.Error()},
+			"opaDirectory": env.OPAModulesDirectory,
+		}).Errorf("load OPA modules failed")
+		return
+	}
+	opaModuleConfig, err := loadRegoModule(env.OPAModulesDirectory)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"error":        logrus.Fields{"message": err.Error()},
+			"opaDirectory": env.OPAModulesDirectory,
+		}).Errorf("failed rego file read")
+		return
+	}
+
+	// Fetch OpenAPI documentation from target service.
 	documentationURL := fmt.Sprintf("%s://%s%s", HTTPScheme, env.TargetServiceHost, env.TargetServiceOASPath)
 	var oas *OpenAPISpec
 	for {
@@ -76,6 +94,8 @@ func entrypoint(shutdown chan os.Signal) {
 		}
 		break
 	}
+
+	router.Use(OPAMiddleware(opaModuleConfig, oas))
 
 	setupRoutes(router, oas)
 

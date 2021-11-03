@@ -25,9 +25,11 @@ func TestDirectProxyHandler(t *testing.T) {
 		defer server.Close()
 
 		serverURL, _ := url.Parse(server.URL)
-		ctx := context.WithValue(context.Background(), envKey{}, EnvironmentVariables{
-			TargetServiceHost: serverURL.Host,
-		})
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
+		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
 		assert.Equal(t, err, nil, "Unexpected error")
@@ -53,9 +55,11 @@ func TestDirectProxyHandler(t *testing.T) {
 		defer server.Close()
 
 		serverURL, _ := url.Parse(server.URL)
-		ctx := context.WithValue(context.Background(), envKey{}, EnvironmentVariables{
-			TargetServiceHost: serverURL.Host,
-		})
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
+		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
 		assert.Equal(t, err, nil, "Unexpected error")
@@ -86,9 +90,11 @@ func TestDirectProxyHandler(t *testing.T) {
 		body := strings.NewReader(mockBodySting)
 
 		serverURL, _ := url.Parse(server.URL)
-		ctx := context.WithValue(context.Background(), envKey{}, EnvironmentVariables{
-			TargetServiceHost: serverURL.Host,
-		})
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
+		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
 		assert.Equal(t, err, nil, "Unexpected error")
