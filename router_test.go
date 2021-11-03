@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -10,7 +11,10 @@ import (
 	"sort"
 	"testing"
 
+	"rbac-service/internal/mocks"
+
 	"github.com/gorilla/mux"
+	"github.com/open-policy-agent/opa/rego"
 	"gotest.tools/v3/assert"
 )
 
@@ -44,6 +48,31 @@ func TestSetupRoutes(t *testing.T) {
 	assert.DeepEqual(t, foundPaths, expectedPaths)
 }
 
+func createContext(t *testing.T, originalCtx context.Context, env EnvironmentVariables, opaEvaluator *OPAEvaluator) context.Context {
+	t.Helper()
+
+	var partialContext context.Context
+	partialContext = context.WithValue(originalCtx, envKey{}, env)
+	partialContext = context.WithValue(partialContext, OPAEvaluatorKey{}, opaEvaluator)
+
+	return partialContext
+}
+
+func buildMockEvaluator(allowed bool) mocks.MockEvaluator {
+	return mocks.MockEvaluator{
+		ResultSet: rego.ResultSet{
+			rego.Result{
+				Expressions: []*rego.ExpressionValue{
+					{Value: allowed},
+				},
+			},
+		},
+	}
+}
+
+var mockAllowedOPAEvaluator = buildMockEvaluator(true)
+var mockNotAllowedOPAEvaluator = buildMockEvaluator(false)
+
 func TestSetupRoutesIntegration(t *testing.T) {
 	oas := prepareOASFromFile(t, "./mocks/crudServiceMock.json")
 
@@ -61,9 +90,11 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		setupRoutes(router, oas)
 
 		serverURL, _ := url.Parse(server.URL)
-		ctx := context.WithValue(context.Background(), envKey{}, EnvironmentVariables{
-			TargetServiceHost: serverURL.Host,
-		})
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
+		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
 		assert.Equal(t, err, nil, "Unexpected error")
@@ -93,7 +124,12 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		setupRoutes(router, oas)
 
 		serverURL, _ := url.Parse(server.URL)
-		ctx := context.WithValue(context.Background(), envKey{}, EnvironmentVariables{TargetServiceHost: serverURL.Host})
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
+		)
+
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/unknown/path?foo=bar", nil)
 		assert.Equal(t, err, nil, "Unexpected error")
 
@@ -106,6 +142,52 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		assert.Assert(t, invoked, "mock server was not invoked")
 		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+	})
+
+	t.Run("blocks request on non allowed policy evaluation", func(t *testing.T) {
+		router := mux.NewRouter()
+		setupRoutes(router, oas)
+
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
+			&OPAEvaluator{PermissionQuery: &mockNotAllowedOPAEvaluator},
+		)
+
+		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
+		assert.Equal(t, err, nil, "Unexpected error")
+
+		var matchedRouted mux.RouteMatch
+		ok := router.Match(req, &matchedRouted)
+		assert.Assert(t, ok, "Route not found")
+
+		w := httptest.NewRecorder()
+		matchedRouted.Handler.ServeHTTP(w, req)
+
+		assert.Equal(t, w.Result().StatusCode, http.StatusForbidden)
+	})
+
+	t.Run("blocks request on policy evaluation error", func(t *testing.T) {
+		router := mux.NewRouter()
+		setupRoutes(router, oas)
+
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
+			&OPAEvaluator{PermissionQuery: &mocks.MockEvaluator{ResultError: errors.New("some error from policy eval")}},
+		)
+
+		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
+		assert.Equal(t, err, nil, "Unexpected error")
+
+		var matchedRouted mux.RouteMatch
+		ok := router.Match(req, &matchedRouted)
+		assert.Assert(t, ok, "Route not found")
+
+		w := httptest.NewRecorder()
+		matchedRouted.Handler.ServeHTTP(w, req)
+
+		assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
 	})
 }
 

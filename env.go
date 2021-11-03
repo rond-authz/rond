@@ -23,6 +23,7 @@ type EnvironmentVariables struct {
 	ServiceVersion         string
 	TargetServiceHost      string
 	TargetServiceOASPath   string
+	OPAModulesDirectory    string
 
 	DelayShutdownSeconds int
 }
@@ -58,6 +59,11 @@ var envVariablesConfig = []configlib.EnvConfig{
 	{
 		Key:      "TARGET_SERVICE_OAS_PATH",
 		Variable: "TargetServiceOASPath",
+		Required: true,
+	},
+	{
+		Key:      "OPA_MODULES_DIRECTORY",
+		Variable: "OPAModulesDirectory",
 		Required: true,
 	},
 	{
