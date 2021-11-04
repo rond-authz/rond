@@ -8,7 +8,28 @@ import (
 	"net/http"
 )
 
-type VerbConfig struct{}
+// TODO: Expected example of OAS
+// {
+// 	"paths": {
+// 		"/": {
+// 			"get": {
+// 				"x-permission" : {
+// 					"allow": "foo.bar"
+// 				}
+// 			}
+// 		}
+// 	}
+// }
+
+// TODO: Is this a good struct?
+type XPermission struct {
+	AllowPermission string `json:"allow"`
+}
+
+// TODO: Is this a good struct?
+type VerbConfig struct {
+	Permission XPermission `json:"x-permission"`
+}
 
 type PathVerbs map[string]VerbConfig
 

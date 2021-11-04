@@ -31,7 +31,7 @@ type OPAEvaluator struct {
 
 type OPAEvaluatorKey struct{}
 
-func OPAMiddleware(opaModuleConfig *OPAModuleConfig, OpenAPISpec *OpenAPISpec) mux.MiddlewareFunc {
+func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec) mux.MiddlewareFunc {
 	// TODO: build a map as { [verb+path]: permission }
 
 	return func(next http.Handler) http.Handler {
