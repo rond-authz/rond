@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/sirupsen/logrus"
 )
 
 type OPAModuleConfig struct {
@@ -41,12 +43,29 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec) m
 				return
 			}
 
-			// TODO: Get permission from verb+path map
+			permission, err := openAPISpec.getPermissionsFromRequest(r)
 
+			if err != nil || permission.AllowPermission == "" {
+				fields := logrus.Fields{
+					"originalRequestPath": r.URL.Path,
+					"method":              r.Method,
+					"allowPermission":     permission.AllowPermission,
+				}
+				if err != nil {
+					fields["error"] = logrus.Fields{"message": err.Error()}
+				}
+				errorMessage := "The request doesn't match any known API"
+				glogger.Get(r.Context()).WithFields(fields).Errorf(errorMessage)
+				failResponseWithCode(w, http.StatusForbidden, errorMessage)
+				return
+			}
+
+			queryString := fmt.Sprintf("data.example.%s", permission.AllowPermission)
 			query, err := rego.New(
-				rego.Query("data.example.todo"), // TODO: This must contain the permission from each API Specification.
+				rego.Query(queryString),
 				rego.Module(opaModuleConfig.Name, opaModuleConfig.Content),
 			).PrepareForEval(context.TODO())
+
 			if err != nil {
 				glogger.Get(r.Context()).WithError(err).Error("failed RBAC policy creation")
 				failResponse(w, err.Error())
@@ -59,16 +78,6 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec) m
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
-}
-
-// GetOPAEvaluator can be used by a request handler to get OPAEvalutor instance from its context.
-func GetOPAEvaluator(requestContext context.Context) (*OPAEvaluator, error) {
-	opaEvaluator, ok := requestContext.Value(OPAEvaluatorKey{}).(*OPAEvaluator)
-	if !ok {
-		return nil, fmt.Errorf("no evaluator found in request context")
-	}
-
-	return opaEvaluator, nil
 }
 
 func loadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
@@ -87,7 +96,6 @@ func loadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 	if regoModulePath == "" {
 		return nil, fmt.Errorf("no rego module found in directory")
 	}
-
 	fileContent, err := ioutil.ReadFile(regoModulePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed rego file read")
@@ -98,3 +106,17 @@ func loadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 		Content: string(fileContent),
 	}, nil
 }
+
+// GetOPAEvaluator can be used by a request handler to get OPAEvalutor instance from its context.
+func GetOPAEvaluator(requestContext context.Context) (*OPAEvaluator, error) {
+	opaEvaluator, ok := requestContext.Value(OPAEvaluatorKey{}).(*OPAEvaluator)
+	if !ok {
+		return nil, fmt.Errorf("no evaluator found in request context")
+	}
+
+	return opaEvaluator, nil
+}
+
+var (
+	ErrRequestFailed = errors.New("request failed")
+)

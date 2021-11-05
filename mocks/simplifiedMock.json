@@ -8,12 +8,180 @@
   "paths": {
     "/users/": {
       "get": {
+        "x-permission" : {
+          "allow": "foobar"
+        },
         "summary": "Get a list of users",
         "description": "The list can be filtered specifying the following parameters",
         "tags": [
           "Users"
         ],
-        "parameters": [{
+        "parameters": [
+          {
+            "type": "string",
+            "pattern": "^[a-fA-F\\d]{24}$",
+            "description": "Hexadecimal identifier of the document in the collection",
+            "example": "617973697254f500156168e3",
+            "required": false,
+            "name": "_id",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "creatorId",
+            "required": false,
+            "name": "creatorId",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+            "description": "createdAt",
+            "example": "2020-09-16T12:00:00.000Z",
+            "required": false,
+            "name": "createdAt",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "updaterId",
+            "required": false,
+            "name": "updaterId",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?(Z|[+-]\\d{2}:\\d{2}))?$",
+            "description": "updatedAt",
+            "example": "2020-09-16T12:00:00.000Z",
+            "required": false,
+            "name": "updatedAt",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "name of the user",
+            "required": false,
+            "name": "name",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Additional query part to forward to MongoDB",
+            "required": false,
+            "name": "_q",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "pattern": "^((_id|creatorId|createdAt|updaterId|updatedAt|__STATE__|name|address),)*(_id|creatorId|createdAt|updaterId|updatedAt|__STATE__|name|address)$",
+            "description": "Return only the properties specified in a comma separated list",
+            "required": false,
+            "name": "_p",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "pattern": "(PUBLIC|DRAFT|TRASH|DELETED)(,(PUBLIC|DRAFT|TRASH|DELETED))*",
+            "default": "PUBLIC",
+            "description": "Filter by \\_\\_STATE__, multiple states can be specified in OR by providing a comma separated list",
+            "required": false,
+            "name": "_st",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Limits the number of documents, max 200 elements, minimum 1",
+            "default": 25,
+            "maximum": 200,
+            "required": false,
+            "name": "_l",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Skip the specified number of documents",
+            "required": false,
+            "name": "_sk",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "pattern": "^-?(_id|creatorId|createdAt|updaterId|updatedAt|__STATE__|name)$",
+            "description": "Sort by the specified property (Start with a \"-\" to invert the sort order)",
+            "required": false,
+            "name": "_s",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "_id": {
+                    "type": "string",
+                    "pattern": "^[a-fA-F\\d]{24}$",
+                    "description": "_id",
+                    "example": "617973697254f500156168e2"
+                  },
+                  "creatorId": {
+                    "type": "string",
+                    "description": "creatorId"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2020-09-16T12:00:00.000Z",
+                    "description": "createdAt"
+                  },
+                  "updaterId": {
+                    "type": "string",
+                    "description": "updaterId"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2020-09-16T12:00:00.000Z",
+                    "description": "updatedAt"
+                  },
+                  "__STATE__": {
+                    "type": "string",
+                    "description": "__STATE__"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "name of the user"
+                  },
+                  "address": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "description": "address of the user"
+                  }
+                }
+              }
+            },
+            "description": "Default Response"
+          }
+        }
+      },
+      "post": {
+        "x-permission" : {
+          "allow": "notexistingpermission"
+        },
+        "summary": "Get a list of users",
+        "description": "The list can be filtered specifying the following parameters",
+        "tags": [
+          "Users"
+        ],
+        "parameters": [
+          {
             "type": "string",
             "pattern": "^[a-fA-F\\d]{24}$",
             "description": "Hexadecimal identifier of the document in the collection",
@@ -168,12 +336,13 @@
         }
       }
     },
-    "/join/many-to-many/{from}/{to}/export": {
+    "/no-permission": {
       "post": {
         "tags": [
           "CRUD Join"
         ],
-        "parameters": [{
+        "parameters": [
+          {
             "name": "body",
             "in": "body",
             "schema": {

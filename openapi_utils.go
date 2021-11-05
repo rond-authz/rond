@@ -2,31 +2,16 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
-// TODO: Expected example of OAS
-// {
-// 	"paths": {
-// 		"/": {
-// 			"get": {
-// 				"x-permission" : {
-// 					"allow": "foo.bar"
-// 				}
-// 			}
-// 		}
-// 	}
-// }
-
-// TODO: Is this a good struct?
 type XPermission struct {
 	AllowPermission string `json:"allow"`
 }
 
-// TODO: Is this a good struct?
 type VerbConfig struct {
 	Permission XPermission `json:"x-permission"`
 }
@@ -39,9 +24,21 @@ type OpenAPISpec struct {
 	Paths OpenAPIPaths `json:"paths"`
 }
 
-var (
-	ErrRequestFailed = errors.New("request failed")
-)
+func (oas *OpenAPISpec) getPermissionsFromRequest(req *http.Request) (XPermission, error) {
+	path := req.URL.Path
+	// Ensure lowercase methods since from OpenAPI 3 Specification
+	// verbs are lowercase in the API Schema.
+	method := strings.ToLower(req.Method)
+
+	if _, pathOk := oas.Paths[path]; !pathOk {
+		return XPermission{}, fmt.Errorf("missing oas paths")
+	}
+
+	if _, methodOk := oas.Paths[path][method]; !methodOk {
+		return XPermission{}, fmt.Errorf("missing oas method")
+	}
+	return oas.Paths[path][method].Permission, nil
+}
 
 func fetchOpenAPI(url string) (*OpenAPISpec, error) {
 	resp, err := http.DefaultClient.Get(url)

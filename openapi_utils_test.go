@@ -26,9 +26,18 @@ func TestFetchOpenAPI(t *testing.T) {
 		assert.Assert(t, openApiSpec != nil, "unexpected nil result")
 		assert.DeepEqual(t, openApiSpec.Paths, OpenAPIPaths{
 			"/users/": PathVerbs{
-				"get": VerbConfig{},
+				"get": VerbConfig{
+					Permission: XPermission{
+						AllowPermission: "foobar",
+					},
+				},
+				"post": VerbConfig{
+					Permission: XPermission{
+						AllowPermission: "notexistingpermission",
+					},
+				},
 			},
-			"/join/many-to-many/{from}/{to}/export": PathVerbs{
+			"/no-permission": PathVerbs{
 				"post": VerbConfig{},
 			},
 		})
