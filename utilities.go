@@ -6,9 +6,9 @@ import (
 )
 
 type RequestError struct {
-	Error      string
-	StatusCode int
-	Message    string
+	Error      string `json:"error"`
+	StatusCode int    `json:"statusCode"`
+	Message    string `json:"message"`
 }
 
 func failResponse(w http.ResponseWriter, message string) {
