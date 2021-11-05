@@ -7,6 +7,7 @@ import (
 
 	"github.com/mia-platform/glogger/v2"
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/sirupsen/logrus"
 )
 
 const URL_SCHEME = "http"
@@ -41,6 +42,11 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		failResponse(w, "policy eval failed")
 		return
 	}
+
+	glogger.Get(req.Context()).WithFields(logrus.Fields{
+		"allowed":       results.Allowed(),
+		"resultsLength": len(results),
+	}).Tracef("policy results")
 
 	if !results.Allowed() {
 		glogger.Get(req.Context()).WithError(err).Error("policy resulted in not allowed")
