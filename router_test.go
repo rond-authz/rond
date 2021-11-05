@@ -74,7 +74,7 @@ var mockAllowedOPAEvaluator = buildMockEvaluator(true)
 var mockNotAllowedOPAEvaluator = buildMockEvaluator(false)
 
 func TestSetupRoutesIntegration(t *testing.T) {
-	oas := prepareOASFromFile(t, "./mocks/crudServiceMock.json")
+	oas := prepareOASFromFile(t, "./mocks/simplifiedMock.json")
 
 	t.Run("invokes known API", func(t *testing.T) {
 		var invoked bool
@@ -150,7 +150,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
+			EnvironmentVariables{LogLevel: "silent", TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			&OPAEvaluator{PermissionQuery: &mockNotAllowedOPAEvaluator},
 		)
 
