@@ -49,7 +49,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	}).Tracef("policy results")
 
 	if !results.Allowed() {
-		glogger.Get(req.Context()).WithError(err).Error("policy resulted in not allowed")
+		glogger.Get(req.Context()).Error("policy resulted in not allowed")
 		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed")
 		return
 	}
