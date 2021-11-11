@@ -6,6 +6,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type XPermission struct {
@@ -55,7 +58,59 @@ func fetchOpenAPI(url string) (*OpenAPISpec, error) {
 
 	var oas OpenAPISpec
 	if err := json.Unmarshal(bodyBytes, &oas); err != nil {
-		return nil, fmt.Errorf("%w: unmarshal failed %s", ErrRequestFailed, err.Error())
+		return nil, fmt.Errorf("%w: unmarshal error: %s", ErrRequestFailed, err.Error())
 	}
 	return &oas, nil
+}
+
+func loadOASFile(APIPermissionsFilePath string) (*OpenAPISpec, error) {
+	fileContentByte, err := ioutil.ReadFile(APIPermissionsFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrFileLoadFailed, err.Error())
+	}
+
+	var oas OpenAPISpec
+	if err := json.Unmarshal(fileContentByte, &oas); err != nil {
+		return nil, fmt.Errorf("%w: unmarshal error: %s", ErrFileLoadFailed, err.Error())
+	}
+
+	return &oas, nil
+}
+
+func loadOAS(log *logrus.Logger, env EnvironmentVariables) (*OpenAPISpec, error) {
+	if env.APIPermissionsFilePath != "" {
+		oas, err := loadOASFile(env.APIPermissionsFilePath)
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"APIPermissionsFilePath": env.APIPermissionsFilePath,
+			}).Warn("failed api permissions file read")
+			return nil, err
+		}
+
+		return oas, nil
+	}
+
+	if env.TargetServiceOASPath != "" {
+		var oas *OpenAPISpec
+		documentationURL := fmt.Sprintf("%s://%s%s", HTTPScheme, env.TargetServiceHost, env.TargetServiceOASPath)
+		for {
+			fetchedOAS, err := fetchOpenAPI(documentationURL)
+			if err != nil {
+				log.WithFields(logrus.Fields{
+					"targetServiceHost": env.TargetServiceHost,
+					"targetOASPath":     env.TargetServiceOASPath,
+					"error": logrus.Fields{
+						"message": err.Error(),
+					},
+				}).Warn("failed OAS fetch")
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			oas = fetchedOAS
+			break
+		}
+		return oas, nil
+	}
+
+	return nil, fmt.Errorf("missing environment variables one of %s or %s is required", TargetServiceOASPathEnvKey, APIPermissionsFilePathEnvKey)
 }
