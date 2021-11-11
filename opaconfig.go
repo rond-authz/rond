@@ -119,4 +119,5 @@ func GetOPAEvaluator(requestContext context.Context) (*OPAEvaluator, error) {
 
 var (
 	ErrRequestFailed = errors.New("request failed")
+	ErrFileLoadFailed = errors.New("file loading failed")
 )

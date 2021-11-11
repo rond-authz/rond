@@ -1,17 +1,6 @@
 /*
- * Copyright 2019 Mia srl
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright © 2021-present Mia s.r.l.
+ * All rights reserved
  */
 
 package main
@@ -22,7 +11,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"rbac-service/helpers"
 
@@ -76,23 +64,12 @@ func entrypoint(shutdown chan os.Signal) {
 		return
 	}
 
-	// Fetch OpenAPI documentation from target service.
-	documentationURL := fmt.Sprintf("%s://%s%s", HTTPScheme, env.TargetServiceHost, env.TargetServiceOASPath)
-	var oas *OpenAPISpec
-	for {
-		oas, err = fetchOpenAPI(documentationURL)
-		if err != nil {
-			log.WithFields(logrus.Fields{
-				"targetServiceHost": env.TargetServiceHost,
-				"targetOASPath":     env.TargetServiceOASPath,
-				"error": logrus.Fields{
-					"message": err.Error(),
-				},
-			}).Warnf("failed OAS fetch")
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		break
+	oas, err := loadOAS(log, env)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"error": logrus.Fields{"message": err.Error()},
+		}).Errorf("failed to load oas")
+		return
 	}
 
 	router.Use(OPAMiddleware(opaModuleConfig, oas))

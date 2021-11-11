@@ -14,6 +14,11 @@ import (
 	"github.com/mia-platform/configlib"
 )
 
+const (
+	APIPermissionsFilePathEnvKey = "API_PERMISSIONS_FILE_PATH"
+	TargetServiceOASPathEnvKey   = "TARGET_SERVICE_OAS_PATH"
+)
+
 // EnvironmentVariables struct with the mapping of desired
 // environment variables.
 type EnvironmentVariables struct {
@@ -24,6 +29,7 @@ type EnvironmentVariables struct {
 	TargetServiceHost      string
 	TargetServiceOASPath   string
 	OPAModulesDirectory    string
+	APIPermissionsFilePath string
 
 	DelayShutdownSeconds int
 }
@@ -57,14 +63,17 @@ var envVariablesConfig = []configlib.EnvConfig{
 		Required: true,
 	},
 	{
-		Key:      "TARGET_SERVICE_OAS_PATH",
+		Key:      TargetServiceOASPathEnvKey,
 		Variable: "TargetServiceOASPath",
-		Required: true,
 	},
 	{
 		Key:      "OPA_MODULES_DIRECTORY",
 		Variable: "OPAModulesDirectory",
 		Required: true,
+	},
+	{
+		Key:      APIPermissionsFilePathEnvKey,
+		Variable: "APIPermissionsFilePath",
 	},
 	{
 		Key:          "DELAY_SHUTDOWN_SECONDS",

@@ -1,0 +1,19 @@
+{
+    "paths": {
+        "/users-from-static-file/": {
+            "get": {
+                "x-permission" : {
+                    "allow": "foobar"
+                }
+            },
+            "post": {
+                "x-permission" : {
+                    "allow": "notexistingpermission"
+                }
+            }
+        },
+        "/no-permission-from-static-file": {
+            "post": {}
+        }
+    }
+}
