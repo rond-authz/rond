@@ -1,0 +1,31 @@
+{
+    "swagger": "2.0",
+    "info": {
+      "title": "Crud Service",
+      "description": "HTTP interface to perform CRUD operations on MongoDB collections defined in the API Console",
+      "version": "3.2.3"
+    },
+    "paths": {
+      "/users/": {
+        "get": {
+          "x-permission" : {
+            "allow": "foobar"
+          }
+        },
+        "post": {
+          "x-permission" : {
+            "allow": "notexistingpermission"
+          }
+        }
+      },
+      "/documentation/json": {
+        "get": {
+        },
+        "post": {
+          "x-permission" : {
+            "allow": "foobar"
+          }
+        }
+      }
+    }
+  }

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
+- [JAF-46](https://makeitapp.atlassian.net/browse/JAF-46): Added support for the target service documentation API, with a evaluation skip if is set targetServiceOASPath env
 - [JAF-39](https://makeitapp.atlassian.net/browse/JAF-39): Support API permission specification from file
 - [JAF-27](https://makeitapp.atlassian.net/browse/JAF-27): OPA integration with single module loading and handler validation
 - [JAF-23](https://makeitapp.atlassian.net/browse/JAF-23): rbac service initial configuration from openApi specifications

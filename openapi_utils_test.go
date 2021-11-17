@@ -193,7 +193,7 @@ func TestLoadOAS(t *testing.T) {
 		})
 	})
 
-	t.Run("expect to throw if TargetServiceOASPath or APIPermissionsFilePath is set", func(t *testing.T) {
+	t.Run("expect to throw if TargetServiceOASPath or APIPermissionsFilePath is not set", func(t *testing.T) {
 		envs := EnvironmentVariables{
 			TargetServiceHost: "localhost:3000",
 		}

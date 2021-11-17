@@ -138,13 +138,87 @@ func TestEntryPoint(t *testing.T) {
 
 		t.Run("forbidden - opa evaluation fail", func(t *testing.T) {
 			gock.Flush()
-			gock.New("http://localhost:3001/users/").
+			gock.New("http://localhost:3001/").
 				Post("/users/").
 				Reply(200)
 			resp, err := http.DefaultClient.Post("http://localhost:3000/users/", "text/plain", nil)
 			require.Equal(t, nil, err)
 			require.Equal(t, http.StatusForbidden, resp.StatusCode, "unexpected status code.")
 			require.False(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
+		})
+	})
+
+	t.Run("Skip opa evaluation when request url is equal to TargetServiceOASPath", func(t *testing.T) {
+		shutdown := make(chan os.Signal, 1)
+
+		t.Run("without oas documentation api defined", func(t *testing.T) {
+			defer gock.Off()
+			gock.EnableNetworking()
+			gock.NetworkingFilter(func(r *http.Request) bool {
+				return r.URL.Path != "/custom/documentation/json" && r.URL.Host == "localhost:3000"
+			})
+			gock.New("http://localhost:3001").
+				Get("/custom/documentation/json").
+				Reply(200).
+				File("./mocks/simplifiedMock.json")
+
+			os.Setenv("HTTP_PORT", "3000")
+			os.Setenv("TARGET_SERVICE_HOST", "localhost:3001")
+			os.Setenv("TARGET_SERVICE_OAS_PATH", "/custom/documentation/json")
+			os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/rego-policies")
+			go func() {
+				entrypoint(shutdown)
+			}()
+			defer func() {
+				os.Unsetenv("HTTP_PORT")
+				shutdown <- syscall.SIGTERM
+			}()
+			time.Sleep(1 * time.Second)
+
+			gock.Flush()
+			gock.New("http://localhost:3000").
+				Get("/custom/documentation/json").
+				Reply(200)
+			resp, err := http.DefaultClient.Get("http://localhost:3000/custom/documentation/json")
+
+			require.Equal(t, nil, err)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+			require.True(t, gock.IsDone(), "the proxy blocks the request when the permissions are granted.")
+		})
+
+		t.Run("with oas documentation api defined", func(t *testing.T) {
+			defer gock.Off()
+			gock.EnableNetworking()
+			gock.NetworkingFilter(func(r *http.Request) bool {
+				return r.URL.Path != "/documentation/json" && r.URL.Host == "localhost:3000"
+			})
+			gock.New("http://localhost:3001").
+				Get("/documentation/json").
+				Reply(200).
+				File("./mocks/documentationPathMock.json")
+
+			os.Setenv("HTTP_PORT", "3000")
+			os.Setenv("TARGET_SERVICE_HOST", "localhost:3001")
+			os.Setenv("TARGET_SERVICE_OAS_PATH", "/documentation/json")
+			os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/rego-policies")
+			go func() {
+				entrypoint(shutdown)
+			}()
+			defer func() {
+				os.Unsetenv("HTTP_PORT")
+				shutdown <- syscall.SIGTERM
+			}()
+			time.Sleep(1 * time.Second)
+
+			gock.Flush()
+			gock.New("http://localhost:3000").
+				Get("/documentation/json").
+				Reply(200)
+			resp, err := http.DefaultClient.Get("http://localhost:3000/documentation/json")
+
+			require.Equal(t, nil, err)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+			require.True(t, gock.IsDone(), "the proxy blocks the request when the permissions are granted.")
 		})
 	})
 }

@@ -33,9 +33,20 @@ type OPAEvaluator struct {
 
 type OPAEvaluatorKey struct{}
 
-func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec) mux.MiddlewareFunc {
-	// TODO: build a map as { [verb+path]: permission }
+type TruthyEvaluator struct{}
 
+func (e *TruthyEvaluator) Eval(ctx context.Context, options ...rego.EvalOption) (rego.ResultSet, error) {
+	return rego.ResultSet{
+		rego.Result{
+			Expressions: []*rego.ExpressionValue{
+				{Value: true},
+			},
+		},
+	}, nil
+}
+
+func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, envs *EnvironmentVariables) mux.MiddlewareFunc {
+	// TODO: build a map as { [verb+path]: permission }
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.RequestURI(), "/-/") {
@@ -44,7 +55,12 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec) m
 			}
 
 			permission, err := openAPISpec.getPermissionsFromRequest(r)
-
+			if err != nil && r.Method == http.MethodGet && r.URL.Path == envs.TargetServiceOASPath {
+				evaluator := &OPAEvaluator{PermissionQuery: &TruthyEvaluator{}}
+				ctx := context.WithValue(r.Context(), OPAEvaluatorKey{}, evaluator)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
 			if err != nil || permission.AllowPermission == "" {
 				fields := logrus.Fields{
 					"originalRequestPath": r.URL.Path,
@@ -118,6 +134,6 @@ func GetOPAEvaluator(requestContext context.Context) (*OPAEvaluator, error) {
 }
 
 var (
-	ErrRequestFailed = errors.New("request failed")
+	ErrRequestFailed  = errors.New("request failed")
 	ErrFileLoadFailed = errors.New("file loading failed")
 )
