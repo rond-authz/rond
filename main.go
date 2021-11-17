@@ -72,7 +72,7 @@ func entrypoint(shutdown chan os.Signal) {
 		return
 	}
 
-	router.Use(OPAMiddleware(opaModuleConfig, oas))
+	router.Use(OPAMiddleware(opaModuleConfig, oas, &env))
 
 	setupRoutes(router, oas)
 
