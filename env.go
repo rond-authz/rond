@@ -24,7 +24,6 @@ const (
 type EnvironmentVariables struct {
 	LogLevel               string
 	HTTPPort               string
-	OriginalProtocolHeader string
 	ServiceVersion         string
 	TargetServiceHost      string
 	TargetServiceOASPath   string
@@ -44,14 +43,6 @@ var envVariablesConfig = []configlib.EnvConfig{
 		Key:          "HTTP_PORT",
 		Variable:     "HTTPPort",
 		DefaultValue: "8080",
-	},
-	{
-		Key:      "SESSION_SCOPE",
-		Variable: "SessionScope",
-	},
-	{
-		Key:      "ORIGINAL_PROTOCOL_HEADER",
-		Variable: "OriginalProtocolHeader",
 	},
 	{
 		Key:      "SERVICE_VERSION",
