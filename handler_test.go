@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/open-policy-agent/opa/rego"
 	"gotest.tools/v3/assert"
 )
 
@@ -113,7 +112,8 @@ func TestDirectProxyHandler(t *testing.T) {
 	})
 }
 
-// TODO: this tests verifies policy execution based on request header evaluation, it is // useful as a documentation because right now headers are provided as-is from the 
+// TODO: this tests verifies policy execution based on request header evaluation, it is
+// useful as a documentation because right now headers are provided as-is from the
 // http.Header type which transforms any header key in `Camel-Case`, meaning a policy
 // **must** express headers in this fashion. This may subject to change before v1 release.
 func TestPolicyEvaluation(t *testing.T) {
@@ -129,45 +129,89 @@ func TestPolicyEvaluation(t *testing.T) {
 		}))
 		defer server.Close()
 
-		opaModule := &OPAModuleConfig{
-			Name: "example.rego",
-			Content: fmt.Sprintf(`package example
-			todo { count(input.request.headers["%s"]) != 0 }`, mockHeader),
-		}
-
-		query, _ := rego.New(
-			rego.Query("data.example.todo"),
-			rego.Module(opaModule.Name, opaModule.Content),
-		).PrepareForEval(context.TODO())
-
 		serverURL, _ := url.Parse(server.URL)
-		ctx := createContext(t,
-			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
-			&OPAEvaluator{query},
-		)
 
-		t.Run("request respects the policy", func(t *testing.T) {
-			w := httptest.NewRecorder()
-			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
-			assert.Equal(t, err, nil, "Unexpected error")
+		t.Run("without get_header built-in function", func(t *testing.T) {
+			opaModule := &OPAModuleConfig{
+				Name: "example.rego",
+				Content: fmt.Sprintf(`package example
+				todo { count(input.request.headers["%s"]) != 0 }`, mockHeader),
+			}
+			queryString := "data.example.todo"
 
-			r.Header.Set(mockHeader, mockHeaderValue)
+			opaEvaluator, err := NewOPAEvaluator(queryString, opaModule)
+			assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
 
-			rbacHandler(w, r)
-			assert.Assert(t, invoked, "Handler was not invoked.")
-			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			ctx := createContext(t,
+				context.Background(),
+				EnvironmentVariables{TargetServiceHost: serverURL.Host},
+				opaEvaluator,
+			)
+
+			t.Run("request respects the policy", func(t *testing.T) {
+				w := httptest.NewRecorder()
+				r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
+				assert.Equal(t, err, nil, "Unexpected error")
+
+				r.Header.Set(mockHeader, mockHeaderValue)
+
+				rbacHandler(w, r)
+				assert.Assert(t, invoked, "Handler was not invoked.")
+				assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			})
+
+			t.Run("request does not have the required header", func(t *testing.T) {
+				invoked = false
+				w := httptest.NewRecorder()
+				r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
+				assert.Equal(t, err, nil, "Unexpected error")
+
+				rbacHandler(w, r)
+				assert.Assert(t, !invoked, "The policy did not block the request as expected")
+				assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+			})
 		})
 
-		t.Run("request does not have the required header", func(t *testing.T) {
+		t.Run("using get_header built-in function to access in case-insensitive mode", func(t *testing.T) {
 			invoked = false
-			w := httptest.NewRecorder()
-			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
-			assert.Equal(t, err, nil, "Unexpected error")
+			opaModule := &OPAModuleConfig{
+				Name: "example.rego",
+				Content: `package example
+				todo { get_header("x-backdoor", input.request.headers) == "mocked value" }`,
+			}
+			queryString := "data.example.todo"
 
-			rbacHandler(w, r)
-			assert.Assert(t, !invoked, "The policy did not block the request as expected")
-			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+			opaEvaluator, err := NewOPAEvaluator(queryString, opaModule)
+			assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
+
+			ctx := createContext(t,
+				context.Background(),
+				EnvironmentVariables{TargetServiceHost: serverURL.Host},
+				opaEvaluator,
+			)
+
+			t.Run("request respects the policy", func(t *testing.T) {
+				w := httptest.NewRecorder()
+				r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
+				assert.Equal(t, err, nil, "Unexpected error")
+
+				r.Header.Set(mockHeader, mockHeaderValue)
+
+				rbacHandler(w, r)
+				assert.Assert(t, invoked, "Handler was not invoked.")
+				assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			})
+
+			t.Run("request does not have the required header", func(t *testing.T) {
+				invoked = false
+				w := httptest.NewRecorder()
+				r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
+				assert.Equal(t, err, nil, "Unexpected error")
+
+				rbacHandler(w, r)
+				assert.Assert(t, !invoked, "The policy did not block the request as expected")
+				assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+			})
 		})
 	})
 }

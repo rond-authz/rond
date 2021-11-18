@@ -173,7 +173,8 @@ todo { true }`,
 			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				input := map[string]interface{}{}
-				opaEvaluator, _ := GetOPAEvaluator(r.Context())
+				opaEvaluator, err := GetOPAEvaluator(r.Context())
+				require.True(t, err == nil, "Unexpected error")
 				results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
 				require.Equal(t, nil, err, "unexpected error")
 				require.False(t, results.Allowed(), "unexpected allow")
@@ -212,6 +213,43 @@ foobar { true }`,
 
 			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
 		})
+	})
+}
+
+func TestGetHeaderFunction(t *testing.T) {
+	headerKeyMocked := "exampleKey"
+	headerValueMocked := "value"
+
+	opaModule := &OPAModuleConfig{
+		Name: "example.rego",
+		Content: `package example
+		todo { get_header("ExAmPlEkEy", input.headers) == "value" }`,
+	}
+	queryString := "data.example.todo"
+
+	opaEvaluator, err := NewOPAEvaluator(queryString, opaModule)
+	assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
+
+	t.Run("if header key exists", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Add(headerKeyMocked, headerValueMocked)
+		input := map[string]interface{}{
+			"headers": headers,
+		}
+
+		results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
+		assert.NilError(t, err, "Unexpected error during rego validation")
+		assert.Assert(t, results.Allowed(), "The input is not allowed by rego")
+	})
+
+	t.Run("if header key not exists", func(t *testing.T) {
+		input := map[string]interface{}{
+			"headers": http.Header{},
+		}
+
+		results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
+		assert.NilError(t, err, "Unexpected error during rego validation")
+		assert.Assert(t, !results.Allowed(), "Rego policy allows illegal input")
 	})
 }
 
