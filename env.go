@@ -33,7 +33,12 @@ type EnvironmentVariables struct {
 	UserGroupsHeader       string
 	ClientTypeHeader       string
 
-	DelayShutdownSeconds int
+	MongoDBUrl             string
+	RolesDatabaseName      string
+	RolesCollectionName    string
+	BindingsDatabaseName   string
+	BindingsCollectionName string
+	DelayShutdownSeconds   int
 }
 
 var envVariablesConfig = []configlib.EnvConfig{
@@ -88,6 +93,26 @@ var envVariablesConfig = []configlib.EnvConfig{
 		Key:          "DELAY_SHUTDOWN_SECONDS",
 		Variable:     "DelayShutdownSeconds",
 		DefaultValue: "10",
+	},
+	{
+		Key:      "MONGODB_URL",
+		Variable: "MongoDBUrl",
+	},
+	{
+		Key:      "ROLES_DATABASE_NAME",
+		Variable: "RolesDatabaseName",
+	},
+	{
+		Key:      "ROLES_COLLECTION_NAME",
+		Variable: "RolesCollectionName",
+	},
+	{
+		Key:      "BINDINGS_DATABASE_NAME",
+		Variable: "BindingsDatabaseName",
+	},
+	{
+		Key:      "BINDINGS_COLLECTION_NAME",
+		Variable: "BindingsCollectionName",
 	},
 }
 

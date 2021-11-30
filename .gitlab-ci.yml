@@ -11,3 +11,23 @@ default:
 
 variables:
   IMAGE_NAME: core/rbac-service
+
+test:
+  variables:
+    MONGO_HOST_CI: "mongo"
+
+  parallel:
+    matrix:
+      - MONGO_IMAGE: ["mongo:4.0", "mongo:4.4", "mongo:5.0"]
+
+  services:
+    - name: $MONGO_IMAGE
+      alias: mongo
+
+test-latest:
+  variables:
+    MONGO_HOST_CI: "mongo"
+
+  services:
+    - name: mongo
+      alias: mongo

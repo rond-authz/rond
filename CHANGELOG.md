@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 
 - [JAF-98](https://makeitapp.atlassian.net/browse/JAF-98): Added the user infos in the input rego
+- [JAF-99](https://makeitapp.atlassian.net/browse/JAF-99): mongodb integrated to load roles and bindings collections
 - [JAF-45](https://makeitapp.atlassian.net/browse/JAF-45): Created get_header custom built-in rego function 
 - [JAF-46](https://makeitapp.atlassian.net/browse/JAF-46): Added support for the target service documentation API, with a evaluation skip if is set targetServiceOASPath env
 - [JAF-39](https://makeitapp.atlassian.net/browse/JAF-39): Support API permission specification from file

@@ -17,6 +17,12 @@ To setup correctly this service you need to follow this steps
 | USER_GROUPS_HEADER_KEY | string | miausergroups | - | the request header name that contains the user groups |
 | CLIENT_TYPE_HEADER_KEY | string | Client-Type | - | the request header name that contains the client type |
 | DELAY_SHUTDOWN_SECONDS | int | 10 (seconds) | - | the sidecar graceful shutdown |           
+| MONGODB_URL| string| - | - | url to connect to MongoDB |
+| RBAC_DATABASE_NAME | string| - | - | name of the RBAC database |
+| ROLES_COLLECTION_NAME | string | - | - | name of the role collection |
+| BINDINGS_DATABASE_NAME | string | - | - | name of the bindings database |
+| BINDINGS_COLLECTION_NAME | string | - | - | name of the bindings collection |
+| DELAY_SHUTDOWN_SECONDS | int | 10 (seconds) | - | the sidecar graceful shutdown |
 
 ## How to write a policy
 The policies must be write in Rego language and they could use the input variable or our built-in function.
