@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httputil"
 
@@ -34,6 +35,33 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 			"headers": req.Header,
 			"query":   req.URL.Query(),
 		},
+		"clientType": req.Header.Get(env.ClientTypeHeader),
+	}
+	userInput := make(map[string]interface{})
+	userProperties := make(map[string]interface{})
+	ok, err := unmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
+	if err != nil {
+		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("user properties header is not valid")
+		failResponse(w, "User properties header is not valid")
+		return
+	}
+	if ok {
+		userInput["properties"] = userProperties
+	}
+
+	var userGroups []string
+	ok, err = unmarshalHeader(req.Header, env.UserGroupsHeader, &userGroups)
+	if err != nil {
+		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("user group header is not valid")
+		failResponse(w, "user group header is not valid")
+		return
+	}
+	if ok {
+		userInput["groups"] = userGroups
+	}
+
+	if len(userInput) != 0 {
+		input["user"] = userInput
 	}
 
 	results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
@@ -66,4 +94,15 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		},
 	}
 	proxy.ServeHTTP(w, req)
+}
+
+func unmarshalHeader(headers http.Header, headerKey string, v interface{}) (bool, error) {
+	headerValueStringified := headers.Get(headerKey)
+	if headerValueStringified != "" {
+		if err := json.Unmarshal([]byte(headerValueStringified), &v); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
 }

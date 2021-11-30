@@ -29,6 +29,9 @@ type EnvironmentVariables struct {
 	TargetServiceOASPath   string
 	OPAModulesDirectory    string
 	APIPermissionsFilePath string
+	UserPropertiesHeader   string
+	UserGroupsHeader       string
+	ClientTypeHeader       string
 
 	DelayShutdownSeconds int
 }
@@ -65,6 +68,21 @@ var envVariablesConfig = []configlib.EnvConfig{
 	{
 		Key:      APIPermissionsFilePathEnvKey,
 		Variable: "APIPermissionsFilePath",
+	},
+	{
+		Key:          "USER_PROPERTIES_HEADER_KEY",
+		Variable:     "UserPropertiesHeader",
+		DefaultValue: "miauserproperties",
+	},
+	{
+		Key:          "USER_GROUPS_HEADER_KEY",
+		Variable:     "UserGroupsHeader",
+		DefaultValue: "miausergroups",
+	},
+	{
+		Key:          "CLIENT_TYPE_HEADER_KEY",
+		Variable:     "ClientTypeHeader",
+		DefaultValue: "Client-Type",
 	},
 	{
 		Key:          "DELAY_SHUTDOWN_SECONDS",
