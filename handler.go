@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 
@@ -28,40 +29,10 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	input := map[string]interface{}{
-		"request": map[string]interface{}{
-			"method":  req.Method,
-			"path":    req.URL.Path,
-			"headers": req.Header,
-			"query":   req.URL.Query(),
-		},
-		"clientType": req.Header.Get(env.ClientTypeHeader),
-	}
-	userInput := make(map[string]interface{})
-	userProperties := make(map[string]interface{})
-	ok, err := unmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
+	input, err := createRegoQueryInput(req, env)
 	if err != nil {
 		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("user properties header is not valid")
-		failResponse(w, "User properties header is not valid")
-		return
-	}
-	if ok {
-		userInput["properties"] = userProperties
-	}
-
-	var userGroups []string
-	ok, err = unmarshalHeader(req.Header, env.UserGroupsHeader, &userGroups)
-	if err != nil {
-		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("user group header is not valid")
-		failResponse(w, "user group header is not valid")
-		return
-	}
-	if ok {
-		userInput["groups"] = userGroups
-	}
-
-	if len(userInput) != 0 {
-		input["user"] = userInput
+		failResponse(w, fmt.Sprintf("Failed rego query input creation: %s", err.Error()))
 	}
 
 	results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
@@ -94,6 +65,40 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		},
 	}
 	proxy.ServeHTTP(w, req)
+}
+
+func createRegoQueryInput(req *http.Request, env EnvironmentVariables) (map[string]interface{}, error) {
+	input := map[string]interface{}{
+		"request": map[string]interface{}{
+			"method":  req.Method,
+			"path":    req.URL.Path,
+			"headers": req.Header,
+			"query":   req.URL.Query(),
+		},
+		"clientType": req.Header.Get(env.ClientTypeHeader),
+	}
+
+	userInput := make(map[string]interface{})
+	userProperties := make(map[string]interface{})
+	ok, err := unmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
+	if err != nil {
+		return nil, fmt.Errorf("User properties header is not valid: %s", err.Error())
+	}
+	if ok {
+		userInput["properties"] = userProperties
+	}
+	var userGroups []string
+	ok, err = unmarshalHeader(req.Header, env.UserGroupsHeader, &userGroups)
+	if err != nil {
+		return nil, fmt.Errorf("User groups header is not valid: %s", err.Error())
+	}
+	if ok {
+		userInput["groups"] = userGroups
+	}
+	if len(userInput) != 0 {
+		input["user"] = userInput
+	}
+	return input, nil
 }
 
 func unmarshalHeader(headers http.Header, headerKey string, v interface{}) (bool, error) {
