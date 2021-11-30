@@ -40,13 +40,6 @@ func entrypoint(shutdown chan os.Signal) {
 		panic(err.Error())
 	}
 
-	// Routing
-	router := mux.NewRouter()
-	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
-	StatusRoutes(router, "rbac-service", env.ServiceVersion)
-
-	router.Use(RequestMiddlewareEnvironments(env))
-	// Load OPA module file.
 	if _, err := os.Stat(env.OPAModulesDirectory); err != nil {
 		log.WithFields(logrus.Fields{
 			"error":        logrus.Fields{"message": err.Error()},
@@ -54,6 +47,7 @@ func entrypoint(shutdown chan os.Signal) {
 		}).Errorf("load OPA modules failed")
 		return
 	}
+
 	opaModuleConfig, err := loadRegoModule(env.OPAModulesDirectory)
 	if err != nil {
 		log.WithFields(logrus.Fields{
@@ -70,27 +64,15 @@ func entrypoint(shutdown chan os.Signal) {
 		}).Errorf("failed to load oas")
 		return
 	}
-	router.Use(OPAMiddleware(opaModuleConfig, oas, &env))
 
-	mongoClient, err := newMongoClient(env, log)
+	// Routing
+	router, err := setupRouter(log, env, opaModuleConfig, oas)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("error during init of mongo collection")
+		}).Errorf("failed router setup")
 		return
 	}
-	if mongoClient != nil {
-		router.Use(mongoCollectionInjectorMiddleware(mongoClient))
-	}
-
-	defer mongoClient.disconnectMongoClient()
-	setupRoutes(router, oas)
-
-	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		path, _ := route.GetPathTemplate()
-		log.Infof("Registered path: %s", path)
-		return nil
-	})
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:%s", env.HTTPPort),
@@ -109,4 +91,33 @@ func entrypoint(shutdown chan os.Signal) {
 	// We'll accept graceful shutdowns when quit via  and SIGTERM (Ctrl+/)
 	// SIGINT (Ctrl+C), SIGKILL or SIGQUIT will not be caught.
 	helpers.GracefulShutdown(srv, shutdown, log, env.DelayShutdownSeconds)
+}
+
+func setupRouter(log *logrus.Logger, env EnvironmentVariables, opaModuleConfig *OPAModuleConfig, oas *OpenAPISpec) (*mux.Router, error) {
+	router := mux.NewRouter()
+	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
+	StatusRoutes(router, "rbac-service", env.ServiceVersion)
+
+	router.Use(RequestMiddlewareEnvironments(env))
+	router.Use(OPAMiddleware(opaModuleConfig, oas, &env))
+
+	mongoClient, err := newMongoClient(env, log)
+	defer mongoClient.disconnectMongoClient()
+
+	if err != nil {
+		return nil, fmt.Errorf("error during init of mongo collection: %s", err.Error())
+	}
+	if mongoClient != nil {
+		router.Use(mongoCollectionInjectorMiddleware(mongoClient))
+	}
+
+	setupRoutes(router, oas)
+
+	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		path, _ := route.GetPathTemplate()
+		log.Infof("Registered path: %s", path)
+		return nil
+	})
+
+	return router, nil
 }
