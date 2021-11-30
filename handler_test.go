@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -213,5 +214,129 @@ func TestPolicyEvaluation(t *testing.T) {
 				assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
 			})
 		})
+	})
+
+	t.Run("policy on user infos works correctly", func(t *testing.T) {
+		invoked := false
+
+		userPropertiesHeaderKey := "miauserproperties"
+		mockedUserProperties := map[string]interface{}{
+			"my":  "other",
+			"key": []string{"is", "not"},
+		}
+		mockedUserPropertiesStringified, err := json.Marshal(mockedUserProperties)
+		assert.NilError(t, err)
+
+		userGroupsHeaderKey := "miausergroups"
+		mockedUserGroups := []string{"group1", "group2"}
+		mockedUserGroupsStringified, err := json.Marshal(mockedUserGroups)
+		assert.NilError(t, err)
+
+		clientTypeHeaderKey := "Client-Type"
+		mockedClientType := "fakeClient"
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			invoked = true
+			assert.Equal(t, r.Header.Get(userPropertiesHeaderKey), string(mockedUserPropertiesStringified), "Mocked User properties not found")
+			assert.Equal(t, r.Header.Get(userGroupsHeaderKey), string(mockedUserGroupsStringified), "Mocked User groups not found")
+			assert.Equal(t, r.Header.Get(clientTypeHeaderKey), mockedClientType, "Mocked client type not found")
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		serverURL, _ := url.Parse(server.URL)
+
+		opaModule := &OPAModuleConfig{
+			Name: "example.rego",
+			Content: fmt.Sprintf(`
+			package example
+			todo {
+				input.user.properties.my == "%s"
+				count(input.user.groups) == 2
+				input.clientType == "%s"
+			}`, mockedUserProperties["my"], mockedClientType),
+		}
+		queryString := "data.example.todo"
+
+		opaEvaluator, err := NewOPAEvaluator(queryString, opaModule)
+		assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
+
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{
+				TargetServiceHost:    serverURL.Host,
+				UserPropertiesHeader: userPropertiesHeaderKey,
+				UserGroupsHeader:     userGroupsHeaderKey,
+				ClientTypeHeader:     clientTypeHeaderKey,
+			},
+			opaEvaluator,
+		)
+
+		t.Run("request respects the policy", func(t *testing.T) {
+			w := httptest.NewRecorder()
+			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
+			assert.Equal(t, err, nil, "Unexpected error")
+
+			r.Header.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
+			r.Header.Set(userGroupsHeaderKey, string(mockedUserGroupsStringified))
+			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
+
+			rbacHandler(w, r)
+			assert.Assert(t, invoked, "Handler was not invoked.")
+			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		})
+
+		t.Run("request does not have the required header", func(t *testing.T) {
+			invoked = false
+			w := httptest.NewRecorder()
+			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
+			assert.Equal(t, err, nil, "Unexpected error")
+
+			rbacHandler(w, r)
+			assert.Assert(t, !invoked, "The policy did not block the request as expected")
+			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+		})
+	})
+}
+
+func TestUnmarshalHeader(t *testing.T) {
+	userPropertiesHeaderKey := "miauserproperties"
+	mockedUserProperties := map[string]interface{}{
+		"my":  "other",
+		"key": []string{"is", "not"},
+	}
+	mockedUserPropertiesStringified, err := json.Marshal(mockedUserProperties)
+	assert.NilError(t, err)
+
+	t.Run("header not exists", func(t *testing.T) {
+		headers := http.Header{}
+		var userProperties map[string]interface{}
+
+		ok, err := unmarshalHeader(headers, userPropertiesHeaderKey, &userProperties)
+
+		assert.Assert(t, !ok, "Unmarshal not existing header")
+		assert.NilError(t, err, "Unexpected error if doesn't exist header")
+	})
+
+	t.Run("header exists but the unmarshalling fails", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
+		var userProperties string
+
+		ok, err := unmarshalHeader(headers, userPropertiesHeaderKey, &userProperties)
+
+		assert.Assert(t, !ok, "Unexpected success during unmarshalling")
+		assert.ErrorType(t, err, &json.UnmarshalTypeError{}, "Unexpected error on unmarshalling")
+	})
+
+	t.Run("header exists and unmarshalling finishes correctly", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
+		var userProperties map[string]interface{}
+
+		ok, err := unmarshalHeader(headers, userPropertiesHeaderKey, &userProperties)
+
+		assert.Assert(t, ok, "Unexpected failure")
+		assert.NilError(t, err, "Unexpected error")
 	})
 }

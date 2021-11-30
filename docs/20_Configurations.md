@@ -13,8 +13,10 @@ To setup correctly this service you need to follow this steps
 | API_PERMISSIONS_FILE_PATH | string | - | - | file path where you can manually configure permissions for your API, this substitues the automatic documentation fetch performed by the service. [See the example](#api-permission-file) |
 | TARGET_SERVICE_OAS_PATH | string | - | - | endpoint of sibling container to contact for retrieve schemas (es. localhost:3001) |
 | OPA_MODULES_DIRECTORY | string | - | ✅ | folder path where you serve all opa module. this files will be used to evaluate policy. [See the example](#rego-examples) |
-| DELAY_SHUTDOWN_SECONDS | int | 10 (seconds) | - | the sidecar graceful shutdown |
-
+| USER_PROPERTIES_HEADER_KEY | string | miauserproperties | - | the request header name that contains the user properties |
+| USER_GROUPS_HEADER_KEY | string | miausergroups | - | the request header name that contains the user groups |
+| CLIENT_TYPE_HEADER_KEY | string | Client-Type | - | the request header name that contains the client type |
+| DELAY_SHUTDOWN_SECONDS | int | 10 (seconds) | - | the sidecar graceful shutdown |           
 
 ## How to write a policy
 The policies must be write in Rego language and they could use the input variable or our built-in function.
@@ -32,6 +34,13 @@ The policies must be write in Rego language and they could use the input variabl
                 String: Array[String]
             },
     },
+    "user": {
+            "properties": Object{
+                // this object contains the user properties inserted by the authorization service in the request user properties platform header 
+            },
+            "groups": Array[String],
+    },
+    "clientType": String
 }
 ```
 
