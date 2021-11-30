@@ -46,7 +46,6 @@ func entrypoint(shutdown chan os.Signal) {
 	StatusRoutes(router, "rbac-service", env.ServiceVersion)
 
 	router.Use(RequestMiddlewareEnvironments(env))
-
 	// Load OPA module file.
 	if _, err := os.Stat(env.OPAModulesDirectory); err != nil {
 		log.WithFields(logrus.Fields{
@@ -71,9 +70,20 @@ func entrypoint(shutdown chan os.Signal) {
 		}).Errorf("failed to load oas")
 		return
 	}
-
 	router.Use(OPAMiddleware(opaModuleConfig, oas, &env))
 
+	mongoClient, err := newMongoClient(env, log)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"error": logrus.Fields{"message": err.Error()},
+		}).Errorf("error during init of mongo collection")
+		return
+	}
+	if mongoClient != nil {
+		router.Use(mongoCollectionInjectorMiddleware(mongoClient))
+	}
+
+	defer mongoClient.disconnectMongoClient()
 	setupRoutes(router, oas)
 
 	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
