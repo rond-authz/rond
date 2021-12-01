@@ -25,7 +25,7 @@ type MongoClient struct {
 
 // MongoCollectionInjectorMiddleware will inject into request context the
 // mongo collections.
-func mongoCollectionInjectorMiddleware(collections *MongoClient) mux.MiddlewareFunc {
+func MongoCollectionsInjectorMiddleware(collections *MongoClient) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := context.WithValue(r.Context(), MongoClientContextKey{}, collections)
@@ -36,7 +36,7 @@ func mongoCollectionInjectorMiddleware(collections *MongoClient) mux.MiddlewareF
 
 // GetMongoCollectionFromContext extracts mongo collections adapter struct from
 // provided context.
-func getMongoCollectionFromContext(ctx context.Context) (*MongoClient, error) {
+func GetMongoCollectionsFromContext(ctx context.Context) (*MongoClient, error) {
 	collectionInterface := ctx.Value(MongoClientContextKey{})
 	if collectionInterface == nil {
 		return nil, nil
@@ -49,7 +49,7 @@ func getMongoCollectionFromContext(ctx context.Context) (*MongoClient, error) {
 	return &collections, nil
 }
 
-func (mongoClient *MongoClient) disconnectMongoClient() {
+func (mongoClient *MongoClient) Disconnect() {
 	if mongoClient != nil {
 		mongoClient.client.Disconnect(context.Background())
 	}
@@ -59,13 +59,12 @@ func newMongoClient(env EnvironmentVariables, logger *logrus.Logger) (*MongoClie
 	if env.MongoDBUrl == "" {
 		return nil, nil
 	}
-	if env.RolesDatabaseName == "" || env.RolesCollectionName == "" || env.BindingsCollectionName == "" || env.BindingsDatabaseName == "" {
+	if env.MongoDatabaseName == "" || env.RolesCollectionName == "" || env.BindingsCollectionName == "" {
 		return nil, fmt.Errorf(
-			`MongoDB url is not empty, RolesDatabaseName: "%s", RolesCollectionName: "%s",  BindingsCollectionName: "%s",  BindingsDatabaseName: "%s"`,
-			env.RolesDatabaseName,
-			env.RolesCollectionName,
+			`MongoDB url is not empty, MongoDbName: "%s", BindingsCollectionName: "%s",  RolesCollectionName: "%s"`,
+			env.MongoDatabaseName,
 			env.BindingsCollectionName,
-			env.BindingsDatabaseName,
+			env.RolesCollectionName,
 		)
 	}
 
@@ -82,8 +81,8 @@ func newMongoClient(env EnvironmentVariables, logger *logrus.Logger) (*MongoClie
 	}
 	mongoClient := MongoClient{
 		client:   client,
-		roles:    client.Database(env.RolesDatabaseName).Collection(env.RolesCollectionName),
-		bindings: client.Database(env.BindingsDatabaseName).Collection(env.BindingsCollectionName),
+		roles:    client.Database(env.MongoDatabaseName).Collection(env.RolesCollectionName),
+		bindings: client.Database(env.MongoDatabaseName).Collection(env.BindingsCollectionName),
 	}
 	return &mongoClient, nil
 }

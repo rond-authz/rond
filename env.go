@@ -31,12 +31,12 @@ type EnvironmentVariables struct {
 	APIPermissionsFilePath string
 	UserPropertiesHeader   string
 	UserGroupsHeader       string
+	UserIdHeader           string
 	ClientTypeHeader       string
 
 	MongoDBUrl             string
-	RolesDatabaseName      string
+	MongoDatabaseName      string
 	RolesCollectionName    string
-	BindingsDatabaseName   string
 	BindingsCollectionName string
 	DelayShutdownSeconds   int
 }
@@ -85,6 +85,11 @@ var envVariablesConfig = []configlib.EnvConfig{
 		DefaultValue: "miausergroups",
 	},
 	{
+		Key:          "USER_ID_HEADER_KEY",
+		Variable:     "UserIdHeader",
+		DefaultValue: "miauserid",
+	},
+	{
 		Key:          "CLIENT_TYPE_HEADER_KEY",
 		Variable:     "ClientTypeHeader",
 		DefaultValue: "Client-Type",
@@ -99,12 +104,8 @@ var envVariablesConfig = []configlib.EnvConfig{
 		Variable: "MongoDBUrl",
 	},
 	{
-		Key:      "ROLES_DATABASE_NAME",
-		Variable: "RolesDatabaseName",
-	},
-	{
-		Key:      "ROLES_COLLECTION_NAME",
-		Variable: "RolesCollectionName",
+		Key:      "DATABASE_NAME",
+		Variable: "MongoDatabaseName",
 	},
 	{
 		Key:      "BINDINGS_DATABASE_NAME",
