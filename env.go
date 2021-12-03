@@ -112,8 +112,8 @@ var envVariablesConfig = []configlib.EnvConfig{
 		Variable: "BindingsDatabaseName",
 	},
 	{
-		Key:      "BINDINGS_COLLECTION_NAME",
-		Variable: "BindingsCollectionName",
+		Key:      "ROLES_COLLECTION_NAME",
+		Variable: "RolesCollectionName",
 	},
 }
 
