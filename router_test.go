@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"rbac-service/internal/mocks"
+	"rbac-service/internal/types"
 
 	"github.com/gorilla/mux"
 	"github.com/open-policy-agent/opa/rego"
@@ -48,12 +49,15 @@ func TestSetupRoutes(t *testing.T) {
 	assert.DeepEqual(t, foundPaths, expectedPaths)
 }
 
-func createContext(t *testing.T, originalCtx context.Context, env EnvironmentVariables, opaEvaluator *OPAEvaluator) context.Context {
+func createContext(t *testing.T, originalCtx context.Context, env EnvironmentVariables, opaEvaluator *OPAEvaluator, mongoClient *mocks.MongoClientMock) context.Context {
 	t.Helper()
 
 	var partialContext context.Context
 	partialContext = context.WithValue(originalCtx, envKey{}, env)
 	partialContext = context.WithValue(partialContext, OPAEvaluatorKey{}, opaEvaluator)
+	if mongoClient != nil {
+		partialContext = context.WithValue(partialContext, types.MongoClientContextKey{}, mongoClient)
+	}
 
 	return partialContext
 }
@@ -70,8 +74,17 @@ func buildMockEvaluator(allowed bool) mocks.MockEvaluator {
 	}
 }
 
+func buildMockMongoClient(permissions []string) mocks.MongoClientMock {
+	return mocks.MongoClientMock{
+		UserPermissions:      permissions,
+		UserPermissionsError: errors.New("can not retrieve user permissions"),
+	}
+}
+
 var mockAllowedOPAEvaluator = buildMockEvaluator(true)
 var mockNotAllowedOPAEvaluator = buildMockEvaluator(false)
+
+var mockGetUserPermissions = buildMockMongoClient([]string{"permission1", "permission2"})
 
 func TestSetupRoutesIntegration(t *testing.T) {
 	oas := prepareOASFromFile(t, "./mocks/simplifiedMock.json")
@@ -94,6 +107,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
@@ -128,6 +142,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/unknown/path?foo=bar", nil)
@@ -144,7 +159,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
 	})
 
-	t.Run("blocks request on non allowed policy evaluation", func(t *testing.T) {
+	t.Run("blocks request on not allowed policy evaluation", func(t *testing.T) {
 		router := mux.NewRouter()
 		setupRoutes(router, oas)
 
@@ -152,6 +167,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			EnvironmentVariables{LogLevel: "silent", TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			&OPAEvaluator{PermissionQuery: &mockNotAllowedOPAEvaluator},
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
@@ -175,6 +191,31 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			EnvironmentVariables{TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			&OPAEvaluator{PermissionQuery: &mocks.MockEvaluator{ResultError: errors.New("some error from policy eval")}},
+			nil,
+		)
+
+		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
+		assert.Equal(t, err, nil, "Unexpected error")
+
+		var matchedRouted mux.RouteMatch
+		ok := router.Match(req, &matchedRouted)
+		assert.Assert(t, ok, "Route not found")
+
+		w := httptest.NewRecorder()
+		matchedRouted.Handler.ServeHTTP(w, req)
+
+		assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
+	})
+
+	t.Run("blocks request on policy evaluation error", func(t *testing.T) {
+		router := mux.NewRouter()
+		setupRoutes(router, oas)
+
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
+			&OPAEvaluator{PermissionQuery: &mocks.MockEvaluator{ResultError: errors.New("some error from policy eval")}},
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)

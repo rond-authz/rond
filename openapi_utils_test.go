@@ -50,7 +50,7 @@ func TestFetchOpenAPI(t *testing.T) {
 
 		_, err := fetchOpenAPI(url)
 
-		t.Logf("Expected error occured: %s", err.Error())
+		t.Logf("Expected error occurred: %s", err.Error())
 		assert.Assert(t, errors.Is(err, ErrRequestFailed), "unexpected error")
 	})
 
@@ -59,7 +59,7 @@ func TestFetchOpenAPI(t *testing.T) {
 
 		_, err := fetchOpenAPI(url)
 
-		t.Logf("Expected error occured: %s", err.Error())
+		t.Logf("Expected error occurred: %s", err.Error())
 		assert.Assert(t, errors.Is(err, ErrRequestFailed), "unexpected error")
 	})
 
@@ -75,7 +75,7 @@ func TestFetchOpenAPI(t *testing.T) {
 
 		_, err := fetchOpenAPI(url)
 
-		t.Logf("Expected error occured: %s", err.Error())
+		t.Logf("Expected error occurred: %s", err.Error())
 		assert.Assert(t, errors.Is(err, ErrRequestFailed), "unexpected error")
 	})
 
@@ -90,7 +90,7 @@ func TestFetchOpenAPI(t *testing.T) {
 
 		_, err := fetchOpenAPI(url)
 
-		t.Logf("Expected error occured: %s", err.Error())
+		t.Logf("Expected error occurred: %s", err.Error())
 		assert.Assert(t, errors.Is(err, ErrRequestFailed), "unexpected error")
 	})
 }
@@ -122,7 +122,7 @@ func TestLoadOASFile(t *testing.T) {
 	t.Run("fail for invalid filePath", func(t *testing.T) {
 		_, err := loadOASFile("./notExistingFilePath.json")
 
-		t.Logf("Expected error occured: %s", err.Error())
+		t.Logf("Expected error occurred: %s", err.Error())
 		assert.Assert(t, err != nil, "failed documentation file read")
 	})
 }
@@ -199,7 +199,7 @@ func TestLoadOAS(t *testing.T) {
 		}
 		_, err := loadOAS(log, envs)
 
-		t.Logf("Expected error occured: %s", err.Error())
+		t.Logf("Expected error occurred: %s", err.Error())
 		assert.Assert(t, err != nil, fmt.Errorf("missing environment variables one of %s or %s is required", TargetServiceOASPathEnvKey, APIPermissionsFilePathEnvKey))
 	})
 }

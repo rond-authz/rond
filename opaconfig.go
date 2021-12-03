@@ -30,7 +30,8 @@ type Evaluator interface {
 // TODO: This should be transformed to a map having as keys the API VERB+PATH
 // and as content a struct with permssions and the actual opa query eval
 type OPAEvaluator struct {
-	PermissionQuery Evaluator
+	PermissionQuery         Evaluator
+	RequiredAllowPermission string
 }
 
 type OPAEvaluatorKey struct{}
@@ -53,7 +54,8 @@ var getHeaderFunction = rego.Function2(
 	},
 )
 
-func NewOPAEvaluator(queryString string, opaModuleConfig *OPAModuleConfig) (*OPAEvaluator, error) {
+func NewOPAEvaluator(policy string, opaModuleConfig *OPAModuleConfig) (*OPAEvaluator, error) {
+	queryString := fmt.Sprintf("data.example.%s", policy)
 	query, err := rego.New(
 		rego.Query(queryString),
 		rego.Module(opaModuleConfig.Name, opaModuleConfig.Content),
@@ -63,7 +65,10 @@ func NewOPAEvaluator(queryString string, opaModuleConfig *OPAModuleConfig) (*OPA
 		return nil, err
 	}
 
-	return &OPAEvaluator{query}, nil
+	return &OPAEvaluator{
+		PermissionQuery:         query,
+		RequiredAllowPermission: policy,
+	}, nil
 }
 
 type TruthyEvaluator struct{}
@@ -95,6 +100,7 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 				return
 			}
 			if err != nil || permission.AllowPermission == "" {
+				errorMessage := "User is not allowed to request the API"
 				fields := logrus.Fields{
 					"originalRequestPath": r.URL.Path,
 					"method":              r.Method,
@@ -102,16 +108,14 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 				}
 				if err != nil {
 					fields["error"] = logrus.Fields{"message": err.Error()}
+					errorMessage = "The request doesn't match any known API"
 				}
-				errorMessage := "The request doesn't match any known API"
 				glogger.Get(r.Context()).WithFields(fields).Errorf(errorMessage)
 				failResponseWithCode(w, http.StatusForbidden, errorMessage)
 				return
 			}
 
-			queryString := fmt.Sprintf("data.example.%s", permission.AllowPermission)
-
-			evaluator, err := NewOPAEvaluator(queryString, opaModuleConfig)
+			evaluator, err := NewOPAEvaluator(permission.AllowPermission, opaModuleConfig)
 			if err != nil {
 				glogger.Get(r.Context()).WithError(err).Error("failed RBAC policy creation")
 				failResponse(w, err.Error())

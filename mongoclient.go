@@ -6,16 +6,16 @@ import (
 	"net/http"
 	"time"
 
+	"rbac-service/internal/types"
+	"rbac-service/internal/utils"
+
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
-
-// MongoClientContextKey is the context key that shall be used to save
-// mongo Collection reference in request contexts.
-type MongoClientContextKey struct{}
 
 type MongoClient struct {
 	bindings *mongo.Collection
@@ -23,30 +23,29 @@ type MongoClient struct {
 	client   *mongo.Client
 }
 
-// MongoCollectionInjectorMiddleware will inject into request context the
+// MongoClientInjectorMiddleware will inject into request context the
 // mongo collections.
-func MongoCollectionsInjectorMiddleware(collections *MongoClient) mux.MiddlewareFunc {
+func MongoClientInjectorMiddleware(collections types.IMongoClient) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := context.WithValue(r.Context(), MongoClientContextKey{}, collections)
+			ctx := context.WithValue(r.Context(), types.MongoClientContextKey{}, collections)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-// GetMongoCollectionFromContext extracts mongo collections adapter struct from
+// GetMongoClientFromContext extracts mongo collections adapter struct from
 // provided context.
-func GetMongoCollectionsFromContext(ctx context.Context) (*MongoClient, error) {
-	collectionInterface := ctx.Value(MongoClientContextKey{})
+func GetMongoClientFromContext(ctx context.Context) (types.IMongoClient, error) {
+	collectionInterface := ctx.Value(types.MongoClientContextKey{})
 	if collectionInterface == nil {
 		return nil, nil
 	}
-
-	collections, ok := collectionInterface.(MongoClient)
+	collections, ok := collectionInterface.(types.IMongoClient)
 	if !ok {
 		return nil, fmt.Errorf("no MongoDB collection found in context")
 	}
-	return &collections, nil
+	return collections, nil
 }
 
 func (mongoClient *MongoClient) Disconnect() {
@@ -85,4 +84,81 @@ func newMongoClient(env EnvironmentVariables, logger *logrus.Logger) (*MongoClie
 		bindings: client.Database(env.MongoDatabaseName).Collection(env.BindingsCollectionName),
 	}
 	return &mongoClient, nil
+}
+
+func (mongoClient *MongoClient) FindUserPermissions(ctx context.Context, user *types.User) ([]string, error) {
+	var userPermissions []string
+
+	roles, err := findUserPermissionsAndRolesFromBindings(ctx, &userPermissions, mongoClient.bindings, user)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving bindings from collection: %s", err.Error())
+	}
+	err = findRolePermissions(ctx, &userPermissions, mongoClient.roles, roles)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving permissions from roles collection: %s", err.Error())
+	}
+
+	return userPermissions, nil
+}
+
+func findRolePermissions(ctx context.Context, userPermissions *[]string, rolesCollection *mongo.Collection, roles []string) error {
+	filter := bson.M{"roleId": bson.M{"$in": roles}}
+	options := options.Find().SetProjection(bson.M{"_id": 0, "permissions": 1})
+	cursor, err := rolesCollection.Find(
+		ctx,
+		filter,
+		options,
+	)
+	if err != nil {
+		return err
+	}
+	var rolesResult []types.Role
+	if err = cursor.All(ctx, &rolesResult); err != nil {
+		return err
+	}
+
+	for _, role := range rolesResult {
+		permissions := role.Permissions
+		for _, permission := range permissions {
+			utils.AppendUnique(*&userPermissions, permission)
+		}
+	}
+	return nil
+}
+
+func findUserPermissionsAndRolesFromBindings(ctx context.Context, userPermissions *[]string, bindingsCollection *mongo.Collection, user *types.User) ([]string, error) {
+	filter := bson.M{
+		"$or": []bson.M{
+			{"subjects": bson.M{"$elemMatch": bson.M{"$eq": user.UserID}}},
+			{"groups": bson.M{"$elemMatch": bson.M{"$in": user.UserGroups}}},
+		},
+	}
+	options := options.Find().SetProjection(
+		bson.M{"_id": 0, "bindingId": 1, "permissions": 1, "roles": 1},
+	)
+	cursor, err := bindingsCollection.Find(
+		ctx,
+		filter,
+		options,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var bindingsResult []types.Binding
+	if err = cursor.All(ctx, &bindingsResult); err != nil {
+		return nil, err
+	}
+	var roles []string
+	for _, binding := range bindingsResult {
+		bindingPermissions := binding.Permissions
+		for _, bindingpermission := range bindingPermissions {
+			utils.AppendUnique(userPermissions, bindingpermission)
+		}
+		bindingRoles := binding.Roles
+		for _, bindingRole := range bindingRoles {
+			utils.AppendUnique(&roles, bindingRole)
+		}
+	}
+	return roles, nil
 }
