@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 
 ### Added
-
+- [JAF-100](https://makeitapp.atlassian.net/browse/JAF-100): Added the check on user permission before evaluating the query
 - [JAF-98](https://makeitapp.atlassian.net/browse/JAF-98): Added the user infos in the input rego
 - [JAF-99](https://makeitapp.atlassian.net/browse/JAF-99): mongodb integrated to load roles and bindings collections
 - [JAF-45](https://makeitapp.atlassian.net/browse/JAF-45): Created get_header custom built-in rego function 

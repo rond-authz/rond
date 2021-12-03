@@ -68,7 +68,7 @@ The returned output is the first header value present in the `headers` map at ke
 
 ### Policy examples
 ```
-    package example
+    package policies
 
     default api_key = false
 
@@ -78,7 +78,7 @@ The returned output is the first header value present in the `headers` map at ke
 ```
 
 ```
-    package example
+    package policies
 
     default api_key = false
     api_key {

@@ -7,3 +7,5 @@ The RBAC Service is thought to be deployed as a sidecar container for each custo
 :::
 
 RBAC sidecar will expose all the routes exposed by the custom services in the documentation route under the OpenAPI 3 specification. The service will proxy them to the original destination applying some rules based on the permission of the user expressed inside the bindings.
+
+

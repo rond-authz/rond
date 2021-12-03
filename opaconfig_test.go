@@ -126,7 +126,7 @@ foobar { true }`,
 				evaluator := r.Context().Value(OPAEvaluatorKey{}).(*OPAEvaluator)
 				evaluatorType := reflect.TypeOf(evaluator.PermissionQuery)
 				trustyEvaluator := reflect.TypeOf(&TruthyEvaluator{})
-				assert.Equal(t, evaluatorType, trustyEvaluator, "Unaxspected evaluator type")
+				assert.Equal(t, evaluatorType, trustyEvaluator, "Unexpected evaluator type")
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -225,7 +225,7 @@ func TestGetHeaderFunction(t *testing.T) {
 		Content: `package example
 		todo { get_header("ExAmPlEkEy", input.headers) == "value" }`,
 	}
-	queryString := "data.example.todo"
+	queryString := "todo"
 
 	opaEvaluator, err := NewOPAEvaluator(queryString, opaModule)
 	assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")

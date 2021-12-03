@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"net/http/httputil"
 
+	"rbac-service/internal/types"
+	"rbac-service/internal/utils"
+
 	"github.com/mia-platform/glogger/v2"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/sirupsen/logrus"
@@ -22,6 +25,13 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	mongoClient, err := GetMongoClientFromContext(req.Context())
+	if err != nil {
+		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("unexpected MongoDB client found in context")
+		failResponse(w, "Unexpected error retrieving MongoDB Client from request context")
+		return
+	}
+
 	opaEvaluator, err := GetOPAEvaluator(req.Context())
 	if err != nil {
 		glogger.Get(req.Context()).WithError(err).Error("no policy evaluator found in context")
@@ -29,10 +39,43 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if mongoClient != nil {
+		var user types.User
+
+		_, err = unmarshalHeader(req.Header, env.UserGroupsHeader, &user.UserGroups)
+		if err != nil {
+			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("user group header is not valid")
+			failResponse(w, fmt.Sprintf("User groups header is not valid: %s", err.Error()))
+			return
+		}
+
+		_, err = unmarshalHeader(req.Header, env.UserIdHeader, &user.UserID)
+		if err != nil {
+			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("user id header is not valid")
+			failResponse(w, fmt.Sprintf("User id header is not valid: %s", err.Error()))
+			return
+		}
+
+		userPermissions, err := mongoClient.FindUserPermissions(req.Context(), &user)
+		if err != nil {
+			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user permissions")
+			failResponse(w, fmt.Sprintf("Error while retrieving user permissions: %s", err.Error()))
+			return
+		}
+
+		permission := opaEvaluator.RequiredAllowPermission
+		if !utils.Contains(userPermissions, permission) {
+			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": "User is not allowed"}).Error("User is not allowed")
+			failResponseWithCode(w, http.StatusForbidden, "Error while retrieving user permissions: user is not allowed")
+			return
+		}
+	}
+
 	input, err := createRegoQueryInput(req, env)
 	if err != nil {
 		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("user properties header is not valid")
 		failResponse(w, fmt.Sprintf("Failed rego query input creation: %s", err.Error()))
+		return
 	}
 
 	results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))

@@ -21,6 +21,8 @@ By default the service will run on port 8080, to change the port please set `HTT
 
 To test the application use:
 
+Please remember to have a mongo instance running on your localhost on port 27017
+
 ```go
 go test -v
 ```

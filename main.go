@@ -108,7 +108,7 @@ func setupRouter(log *logrus.Logger, env EnvironmentVariables, opaModuleConfig *
 		return nil, fmt.Errorf("error during init of mongo collection: %s", err.Error())
 	}
 	if mongoClient != nil {
-		router.Use(MongoCollectionsInjectorMiddleware(mongoClient))
+		router.Use(MongoClientInjectorMiddleware(mongoClient))
 	}
 
 	setupRoutes(router, oas)
