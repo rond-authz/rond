@@ -108,8 +108,8 @@ var envVariablesConfig = []configlib.EnvConfig{
 		Variable: "MongoDatabaseName",
 	},
 	{
-		Key:      "BINDINGS_DATABASE_NAME",
-		Variable: "BindingsDatabaseName",
+		Key:      "BINDINGS_COLLECTION_NAME",
+		Variable: "BindingsCollectionName",
 	},
 	{
 		Key:      "ROLES_COLLECTION_NAME",
