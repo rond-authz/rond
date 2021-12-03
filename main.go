@@ -66,7 +66,10 @@ func entrypoint(shutdown chan os.Signal) {
 	}
 
 	// Routing
-	router, err := setupRouter(log, env, opaModuleConfig, oas)
+	router, mongoClient, err := setupRouter(log, env, opaModuleConfig, oas)
+	if mongoClient != nil {
+		defer mongoClient.Disconnect()
+	}
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},
@@ -93,7 +96,7 @@ func entrypoint(shutdown chan os.Signal) {
 	helpers.GracefulShutdown(srv, shutdown, log, env.DelayShutdownSeconds)
 }
 
-func setupRouter(log *logrus.Logger, env EnvironmentVariables, opaModuleConfig *OPAModuleConfig, oas *OpenAPISpec) (*mux.Router, error) {
+func setupRouter(log *logrus.Logger, env EnvironmentVariables, opaModuleConfig *OPAModuleConfig, oas *OpenAPISpec) (*mux.Router, *MongoClient, error) {
 	router := mux.NewRouter()
 	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
 	StatusRoutes(router, "rbac-service", env.ServiceVersion)
@@ -102,10 +105,9 @@ func setupRouter(log *logrus.Logger, env EnvironmentVariables, opaModuleConfig *
 	router.Use(OPAMiddleware(opaModuleConfig, oas, &env))
 
 	mongoClient, err := newMongoClient(env, log)
-	defer mongoClient.Disconnect()
 
 	if err != nil {
-		return nil, fmt.Errorf("error during init of mongo collection: %s", err.Error())
+		return nil, nil, fmt.Errorf("error during init of mongo collection: %s", err.Error())
 	}
 	if mongoClient != nil {
 		router.Use(MongoClientInjectorMiddleware(mongoClient))
@@ -119,5 +121,5 @@ func setupRouter(log *logrus.Logger, env EnvironmentVariables, opaModuleConfig *
 		return nil
 	})
 
-	return router, nil
+	return router, mongoClient, nil
 }
