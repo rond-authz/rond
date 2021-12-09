@@ -55,7 +55,8 @@ var getHeaderFunction = rego.Function2(
 )
 
 func NewOPAEvaluator(policy string, opaModuleConfig *OPAModuleConfig) (*OPAEvaluator, error) {
-	queryString := fmt.Sprintf("data.example.%s", policy)
+	sanitizedPolicy := strings.Replace(policy, ".", "_", -1)
+	queryString := fmt.Sprintf("data.example.%s", sanitizedPolicy)
 	query, err := rego.New(
 		rego.Query(queryString),
 		rego.Module(opaModuleConfig.Name, opaModuleConfig.Content),

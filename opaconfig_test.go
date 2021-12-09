@@ -213,6 +213,31 @@ foobar { true }`,
 
 			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
 		})
+
+		t.Run(`rego package contains composed permission`, func(t *testing.T) {
+			opaModule := &OPAModuleConfig{
+				Name: "example.rego",
+				Content: `package example
+very_very_composed_permission { true }`,
+			}
+
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
+			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				input := map[string]interface{}{}
+				opaEvaluator, _ := GetOPAEvaluator(r.Context())
+				results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
+				require.Equal(t, nil, err, "unexpected error")
+				require.True(t, results.Allowed(), "unexpected allow")
+
+				w.WriteHeader(http.StatusOK)
+			}))
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "http://example.com/composed/permission/", nil)
+			builtHandler.ServeHTTP(w, r)
+
+			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		})
 	})
 }
 
