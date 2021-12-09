@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Changes
+- [JAF-103](https://makeitapp.atlassian.net/browse/JAF-103): Support dot character as divider in the x-permission string, replaced as underscore for rego policy query
+
 ### Added
 - [JAF-100](https://makeitapp.atlassian.net/browse/JAF-100): Added the check on user permission before evaluating the query
 - [JAF-98](https://makeitapp.atlassian.net/browse/JAF-98): Added the user infos in the input rego

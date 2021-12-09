@@ -336,6 +336,15 @@
         }
       }
     },
+    "/composed/permission/": {
+      "get": {
+        "x-permission" : {
+          "allow": "very.very.composed.permission"
+        },
+        "summary": "Get a list of users",
+        "description": "The list can be filtered specifying the following parameters"
+      }
+    },
     "/no-permission": {
       "post": {
         "tags": [
