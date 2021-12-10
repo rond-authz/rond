@@ -242,7 +242,7 @@ very_very_composed_permission { true }`,
 		t.Run(`rego package contains composed permission`, func(t *testing.T) {
 			opaModule := &OPAModuleConfig{
 				Name: "example.rego",
-				Content: `package example
+				Content: `package policies
 very_very_composed_permission { true }`,
 			}
 
