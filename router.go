@@ -17,11 +17,18 @@
 package main
 
 import (
+	"rbac-service/internal/utils"
+
 	"github.com/gorilla/mux"
 )
 
+var ignoredRoutes = []string{"/-/healthz", "/-/ready", "/-/check-up"}
+
 func setupRoutes(router *mux.Router, oas *OpenAPISpec) {
 	for key := range oas.Paths {
+		if utils.Contains(ignoredRoutes, key) {
+			continue
+		}
 		router.HandleFunc(key, rbacHandler)
 	}
 	router.PathPrefix("/").HandlerFunc(rbacHandler)
