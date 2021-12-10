@@ -46,13 +46,6 @@ func TestFetchOpenAPI(t *testing.T) {
 					},
 				},
 			},
-			"/composed/permission/": PathVerbs{
-				"get": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "very.very.composed.permission",
-					},
-				},
-			},
 			"/no-permission": PathVerbs{
 				"post": VerbConfig{},
 			},
@@ -198,13 +191,6 @@ func TestLoadOAS(t *testing.T) {
 				"post": VerbConfig{
 					Permission: XPermission{
 						AllowPermission: "notexistingpermission",
-					},
-				},
-			},
-			"/composed/permission/": PathVerbs{
-				"get": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "very.very.composed.permission",
 					},
 				},
 			},
