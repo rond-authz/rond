@@ -23,6 +23,9 @@ type MongoClient struct {
 	client   *mongo.Client
 }
 
+const STATE string = "__STATE__"
+const PUBLIC string = "PUBLIC"
+
 // MongoClientInjectorMiddleware will inject into request context the
 // mongo collections.
 func MongoClientInjectorMiddleware(collections types.IMongoClient) mux.MiddlewareFunc {
@@ -93,8 +96,12 @@ func (mongoClient *MongoClient) FindUserPermissions(ctx context.Context, user *t
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving bindings from collection: %s", err.Error())
 	}
-	err = findRolePermissions(ctx, &userPermissions, mongoClient.roles, roles)
-	if err != nil {
+
+	if len(roles) == 0 {
+		return userPermissions, nil
+	}
+
+	if err = findRolePermissions(ctx, &userPermissions, mongoClient.roles, roles); err != nil {
 		return nil, fmt.Errorf("error retrieving permissions from roles collection: %s", err.Error())
 	}
 
@@ -102,7 +109,13 @@ func (mongoClient *MongoClient) FindUserPermissions(ctx context.Context, user *t
 }
 
 func findRolePermissions(ctx context.Context, userPermissions *[]string, rolesCollection *mongo.Collection, roles []string) error {
-	filter := bson.M{"roleId": bson.M{"$in": roles}}
+	filter := bson.M{
+		"$and": []bson.M{
+			{"roleId": bson.M{"$in": roles}},
+			{STATE: PUBLIC},
+		},
+	}
+
 	options := options.Find().SetProjection(bson.M{"_id": 0, "permissions": 1})
 	cursor, err := rolesCollection.Find(
 		ctx,
@@ -112,7 +125,7 @@ func findRolePermissions(ctx context.Context, userPermissions *[]string, rolesCo
 	if err != nil {
 		return err
 	}
-	var rolesResult []types.Role
+	rolesResult := make([]types.Role, 0)
 	if err = cursor.All(ctx, &rolesResult); err != nil {
 		return err
 	}
@@ -128,9 +141,14 @@ func findRolePermissions(ctx context.Context, userPermissions *[]string, rolesCo
 
 func findUserPermissionsAndRolesFromBindings(ctx context.Context, userPermissions *[]string, bindingsCollection *mongo.Collection, user *types.User) ([]string, error) {
 	filter := bson.M{
-		"$or": []bson.M{
-			{"subjects": bson.M{"$elemMatch": bson.M{"$eq": user.UserID}}},
-			{"groups": bson.M{"$elemMatch": bson.M{"$in": user.UserGroups}}},
+		"$and": []bson.M{
+			{
+				"$or": []bson.M{
+					{"subjects": bson.M{"$elemMatch": bson.M{"$eq": user.UserID}}},
+					{"groups": bson.M{"$elemMatch": bson.M{"$in": user.UserGroups}}},
+				},
+			},
+			{STATE: PUBLIC},
 		},
 	}
 	options := options.Find().SetProjection(
@@ -149,7 +167,7 @@ func findUserPermissionsAndRolesFromBindings(ctx context.Context, userPermission
 	if err = cursor.All(ctx, &bindingsResult); err != nil {
 		return nil, err
 	}
-	var roles []string
+	roles := make([]string, 0)
 	for _, binding := range bindingsResult {
 		bindingPermissions := binding.Permissions
 		for _, bindingpermission := range bindingPermissions {

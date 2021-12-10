@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httputil"
+	"strings"
 
 	"rbac-service/internal/types"
 	"rbac-service/internal/utils"
@@ -42,17 +43,12 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	if mongoClient != nil {
 		var user types.User
 
-		_, err = unmarshalHeader(req.Header, env.UserGroupsHeader, &user.UserGroups)
-		if err != nil {
-			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("user group header is not valid")
-			failResponse(w, fmt.Sprintf("User groups header is not valid: %s", err.Error()))
-			return
-		}
+		user.UserGroups = strings.Split(req.Header.Get(env.UserGroupsHeader), ",")
+		user.UserID = req.Header.Get(env.UserIdHeader)
 
-		_, err = unmarshalHeader(req.Header, env.UserIdHeader, &user.UserID)
-		if err != nil {
-			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("user id header is not valid")
-			failResponse(w, fmt.Sprintf("User id header is not valid: %s", err.Error()))
+		if user.UserID == "" {
+			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": "User unknown"}).Error("User is unknown")
+			failResponseWithCode(w, http.StatusForbidden, "Error while retrieving user permissions: user is unknown")
 			return
 		}
 
@@ -130,14 +126,12 @@ func createRegoQueryInput(req *http.Request, env EnvironmentVariables) (map[stri
 	if ok {
 		userInput["properties"] = userProperties
 	}
-	var userGroups []string
-	ok, err = unmarshalHeader(req.Header, env.UserGroupsHeader, &userGroups)
-	if err != nil {
-		return nil, fmt.Errorf("User groups header is not valid: %s", err.Error())
+
+	userGroupsNotSplitted := req.Header.Get(env.UserGroupsHeader)
+	if userGroupsNotSplitted != "" {
+		userInput["groups"] = strings.Split(userGroupsNotSplitted, ",")
 	}
-	if ok {
-		userInput["groups"] = userGroups
-	}
+
 	if len(userInput) != 0 {
 		input["user"] = userInput
 	}

@@ -56,7 +56,7 @@ var getHeaderFunction = rego.Function2(
 
 func NewOPAEvaluator(policy string, opaModuleConfig *OPAModuleConfig) (*OPAEvaluator, error) {
 	sanitizedPolicy := strings.Replace(policy, ".", "_", -1)
-	queryString := fmt.Sprintf("data.example.%s", sanitizedPolicy)
+	queryString := fmt.Sprintf("data.policies.%s", sanitizedPolicy)
 	query, err := rego.New(
 		rego.Query(queryString),
 		rego.Module(opaModuleConfig.Name, opaModuleConfig.Content),
@@ -160,7 +160,7 @@ func WithOPAEvaluator(requestContext context.Context, evaluator *OPAEvaluator) c
 	return context.WithValue(requestContext, OPAEvaluatorKey{}, evaluator)
 }
 
-// GetOPAEvaluator can be used by a request handler to get OPAEvalutor instance from its context.
+// GetOPAEvaluator can be used by a request handler to get OPAEvaluator instance from its context.
 func GetOPAEvaluator(requestContext context.Context) (*OPAEvaluator, error) {
 	opaEvaluator, ok := requestContext.Value(OPAEvaluatorKey{}).(*OPAEvaluator)
 	if !ok {
