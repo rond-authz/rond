@@ -20,7 +20,7 @@ func TestOPAMiddleware(t *testing.T) {
 	t.Run(`strict mode failure`, func(t *testing.T) {
 		opaModule := &OPAModuleConfig{
 			Name: "example.rego",
-			Content: `package example
+			Content: `package policies
 todo { true }`,
 		}
 		var openAPISpec *OpenAPISpec
@@ -69,7 +69,7 @@ todo { true }`,
 	t.Run(`documentation request`, func(t *testing.T) {
 		opaModule := &OPAModuleConfig{
 			Name: "example.rego",
-			Content: `package example
+			Content: `package policies
 foobar { true }`,
 		}
 
@@ -166,7 +166,7 @@ foobar { true }`,
 		t.Run(`rego package doesn't contain expected permission`, func(t *testing.T) {
 			opaModule := &OPAModuleConfig{
 				Name: "example.rego",
-				Content: `package example
+				Content: `package policies
 todo { true }`,
 			}
 
@@ -192,7 +192,7 @@ todo { true }`,
 		t.Run(`rego package contains expected permission`, func(t *testing.T) {
 			opaModule := &OPAModuleConfig{
 				Name: "example.rego",
-				Content: `package example
+				Content: `package policies
 foobar { true }`,
 			}
 
@@ -217,7 +217,7 @@ foobar { true }`,
 		t.Run(`rego package contains composed permission`, func(t *testing.T) {
 			opaModule := &OPAModuleConfig{
 				Name: "example.rego",
-				Content: `package example
+				Content: `package policies
 very_very_composed_permission { true }`,
 			}
 
@@ -272,7 +272,7 @@ func TestGetHeaderFunction(t *testing.T) {
 
 	opaModule := &OPAModuleConfig{
 		Name: "example.rego",
-		Content: `package example
+		Content: `package policies
 		todo { get_header("ExAmPlEkEy", input.headers) == "value" }`,
 	}
 	queryString := "todo"

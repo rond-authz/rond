@@ -158,64 +158,7 @@ func TestMongoCollections(t *testing.T) {
 
 		ctx := context.Background()
 
-		roles := []interface{}{
-			types.Role{
-				RoleID:      "role1",
-				Permissions: []string{"permission1", "permission2"},
-			},
-			types.Role{
-				RoleID:      "role3",
-				Permissions: []string{"permission3", "permission5"},
-			},
-		}
-		rolesCollection.DeleteMany(ctx, bson.D{})
-		rolesCollection.InsertMany(ctx, roles)
-
-		bindings := []interface{}{
-			types.Binding{
-				BindingID:   "binding1",
-				Subjects:    []string{"user1"},
-				Roles:       []string{"role1", "role2"},
-				Groups:      []string{"group1"},
-				Permissions: []string{"permission4"},
-			},
-			types.Binding{
-				BindingID:   "binding2",
-				Subjects:    []string{"user1"},
-				Roles:       []string{"role3", "role4"},
-				Groups:      []string{"group4"},
-				Permissions: []string{"permission7"},
-			},
-			types.Binding{
-				BindingID:   "binding3",
-				Subjects:    []string{"user5"},
-				Roles:       []string{"role3", "role4"},
-				Groups:      []string{"group2"},
-				Permissions: []string{"permission10", "permission4"},
-			},
-
-			types.Binding{
-				BindingID:   "binding4",
-				Roles:       []string{"role3", "role4"},
-				Groups:      []string{"group2"},
-				Permissions: []string{"permission11"},
-			},
-
-			types.Binding{
-				BindingID:   "binding5",
-				Subjects:    []string{"user1"},
-				Roles:       []string{"role3", "role4"},
-				Permissions: []string{"permission12"},
-			},
-			types.Binding{
-				BindingID:   "notUsedByAnyone",
-				Subjects:    []string{"user5"},
-				Roles:       []string{"role3", "role4"},
-				Permissions: []string{"permissionNotUsed"},
-			},
-		}
-		bindingsCollection.DeleteMany(ctx, bson.D{})
-		bindingsCollection.InsertMany(ctx, bindings)
+		PopulateDbForTesting(t, ctx, mongoClient)
 
 		result, _ := mongoClient.FindUserPermissions(ctx, &types.User{UserID: "user1", UserGroups: []string{"group1", "group2"}})
 		assert.Assert(t, reflect.DeepEqual(result, []string{
@@ -226,9 +169,92 @@ func TestMongoCollections(t *testing.T) {
 			"permission12",
 			"permission1",
 			"permission2",
+			"foobar",
 			"permission3",
 			"permission5",
 		}),
 			"Error while getting permissions")
 	})
+}
+
+func PopulateDbForTesting(t *testing.T, ctx context.Context, mongoClient *MongoClient) {
+	t.Helper()
+	roles := []interface{}{
+		types.Role{
+			RoleID:            "role1",
+			Permissions:       []string{"permission1", "permission2", "foobar"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		types.Role{
+			RoleID:            "role3",
+			Permissions:       []string{"permission3", "permission5"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		types.Role{
+			RoleID:            "role6",
+			Permissions:       []string{"permission3", "permission5"},
+			CRUDDocumentState: "PRIVATE",
+		},
+	}
+	mongoClient.roles.DeleteMany(ctx, bson.D{})
+	mongoClient.roles.InsertMany(ctx, roles)
+
+	bindings := []interface{}{
+		types.Binding{
+			BindingID:         "binding1",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role1", "role2"},
+			Groups:            []string{"group1"},
+			Permissions:       []string{"permission4"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		types.Binding{
+			BindingID:         "binding2",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group4"},
+			Permissions:       []string{"permission7"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		types.Binding{
+			BindingID:         "binding3",
+			Subjects:          []string{"user5"},
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group2"},
+			Permissions:       []string{"permission10", "permission4"},
+			CRUDDocumentState: "PUBLIC",
+		},
+
+		types.Binding{
+			BindingID:         "binding4",
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group2"},
+			Permissions:       []string{"permission11"},
+			CRUDDocumentState: "PUBLIC",
+		},
+
+		types.Binding{
+			BindingID:         "binding5",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role3", "role4"},
+			Permissions:       []string{"permission12"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		types.Binding{
+			BindingID:         "notUsedByAnyone",
+			Subjects:          []string{"user5"},
+			Roles:             []string{"role3", "role4"},
+			Permissions:       []string{"permissionNotUsed"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		types.Binding{
+			BindingID:         "notUsedByAnyone2",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role3", "role6"},
+			Permissions:       []string{"permissionNotUsed"},
+			CRUDDocumentState: "PRIVATE",
+		},
+	}
+	mongoClient.bindings.DeleteMany(ctx, bson.D{})
+	mongoClient.bindings.InsertMany(ctx, bindings)
 }

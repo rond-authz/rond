@@ -131,8 +131,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 	userGroupsHeaderKey := "miausergroups"
 	mockedUserGroups := []string{"group1", "group2"}
-	mockedUserGroupsStringified, err := json.Marshal(mockedUserGroups)
-	assert.NilError(t, err)
+	mockedUserGroupsHeaderValue := strings.Join(mockedUserGroups, ",")
 
 	clientTypeHeaderKey := "Client-Type"
 	mockedClientType := "fakeClient"
@@ -143,7 +142,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 	opaModule := &OPAModuleConfig{
 		Name: "example.rego",
 		Content: fmt.Sprintf(`
-		package example
+		package policies
 		todo {
 			input.user.properties.my == "%s"
 			count(input.user.groups) == 2
@@ -177,7 +176,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			t.Run("without get_header built-in function", func(t *testing.T) {
 				opaModule := &OPAModuleConfig{
 					Name: "example.rego",
-					Content: fmt.Sprintf(`package example
+					Content: fmt.Sprintf(`package policies
 					todo { count(input.request.headers["%s"]) != 0 }`, mockHeader),
 				}
 
@@ -219,7 +218,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				invoked = false
 				opaModule := &OPAModuleConfig{
 					Name: "example.rego",
-					Content: `package example
+					Content: `package policies
 					todo { get_header("x-backdoor", input.request.headers) == "mocked value" }`,
 				}
 
@@ -264,7 +263,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				invoked = true
 				assert.Equal(t, r.Header.Get(userPropertiesHeaderKey), string(mockedUserPropertiesStringified), "Mocked User properties not found")
-				assert.Equal(t, r.Header.Get(userGroupsHeaderKey), string(mockedUserGroupsStringified), "Mocked User groups not found")
+				assert.Equal(t, r.Header.Get(userGroupsHeaderKey), mockedUserGroupsHeaderValue, "Mocked User groups not found")
 				assert.Equal(t, r.Header.Get(clientTypeHeaderKey), mockedClientType, "Mocked client type not found")
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -275,7 +274,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			opaModule := &OPAModuleConfig{
 				Name: "example.rego",
 				Content: fmt.Sprintf(`
-				package example
+				package policies
 				todo {
 					input.user.properties.my == "%s"
 					count(input.user.groups) == 2
@@ -305,7 +304,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				assert.Equal(t, err, nil, "Unexpected error")
 
 				r.Header.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
-				r.Header.Set(userGroupsHeaderKey, string(mockedUserGroupsStringified))
+				r.Header.Set(userGroupsHeaderKey, mockedUserGroupsHeaderValue)
 				r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
 
 				rbacHandler(w, r)
@@ -380,6 +379,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					UserPropertiesHeader:   userPropertiesHeaderKey,
 					UserGroupsHeader:       userGroupsHeaderKey,
 					ClientTypeHeader:       clientTypeHeaderKey,
+					UserIdHeader:           userIdHeaderKey,
 					MongoDBUrl:             "mongodb://test",
 					RolesCollectionName:    "roles",
 					BindingsCollectionName: "bindings",
@@ -392,7 +392,8 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
 			assert.Equal(t, err, nil, "Unexpected error")
 
-			r.Header.Set(userGroupsHeaderKey, string(mockedUserGroupsStringified))
+			r.Header.Set(userGroupsHeaderKey, mockedUserGroupsHeaderValue)
+			r.Header.Set(userIdHeaderKey, "miauserid")
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
 
 			rbacHandler(w, r)
@@ -419,6 +420,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					UserPropertiesHeader:   userPropertiesHeaderKey,
 					UserGroupsHeader:       userGroupsHeaderKey,
 					ClientTypeHeader:       clientTypeHeaderKey,
+					UserIdHeader:           userIdHeaderKey,
 					MongoDBUrl:             "mongodb://test",
 					RolesCollectionName:    "roles",
 					BindingsCollectionName: "bindings",
@@ -431,7 +433,8 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
 			assert.Equal(t, err, nil, "Unexpected error")
 
-			r.Header.Set(userGroupsHeaderKey, string(mockedUserGroupsStringified))
+			r.Header.Set(userGroupsHeaderKey, string(mockedUserGroupsHeaderValue))
+			r.Header.Set(userIdHeaderKey, "miauserid")
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
 
 			rbacHandler(w, r)
@@ -457,6 +460,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					UserPropertiesHeader:   userPropertiesHeaderKey,
 					UserGroupsHeader:       userGroupsHeaderKey,
 					ClientTypeHeader:       clientTypeHeaderKey,
+					UserIdHeader:           userIdHeaderKey,
 					MongoDBUrl:             "mongodb://test",
 					RolesCollectionName:    "roles",
 					BindingsCollectionName: "bindings",
@@ -469,7 +473,8 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
 			assert.Equal(t, err, nil, "Unexpected error")
 
-			r.Header.Set(userGroupsHeaderKey, string(mockedUserGroupsStringified))
+			r.Header.Set(userGroupsHeaderKey, string(mockedUserGroupsHeaderValue))
+			r.Header.Set(userIdHeaderKey, "miauserid")
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
 
 			rbacHandler(w, r)
@@ -484,7 +489,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				invoked = true
 				assert.Equal(t, r.Header.Get(userPropertiesHeaderKey), string(mockedUserPropertiesStringified), "Mocked User properties not found")
-				assert.Equal(t, r.Header.Get(userGroupsHeaderKey), string(mockedUserGroupsStringified), "Mocked User groups not found")
+				assert.Equal(t, r.Header.Get(userGroupsHeaderKey), string(mockedUserGroupsHeaderValue), "Mocked User groups not found")
 				assert.Equal(t, r.Header.Get(clientTypeHeaderKey), mockedClientType, "Mocked client type not found")
 				assert.Equal(t, r.Header.Get(userIdHeaderKey), userIdHeaderKey, "Mocked user id not found")
 				w.WriteHeader(http.StatusOK)
@@ -498,6 +503,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					TargetServiceHost:      serverURL.Host,
 					UserPropertiesHeader:   userPropertiesHeaderKey,
 					UserGroupsHeader:       userGroupsHeaderKey,
+					UserIdHeader:           userIdHeaderKey,
 					ClientTypeHeader:       clientTypeHeaderKey,
 					MongoDBUrl:             "mongodb://test",
 					RolesCollectionName:    "roles",
@@ -512,7 +518,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			assert.Equal(t, err, nil, "Unexpected error")
 
 			r.Header.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
-			r.Header.Set(userGroupsHeaderKey, string(mockedUserGroupsStringified))
+			r.Header.Set(userGroupsHeaderKey, string(mockedUserGroupsHeaderValue))
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
 			r.Header.Set(userIdHeaderKey, "miauserid")
 			rbacHandler(w, r)
@@ -526,7 +532,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			opaModule := &OPAModuleConfig{
 				Name: "example.rego",
 				Content: fmt.Sprintf(`
-				package example
+				package policies
 				todo {
 					input.user.properties.my == "%s"
 					input.clientType == "%s"
@@ -551,6 +557,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					UserPropertiesHeader:   userPropertiesHeaderKey,
 					UserGroupsHeader:       userGroupsHeaderKey,
 					ClientTypeHeader:       clientTypeHeaderKey,
+					UserIdHeader:           userIdHeaderKey,
 					MongoDBUrl:             "mongodb://test",
 					RolesCollectionName:    "roles",
 					BindingsCollectionName: "bindings",
@@ -565,6 +572,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			r.Header.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
+			r.Header.Set(userIdHeaderKey, "miauserid")
 			rbacHandler(w, r)
 			testutils.AssertResponseError(t, w, http.StatusForbidden, "Error while retrieving user permissions: user is not allowed")
 			assert.Assert(t, !invoked, "Handler was not invoked.")

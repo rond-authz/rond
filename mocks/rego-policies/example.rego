@@ -1,3 +1,3 @@
-package example
+package policies
 
 foobar {true}
