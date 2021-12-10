@@ -97,10 +97,14 @@ In the following example the route /hello require the permission `api_key` to ac
          "/hello": {
             "get": {
                 "x-permission": {
-                    "allow": "api_key"
+                    "allow": "api.key"
                 }
             }
         }
     }
 }
 ```
+
+:::info
+In case of composed permission name, it's possible to use the dot notation as in the example above, but in the rego policy the dot character will be replaced with underscore.
+:::
