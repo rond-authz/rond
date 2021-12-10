@@ -27,6 +27,10 @@ func TestSetupRoutes(t *testing.T) {
 			"/foo":     PathVerbs{},
 			"/bar":     PathVerbs{},
 			"/foo/bar": PathVerbs{},
+			// Ignored routes
+			"/-/ready":    PathVerbs{},
+			"/-/healthz":  PathVerbs{},
+			"/-/check-up": PathVerbs{},
 		},
 	}
 	expectedPaths := []string{"/", "/foo", "/bar", "/foo/bar"}
