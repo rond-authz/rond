@@ -19,7 +19,6 @@ To setup correctly this service you need to follow this steps
 | DELAY_SHUTDOWN_SECONDS | int | 10 (seconds) | - | the sidecar graceful shutdown |           
 | MONGODB_URL| string| - | - | url to connect to MongoDB |
 | ROLES_COLLECTION_NAME | string | - | - | name of the role collection |
-| DATABASE_NAME | string | - | - | name of the bindings database |
 | BINDINGS_COLLECTION_NAME | string | - | - | name of the bindings collection |
 | DELAY_SHUTDOWN_SECONDS | int | 10 (seconds) | - | the sidecar graceful shutdown |
 

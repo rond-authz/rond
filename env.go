@@ -35,7 +35,6 @@ type EnvironmentVariables struct {
 	ClientTypeHeader       string
 
 	MongoDBUrl             string
-	MongoDatabaseName      string
 	RolesCollectionName    string
 	BindingsCollectionName string
 	DelayShutdownSeconds   int
@@ -102,10 +101,6 @@ var envVariablesConfig = []configlib.EnvConfig{
 	{
 		Key:      "MONGODB_URL",
 		Variable: "MongoDBUrl",
-	},
-	{
-		Key:      "DATABASE_NAME",
-		Variable: "MongoDatabaseName",
 	},
 	{
 		Key:      "BINDINGS_COLLECTION_NAME",

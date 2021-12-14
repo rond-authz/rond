@@ -69,28 +69,15 @@ func TestSetupMongoCollection(t *testing.T) {
 		assert.Assert(t, adapter == nil, "MongoDBUrl is not nil")
 	})
 
-	t.Run("if BindingsDatabaseName empty, returns error", func(t *testing.T) {
-		env := EnvironmentVariables{
-			MongoDBUrl:          "MONGODB_URL",
-			MongoDatabaseName:   "something new",
-			RolesCollectionName: "Some different name",
-		}
-		log, _ := test.NewNullLogger()
-		adapter, err := newMongoClient(env, log)
-		assert.Assert(t, adapter == nil, "RolesCollectionName is not nil")
-		assert.ErrorContains(t, err, `MongoDB url is not empty, MongoDbName: "something new", BindingsCollectionName: "",  RolesCollectionName: "Some different name"`)
-	})
-
 	t.Run("if RolesCollectionName empty, returns error", func(t *testing.T) {
 		env := EnvironmentVariables{
 			MongoDBUrl:             "MONGODB_URL",
-			MongoDatabaseName:      "A name",
 			BindingsCollectionName: "Some different name",
 		}
 		log, _ := test.NewNullLogger()
 		adapter, err := newMongoClient(env, log)
 		assert.Assert(t, adapter == nil, "RolesCollectionName collection is not nil")
-		assert.ErrorContains(t, err, `MongoDB url is not empty, MongoDbName: "A name", BindingsCollectionName: "Some different name",  RolesCollectionName: ""`)
+		assert.ErrorContains(t, err, `MongoDB url is not empty, required variables might be missing: BindingsCollectionName: "Some different name",  RolesCollectionName: ""`)
 	})
 
 	t.Run("throws if mongo url is without protocol", func(t *testing.T) {
@@ -99,13 +86,12 @@ func TestSetupMongoCollection(t *testing.T) {
 		env := EnvironmentVariables{
 			MongoDBUrl:             mongoHost,
 			RolesCollectionName:    "something new",
-			MongoDatabaseName:      "A name",
 			BindingsCollectionName: "Some different name",
 		}
 		log, _ := test.NewNullLogger()
 		adapter, err := newMongoClient(env, log)
 		assert.Assert(t, err != nil, "setup mongo not returns error")
-		assert.ErrorContains(t, err, "error connecting to MongoDB")
+		assert.ErrorContains(t, err, "failed MongoDB connection string validation:")
 		assert.Assert(t, adapter == nil)
 	})
 
@@ -117,9 +103,8 @@ func TestSetupMongoCollection(t *testing.T) {
 		}
 
 		env := EnvironmentVariables{
-			MongoDBUrl:             fmt.Sprintf("mongodb://%s", mongoHost),
+			MongoDBUrl:             fmt.Sprintf("mongodb://%s/test", mongoHost),
 			RolesCollectionName:    "roles",
-			MongoDatabaseName:      "test",
 			BindingsCollectionName: "bindings",
 		}
 
@@ -141,9 +126,8 @@ func TestMongoCollections(t *testing.T) {
 		}
 
 		env := EnvironmentVariables{
-			MongoDBUrl:             fmt.Sprintf("mongodb://%s", mongoHost),
+			MongoDBUrl:             fmt.Sprintf("mongodb://%s/test", mongoHost),
 			RolesCollectionName:    "roles",
-			MongoDatabaseName:      "test",
 			BindingsCollectionName: "bindings",
 		}
 

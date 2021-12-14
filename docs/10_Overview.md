@@ -8,8 +8,8 @@ The RBAC Service is thought to be deployed as a sidecar container for each custo
 
 RBAC sidecar will expose all the routes exposed by the custom services in the documentation route under the OpenAPI 3 specification. The service will proxy them to the original destination applying some rules based on the permission of the user expressed inside the bindings.
 
-When the variables `DATABASE_NAME`, `ROLES_COLLECTION_NAME` and `BINDINGS_COLLECTION_NAME` are set the RBAC Service will perform a check over the user permission taking them form the collection specified in the variables above. If the user does not have the required allow permission for a request the service will respond with a 403 Forbidden status code.
+When the variables `MONGODB_URL`, `ROLES_COLLECTION_NAME` and `BINDINGS_COLLECTION_NAME` are set the RBAC Service will perform a check over the user permission taking them form the collection specified in the variables above. If the user does not have the required allow permission for a request the service will respond with a 403 Forbidden status code.
 
 :::caution
-If `DATABASE_NAME` is set then the envs  `ROLES_COLLECTION_NAME` and `BINDINGS_COLLECTION_NAME` becomes required and the service will respond 500 to any request received.
+If `MONGODB_URL` variable is set then the envs  `ROLES_COLLECTION_NAME` and `BINDINGS_COLLECTION_NAME` becomes required and the service will respond 500 to any request received.
 :::
