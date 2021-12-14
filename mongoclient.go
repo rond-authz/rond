@@ -15,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 )
 
 type MongoClient struct {
@@ -61,13 +62,17 @@ func newMongoClient(env EnvironmentVariables, logger *logrus.Logger) (*MongoClie
 	if env.MongoDBUrl == "" {
 		return nil, nil
 	}
-	if env.MongoDatabaseName == "" || env.RolesCollectionName == "" || env.BindingsCollectionName == "" {
+	if env.RolesCollectionName == "" || env.BindingsCollectionName == "" {
 		return nil, fmt.Errorf(
-			`MongoDB url is not empty, MongoDbName: "%s", BindingsCollectionName: "%s",  RolesCollectionName: "%s"`,
-			env.MongoDatabaseName,
+			`MongoDB url is not empty, required variables might be missing: BindingsCollectionName: "%s",  RolesCollectionName: "%s"`,
 			env.BindingsCollectionName,
 			env.RolesCollectionName,
 		)
+	}
+
+	parsedConnectionString, err := connstring.ParseAndValidate(env.MongoDBUrl)
+	if err != nil {
+		return nil, fmt.Errorf("failed MongoDB connection string validation: %s", err.Error())
 	}
 
 	clientOpts := options.Client().ApplyURI(env.MongoDBUrl)
@@ -81,10 +86,11 @@ func newMongoClient(env EnvironmentVariables, logger *logrus.Logger) (*MongoClie
 	if err = client.Ping(ctx, readpref.Primary()); err != nil {
 		return nil, fmt.Errorf("error verifying MongoDB connection: %s", err.Error())
 	}
+
 	mongoClient := MongoClient{
 		client:   client,
-		roles:    client.Database(env.MongoDatabaseName).Collection(env.RolesCollectionName),
-		bindings: client.Database(env.MongoDatabaseName).Collection(env.BindingsCollectionName),
+		roles:    client.Database(parsedConnectionString.Database).Collection(env.RolesCollectionName),
+		bindings: client.Database(parsedConnectionString.Database).Collection(env.BindingsCollectionName),
 	}
 	return &mongoClient, nil
 }

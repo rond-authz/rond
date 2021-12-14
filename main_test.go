@@ -184,9 +184,9 @@ func TestEntryPoint(t *testing.T) {
 			mongoHost = testutils.LocalhostMongoDB
 			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
 		}
-		mongodbName := testutils.GetRandomName(10)
-		os.Setenv("MONGODB_URL", fmt.Sprintf("mongodb://%s", mongoHost))
-		os.Setenv("DATABASE_NAME", mongodbName)
+		randomizedDBNamePart := testutils.GetRandomName(10)
+		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
+		os.Setenv("MONGODB_URL", fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName))
 		os.Setenv("BINDINGS_COLLECTION_NAME", "bindings")
 		os.Setenv("ROLES_COLLECTION_NAME", "roles")
 
@@ -203,8 +203,8 @@ func TestEntryPoint(t *testing.T) {
 		}
 		mongoClient := MongoClient{
 			client:   client,
-			roles:    client.Database(mongodbName).Collection("roles"),
-			bindings: client.Database(mongodbName).Collection("bindings"),
+			roles:    client.Database(mongoDBName).Collection("roles"),
+			bindings: client.Database(mongoDBName).Collection("bindings"),
 		}
 		defer mongoClient.client.Disconnect(ctx)
 
