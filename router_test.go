@@ -53,6 +53,30 @@ func TestSetupRoutes(t *testing.T) {
 	assert.DeepEqual(t, foundPaths, expectedPaths)
 }
 
+func TestConvertPathVariables(t *testing.T) {
+	listOfPaths := []struct {
+		Path          string
+		ConvertedPath string
+	}{
+		{Path: "/", ConvertedPath: "/"},
+		{Path: "/endpoint-1", ConvertedPath: "/endpoint-1"},
+		{Path: "/endpoint-1/:id", ConvertedPath: "/endpoint-1/{id}"},
+		{Path: "/endpoint-1/:id/", ConvertedPath: "/endpoint-1/{id}/"},
+		{Path: "/endpoint-1/:id1/:id2/:id3", ConvertedPath: "/endpoint-1/{id1}/{id2}/{id3}"},
+		{Path: "/endpoint-1/", ConvertedPath: "/endpoint-1/"},
+		{Path: "/endpoint-1/:id/upsert", ConvertedPath: "/endpoint-1/{id}/upsert"},
+		{Path: "/external-endpoint/:id", ConvertedPath: "/external-endpoint/{id}"},
+		{Path: "/:another/external-endpoint", ConvertedPath: "/{another}/external-endpoint"},
+	}
+
+	t.Run("convert correctly paths", func(t *testing.T) {
+		for _, path := range listOfPaths {
+			convertedPath := convertPathVariables(path.Path)
+			assert.Equal(t, convertedPath, path.ConvertedPath, "Path not converted correctly.")
+		}
+	})
+}
+
 func createContext(t *testing.T, originalCtx context.Context, env EnvironmentVariables, opaEvaluator *OPAEvaluator, mongoClient *mocks.MongoClientMock) context.Context {
 	t.Helper()
 
@@ -185,30 +209,6 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		matchedRouted.Handler.ServeHTTP(w, req)
 
 		assert.Equal(t, w.Result().StatusCode, http.StatusForbidden)
-	})
-
-	t.Run("blocks request on policy evaluation error", func(t *testing.T) {
-		router := mux.NewRouter()
-		setupRoutes(router, oas)
-
-		ctx := createContext(t,
-			context.Background(),
-			EnvironmentVariables{TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
-			&OPAEvaluator{PermissionQuery: &mocks.MockEvaluator{ResultError: errors.New("some error from policy eval")}},
-			nil,
-		)
-
-		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
-		assert.Equal(t, err, nil, "Unexpected error")
-
-		var matchedRouted mux.RouteMatch
-		ok := router.Match(req, &matchedRouted)
-		assert.Assert(t, ok, "Route not found")
-
-		w := httptest.NewRecorder()
-		matchedRouted.Handler.ServeHTTP(w, req)
-
-		assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
 	})
 
 	t.Run("blocks request on policy evaluation error", func(t *testing.T) {
