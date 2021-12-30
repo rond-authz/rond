@@ -200,6 +200,49 @@ func TestEntryPoint(t *testing.T) {
 		require.False(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
 	})
 
+	t.Run("api permissions file path with nested routes (/*)", func(t *testing.T) {
+		gock.Flush()
+		shutdown := make(chan os.Signal, 1)
+
+		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+
+		gock.EnableNetworking()
+		gock.NetworkingFilter(func(r *http.Request) bool {
+			if r.URL.Path == "/documentation/json" {
+				return false
+			}
+			if r.URL.Path == "/foo/bar/not/registered/explicitly" && r.URL.Host == "localhost:4000" {
+				return false
+			}
+			return true
+		})
+
+		os.Setenv("HTTP_PORT", "3333")
+		os.Setenv("TARGET_SERVICE_HOST", "localhost:4000")
+		os.Setenv("API_PERMISSIONS_FILE_PATH", "./mocks/nestedPathsConfig.json")
+		os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/rego-policies")
+
+		go func() {
+			entrypoint(shutdown)
+		}()
+		defer func() {
+			os.Unsetenv("HTTP_PORT")
+			os.Unsetenv("API_PERMISSIONS_FILE_PATH")
+			shutdown <- syscall.SIGTERM
+		}()
+		time.Sleep(1 * time.Second)
+
+		gock.New("http://localhost:4000/").
+			Get("foo/bar/not/registered/explicitly").
+			Reply(200)
+
+		resp, err := http.DefaultClient.Get("http://localhost:3333/foo/bar/not/registered/explicitly")
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code.")
+		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
+	})
+
 	t.Run("mongo integration", func(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 

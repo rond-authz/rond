@@ -346,86 +346,8 @@
       }
     },
     "/no-permission": {
-      "post": {
-        "tags": [
-          "CRUD Join"
-        ],
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "schema": {
-              "type": "object",
-              "required": [
-                "asField",
-                "localField",
-                "foreignField"
-              ],
-              "properties": {
-                "fromQueryFilter": {
-                  "type": "object",
-                  "default": {}
-                },
-                "toQueryFilter": {
-                  "type": "object",
-                  "default": {}
-                },
-                "asField": {
-                  "type": "string"
-                },
-                "localField": {
-                  "type": "string"
-                },
-                "foreignField": {
-                  "type": "string"
-                },
-                "fromProjectBefore": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "fromProjectAfter": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "toProjectBefore": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "toProjectAfter": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          {
-            "type": "string",
-            "name": "from",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "to",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Default Response"
-          }
-        }
-      }
+      "post": {},
+      "get": {}
     }
   }
 }

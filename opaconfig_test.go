@@ -35,7 +35,7 @@ todo { true }`,
 			}))
 
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "http://example.com/notExistingPath", nil)
+			r := httptest.NewRequest(http.MethodGet, "http://example.com/not-existing-path", nil)
 			builtHandler.ServeHTTP(w, r)
 
 			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
@@ -59,7 +59,7 @@ todo { true }`,
 			}))
 
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodDelete, "http://example.com/no-permission/", nil)
+			r := httptest.NewRequest(http.MethodPost, "http://example.com/no-permission", nil)
 			builtHandler.ServeHTTP(w, r)
 
 			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")

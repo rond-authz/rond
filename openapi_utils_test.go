@@ -47,6 +47,7 @@ func TestFetchOpenAPI(t *testing.T) {
 				},
 			},
 			"/no-permission": PathVerbs{
+				"get":  VerbConfig{},
 				"post": VerbConfig{},
 			},
 		})
@@ -203,6 +204,7 @@ func TestLoadOAS(t *testing.T) {
 			},
 			"/no-permission": PathVerbs{
 				"post": VerbConfig{},
+				"get":  VerbConfig{},
 			},
 		})
 	})
@@ -216,4 +218,36 @@ func TestLoadOAS(t *testing.T) {
 		t.Logf("Expected error occurred: %s", err.Error())
 		assert.Assert(t, err != nil, fmt.Errorf("missing environment variables one of %s or %s is required", TargetServiceOASPathEnvKey, APIPermissionsFilePathEnvKey))
 	})
+}
+
+func TestFindPermission(t *testing.T) {
+	log, _ := test.NewNullLogger()
+	oas := prepareOASFromFile(t, "./mocks/nestedPathsConfig.json")
+	openApiSpec, _ := loadOAS(log, envs)
+	OASRouter := openApiSpec.PrepareOASRouter(oas)
+
+	found, err := openApiSpec.FindPermission(OASRouter, "/not/existing/route", "GET")
+	assert.Equal(t, XPermission{}, found)
+	assert.Equal(t, err.Error(), "not found oas permission: GET /not/existing/route")
+
+	found, _ = openApiSpec.FindPermission(OASRouter, "/no/method", "PUT")
+	assert.Equal(t, XPermission{}, found)
+
+	found, _ = openApiSpec.FindPermission(OASRouter, "use/method/that/not/existing/put", "PUT")
+	assert.Equal(t, XPermission{}, found)
+
+	found, _ = openApiSpec.FindPermission(OASRouter, "/foo/bar/barId", "GET")
+	assert.Equal(t, XPermission{AllowPermission: "foo_bar_params"}, found)
+
+	found, _ = openApiSpec.FindPermission(OASRouter, "/foo/bar/barId/another-params-not-configured", "GET")
+	assert.Equal(t, XPermission{AllowPermission: "foo_bar"}, found)
+
+	found, _ = openApiSpec.FindPermission(OASRouter, "/foo/bar/nested/case/really/nested", "GET")
+	assert.Equal(t, XPermission{AllowPermission: "foo_bar_nested_case"}, found)
+
+	found, _ = openApiSpec.FindPermission(OASRouter, "/foo/bar/nested", "GET")
+	assert.Equal(t, XPermission{AllowPermission: "foo_bar_nested"}, found)
+
+	found, _ = openApiSpec.FindPermission(OASRouter, "/foo/simble", "PATCH")
+	assert.Equal(t, XPermission{AllowPermission: "foo"}, found)
 }
