@@ -32,44 +32,39 @@ type OpenAPISpec struct {
 func cleanWildcard(path string) string {
 	if strings.HasSuffix(path, "*") {
 		// is a wildcard parameter that matches everything and must always be at the end of the route
-		path = strings.Replace(path, "*", "*param", -1)
+		path = strings.ReplaceAll(path, "*", "*param")
 	}
 	return path
 }
 
-func (oas *OpenAPISpec) PrepareOASRouter(openAPISpec *OpenAPISpec) *bunrouter.Router {
-	OASRouter := bunrouter.New()
+func (oas *OpenAPISpec) PrepareOASRouter(openAPISpec *OpenAPISpec) *bunrouter.CompatRouter {
+	OASRouter := bunrouter.New().Compat()
 	for OASPath, OASContent := range openAPISpec.Paths {
 		OASPath = cleanWildcard(OASPath)
 		for method, methodContent := range OASContent {
 			scopedMethod := method
 			scopedMethodContent := methodContent
-			OASRouter.Handle(strings.ToUpper(scopedMethod), OASPath, bunrouter.HTTPHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				result, _ := json.Marshal(scopedMethodContent.Permission)
-				w.Write(result)
-			}))
+			OASRouter.Handle(strings.ToUpper(scopedMethod), OASPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("allow", scopedMethodContent.Permission.AllowPermission)
+			})
 		}
 	}
 
 	return OASRouter
 }
 
-func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.Router, path string, method string) (XPermission, error) {
-	var decoded XPermission
+func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path string, method string) (XPermission, error) {
 	recorder := httptest.NewRecorder()
 	responseReader := strings.NewReader("request-permissions")
 	request, _ := http.NewRequest(method, path, responseReader)
 	OASRouter.ServeHTTP(recorder, request)
 
-	buf, _ := ioutil.ReadAll(recorder.Body)
 	if recorder.Code != http.StatusOK {
 		return XPermission{}, fmt.Errorf("not found oas permission: %s %s", method, path)
 	}
 
-	if err := json.Unmarshal(buf, &decoded); err != nil {
-		return XPermission{}, err
-	}
-	return decoded, nil
+	result := recorder.Result().Header.Get("allow")
+	return XPermission{AllowPermission: result}, nil
 }
 
 func fetchOpenAPI(url string) (*OpenAPISpec, error) {

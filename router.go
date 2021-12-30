@@ -33,7 +33,7 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec) {
 			continue
 		}
 		if strings.Contains(key, "*") {
-			pathWithoutAsterisk := strings.Replace(key, "*", "", -1)
+			pathWithoutAsterisk := strings.ReplaceAll(key, "*", "")
 			router.PathPrefix(convertPathVariables(pathWithoutAsterisk)).HandlerFunc(rbacHandler)
 			continue
 		}

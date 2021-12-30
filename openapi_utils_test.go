@@ -230,24 +230,31 @@ func TestFindPermission(t *testing.T) {
 	assert.Equal(t, XPermission{}, found)
 	assert.Equal(t, err.Error(), "not found oas permission: GET /not/existing/route")
 
-	found, _ = openApiSpec.FindPermission(OASRouter, "/no/method", "PUT")
+	found, err = openApiSpec.FindPermission(OASRouter, "/no/method", "PUT")
 	assert.Equal(t, XPermission{}, found)
+	assert.Equal(t, err.Error(), "not found oas permission: PUT /no/method")
 
-	found, _ = openApiSpec.FindPermission(OASRouter, "use/method/that/not/existing/put", "PUT")
+	found, err = openApiSpec.FindPermission(OASRouter, "use/method/that/not/existing/put", "PUT")
 	assert.Equal(t, XPermission{}, found)
+	assert.Equal(t, err.Error(), "not found oas permission: PUT use/method/that/not/existing/put")
 
-	found, _ = openApiSpec.FindPermission(OASRouter, "/foo/bar/barId", "GET")
+	found, err = openApiSpec.FindPermission(OASRouter, "/foo/bar/barId", "GET")
 	assert.Equal(t, XPermission{AllowPermission: "foo_bar_params"}, found)
+	assert.Equal(t, err, nil)
 
-	found, _ = openApiSpec.FindPermission(OASRouter, "/foo/bar/barId/another-params-not-configured", "GET")
+	found, err = openApiSpec.FindPermission(OASRouter, "/foo/bar/barId/another-params-not-configured", "GET")
 	assert.Equal(t, XPermission{AllowPermission: "foo_bar"}, found)
+	assert.Equal(t, err, nil)
 
-	found, _ = openApiSpec.FindPermission(OASRouter, "/foo/bar/nested/case/really/nested", "GET")
+	found, err = openApiSpec.FindPermission(OASRouter, "/foo/bar/nested/case/really/nested", "GET")
 	assert.Equal(t, XPermission{AllowPermission: "foo_bar_nested_case"}, found)
+	assert.Equal(t, err, nil)
 
-	found, _ = openApiSpec.FindPermission(OASRouter, "/foo/bar/nested", "GET")
+	found, err = openApiSpec.FindPermission(OASRouter, "/foo/bar/nested", "GET")
 	assert.Equal(t, XPermission{AllowPermission: "foo_bar_nested"}, found)
+	assert.Equal(t, err, nil)
 
-	found, _ = openApiSpec.FindPermission(OASRouter, "/foo/simble", "PATCH")
+	found, err = openApiSpec.FindPermission(OASRouter, "/foo/simble", "PATCH")
 	assert.Equal(t, XPermission{AllowPermission: "foo"}, found)
+	assert.Equal(t, err, nil)
 }

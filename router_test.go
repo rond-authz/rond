@@ -65,9 +65,10 @@ func TestSetupRoutes(t *testing.T) {
 				"/foo/*":          PathVerbs{},
 				"/foo/bar/*":      PathVerbs{},
 				"/foo/bar/nested": PathVerbs{},
+				"/foo/bar/:barId": PathVerbs{},
 			},
 		}
-		expectedPaths := []string{"/", "/foo/", "/foo/bar/", "/foo/bar/nested"}
+		expectedPaths := []string{"/", "/foo/", "/foo/bar/", "/foo/bar/nested", "/foo/bar/{barId}"}
 		sort.Strings(expectedPaths)
 
 		setupRoutes(router, oas)
@@ -257,7 +258,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			nil,
 		)
 
-		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", "http://my-service.com/users/?foo=bar", nil)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		var matchedRouted mux.RouteMatch
@@ -270,7 +271,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
 	})
 
-	t.Run("invokes the API note that it has not been explicitly set in the oas file", func(t *testing.T) {
+	t.Run("invokes the API not explicitly set in the oas file", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "./mocks/nestedPathsConfig.json")
 
 		var invoked bool
@@ -291,7 +292,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			nil,
 		)
 
-		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/foo/route-not-registered-explicitly", nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", "http://my-service.com/foo/route-not-registered-explicitly", nil)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		var matchedRouted mux.RouteMatch
