@@ -85,7 +85,8 @@ func (e *TruthyEvaluator) Eval(ctx context.Context, options ...rego.EvalOption) 
 }
 
 func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, envs *EnvironmentVariables) mux.MiddlewareFunc {
-	// TODO: build a map as { [verb+path]: permission }
+	OASrouter := openAPISpec.PrepareOASRouter(openAPISpec)
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.RequestURI(), "/-/") {
@@ -93,13 +94,15 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 				return
 			}
 
-			permission, err := openAPISpec.getPermissionsFromRequest(r)
+			permission, err := openAPISpec.FindPermission(OASrouter, r.URL.Path, r.Method)
+
 			if err != nil && r.Method == http.MethodGet && r.URL.Path == envs.TargetServiceOASPath {
 				evaluator := &OPAEvaluator{PermissionQuery: &TruthyEvaluator{}}
 				ctx := WithOPAEvaluator(r.Context(), evaluator)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
+
 			if err != nil || permission.AllowPermission == "" {
 				errorMessage := "User is not allowed to request the API"
 				fields := logrus.Fields{

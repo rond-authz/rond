@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/uptrace/bunrouter"
+	"github.com/uptrace/bunrouter/extra/reqlog"
 )
 
 type XPermission struct {
@@ -27,20 +30,49 @@ type OpenAPISpec struct {
 	Paths OpenAPIPaths `json:"paths"`
 }
 
-func (oas *OpenAPISpec) getPermissionsFromRequest(req *http.Request) (XPermission, error) {
-	path := req.URL.Path
-	// Ensure lowercase methods since from OpenAPI 3 Specification
-	// verbs are lowercase in the API Schema.
-	method := strings.ToLower(req.Method)
+func cleanWildcard(path string) string {
+	if strings.HasSuffix(path, "*") {
+		// is a wildcard parameter that matches everything and must always be at the end of the route
+		path = strings.Replace(path, "*", "*param", -1)
+	}
+	return path
+}
 
-	if _, pathOk := oas.Paths[path]; !pathOk {
-		return XPermission{}, fmt.Errorf("missing oas paths")
+func (oas *OpenAPISpec) PrepareOASRouter(openAPISpec *OpenAPISpec) *bunrouter.Router {
+	OASRouter := bunrouter.New(
+		bunrouter.WithMiddleware(reqlog.NewMiddleware(reqlog.WithVerbose(false))),
+	)
+	for OASPath, OASContent := range openAPISpec.Paths {
+		OASPath = cleanWildcard(OASPath)
+		for method, methodContent := range OASContent {
+			scopedMethod := method
+			scopedMethodContent := methodContent
+			OASRouter.Handle(strings.ToUpper(scopedMethod), OASPath, bunrouter.HTTPHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				result, _ := json.Marshal(scopedMethodContent.Permission)
+				w.Write(result)
+			}))
+		}
 	}
 
-	if _, methodOk := oas.Paths[path][method]; !methodOk {
-		return XPermission{}, fmt.Errorf("missing oas method")
+	return OASRouter
+}
+
+func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.Router, path string, method string) (XPermission, error) {
+	var decoded XPermission
+	recorder := httptest.NewRecorder()
+	responseReader := strings.NewReader("request-permissions")
+	request, _ := http.NewRequest(method, path, responseReader)
+	OASRouter.ServeHTTP(recorder, request)
+
+	buf, _ := ioutil.ReadAll(recorder.Body)
+	if recorder.Code != http.StatusOK {
+		return XPermission{}, fmt.Errorf("not found oas permission: %s %s", method, path)
 	}
-	return oas.Paths[path][method].Permission, nil
+
+	if err := json.Unmarshal(buf, &decoded); err != nil {
+		return XPermission{}, err
+	}
+	return decoded, nil
 }
 
 func fetchOpenAPI(url string) (*OpenAPISpec, error) {

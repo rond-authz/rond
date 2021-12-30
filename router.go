@@ -19,17 +19,22 @@ package main
 import (
 	"rbac-service/internal/utils"
 	"regexp"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
 
 var ignoredRoutes = []string{"/-/healthz", "/-/ready", "/-/check-up"}
-
 var rx = regexp.MustCompile(`\/:(\w+)`)
 
 func setupRoutes(router *mux.Router, oas *OpenAPISpec) {
 	for key := range oas.Paths {
 		if utils.Contains(ignoredRoutes, key) {
+			continue
+		}
+		if strings.Contains(key, "*") {
+			pathWithoutAsterisk := strings.Replace(key, "*", "", -1)
+			router.PathPrefix(convertPathVariables(pathWithoutAsterisk)).HandlerFunc(rbacHandler)
 			continue
 		}
 		router.HandleFunc(convertPathVariables(key), rbacHandler)

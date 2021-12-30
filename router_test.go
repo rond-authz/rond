@@ -20,37 +20,72 @@ import (
 )
 
 func TestSetupRoutes(t *testing.T) {
-	router := mux.NewRouter()
-
-	oas := &OpenAPISpec{
-		Paths: OpenAPIPaths{
-			"/foo":     PathVerbs{},
-			"/bar":     PathVerbs{},
-			"/foo/bar": PathVerbs{},
-			// Ignored routes
-			"/-/ready":    PathVerbs{},
-			"/-/healthz":  PathVerbs{},
-			"/-/check-up": PathVerbs{},
-		},
-	}
-	expectedPaths := []string{"/", "/foo", "/bar", "/foo/bar"}
-	sort.Strings(expectedPaths)
-
-	setupRoutes(router, oas)
-
-	foundPaths := make([]string, 0)
-	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		path, err := route.GetPathTemplate()
-		if err != nil {
-			t.Fatalf("Unexpected error during walk: %s", err.Error())
+	t.Run("expect to register route correctly", func(t *testing.T) {
+		router := mux.NewRouter()
+		oas := &OpenAPISpec{
+			Paths: OpenAPIPaths{
+				"/foo":     PathVerbs{},
+				"/bar":     PathVerbs{},
+				"/foo/bar": PathVerbs{},
+				// Ignored routes
+				"/-/ready":    PathVerbs{},
+				"/-/healthz":  PathVerbs{},
+				"/-/check-up": PathVerbs{},
+			},
 		}
+		expectedPaths := []string{"/", "/foo", "/bar", "/foo/bar"}
+		sort.Strings(expectedPaths)
 
-		foundPaths = append(foundPaths, path)
-		return nil
+		setupRoutes(router, oas)
+
+		foundPaths := make([]string, 0)
+		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+			path, err := route.GetPathTemplate()
+			if err != nil {
+				t.Fatalf("Unexpected error during walk: %s", err.Error())
+			}
+
+			foundPaths = append(foundPaths, path)
+			return nil
+		})
+		sort.Strings(foundPaths)
+
+		assert.DeepEqual(t, foundPaths, expectedPaths)
 	})
-	sort.Strings(foundPaths)
 
-	assert.DeepEqual(t, foundPaths, expectedPaths)
+	t.Run("expect to register nested route correctly", func(t *testing.T) {
+		router := mux.NewRouter()
+		oas := &OpenAPISpec{
+			Paths: OpenAPIPaths{
+				// Ignored routes
+				"/-/ready":    PathVerbs{},
+				"/-/healthz":  PathVerbs{},
+				"/-/check-up": PathVerbs{},
+				// General route
+				"/foo/*":          PathVerbs{},
+				"/foo/bar/*":      PathVerbs{},
+				"/foo/bar/nested": PathVerbs{},
+			},
+		}
+		expectedPaths := []string{"/", "/foo/", "/foo/bar/", "/foo/bar/nested"}
+		sort.Strings(expectedPaths)
+
+		setupRoutes(router, oas)
+
+		foundPaths := make([]string, 0)
+		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+			path, err := route.GetPathTemplate()
+			if err != nil {
+				t.Fatalf("Unexpected error during walk: %s", err.Error())
+			}
+
+			foundPaths = append(foundPaths, path)
+			return nil
+		})
+		sort.Strings(foundPaths)
+
+		assert.DeepEqual(t, foundPaths, expectedPaths)
+	})
 }
 
 func TestConvertPathVariables(t *testing.T) {
@@ -233,6 +268,76 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		matchedRouted.Handler.ServeHTTP(w, req)
 
 		assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
+	})
+
+	t.Run("invokes the API note that it has not been explicitly set in the oas file", func(t *testing.T) {
+		oas := prepareOASFromFile(t, "./mocks/nestedPathsConfig.json")
+
+		var invoked bool
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			invoked = true
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		router := mux.NewRouter()
+		setupRoutes(router, oas)
+
+		serverURL, _ := url.Parse(server.URL)
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
+			nil,
+		)
+
+		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/foo/route-not-registered-explicitly", nil)
+		assert.Equal(t, err, nil, "Unexpected error")
+
+		var matchedRouted mux.RouteMatch
+		ok := router.Match(req, &matchedRouted)
+		assert.Assert(t, ok, "Route not found")
+
+		w := httptest.NewRecorder()
+		matchedRouted.Handler.ServeHTTP(w, req)
+
+		assert.Assert(t, invoked, "mock server was not invoked")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+	})
+
+	t.Run("invokes a specific API within a nested path", func(t *testing.T) {
+		oas := prepareOASFromFile(t, "./mocks/nestedPathsConfig.json")
+
+		var invoked bool
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			invoked = true
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		router := mux.NewRouter()
+		setupRoutes(router, oas)
+
+		serverURL, _ := url.Parse(server.URL)
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
+			nil,
+		)
+
+		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/foo/bar/nested", nil)
+		assert.Equal(t, err, nil, "Unexpected error")
+
+		var matchedRouted mux.RouteMatch
+		ok := router.Match(req, &matchedRouted)
+		assert.Assert(t, ok, "Route not found")
+
+		w := httptest.NewRecorder()
+		matchedRouted.Handler.ServeHTTP(w, req)
+
+		assert.Assert(t, invoked, "mock server was not invoked")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
 	})
 }
 
