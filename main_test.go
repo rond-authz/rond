@@ -25,15 +25,17 @@ import (
 
 func TestEntryPoint(t *testing.T) {
 	t.Run("fails for invalid module path, no module found", func(t *testing.T) {
-		os.Setenv("HTTP_PORT", "3000")
-		os.Setenv("TARGET_SERVICE_HOST", "localhost:3001")
-		os.Setenv("TARGET_SERVICE_OAS_PATH", "/documentation/json")
-		os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/empty-dir")
-
+		unsetEnvs := setEnvs([]env{
+			{name: "HTTP_PORT", value: "3000"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
+			{name: "TARGET_SERVICE_HOST", value: "/documentation/json"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/empty-dir"},
+		})
 		shutdown := make(chan os.Signal, 1)
 
 		entrypoint(shutdown)
 		require.True(t, true, "If we get here the service has not started")
+		unsetEnvs()
 	})
 
 	t.Run("opens server on port 3000", func(t *testing.T) {
@@ -48,16 +50,18 @@ func TestEntryPoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		os.Setenv("HTTP_PORT", "3000")
-		os.Setenv("TARGET_SERVICE_HOST", "localhost:3001")
-		os.Setenv("TARGET_SERVICE_OAS_PATH", "/documentation/json")
-		os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/rego-policies")
+		unsetEnvs := setEnvs([]env{
+			{name: "HTTP_PORT", value: "3000"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
+			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+		})
 
 		go func() {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			os.Unsetenv("HTTP_PORT")
+			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 
@@ -74,12 +78,13 @@ func TestEntryPoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		os.Setenv("HTTP_PORT", "3000")
-		os.Setenv("TARGET_SERVICE_HOST", "localhost:3001")
-		os.Setenv("TARGET_SERVICE_OAS_PATH", "/documentation/json")
-		os.Setenv("DELAY_SHUTDOWN_SECONDS", "3")
-		os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/rego-policies")
-
+		unsetEnvs := setEnvs([]env{
+			{name: "HTTP_PORT", value: "3000"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
+			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
+			{name: "DELAY_SHUTDOWN_SECONDS", value: "3"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+		})
 		shutdown := make(chan os.Signal, 1)
 		done := make(chan bool, 1)
 
@@ -96,6 +101,7 @@ func TestEntryPoint(t *testing.T) {
 
 		flag := <-done
 		require.Equal(t, true, flag)
+		unsetEnvs()
 	})
 
 	t.Run("opa integration", func(t *testing.T) {
@@ -118,16 +124,18 @@ func TestEntryPoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		os.Setenv("HTTP_PORT", "3000")
-		os.Setenv("TARGET_SERVICE_HOST", "localhost:3001")
-		os.Setenv("TARGET_SERVICE_OAS_PATH", "/documentation/json")
-		os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/rego-policies")
+		unsetEnvs := setEnvs([]env{
+			{name: "HTTP_PORT", value: "3000"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
+			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+		})
 
 		go func() {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			os.Unsetenv("HTTP_PORT")
+			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -177,16 +185,18 @@ func TestEntryPoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/mockWithXPermissionEmpty.json")
 
-		os.Setenv("HTTP_PORT", "3005")
-		os.Setenv("TARGET_SERVICE_HOST", "localhost:3004")
-		os.Setenv("TARGET_SERVICE_OAS_PATH", "/documentation/json")
-		os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/rego-policies")
+		unsetEnvs := setEnvs([]env{
+			{name: "HTTP_PORT", value: "3005"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:3004"},
+			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+		})
 
 		go func() {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			os.Unsetenv("HTTP_PORT")
+			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -218,17 +228,18 @@ func TestEntryPoint(t *testing.T) {
 			return true
 		})
 
-		os.Setenv("HTTP_PORT", "3333")
-		os.Setenv("TARGET_SERVICE_HOST", "localhost:4000")
-		os.Setenv("API_PERMISSIONS_FILE_PATH", "./mocks/nestedPathsConfig.json")
-		os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/rego-policies")
+		unsetEnvs := setEnvs([]env{
+			{name: "HTTP_PORT", value: "3333"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:4000"},
+			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/nestedPathsConfig.json"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+		})
 
 		go func() {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			os.Unsetenv("HTTP_PORT")
-			os.Unsetenv("API_PERMISSIONS_FILE_PATH")
+			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -262,10 +273,13 @@ func TestEntryPoint(t *testing.T) {
 			Get("/documentation/json").
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
-		os.Setenv("HTTP_PORT", "3003")
-		os.Setenv("TARGET_SERVICE_HOST", "localhost:3002")
-		os.Setenv("TARGET_SERVICE_OAS_PATH", "/documentation/json")
-		os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/rego-policies")
+
+		unsetBaseEnvs := setEnvs([]env{
+			{name: "HTTP_PORT", value: "3003"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:3002"},
+			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+		})
 		mongoHost := os.Getenv("MONGO_HOST_CI")
 		if mongoHost == "" {
 			mongoHost = testutils.LocalhostMongoDB
@@ -273,9 +287,12 @@ func TestEntryPoint(t *testing.T) {
 		}
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
-		os.Setenv("MONGODB_URL", fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName))
-		os.Setenv("BINDINGS_COLLECTION_NAME", "bindings")
-		os.Setenv("ROLES_COLLECTION_NAME", "roles")
+
+		unsetOtherEnvs := setEnvs([]env{
+			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
+			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
+			{name: "ROLES_COLLECTION_NAME", value: "roles"},
+		})
 
 		clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
 		client, err := mongo.Connect(context.Background(), clientOpts)
@@ -301,7 +318,8 @@ func TestEntryPoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			os.Unsetenv("HTTP_PORT")
+			unsetBaseEnvs()
+			unsetOtherEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -356,15 +374,18 @@ func TestEntryPoint(t *testing.T) {
 				Reply(200).
 				File("./mocks/simplifiedMock.json")
 
-			os.Setenv("HTTP_PORT", "3000")
-			os.Setenv("TARGET_SERVICE_HOST", "localhost:3001")
-			os.Setenv("TARGET_SERVICE_OAS_PATH", "/custom/documentation/json")
-			os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/rego-policies")
+			unsetEnvs := setEnvs([]env{
+				{name: "HTTP_PORT", value: "3000"},
+				{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
+				{name: "TARGET_SERVICE_OAS_PATH", value: "/custom/documentation/json"},
+				{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			})
+
 			go func() {
 				entrypoint(shutdown)
 			}()
 			defer func() {
-				os.Unsetenv("HTTP_PORT")
+				unsetEnvs()
 				shutdown <- syscall.SIGTERM
 			}()
 			time.Sleep(1 * time.Second)
@@ -391,15 +412,17 @@ func TestEntryPoint(t *testing.T) {
 				Reply(200).
 				File("./mocks/documentationPathMock.json")
 
-			os.Setenv("HTTP_PORT", "3000")
-			os.Setenv("TARGET_SERVICE_HOST", "localhost:3001")
-			os.Setenv("TARGET_SERVICE_OAS_PATH", "/documentation/json")
-			os.Setenv("OPA_MODULES_DIRECTORY", "./mocks/rego-policies")
+			unsetEnvs := setEnvs([]env{
+				{name: "HTTP_PORT", value: "3000"},
+				{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
+				{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
+				{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			})
 			go func() {
 				entrypoint(shutdown)
 			}()
 			defer func() {
-				os.Unsetenv("HTTP_PORT")
+				unsetEnvs()
 				shutdown <- syscall.SIGTERM
 			}()
 			time.Sleep(1 * time.Second)
@@ -415,4 +438,21 @@ func TestEntryPoint(t *testing.T) {
 			require.True(t, gock.IsDone(), "the proxy blocks the request when the permissions are granted.")
 		})
 	})
+}
+
+type env struct {
+	name  string
+	value string
+}
+
+func setEnvs(envsToSet []env) func() {
+	for _, env := range envsToSet {
+		os.Setenv(env.name, env.value)
+	}
+
+	return func() {
+		for _, env := range envsToSet {
+			os.Unsetenv(env.name)
+		}
+	}
 }
