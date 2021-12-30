@@ -11,7 +11,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bunrouter"
-	"github.com/uptrace/bunrouter/extra/reqlog"
 )
 
 type XPermission struct {
@@ -39,9 +38,7 @@ func cleanWildcard(path string) string {
 }
 
 func (oas *OpenAPISpec) PrepareOASRouter(openAPISpec *OpenAPISpec) *bunrouter.Router {
-	OASRouter := bunrouter.New(
-		bunrouter.WithMiddleware(reqlog.NewMiddleware(reqlog.WithVerbose(false))),
-	)
+	OASRouter := bunrouter.New()
 	for OASPath, OASContent := range openAPISpec.Paths {
 		OASPath = cleanWildcard(OASPath)
 		for method, methodContent := range OASContent {
