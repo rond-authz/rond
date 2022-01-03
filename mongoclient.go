@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"rbac-service/internal/types"
-	"rbac-service/internal/utils"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -42,6 +41,7 @@ func MongoClientInjectorMiddleware(collections types.IMongoClient) mux.Middlewar
 // provided context.
 func GetMongoClientFromContext(ctx context.Context) (types.IMongoClient, error) {
 	collectionInterface := ctx.Value(types.MongoClientContextKey{})
+
 	if collectionInterface == nil {
 		return nil, nil
 	}
@@ -95,57 +95,7 @@ func newMongoClient(env EnvironmentVariables, logger *logrus.Logger) (*MongoClie
 	return &mongoClient, nil
 }
 
-func (mongoClient *MongoClient) FindUserPermissions(ctx context.Context, user *types.User) ([]string, error) {
-	var userPermissions []string
-
-	roles, err := findUserPermissionsAndRolesFromBindings(ctx, &userPermissions, mongoClient.bindings, user)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving bindings from collection: %s", err.Error())
-	}
-
-	if len(roles) == 0 {
-		return userPermissions, nil
-	}
-
-	if err = findRolePermissions(ctx, &userPermissions, mongoClient.roles, roles); err != nil {
-		return nil, fmt.Errorf("error retrieving permissions from roles collection: %s", err.Error())
-	}
-
-	return userPermissions, nil
-}
-
-func findRolePermissions(ctx context.Context, userPermissions *[]string, rolesCollection *mongo.Collection, roles []string) error {
-	filter := bson.M{
-		"$and": []bson.M{
-			{"roleId": bson.M{"$in": roles}},
-			{STATE: PUBLIC},
-		},
-	}
-
-	options := options.Find().SetProjection(bson.M{"_id": 0, "permissions": 1})
-	cursor, err := rolesCollection.Find(
-		ctx,
-		filter,
-		options,
-	)
-	if err != nil {
-		return err
-	}
-	rolesResult := make([]types.Role, 0)
-	if err = cursor.All(ctx, &rolesResult); err != nil {
-		return err
-	}
-
-	for _, role := range rolesResult {
-		permissions := role.Permissions
-		for _, permission := range permissions {
-			utils.AppendUnique(*&userPermissions, permission)
-		}
-	}
-	return nil
-}
-
-func findUserPermissionsAndRolesFromBindings(ctx context.Context, userPermissions *[]string, bindingsCollection *mongo.Collection, user *types.User) ([]string, error) {
+func (mongoClient *MongoClient) RetrieveUserBindings(ctx context.Context, user *types.User) ([]types.Binding, error) {
 	filter := bson.M{
 		"$and": []bson.M{
 			{
@@ -157,32 +107,57 @@ func findUserPermissionsAndRolesFromBindings(ctx context.Context, userPermission
 			{STATE: PUBLIC},
 		},
 	}
-	options := options.Find().SetProjection(
-		bson.M{"_id": 0, "bindingId": 1, "permissions": 1, "roles": 1},
-	)
-	cursor, err := bindingsCollection.Find(
+	cursor, err := mongoClient.bindings.Find(
 		ctx,
 		filter,
-		options,
 	)
 	if err != nil {
 		return nil, err
 	}
-
-	var bindingsResult []types.Binding
+	bindingsResult := make([]types.Binding, 0)
 	if err = cursor.All(ctx, &bindingsResult); err != nil {
 		return nil, err
 	}
-	roles := make([]string, 0)
-	for _, binding := range bindingsResult {
-		bindingPermissions := binding.Permissions
-		for _, bindingpermission := range bindingPermissions {
-			utils.AppendUnique(userPermissions, bindingpermission)
-		}
-		bindingRoles := binding.Roles
-		for _, bindingRole := range bindingRoles {
-			utils.AppendUnique(&roles, bindingRole)
-		}
+	return bindingsResult, nil
+}
+
+func (mongoClient *MongoClient) RetrieveRoles(ctx context.Context) ([]types.Role, error) {
+	filter := bson.M{
+		STATE: PUBLIC,
 	}
-	return roles, nil
+	cursor, err := mongoClient.roles.Find(
+		ctx,
+		filter,
+	)
+	if err != nil {
+		return nil, err
+	}
+	rolesResult := make([]types.Role, 0)
+	if err = cursor.All(ctx, &rolesResult); err != nil {
+		return nil, err
+	}
+	return rolesResult, nil
+}
+
+func (mongoClient *MongoClient) RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]types.Role, error) {
+	filter := bson.M{
+		"$and": []bson.M{
+			{
+				"roleId": bson.M{"$in": userRolesId},
+			},
+			{STATE: PUBLIC},
+		},
+	}
+	cursor, err := mongoClient.roles.Find(
+		ctx,
+		filter,
+	)
+	if err != nil {
+		return nil, err
+	}
+	rolesResult := make([]types.Role, 0)
+	if err = cursor.All(ctx, &rolesResult); err != nil {
+		return nil, err
+	}
+	return rolesResult, nil
 }
