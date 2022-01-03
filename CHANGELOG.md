@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - [JAF-152](https://makeitapp.atlassian.net/browse/JAF-152): bindings and roles are now given as input to the OPA evaluator. The old check on user permission is no more performed and the entire ownership is given to rego
 
-## 1.0.0 - 17/12/2021
+## 0.1.0 - 17/12/2021
 
 ### Changes
 
