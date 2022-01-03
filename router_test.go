@@ -138,17 +138,13 @@ func buildMockEvaluator(allowed bool) mocks.MockEvaluator {
 	}
 }
 
-func buildMockMongoClient(permissions []string) mocks.MongoClientMock {
-	return mocks.MongoClientMock{
-		UserPermissions:      permissions,
-		UserPermissionsError: errors.New("can not retrieve user permissions"),
-	}
+func buildMockMongoClient(roles []types.Role, bindings []types.Binding) mocks.MongoClientMock {
+	return mocks.MongoClientMock{}
 }
 
 var mockAllowedOPAEvaluator = buildMockEvaluator(true)
 var mockNotAllowedOPAEvaluator = buildMockEvaluator(false)
-
-var mockGetUserPermissions = buildMockMongoClient([]string{"permission1", "permission2"})
+var mockGetUserPermissions = buildMockMongoClient(nil, nil)
 
 func TestSetupRoutesIntegration(t *testing.T) {
 	oas := prepareOASFromFile(t, "./mocks/simplifiedMock.json")

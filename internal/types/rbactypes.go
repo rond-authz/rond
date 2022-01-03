@@ -30,7 +30,9 @@ type Role struct {
 // mongo Collection reference in request contexts.
 type IMongoClient interface {
 	Disconnect()
-	FindUserPermissions(ctx context.Context, user *User) ([]string, error)
+	RetrieveUserBindings(ctx context.Context, user *User) ([]Binding, error)
+	RetrieveRoles(ctx context.Context) ([]Role, error)
+	RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]Role, error)
 }
 
 type RequestError struct {

@@ -118,7 +118,7 @@ func TestSetupMongoCollection(t *testing.T) {
 }
 
 func TestMongoCollections(t *testing.T) {
-	t.Run("testing retrieve user permissions from mongo", func(t *testing.T) {
+	t.Run("testing retrieve user bindings from mongo", func(t *testing.T) {
 		mongoHost := os.Getenv("MONGO_HOST_CI")
 		if mongoHost == "" {
 			mongoHost = testutils.LocalhostMongoDB
@@ -144,19 +144,140 @@ func TestMongoCollections(t *testing.T) {
 
 		PopulateDbForTesting(t, ctx, mongoClient)
 
-		result, _ := mongoClient.FindUserPermissions(ctx, &types.User{UserID: "user1", UserGroups: []string{"group1", "group2"}})
-		assert.Assert(t, reflect.DeepEqual(result, []string{
-			"permission4",
-			"permission7",
-			"permission10",
-			"permission11",
-			"permission12",
-			"permission1",
-			"permission2",
-			"foobar",
-			"permission3",
-			"permission5",
-		}),
+		result, _ := mongoClient.RetrieveUserBindings(ctx, &types.User{UserID: "user1", UserGroups: []string{"group1", "group2"}})
+		expected := []types.Binding{
+			{
+				BindingID:         "binding1",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role1", "role2"},
+				Groups:            []string{"group1"},
+				Permissions:       []string{"permission4"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "binding2",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role3", "role4"},
+				Groups:            []string{"group4"},
+				Permissions:       []string{"permission7"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "binding3",
+				Subjects:          []string{"user5"},
+				Roles:             []string{"role3", "role4"},
+				Groups:            []string{"group2"},
+				Permissions:       []string{"permission10", "permission4"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "binding4",
+				Roles:             []string{"role3", "role4"},
+				Groups:            []string{"group2"},
+				Permissions:       []string{"permission11"},
+				CRUDDocumentState: "PUBLIC",
+			},
+
+			{
+				BindingID:         "binding5",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role3", "role4"},
+				Permissions:       []string{"permission12"},
+				CRUDDocumentState: "PUBLIC",
+			},
+		}
+		assert.Assert(t, reflect.DeepEqual(result, expected),
+			"Error while getting permissions")
+	})
+
+	t.Run("retrieve all roles from mongo", func(t *testing.T) {
+		mongoHost := os.Getenv("MONGO_HOST_CI")
+		if mongoHost == "" {
+			mongoHost = testutils.LocalhostMongoDB
+			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
+		}
+
+		env := EnvironmentVariables{
+			MongoDBUrl:             fmt.Sprintf("mongodb://%s/test", mongoHost),
+			RolesCollectionName:    "roles",
+			BindingsCollectionName: "bindings",
+		}
+
+		log, _ := test.NewNullLogger()
+		mongoClient, err := newMongoClient(env, log)
+		defer mongoClient.Disconnect()
+		assert.Assert(t, err == nil, "setup mongo returns error")
+		client, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
+		mongoClient.client = client
+		mongoClient.roles = rolesCollection
+		mongoClient.bindings = bindingsCollection
+
+		ctx := context.Background()
+
+		PopulateDbForTesting(t, ctx, mongoClient)
+
+		result, _ := mongoClient.RetrieveRoles(ctx)
+		expected := []types.Role{
+			{
+				RoleID:            "role1",
+				Permissions:       []string{"permission1", "permission2", "foobar"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				RoleID:            "role3",
+				Permissions:       []string{"permission3", "permission5"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				RoleID:            "notUsedByAnyone",
+				Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
+				CRUDDocumentState: "PUBLIC",
+			},
+		}
+		assert.Assert(t, reflect.DeepEqual(result, expected),
+			"Error while getting permissions")
+	})
+
+	t.Run("retrieve all roles by id from mongo", func(t *testing.T) {
+		mongoHost := os.Getenv("MONGO_HOST_CI")
+		if mongoHost == "" {
+			mongoHost = testutils.LocalhostMongoDB
+			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
+		}
+
+		env := EnvironmentVariables{
+			MongoDBUrl:             fmt.Sprintf("mongodb://%s/test", mongoHost),
+			RolesCollectionName:    "roles",
+			BindingsCollectionName: "bindings",
+		}
+
+		log, _ := test.NewNullLogger()
+		mongoClient, err := newMongoClient(env, log)
+		defer mongoClient.Disconnect()
+		assert.Assert(t, err == nil, "setup mongo returns error")
+		client, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
+		mongoClient.client = client
+		mongoClient.roles = rolesCollection
+		mongoClient.bindings = bindingsCollection
+
+		ctx := context.Background()
+
+		PopulateDbForTesting(t, ctx, mongoClient)
+
+		result, _ := mongoClient.RetrieveUserRolesByRolesID(ctx, []string{"role1", "role3", "notExistingRole"})
+		expected := []types.Role{
+			{
+				RoleID:            "role1",
+				Permissions:       []string{"permission1", "permission2", "foobar"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				RoleID:            "role3",
+				Permissions:       []string{"permission3", "permission5"},
+				CRUDDocumentState: "PUBLIC",
+			},
+		}
+		assert.Assert(t, reflect.DeepEqual(result, expected),
 			"Error while getting permissions")
 	})
 }
@@ -178,6 +299,11 @@ func PopulateDbForTesting(t *testing.T, ctx context.Context, mongoClient *MongoC
 			RoleID:            "role6",
 			Permissions:       []string{"permission3", "permission5"},
 			CRUDDocumentState: "PRIVATE",
+		},
+		types.Role{
+			RoleID:            "notUsedByAnyone",
+			Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
+			CRUDDocumentState: "PUBLIC",
 		},
 	}
 	mongoClient.roles.DeleteMany(ctx, bson.D{})

@@ -28,7 +28,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 
 	mongoClient, err := GetMongoClientFromContext(req.Context())
 	if err != nil {
-		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("unexpected MongoDB client found in context")
+		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("unexpected MongoDB client not found in context")
 		failResponse(w, "Unexpected error retrieving MongoDB Client from request context")
 		return
 	}
@@ -39,9 +39,13 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		failResponse(w, "no policy evaluator found in context")
 		return
 	}
+	var userBindings []types.Binding
+	var userRoles []types.Role
 
 	if mongoClient != nil {
 		var user types.User
+		userBindings = make([]types.Binding, 0)
+		userRoles = make([]types.Role, 0)
 
 		user.UserGroups = strings.Split(req.Header.Get(env.UserGroupsHeader), ",")
 		user.UserID = req.Header.Get(env.UserIdHeader)
@@ -52,22 +56,22 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		userPermissions, err := mongoClient.FindUserPermissions(req.Context(), &user)
+		userBindings, err = mongoClient.RetrieveUserBindings(req.Context(), &user)
 		if err != nil {
-			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user permissions")
-			failResponse(w, fmt.Sprintf("Error while retrieving user permissions: %s", err.Error()))
+			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user bindings")
+			failResponse(w, fmt.Sprintf("Error while retrieving user bindings: %s", err.Error()))
 			return
 		}
 
-		permission := opaEvaluator.RequiredAllowPermission
-		if !utils.Contains(userPermissions, permission) {
-			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": "User is not allowed"}).Error("User is not allowed")
-			failResponseWithCode(w, http.StatusForbidden, "Error while retrieving user permissions: user is not allowed")
+		userRolesIds := rolesIdsFromBindings(userBindings)
+		userRoles, err = mongoClient.RetrieveUserRolesByRolesID(req.Context(), userRolesIds)
+		if err != nil {
+			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user roles")
+			failResponse(w, fmt.Sprintf("Error while retrieving user roles: %s", err.Error()))
 			return
 		}
 	}
-
-	input, err := createRegoQueryInput(req, env)
+	input, err := createRegoQueryInput(req, env, userBindings, userRoles)
 	if err != nil {
 		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("user properties header is not valid")
 		failResponse(w, fmt.Sprintf("Failed rego query input creation: %s", err.Error()))
@@ -106,7 +110,19 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	proxy.ServeHTTP(w, req)
 }
 
-func createRegoQueryInput(req *http.Request, env EnvironmentVariables) (map[string]interface{}, error) {
+func rolesIdsFromBindings(bindings []types.Binding) []string {
+	rolesIds := []string{}
+	for _, binding := range bindings {
+		for _, role := range binding.Roles {
+			if !utils.Contains(rolesIds, role) {
+				rolesIds = append(rolesIds, role)
+			}
+		}
+	}
+	return rolesIds
+}
+
+func createRegoQueryInput(req *http.Request, env EnvironmentVariables, userBindings []types.Binding, userRoles []types.Role) (map[string]interface{}, error) {
 	input := map[string]interface{}{
 		"request": map[string]interface{}{
 			"method":  req.Method,
@@ -131,10 +147,17 @@ func createRegoQueryInput(req *http.Request, env EnvironmentVariables) (map[stri
 	if userGroupsNotSplitted != "" {
 		userInput["groups"] = strings.Split(userGroupsNotSplitted, ",")
 	}
+	if len(userBindings) != 0 {
+		userInput["bindings"] = userBindings
+	}
+	if len(userRoles) != 0 {
+		userInput["roles"] = userRoles
+	}
 
 	if len(userInput) != 0 {
 		input["user"] = userInput
 	}
+
 	return input, nil
 }
 

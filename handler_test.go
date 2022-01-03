@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 
 	"rbac-service/internal/mocks"
 	"rbac-service/internal/testutils"
+	"rbac-service/internal/types"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -360,8 +362,56 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 		})
 	})
 
+	t.Run("Test retrieve roles ids from bindings", func(t *testing.T) {
+		bindings := []types.Binding{
+			{
+				BindingID:         "binding1",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role1", "role2"},
+				Groups:            []string{"group1"},
+				Permissions:       []string{"permission4"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "binding2",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role3", "role4"},
+				Groups:            []string{"group4"},
+				Permissions:       []string{"permission7"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "binding3",
+				Subjects:          []string{"user5"},
+				Roles:             []string{"role3", "role4"},
+				Groups:            []string{"group2"},
+				Permissions:       []string{"permission10", "permission4"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "binding4",
+				Roles:             []string{"role3", "role4"},
+				Groups:            []string{"group2"},
+				Permissions:       []string{"permission11"},
+				CRUDDocumentState: "PUBLIC",
+			},
+
+			{
+				BindingID:         "binding5",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role3", "role4"},
+				Permissions:       []string{"permission12"},
+				CRUDDocumentState: "PUBLIC",
+			},
+		}
+		rolesIds := rolesIdsFromBindings(bindings)
+		expected := []string{"role1", "role2", "role3", "role4"}
+		assert.Assert(t, reflect.DeepEqual(rolesIds, expected),
+			"Error while getting permissions")
+	})
+
 	t.Run("TestHandlerWithUserPermissionsRetrievalFromMongoDB", func(t *testing.T) {
-		t.Run("return 500 if findUserPermission goes bad", func(t *testing.T) {
+		t.Run("return 500 if retrieveUserBindings goes bad", func(t *testing.T) {
 			invoked := false
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -385,7 +435,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					BindingsCollectionName: "bindings",
 				},
 				opaEvaluator,
-				&mocks.MongoClientMock{UserPermissionsError: errors.New("Something went wrong")},
+				&mocks.MongoClientMock{UserBindingsError: errors.New("Something went wrong"), UserBindings: nil, UserRoles: nil, UserRolesError: errors.New("Something went wrong")},
 			)
 
 			w := httptest.NewRecorder()
@@ -397,7 +447,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
 
 			rbacHandler(w, r)
-			testutils.AssertResponseError(t, w, http.StatusInternalServerError, "Error while retrieving user permissions: Something went wrong")
+			testutils.AssertResponseError(t, w, http.StatusInternalServerError, "")
 			assert.Assert(t, !invoked, "Handler was not invoked.")
 			assert.Equal(t, w.Code, http.StatusInternalServerError, "Unexpected status code.")
 		})
@@ -426,7 +476,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					BindingsCollectionName: "bindings",
 				},
 				opaEvaluator,
-				&mocks.MongoClientMock{UserPermissionsError: errors.New("MongoDB Error")},
+				&mocks.MongoClientMock{UserBindingsError: errors.New("MongoDB Error"), UserRolesError: errors.New("MongoDB Error")},
 			)
 
 			w := httptest.NewRecorder()
@@ -438,12 +488,12 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
 
 			rbacHandler(w, r)
-			testutils.AssertResponseError(t, w, http.StatusInternalServerError, "Error while retrieving user permissions: MongoDB Error")
+			testutils.AssertResponseError(t, w, http.StatusInternalServerError, "Error while retrieving user bindings: MongoDB Error")
 			assert.Assert(t, !invoked, "Handler was not invoked.")
 			assert.Equal(t, w.Code, http.StatusInternalServerError, "Unexpected status code.")
 		})
 
-		t.Run("return 403 if user bindings retrieval is ok but user has not the required permission", func(t *testing.T) {
+		t.Run("return 403 if user bindings and roles retrieval is ok but user has not the required permission", func(t *testing.T) {
 			invoked := false
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				t.Fail()
@@ -452,6 +502,46 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			defer server.Close()
 
 			serverURL, _ := url.Parse(server.URL)
+
+			userBindings := []types.Binding{
+				{
+					BindingID:         "binding1",
+					Subjects:          []string{"user1"},
+					Roles:             []string{"role1", "role2"},
+					Groups:            []string{"group1"},
+					Permissions:       []string{"permission4"},
+					CRUDDocumentState: "PUBLIC",
+				},
+				{
+					BindingID:         "binding2",
+					Subjects:          []string{"miauserid"},
+					Roles:             []string{"role3", "role4"},
+					Groups:            []string{"group4"},
+					Permissions:       []string{"permission7"},
+					CRUDDocumentState: "PUBLIC",
+				},
+				{
+					BindingID:         "binding3",
+					Subjects:          []string{"miauserid"},
+					Roles:             []string{"role3", "role4"},
+					Groups:            []string{"group2"},
+					Permissions:       []string{"permission10", "permission4"},
+					CRUDDocumentState: "PUBLIC",
+				},
+			}
+
+			userRoles := []types.Role{
+				{
+					RoleID:            "role3",
+					Permissions:       []string{"permission1", "permission2", "foobar"},
+					CRUDDocumentState: "PUBLIC",
+				},
+				{
+					RoleID:            "role4",
+					Permissions:       []string{"permission3", "permission5"},
+					CRUDDocumentState: "PUBLIC",
+				},
+			}
 
 			ctx := createContext(t,
 				context.Background(),
@@ -466,19 +556,20 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					BindingsCollectionName: "bindings",
 				},
 				opaEvaluator,
-				&mocks.MongoClientMock{UserPermissions: []string{"permission1"}},
+				&mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles},
 			)
 
 			w := httptest.NewRecorder()
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
 			assert.Equal(t, err, nil, "Unexpected error")
 
+			// Missing mia user properties required
 			r.Header.Set(userGroupsHeaderKey, string(mockedUserGroupsHeaderValue))
-			r.Header.Set(userIdHeaderKey, "miauserid")
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
+			r.Header.Set(userIdHeaderKey, "miauserid")
 
 			rbacHandler(w, r)
-			testutils.AssertResponseError(t, w, http.StatusForbidden, "Error while retrieving user permissions: user is not allowed")
+			testutils.AssertResponseError(t, w, http.StatusForbidden, "RBAC policy evaluation failed")
 			assert.Assert(t, !invoked, "Handler was not invoked.")
 			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
 		})
@@ -496,6 +587,46 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			}))
 			defer server.Close()
 
+			userBindings := []types.Binding{
+				{
+					BindingID:         "binding1",
+					Subjects:          []string{"user1"},
+					Roles:             []string{"role1", "role2"},
+					Groups:            []string{"group1"},
+					Permissions:       []string{"permission4"},
+					CRUDDocumentState: "PUBLIC",
+				},
+				{
+					BindingID:         "binding2",
+					Subjects:          []string{"miauserid"},
+					Roles:             []string{"role3", "role4"},
+					Groups:            []string{"group4"},
+					Permissions:       []string{"permission7"},
+					CRUDDocumentState: "PUBLIC",
+				},
+				{
+					BindingID:         "binding3",
+					Subjects:          []string{"miauserid"},
+					Roles:             []string{"role3", "role4"},
+					Groups:            []string{"group2"},
+					Permissions:       []string{"permission10", "permission4"},
+					CRUDDocumentState: "PUBLIC",
+				},
+			}
+
+			userRoles := []types.Role{
+				{
+					RoleID:            "role3",
+					Permissions:       []string{"permission1", "permission2", "foobar"},
+					CRUDDocumentState: "PUBLIC",
+				},
+				{
+					RoleID:            "role4",
+					Permissions:       []string{"permission3", "permission5"},
+					CRUDDocumentState: "PUBLIC",
+				},
+			}
+
 			serverURL, _ := url.Parse(server.URL)
 			ctx := createContext(t,
 				context.Background(),
@@ -510,7 +641,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					BindingsCollectionName: "bindings",
 				},
 				opaEvaluator,
-				&mocks.MongoClientMock{UserPermissions: []string{"todo"}},
+				&mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles},
 			)
 
 			w := httptest.NewRecorder()
@@ -526,7 +657,108 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
 		})
 
-		t.Run("return 403 without user headers", func(t *testing.T) {
+		t.Run("return 200 with policy on bindings and roles", func(t *testing.T) {
+
+			opaModule := &OPAModuleConfig{
+				Name: "example.rego",
+				Content: fmt.Sprintf(`
+				package policies
+				todo {
+					input.user.properties.my == "%s"
+					count(input.user.groups) == 2
+					count(input.user.roles) == 2
+					count(input.user.bindings)== 3
+					input.clientType == "%s"
+				}`, mockedUserProperties["my"], mockedClientType),
+			}
+			queryString := "todo"
+
+			opaEvaluator, err := NewOPAEvaluator(queryString, opaModule)
+			assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
+
+			invoked := false
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				invoked = true
+				assert.Equal(t, r.Header.Get(userPropertiesHeaderKey), string(mockedUserPropertiesStringified), "Mocked User properties not found")
+				assert.Equal(t, r.Header.Get(userGroupsHeaderKey), string(mockedUserGroupsHeaderValue), "Mocked User groups not found")
+				assert.Equal(t, r.Header.Get(clientTypeHeaderKey), mockedClientType, "Mocked client type not found")
+				assert.Equal(t, r.Header.Get(userIdHeaderKey), userIdHeaderKey, "Mocked user id not found")
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			userBindings := []types.Binding{
+				{
+					BindingID:         "binding1",
+					Subjects:          []string{"user1"},
+					Roles:             []string{"role1", "role2"},
+					Groups:            []string{"group1"},
+					Permissions:       []string{"permission4"},
+					CRUDDocumentState: "PUBLIC",
+				},
+				{
+					BindingID:         "binding2",
+					Subjects:          []string{"miauserid"},
+					Roles:             []string{"role3", "role4"},
+					Groups:            []string{"group4"},
+					Permissions:       []string{"permission7"},
+					CRUDDocumentState: "PUBLIC",
+				},
+				{
+					BindingID:         "binding3",
+					Subjects:          []string{"miauserid"},
+					Roles:             []string{"role3", "role4"},
+					Groups:            []string{"group2"},
+					Permissions:       []string{"permission10", "permission4"},
+					CRUDDocumentState: "PUBLIC",
+				},
+			}
+
+			userRoles := []types.Role{
+				{
+					RoleID:            "role3",
+					Permissions:       []string{"permission1", "permission2", "foobar"},
+					CRUDDocumentState: "PUBLIC",
+				},
+				{
+					RoleID:            "role4",
+					Permissions:       []string{"permission3", "permission5"},
+					CRUDDocumentState: "PUBLIC",
+				},
+			}
+
+			serverURL, _ := url.Parse(server.URL)
+			ctx := createContext(t,
+				context.Background(),
+				EnvironmentVariables{
+					TargetServiceHost:      serverURL.Host,
+					UserPropertiesHeader:   userPropertiesHeaderKey,
+					UserGroupsHeader:       userGroupsHeaderKey,
+					UserIdHeader:           userIdHeaderKey,
+					ClientTypeHeader:       clientTypeHeaderKey,
+					MongoDBUrl:             "mongodb://test",
+					RolesCollectionName:    "roles",
+					BindingsCollectionName: "bindings",
+				},
+				opaEvaluator,
+				&mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles},
+			)
+
+			w := httptest.NewRecorder()
+			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
+			assert.Equal(t, err, nil, "Unexpected error")
+
+			r.Header.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
+			r.Header.Set(userGroupsHeaderKey, string(mockedUserGroupsHeaderValue))
+			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
+			r.Header.Set(userIdHeaderKey, "miauserid")
+			rbacHandler(w, r)
+			assert.Assert(t, invoked, "Handler was not invoked.")
+			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		})
+
+		t.Run("return 403 without user header", func(t *testing.T) {
 			invoked := false
 
 			opaModule := &OPAModuleConfig{
@@ -563,7 +795,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					BindingsCollectionName: "bindings",
 				},
 				opaEvaluator,
-				&mocks.MongoClientMock{UserPermissions: []string{}},
+				&mocks.MongoClientMock{UserBindings: nil},
 			)
 
 			w := httptest.NewRecorder()
@@ -572,9 +804,8 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			r.Header.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
-			r.Header.Set(userIdHeaderKey, "miauserid")
 			rbacHandler(w, r)
-			testutils.AssertResponseError(t, w, http.StatusForbidden, "Error while retrieving user permissions: user is not allowed")
+			testutils.AssertResponseError(t, w, http.StatusForbidden, "Error while retrieving user permissions: user is unknown")
 			assert.Assert(t, !invoked, "Handler was not invoked.")
 			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
 		})
