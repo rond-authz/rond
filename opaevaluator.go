@@ -48,17 +48,3 @@ func (e *TruthyEvaluator) Eval(ctx context.Context, options ...rego.EvalOption) 
 		},
 	}, nil
 }
-
-func WithOPAEvaluator(requestContext context.Context, evaluator *OPAEvaluator) context.Context {
-	return context.WithValue(requestContext, OPAEvaluatorKey{}, evaluator)
-}
-
-// GetOPAEvaluator can be used by a request handler to get OPAEvaluator instance from its context.
-func GetOPAEvaluator(requestContext context.Context) (*OPAEvaluator, error) {
-	opaEvaluator, ok := requestContext.Value(OPAEvaluatorKey{}).(*OPAEvaluator)
-	if !ok {
-		return nil, fmt.Errorf("no evaluator found in request context")
-	}
-
-	return opaEvaluator, nil
-}

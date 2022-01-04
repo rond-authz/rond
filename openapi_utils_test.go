@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
 	"gotest.tools/v3/assert"
 )
@@ -257,4 +259,20 @@ func TestFindPermission(t *testing.T) {
 	found, err = openApiSpec.FindPermission(OASRouter, "/foo/simble", "PATCH")
 	assert.Equal(t, XPermission{AllowPermission: "foo"}, found)
 	assert.Equal(t, err, nil)
+}
+
+func TestGetXPermission(t *testing.T) {
+	t.Run(`GetXPermission fails because no key has been passed`, func(t *testing.T) {
+		ctx := context.Background()
+		env, err := GetXPermission(ctx)
+		require.True(t, err != nil, "An error was expected.")
+		t.Logf("Expected error: %s - env: %+v", err.Error(), env)
+	})
+
+	t.Run(`GetXPermission returns OPAEvaluator from context`, func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), XPermissionKey{}, &XPermission{AllowPermission: "foo"})
+		permission, err := GetXPermission(ctx)
+		require.True(t, err == nil, "Unexpected error.")
+		require.True(t, permission != nil, "XPermission not found.")
+	})
 }

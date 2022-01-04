@@ -33,12 +33,20 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	opaEvaluator, err := GetOPAEvaluator(req.Context())
+	permission, err := GetXPermission(req.Context())
 	if err != nil {
-		glogger.Get(req.Context()).WithError(err).Error("no policy evaluator found in context")
-		failResponse(w, "no policy evaluator found in context")
+		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("no policy permission found in context")
+		failResponse(w, "no policy permission found in context")
 		return
 	}
+
+	opaModuleConfig, err := GetOPAModuleConfig(req.Context())
+	if err != nil {
+		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("no OPA module configuration found in context")
+		failResponse(w, "no OPA module configuration found in context")
+		return
+	}
+
 	var userBindings []types.Binding
 	var userRoles []types.Role
 
@@ -78,7 +86,15 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
+	evaluator, err := NewOPAEvaluator(permission.AllowPermission, opaModuleConfig)
+	if err != nil {
+		glogger.Get(req.Context()).WithError(err).Error("failed RBAC policy creation")
+		failResponse(w, err.Error())
+		return
+	}
+
+	// TODO: opaEvaluator.PermissionQuery.Partial(context.TODO())
+	results, err := evaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
 	if err != nil {
 		glogger.Get(req.Context()).WithError(err).Error("policy eval failed")
 		failResponse(w, "policy eval failed")

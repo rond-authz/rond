@@ -7,18 +7,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetOPAEvaluator(t *testing.T) {
-	t.Run(`GetOPAEvaluator fails because no key has been passed`, func(t *testing.T) {
-		ctx := context.Background()
-		env, err := GetOPAEvaluator(ctx)
-		require.True(t, err != nil, "An error was expected.")
-		t.Logf("Expected error: %s - env: %+v", err.Error(), env)
-	})
+func TestNewOPAEvaluator(t *testing.T) {
+	t.Run("policy sanitization", func(t *testing.T) {
+		evaluator, err := NewOPAEvaluator("very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"})
+		require.Nil(t, err, "unexpected error")
+		require.Equal(t, "very.composed.policy", evaluator.RequiredAllowPermission)
 
-	t.Run(`GetOPAEvaluator returns OPAEvaluator from context`, func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), OPAEvaluatorKey{}, &OPAEvaluator{})
-		opaEval, err := GetOPAEvaluator(ctx)
-		require.True(t, err == nil, "Unexpected error.")
-		require.True(t, opaEval != nil, "localhost:3000", "Unexpected session duration seconds env variable.")
+		result, err := evaluator.PermissionQuery.Eval(context.TODO())
+		require.Nil(t, err, "unexpected error")
+		require.True(t, result.Allowed(), "Unexpected failing policy")
 	})
 }

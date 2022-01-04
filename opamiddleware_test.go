@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 
 	"github.com/open-policy-agent/opa/rego"
@@ -123,10 +122,9 @@ foobar { true }`,
 			}
 			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				evaluator := r.Context().Value(OPAEvaluatorKey{}).(*OPAEvaluator)
-				evaluatorType := reflect.TypeOf(evaluator.PermissionQuery)
-				trustyEvaluator := reflect.TypeOf(&TruthyEvaluator{})
-				assert.Equal(t, evaluatorType, trustyEvaluator, "Unexpected evaluator type")
+				permission, err := GetXPermission(r.Context())
+				require.Equal(t, permission, &XPermission{AllowPermission: "mia_force_allow"})
+				require.True(t, err == nil, "Unexpected error")
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -172,13 +170,9 @@ todo { true }`,
 
 			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				input := map[string]interface{}{}
-				opaEvaluator, err := GetOPAEvaluator(r.Context())
+				permission, err := GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
-				results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
-				require.Equal(t, nil, err, "unexpected error")
-				require.False(t, results.Allowed(), "unexpected allow")
-
+				require.Equal(t, permission, &XPermission{AllowPermission: "foobar"})
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -198,12 +192,9 @@ foobar { true }`,
 
 			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				input := map[string]interface{}{}
-				opaEvaluator, _ := GetOPAEvaluator(r.Context())
-				results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
-				require.Equal(t, nil, err, "unexpected error")
-				require.True(t, results.Allowed(), "unexpected allow")
-
+				permission, err := GetXPermission(r.Context())
+				require.True(t, err == nil, "Unexpected error")
+				require.Equal(t, permission, &XPermission{AllowPermission: "foobar"})
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -223,37 +214,9 @@ very_very_composed_permission { true }`,
 
 			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				input := map[string]interface{}{}
-				opaEvaluator, _ := GetOPAEvaluator(r.Context())
-				results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
-				require.Equal(t, nil, err, "unexpected error")
-				require.True(t, results.Allowed(), "unexpected allow")
-
-				w.WriteHeader(http.StatusOK)
-			}))
-
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "http://example.com/composed/permission/", nil)
-			builtHandler.ServeHTTP(w, r)
-
-			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
-		})
-
-		t.Run(`rego package contains composed permission`, func(t *testing.T) {
-			opaModule := &OPAModuleConfig{
-				Name: "example.rego",
-				Content: `package policies
-very_very_composed_permission { true }`,
-			}
-
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
-			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				input := map[string]interface{}{}
-				opaEvaluator, _ := GetOPAEvaluator(r.Context())
-				results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
-				require.Equal(t, nil, err, "unexpected error")
-				require.True(t, results.Allowed(), "unexpected allow")
-
+				permission, err := GetXPermission(r.Context())
+				require.True(t, err == nil, "Unexpected error")
+				require.Equal(t, &XPermission{AllowPermission: "very.very.composed.permission"}, permission)
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -300,5 +263,21 @@ func TestGetHeaderFunction(t *testing.T) {
 		results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
 		assert.NilError(t, err, "Unexpected error during rego validation")
 		assert.Assert(t, !results.Allowed(), "Rego policy allows illegal input")
+	})
+}
+
+func TestGetOPAModuleConfig(t *testing.T) {
+	t.Run(`GetOPAModuleConfig fails because no key has been passed`, func(t *testing.T) {
+		ctx := context.Background()
+		env, err := GetOPAModuleConfig(ctx)
+		require.True(t, err != nil, "An error was expected.")
+		t.Logf("Expected error: %s - env: %+v", err.Error(), env)
+	})
+
+	t.Run(`GetOPAModuleConfig returns OPAEvaluator from context`, func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), OPAModuleConfigKey{}, &OPAModuleConfig{})
+		opaEval, err := GetOPAModuleConfig(ctx)
+		require.True(t, err == nil, "Unexpected error.")
+		require.True(t, opaEval != nil, "OPA Module config not found.")
 	})
 }

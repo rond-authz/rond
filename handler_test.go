@@ -36,8 +36,9 @@ func TestDirectProxyHandler(t *testing.T) {
 		ctx := createContext(t,
 			context.Background(),
 			EnvironmentVariables{TargetServiceHost: serverURL.Host},
-			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
 			nil,
+			mockXPermission,
+			mockOPAModule,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
@@ -67,8 +68,9 @@ func TestDirectProxyHandler(t *testing.T) {
 		ctx := createContext(t,
 			context.Background(),
 			EnvironmentVariables{TargetServiceHost: serverURL.Host},
-			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
 			nil,
+			mockXPermission,
+			mockOPAModule,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
@@ -103,8 +105,9 @@ func TestDirectProxyHandler(t *testing.T) {
 		ctx := createContext(t,
 			context.Background(),
 			EnvironmentVariables{TargetServiceHost: serverURL.Host},
-			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
 			nil,
+			mockXPermission,
+			mockOPAModule,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
@@ -151,10 +154,6 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			input.clientType == "%s"
 		}`, mockedUserProperties["my"], mockedClientType),
 	}
-	queryString := "todo"
-
-	opaEvaluator, err := NewOPAEvaluator(queryString, opaModule)
-	assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
 
 	// TODO: this tests verifies policy execution based on request header evaluation, it is
 	// useful as a documentation because right now headers are provided as-is from the
@@ -182,14 +181,12 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					todo { count(input.request.headers["%s"]) != 0 }`, mockHeader),
 				}
 
-				opaEvaluator, err := NewOPAEvaluator(queryString, opaModule)
-				assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
-
 				ctx := createContext(t,
 					context.Background(),
 					EnvironmentVariables{TargetServiceHost: serverURL.Host},
-					opaEvaluator,
 					nil,
+					&XPermission{AllowPermission: "todo"},
+					opaModule,
 				)
 
 				t.Run("request respects the policy", func(t *testing.T) {
@@ -224,14 +221,12 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					todo { get_header("x-backdoor", input.request.headers) == "mocked value" }`,
 				}
 
-				opaEvaluator, err := NewOPAEvaluator(queryString, opaModule)
-				assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
-
 				ctx := createContext(t,
 					context.Background(),
 					EnvironmentVariables{TargetServiceHost: serverURL.Host},
-					opaEvaluator,
 					nil,
+					mockXPermission,
+					opaModule,
 				)
 
 				t.Run("request respects the policy", func(t *testing.T) {
@@ -283,10 +278,6 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					input.clientType == "%s"
 				}`, mockedUserProperties["my"], mockedClientType),
 			}
-			queryString := "todo"
-
-			opaEvaluator, err := NewOPAEvaluator(queryString, opaModule)
-			assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
 
 			ctx := createContext(t,
 				context.Background(),
@@ -296,8 +287,9 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					UserGroupsHeader:     userGroupsHeaderKey,
 					ClientTypeHeader:     clientTypeHeaderKey,
 				},
-				opaEvaluator,
 				nil,
+				mockXPermission,
+				opaModule,
 			)
 
 			t.Run("request respects the policy", func(t *testing.T) {
@@ -434,8 +426,9 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					RolesCollectionName:    "roles",
 					BindingsCollectionName: "bindings",
 				},
-				opaEvaluator,
 				&mocks.MongoClientMock{UserBindingsError: errors.New("Something went wrong"), UserBindings: nil, UserRoles: nil, UserRolesError: errors.New("Something went wrong")},
+				mockXPermission,
+				opaModule,
 			)
 
 			w := httptest.NewRecorder()
@@ -475,8 +468,9 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					RolesCollectionName:    "roles",
 					BindingsCollectionName: "bindings",
 				},
-				opaEvaluator,
 				&mocks.MongoClientMock{UserBindingsError: errors.New("MongoDB Error"), UserRolesError: errors.New("MongoDB Error")},
+				mockXPermission,
+				opaModule,
 			)
 
 			w := httptest.NewRecorder()
@@ -555,8 +549,9 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					RolesCollectionName:    "roles",
 					BindingsCollectionName: "bindings",
 				},
-				opaEvaluator,
 				&mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles},
+				mockXPermission,
+				opaModule,
 			)
 
 			w := httptest.NewRecorder()
@@ -640,8 +635,10 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					RolesCollectionName:    "roles",
 					BindingsCollectionName: "bindings",
 				},
-				opaEvaluator,
+				// opaEvaluator,
 				&mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles},
+				mockXPermission,
+				opaModule,
 			)
 
 			w := httptest.NewRecorder()
@@ -671,10 +668,6 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					input.clientType == "%s"
 				}`, mockedUserProperties["my"], mockedClientType),
 			}
-			queryString := "todo"
-
-			opaEvaluator, err := NewOPAEvaluator(queryString, opaModule)
-			assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
 
 			invoked := false
 
@@ -741,8 +734,9 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					RolesCollectionName:    "roles",
 					BindingsCollectionName: "bindings",
 				},
-				opaEvaluator,
 				&mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles},
+				mockXPermission,
+				opaModule,
 			)
 
 			w := httptest.NewRecorder()
@@ -770,10 +764,6 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					input.clientType == "%s"
 				}`, mockedUserProperties["my"], mockedClientType),
 			}
-			queryString := "todo"
-
-			opaEvaluator, err := NewOPAEvaluator(queryString, opaModule)
-			assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				invoked = true
@@ -794,8 +784,9 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					RolesCollectionName:    "roles",
 					BindingsCollectionName: "bindings",
 				},
-				opaEvaluator,
 				&mocks.MongoClientMock{UserBindings: nil},
+				mockXPermission,
+				opaModule,
 			)
 
 			w := httptest.NewRecorder()

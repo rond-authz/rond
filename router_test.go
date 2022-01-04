@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -113,12 +112,20 @@ func TestConvertPathVariables(t *testing.T) {
 	})
 }
 
-func createContext(t *testing.T, originalCtx context.Context, env EnvironmentVariables, opaEvaluator *OPAEvaluator, mongoClient *mocks.MongoClientMock) context.Context {
+func createContext(
+	t *testing.T,
+	originalCtx context.Context,
+	env EnvironmentVariables,
+	mongoClient *mocks.MongoClientMock,
+	permission *XPermission,
+	opaModuleConfig *OPAModuleConfig,
+) context.Context {
 	t.Helper()
 
 	var partialContext context.Context
 	partialContext = context.WithValue(originalCtx, envKey{}, env)
-	partialContext = context.WithValue(partialContext, OPAEvaluatorKey{}, opaEvaluator)
+	partialContext = context.WithValue(partialContext, XPermissionKey{}, permission)
+	partialContext = context.WithValue(partialContext, OPAModuleConfigKey{}, opaModuleConfig)
 	if mongoClient != nil {
 		partialContext = context.WithValue(partialContext, types.MongoClientContextKey{}, mongoClient)
 	}
@@ -143,8 +150,15 @@ func buildMockMongoClient(roles []types.Role, bindings []types.Binding) mocks.Mo
 }
 
 var mockAllowedOPAEvaluator = buildMockEvaluator(true)
-var mockNotAllowedOPAEvaluator = buildMockEvaluator(false)
+
 var mockGetUserPermissions = buildMockMongoClient(nil, nil)
+
+var mockOPAModule = &OPAModuleConfig{
+	Name: "example.rego",
+	Content: `package policies
+todo { true }`,
+}
+var mockXPermission = &XPermission{AllowPermission: "todo"}
 
 func TestSetupRoutesIntegration(t *testing.T) {
 	oas := prepareOASFromFile(t, "./mocks/simplifiedMock.json")
@@ -166,8 +180,9 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		ctx := createContext(t,
 			context.Background(),
 			EnvironmentVariables{TargetServiceHost: serverURL.Host},
-			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
 			nil,
+			mockXPermission,
+			mockOPAModule,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
@@ -201,8 +216,9 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		ctx := createContext(t,
 			context.Background(),
 			EnvironmentVariables{TargetServiceHost: serverURL.Host},
-			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
 			nil,
+			mockXPermission,
+			mockOPAModule,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/unknown/path?foo=bar", nil)
@@ -226,8 +242,13 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		ctx := createContext(t,
 			context.Background(),
 			EnvironmentVariables{LogLevel: "silent", TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
-			&OPAEvaluator{PermissionQuery: &mockNotAllowedOPAEvaluator},
 			nil,
+			mockXPermission,
+			&OPAModuleConfig{
+				Name: "example.rego",
+				Content: `package policies
+			todo { false }`,
+			},
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
@@ -250,8 +271,11 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		ctx := createContext(t,
 			context.Background(),
 			EnvironmentVariables{TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
-			&OPAEvaluator{PermissionQuery: &mocks.MockEvaluator{ResultError: errors.New("some error from policy eval")}},
 			nil,
+			mockXPermission,
+			&OPAModuleConfig{
+				Content: "FAILING POLICY!!!!",
+			},
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://my-service.com/users/?foo=bar", nil)
@@ -284,8 +308,9 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		ctx := createContext(t,
 			context.Background(),
 			EnvironmentVariables{TargetServiceHost: serverURL.Host},
-			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
 			nil,
+			mockXPermission,
+			mockOPAModule,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://my-service.com/foo/route-not-registered-explicitly", nil)
@@ -319,8 +344,9 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		ctx := createContext(t,
 			context.Background(),
 			EnvironmentVariables{TargetServiceHost: serverURL.Host},
-			&OPAEvaluator{PermissionQuery: &mockAllowedOPAEvaluator},
 			nil,
+			mockXPermission,
+			mockOPAModule,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/foo/bar/nested", nil)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +13,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bunrouter"
 )
+
+type XPermissionKey struct{}
 
 type XPermission struct {
 	AllowPermission string `json:"allow"`
@@ -137,4 +140,18 @@ func loadOAS(log *logrus.Logger, env EnvironmentVariables) (*OpenAPISpec, error)
 	}
 
 	return nil, fmt.Errorf("missing environment variables one of %s or %s is required", TargetServiceOASPathEnvKey, APIPermissionsFilePathEnvKey)
+}
+
+func WithXPermission(requestContext context.Context, permission *XPermission) context.Context {
+	return context.WithValue(requestContext, XPermissionKey{}, permission)
+}
+
+// GetXPermission can be used by a request handler to get XPermission instance from its context.
+func GetXPermission(requestContext context.Context) (*XPermission, error) {
+	permission, ok := requestContext.Value(XPermissionKey{}).(*XPermission)
+	if !ok {
+		return nil, fmt.Errorf("no permission configuration found in request context")
+	}
+
+	return permission, nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -22,12 +23,12 @@ var (
 	ErrFileLoadFailed = errors.New("file loading failed")
 )
 
+type OPAModuleConfigKey struct{}
+
 type OPAModuleConfig struct {
 	Name    string
 	Content string
 }
-
-type OPAEvaluatorKey struct{}
 
 var getHeaderFunction = rego.Function2(
 	&rego.Function{
@@ -60,8 +61,17 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 			permission, err := openAPISpec.FindPermission(OASrouter, r.URL.Path, r.Method)
 
 			if err != nil && r.Method == http.MethodGet && r.URL.Path == envs.TargetServiceOASPath {
-				evaluator := &OPAEvaluator{PermissionQuery: &TruthyEvaluator{}}
-				ctx := WithOPAEvaluator(r.Context(), evaluator)
+				// TODO: Gestire meglio lo skip della valutazione delle policy nel caso in cui si cerchi di invocare la rotta
+				// della documentazione e non esista una configurazione specifica di permessi.
+				ctx := WithXPermission(
+					WithOPAModuleConfig(
+						r.Context(),
+						&OPAModuleConfig{
+							Content: `package policies mia_force_allow { true }`,
+						},
+					),
+					&XPermission{AllowPermission: "mia_force_allow"},
+				)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
@@ -82,14 +92,13 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 				return
 			}
 
-			evaluator, err := NewOPAEvaluator(permission.AllowPermission, opaModuleConfig)
-			if err != nil {
-				glogger.Get(r.Context()).WithError(err).Error("failed RBAC policy creation")
-				failResponse(w, err.Error())
-				return
-			}
-
-			ctx := WithOPAEvaluator(r.Context(), evaluator)
+			ctx := WithXPermission(
+				WithOPAModuleConfig(
+					r.Context(),
+					opaModuleConfig,
+				),
+				&permission,
+			)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -120,4 +129,18 @@ func loadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 		Name:    filepath.Base(regoModulePath),
 		Content: string(fileContent),
 	}, nil
+}
+
+func WithOPAModuleConfig(requestContext context.Context, permission *OPAModuleConfig) context.Context {
+	return context.WithValue(requestContext, OPAModuleConfigKey{}, permission)
+}
+
+// GetOPAModuleConfig can be used by a request handler to get OPAModuleConfig instance from its context.
+func GetOPAModuleConfig(requestContext context.Context) (*OPAModuleConfig, error) {
+	permission, ok := requestContext.Value(OPAModuleConfigKey{}).(*OPAModuleConfig)
+	if !ok {
+		return nil, fmt.Errorf("no opa module config found in request context")
+	}
+
+	return permission, nil
 }
