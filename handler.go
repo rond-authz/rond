@@ -8,15 +8,17 @@ import (
 	"net/http/httputil"
 	"strings"
 
+	"rbac-service/internal/opatranslator"
 	"rbac-service/internal/types"
 	"rbac-service/internal/utils"
 
 	"github.com/mia-platform/glogger/v2"
-	"github.com/open-policy-agent/opa/rego"
 	"github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const URL_SCHEME = "http"
+const BASE_ROW_FILTER_HEADER_KEY = "acl_rows"
 
 func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	env, err := GetEnv(req.Context())
@@ -86,19 +88,71 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	evaluator, err := NewOPAEvaluator(permission.AllowPermission, opaModuleConfig)
+	evaluator, err := NewOPAEvaluator(permission.AllowPermission, opaModuleConfig, input)
 	if err != nil {
 		glogger.Get(req.Context()).WithError(err).Error("failed RBAC policy creation")
 		failResponse(w, err.Error())
 		return
 	}
 
-	// TODO: opaEvaluator.PermissionQuery.Partial(context.TODO())
-	results, err := evaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
+	_, query, err := Evaluate(permission, *evaluator, req)
 	if err != nil {
-		glogger.Get(req.Context()).WithError(err).Error("policy eval failed")
-		failResponse(w, "policy eval failed")
+		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("RBAC policy evaluation failed")
+		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed")
 		return
+	}
+	var queryToProxy = []byte{}
+	if query != nil {
+		queryToProxy, err = json.Marshal(query)
+		if err != nil {
+			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("Error while marshaling row filter query")
+			failResponseWithCode(w, http.StatusForbidden, "Error while marshaling row filter query")
+			return
+		}
+	}
+	targetHostFromEnv := env.TargetServiceHost
+	queryHeaderKey := BASE_ROW_FILTER_HEADER_KEY
+	if permission.ResourceFilter.RowFilter.HeaderKey != "" {
+		queryHeaderKey = permission.ResourceFilter.RowFilter.HeaderKey
+	}
+
+	proxy := httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL.Host = targetHostFromEnv
+			req.URL.Scheme = URL_SCHEME
+			if _, ok := req.Header["User-Agent"]; !ok {
+				// explicitly disable User-Agent so it's not set to default value
+				req.Header.Set("User-Agent", "")
+			}
+			if query != nil {
+				req.Header.Set(queryHeaderKey, string(queryToProxy))
+			}
+		},
+	}
+	proxy.ServeHTTP(w, req)
+}
+
+func Evaluate(permission *XPermission, evaluator OPAEvaluator, req *http.Request) (bool, primitive.M, error) {
+	if permission.ResourceFilter.ResourceType != "" {
+		partialResults, err := evaluator.PermissionQuery.Partial(context.TODO())
+		if err != nil {
+			return false, nil, fmt.Errorf("Policy Evaluation has failed when partially evaluating the query: %s", err.Error())
+		}
+		client := opatranslator.OPAClient{}
+		q, err := client.ProcessQuery(partialResults)
+		if err != nil {
+			return false, nil, fmt.Errorf("Policy Evaluation has failed when processing query: %s", err.Error())
+		}
+		glogger.Get(req.Context()).WithFields(logrus.Fields{
+			"allowed": true,
+			"query":   q,
+		}).Tracef("policy results and query")
+		return true, q, nil
+	}
+
+	results, err := evaluator.PermissionQuery.Eval(context.TODO())
+	if err != nil {
+		return false, nil, fmt.Errorf("Policy Evaluation has failed when evaluating the query: %s", err.Error())
 	}
 
 	glogger.Get(req.Context()).WithFields(logrus.Fields{
@@ -108,22 +162,9 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 
 	if !results.Allowed() {
 		glogger.Get(req.Context()).Error("policy resulted in not allowed")
-		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed")
-		return
+		return false, nil, fmt.Errorf("RBAC policy evaluation failed")
 	}
-
-	targetHostFromEnv := env.TargetServiceHost
-	proxy := httputil.ReverseProxy{
-		Director: func(req *http.Request) {
-			req.URL.Host = targetHostFromEnv
-			req.URL.Scheme = URL_SCHEME
-			if _, ok := req.Header["User-Agent"]; !ok {
-				// explicitly disable User-Agent so it's not set to default value
-				req.Header.Set("User-Agent", "")
-			}
-		},
-	}
-	proxy.ServeHTTP(w, req)
+	return true, nil, nil
 }
 
 func rolesIdsFromBindings(bindings []types.Binding) []string {

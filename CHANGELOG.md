@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
+- [JAF-135](https://makeitapp.atlassian.net/browse/JAF-135): rbac service now support row filtering query for mongo forwarded in a custom header to the requested service
 - [JAF-133](https://makeitapp.atlassian.net/browse/JAF-133): handle path prefix for manual route
 
 ### BREAKING

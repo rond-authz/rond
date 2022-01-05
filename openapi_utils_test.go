@@ -115,6 +115,12 @@ func TestLoadOASFile(t *testing.T) {
 				"get": VerbConfig{
 					Permission: XPermission{
 						AllowPermission: "foobar",
+						ResourceFilter: ResourceFilter{
+							ResourceType: "custom",
+							RowFilter: RowFilterConfiguration{
+								HeaderKey: "customHeaderKey",
+							},
+						},
 					},
 				},
 				"post": VerbConfig{
@@ -154,6 +160,12 @@ func TestLoadOAS(t *testing.T) {
 				"get": VerbConfig{
 					Permission: XPermission{
 						AllowPermission: "foobar",
+						ResourceFilter: ResourceFilter{
+							ResourceType: "custom",
+							RowFilter: RowFilterConfiguration{
+								HeaderKey: "customHeaderKey",
+							},
+						},
 					},
 				},
 				"post": VerbConfig{
@@ -241,11 +253,21 @@ func TestFindPermission(t *testing.T) {
 	assert.Equal(t, err.Error(), "not found oas permission: PUT use/method/that/not/existing/put")
 
 	found, err = openApiSpec.FindPermission(OASRouter, "/foo/bar/barId", "GET")
-	assert.Equal(t, XPermission{AllowPermission: "foo_bar_params"}, found)
+	assert.Equal(t, XPermission{
+		AllowPermission: "foo_bar_params",
+		ResourceFilter: ResourceFilter{
+			ResourceType: "custom",
+			RowFilter:    RowFilterConfiguration{HeaderKey: "customHeaderKey"}}},
+		found)
 	assert.Equal(t, err, nil)
 
 	found, err = openApiSpec.FindPermission(OASRouter, "/foo/bar/barId/another-params-not-configured", "GET")
-	assert.Equal(t, XPermission{AllowPermission: "foo_bar"}, found)
+	assert.Equal(t, XPermission{
+		AllowPermission: "foo_bar",
+		ResourceFilter: ResourceFilter{
+			ResourceType: "custom",
+			RowFilter:    RowFilterConfiguration{HeaderKey: "customHeaderKey"}}},
+		found)
 	assert.Equal(t, err, nil)
 
 	found, err = openApiSpec.FindPermission(OASRouter, "/foo/bar/nested/case/really/nested", "GET")
@@ -253,11 +275,21 @@ func TestFindPermission(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	found, err = openApiSpec.FindPermission(OASRouter, "/foo/bar/nested", "GET")
-	assert.Equal(t, XPermission{AllowPermission: "foo_bar_nested"}, found)
+	assert.Equal(t, XPermission{
+		AllowPermission: "foo_bar_nested",
+		ResourceFilter: ResourceFilter{
+			ResourceType: "custom",
+			RowFilter:    RowFilterConfiguration{HeaderKey: "customHeaderKey"}}},
+		found)
 	assert.Equal(t, err, nil)
 
 	found, err = openApiSpec.FindPermission(OASRouter, "/foo/simble", "PATCH")
-	assert.Equal(t, XPermission{AllowPermission: "foo"}, found)
+	assert.Equal(t, XPermission{
+		AllowPermission: "foo",
+		ResourceFilter: ResourceFilter{
+			ResourceType: "custom",
+			RowFilter:    RowFilterConfiguration{HeaderKey: "customHeaderKey"}}},
+		found)
 	assert.Equal(t, err, nil)
 }
 
