@@ -2,12 +2,18 @@
     "paths": {
         "/users-from-static-file/": {
             "get": {
-                "x-permission" : {
-                    "allow": "foobar"
+                "x-permission": {
+                    "allow": "foobar",
+                    "resourceFilter": {
+                        "resourceType": "custom",
+                        "rowFilter": {
+                            "headerKey": "customHeaderKey"
+                        }
+                    }
                 }
             },
             "post": {
-                "x-permission" : {
+                "x-permission": {
                     "allow": "notexistingpermission"
                 }
             }

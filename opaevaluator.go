@@ -2,49 +2,49 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 )
 
 type Evaluator interface {
-	Eval(ctx context.Context, options ...rego.EvalOption) (rego.ResultSet, error)
+	Eval(ctx context.Context) (rego.ResultSet, error)
+	Partial(ctx context.Context) (*rego.PartialQueries, error)
 }
 
-// TODO: This should be transformed to a map having as keys the API VERB+PATH
-// and as content a struct with permssions and the actual opa query eval
+var unknowns = []string{"data.resources"}
+
 type OPAEvaluator struct {
 	PermissionQuery         Evaluator
 	RequiredAllowPermission string
 }
 
-func NewOPAEvaluator(policy string, opaModuleConfig *OPAModuleConfig) (*OPAEvaluator, error) {
+func NewOPAEvaluator(policy string, opaModuleConfig *OPAModuleConfig, input map[string]interface{}) (*OPAEvaluator, error) {
+	inputBytes, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed input JSON encode: %v", err)
+	}
+
+	inputTerm, err := ast.ParseTerm(string(inputBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed input parse: %v", err)
+	}
+
 	sanitizedPolicy := strings.Replace(policy, ".", "_", -1)
 	queryString := fmt.Sprintf("data.policies.%s", sanitizedPolicy)
-	query, err := rego.New(
+	query := rego.New(
 		rego.Query(queryString),
 		rego.Module(opaModuleConfig.Name, opaModuleConfig.Content),
+		rego.ParsedInput(inputTerm.Value),
+		rego.Unknowns(unknowns),
 		getHeaderFunction,
-	).PrepareForEval(context.TODO())
-	if err != nil {
-		return nil, err
-	}
+	)
 
 	return &OPAEvaluator{
 		PermissionQuery:         query,
 		RequiredAllowPermission: policy,
-	}, nil
-}
-
-type TruthyEvaluator struct{}
-
-func (e *TruthyEvaluator) Eval(ctx context.Context, options ...rego.EvalOption) (rego.ResultSet, error) {
-	return rego.ResultSet{
-		rego.Result{
-			Expressions: []*rego.ExpressionValue{
-				{Value: true},
-			},
-		},
 	}, nil
 }

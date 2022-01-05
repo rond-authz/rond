@@ -17,7 +17,17 @@ import (
 type XPermissionKey struct{}
 
 type XPermission struct {
-	AllowPermission string `json:"allow"`
+	AllowPermission string         `json:"allow"`
+	ResourceFilter  ResourceFilter `json:"resourceFilter"`
+}
+
+type ResourceFilter struct {
+	ResourceType string                 `json:"resourceType"`
+	RowFilter    RowFilterConfiguration `json:"rowFilter"`
+}
+
+type RowFilterConfiguration struct {
+	HeaderKey string `json:"headerKey"`
 }
 
 type VerbConfig struct {
@@ -49,6 +59,8 @@ func (oas *OpenAPISpec) PrepareOASRouter(openAPISpec *OpenAPISpec) *bunrouter.Co
 			scopedMethodContent := methodContent
 			OASRouter.Handle(strings.ToUpper(scopedMethod), OASPath, func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("allow", scopedMethodContent.Permission.AllowPermission)
+				w.Header().Set("resourceFilter.resourceType", scopedMethodContent.Permission.ResourceFilter.ResourceType)
+				w.Header().Set("resourceFilter.rowFilter.headerKey", scopedMethodContent.Permission.ResourceFilter.RowFilter.HeaderKey)
 			})
 		}
 	}
@@ -66,8 +78,14 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 		return XPermission{}, fmt.Errorf("not found oas permission: %s %s", method, path)
 	}
 
-	result := recorder.Result().Header.Get("allow")
-	return XPermission{AllowPermission: result}, nil
+	recorderResult := recorder.Result()
+	return XPermission{
+		AllowPermission: recorderResult.Header.Get("allow"),
+		ResourceFilter: ResourceFilter{
+			ResourceType: recorderResult.Header.Get("resourceFilter.resourceType"),
+			RowFilter:    RowFilterConfiguration{recorderResult.Header.Get("resourceFilter.rowFilter.headerKey")},
+		},
+	}, nil
 }
 
 func fetchOpenAPI(url string) (*OpenAPISpec, error) {

@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/open-policy-agent/opa/rego"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/v3/assert"
 )
@@ -240,9 +239,6 @@ func TestGetHeaderFunction(t *testing.T) {
 	}
 	queryString := "todo"
 
-	opaEvaluator, err := NewOPAEvaluator(queryString, opaModule)
-	assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
-
 	t.Run("if header key exists", func(t *testing.T) {
 		headers := http.Header{}
 		headers.Add(headerKeyMocked, headerValueMocked)
@@ -250,9 +246,17 @@ func TestGetHeaderFunction(t *testing.T) {
 			"headers": headers,
 		}
 
-		results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
+		opaEvaluator, err := NewOPAEvaluator(queryString, opaModule, input)
+		assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
+
+		results, err := opaEvaluator.PermissionQuery.Eval(context.TODO())
 		assert.NilError(t, err, "Unexpected error during rego validation")
 		assert.Assert(t, results.Allowed(), "The input is not allowed by rego")
+
+		partialResults, err := opaEvaluator.PermissionQuery.Partial(context.TODO())
+		assert.NilError(t, err, "Unexpected error during rego validation")
+
+		assert.Equal(t, 1, len(partialResults.Queries), "Rego policy allows illegal input")
 	})
 
 	t.Run("if header key not exists", func(t *testing.T) {
@@ -260,9 +264,17 @@ func TestGetHeaderFunction(t *testing.T) {
 			"headers": http.Header{},
 		}
 
-		results, err := opaEvaluator.PermissionQuery.Eval(context.TODO(), rego.EvalInput(input))
+		opaEvaluator, err := NewOPAEvaluator(queryString, opaModule, input)
+		assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
+
+		results, err := opaEvaluator.PermissionQuery.Eval(context.TODO())
 		assert.NilError(t, err, "Unexpected error during rego validation")
 		assert.Assert(t, !results.Allowed(), "Rego policy allows illegal input")
+
+		partialResults, err := opaEvaluator.PermissionQuery.Partial(context.TODO())
+		assert.NilError(t, err, "Unexpected error during rego validation")
+
+		assert.Equal(t, 0, len(partialResults.Queries), "Rego policy allows illegal input")
 	})
 }
 

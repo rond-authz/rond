@@ -14,7 +14,6 @@ import (
 	"rbac-service/internal/types"
 
 	"github.com/gorilla/mux"
-	"github.com/open-policy-agent/opa/rego"
 	"gotest.tools/v3/assert"
 )
 
@@ -133,23 +132,9 @@ func createContext(
 	return partialContext
 }
 
-func buildMockEvaluator(allowed bool) mocks.MockEvaluator {
-	return mocks.MockEvaluator{
-		ResultSet: rego.ResultSet{
-			rego.Result{
-				Expressions: []*rego.ExpressionValue{
-					{Value: allowed},
-				},
-			},
-		},
-	}
-}
-
 func buildMockMongoClient(roles []types.Role, bindings []types.Binding) mocks.MongoClientMock {
 	return mocks.MongoClientMock{}
 }
-
-var mockAllowedOPAEvaluator = buildMockEvaluator(true)
 
 var mockGetUserPermissions = buildMockMongoClient(nil, nil)
 
@@ -288,7 +273,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		w := httptest.NewRecorder()
 		matchedRouted.Handler.ServeHTTP(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
+		assert.Equal(t, w.Result().StatusCode, http.StatusForbidden)
 	})
 
 	t.Run("invokes the API not explicitly set in the oas file", func(t *testing.T) {

@@ -1,31 +1,123 @@
 {
     "paths": {
         "/foo/*": {
-            "get": {"x-permission" : {"allow": "foo"}},
-            "post": {"x-permission" : {"allow": "foo"}},
-            "patch": {"x-permission" : {"allow": "foo"}},
-            "put": {"x-permission" : {"allow": "foo"}},
-            "delete": {"x-permission" : {"allow": "foo"}}
+            "get": {
+                "x-permission": {
+                    "allow": "foo",
+                    "resourceFilter": {
+                        "resourceType": "custom",
+                        "rowFilter": {
+                            "headerKey": "customHeaderKey"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "x-permission": {
+                    "allow": "foo",
+                    "resourceFilter": {
+                        "resourceType": "custom",
+                        "rowFilter": {
+                            "headerKey": "customHeaderKey"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "x-permission": {
+                    "allow": "foo",
+                    "resourceFilter": {
+                        "resourceType": "custom",
+                        "rowFilter": {
+                            "headerKey": "customHeaderKey"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "x-permission": {
+                    "allow": "foo"
+                }
+            },
+            "delete": {
+                "x-permission": {
+                    "allow": "foo"
+                }
+            }
         },
         "/foo/bar/:params": {
-            "get": {"x-permission" : {"allow": "foo_bar_params"}}
+            "get": {
+                "x-permission": {
+                    "allow": "foo_bar_params",
+                    "resourceFilter": {
+                        "resourceType": "custom",
+                        "rowFilter": {
+                            "headerKey": "customHeaderKey"
+                        }
+                    }
+                }
+            }
         },
         "/no/method": {},
         "/use/method/that/not/existing/*": {
-            "delete": {"x-permission" : {"allow": "foo_bar_params"}}
+            "delete": {
+                "x-permission": {
+                    "allow": "foo_bar_params"
+                }
+            }
         },
         "/foo/bar/*": {
-            "get": {"x-permission" : {"allow": "foo_bar"}},
-            "post": {"x-permission" : {"allow": "foo_bar"}},
-            "patch": {"x-permission" : {"allow": "foo_bar"}},
-            "put": {"x-permission" : {"allow": "foo_bar"}},
-            "delete": {"x-permission" : {"allow": "foo_bar"}}
+            "get": {
+                "x-permission": {
+                    "allow": "foo_bar",
+                    "resourceFilter": {
+                        "resourceType": "custom",
+                        "rowFilter": {
+                            "headerKey": "customHeaderKey"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "x-permission": {
+                    "allow": "foo_bar"
+                }
+            },
+            "patch": {
+                "x-permission": {
+                    "allow": "foo_bar"
+                }
+            },
+            "put": {
+                "x-permission": {
+                    "allow": "foo_bar"
+                }
+            },
+            "delete": {
+                "x-permission": {
+                    "allow": "foo_bar"
+                }
+            }
         },
         "/foo/bar/nested": {
-            "get": {"x-permission" : {"allow": "foo_bar_nested"}}
+            "get": {
+                "x-permission": {
+                    "allow": "foo_bar_nested",
+                    "resourceFilter": {
+                        "resourceType": "custom",
+                        "rowFilter": {
+                            "headerKey": "customHeaderKey"
+                        }
+                    }
+                }
+            }
         },
         "/foo/bar/nested/case/*": {
-            "get": {"x-permission" : {"allow": "foo_bar_nested_case"}}
+            "get": {
+                "x-permission": {
+                    "allow": "foo_bar_nested_case"
+                }
+            }
         }
     }
 }
