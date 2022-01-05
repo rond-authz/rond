@@ -9,9 +9,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+const minimumResultLength = 3
+
 type OPAClient struct{}
 
-// TODO: QUERIES MUST BE TRANSOFMRED TO SOMETHING MORE GENERIC
 func (c *OPAClient) ProcessQuery(pq *rego.PartialQueries) (bson.M, error) {
 	var queries []Queries
 	for i := range pq.Queries {
@@ -42,7 +43,6 @@ func (c *OPAClient) ProcessQuery(pq *rego.PartialQueries) (bson.M, error) {
 			if processedTerm == nil {
 				return nil, nil
 			}
-
 			if isEqualityOperator(expr.Operator().String()) {
 				HandleEquals(pipeline, processedTerm[1], value)
 			} else if isRangeOperator(expr.Operator().String()) {
@@ -83,8 +83,10 @@ func processTerm(query string) []string {
 	for _, term := range splitQ {
 		result = append(result, removeOpenBrace(term))
 	}
-
 	if result == nil {
+		return nil
+	}
+	if queryIsEmpty := len(result) < minimumResultLength; queryIsEmpty {
 		return nil
 	}
 
