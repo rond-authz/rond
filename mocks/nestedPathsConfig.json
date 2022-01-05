@@ -123,6 +123,10 @@
             "all": {"x-permission" : {"allow": "permission_for_all"}},
             "get": {"x-permission" : {"allow": "permission_for_get"}},
             "post": {"x-permission" : {"allow": "permission_for_post"}}
+        },
+        "/projects/":{
+            "all": {"x-permission" : {"allow": "project_all"}},
+            "get": {"x-permission" : {"allow": "project_get"}}
         }
     }
 }

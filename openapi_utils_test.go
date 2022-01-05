@@ -317,6 +317,14 @@ func TestFindPermission(t *testing.T) {
 	found, err = oas.FindPermission(OASRouter, "/test/all/verb", "DELETE")
 	assert.Equal(t, XPermission{AllowPermission: "permission_for_all"}, found)
 	assert.Equal(t, err, nil)
+
+	found, err = oas.FindPermission(OASRouter, "/projects/", "POST")
+	assert.Equal(t, XPermission{AllowPermission: "project_all"}, found)
+	assert.Equal(t, err, nil)
+
+	found, err = oas.FindPermission(OASRouter, "/projects/", "GET")
+	assert.Equal(t, XPermission{AllowPermission: "project_get"}, found)
+	assert.Equal(t, err, nil)
 }
 
 func TestGetXPermission(t *testing.T) {
