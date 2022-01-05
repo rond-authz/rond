@@ -118,6 +118,11 @@
                     "allow": "foo_bar_nested_case"
                 }
             }
+        },
+        "/test/all/*":{
+            "all": {"x-permission" : {"allow": "permission_for_all"}},
+            "get": {"x-permission" : {"allow": "permission_for_get"}},
+            "post": {"x-permission" : {"allow": "permission_for_post"}}
         }
     }
 }

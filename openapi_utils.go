@@ -14,6 +14,8 @@ import (
 	"github.com/uptrace/bunrouter"
 )
 
+const ALL_METHODS = "ALL"
+
 type XPermissionKey struct{}
 
 type XPermission struct {
@@ -50,17 +52,62 @@ func cleanWildcard(path string) string {
 	return path
 }
 
-func (oas *OpenAPISpec) PrepareOASRouter(openAPISpec *OpenAPISpec) *bunrouter.CompatRouter {
+type RoutesMap map[string]bool
+
+func (oas *OpenAPISpec) createRoutesMap() RoutesMap {
+	routesMap := make(RoutesMap)
+	for OASPath, OASContent := range oas.Paths {
+		for method, _ := range OASContent {
+			route := OASPath + "/" + strings.ToUpper(method)
+			routesMap[route] = true
+		}
+	}
+	return routesMap
+}
+
+func (rMap RoutesMap) contains(path string, method string) bool {
+	route := path + "/" + method
+	_, hasRoute := rMap[route]
+	return hasRoute
+}
+
+func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 	OASRouter := bunrouter.New().Compat()
-	for OASPath, OASContent := range openAPISpec.Paths {
-		OASPath = cleanWildcard(OASPath)
+	routeMap := oas.createRoutesMap()
+
+	for OASPath, OASContent := range oas.Paths {
+		OASPathCleaned := cleanWildcard(OASPath)
 		for method, methodContent := range OASContent {
-			scopedMethod := method
+			scopedMethod := strings.ToUpper(method)
 			scopedMethodContent := methodContent
-			OASRouter.Handle(strings.ToUpper(scopedMethod), OASPath, func(w http.ResponseWriter, r *http.Request) {
+
+			handler := func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("allow", scopedMethodContent.Permission.AllowPermission)
 				w.Header().Set("resourceFilter.resourceType", scopedMethodContent.Permission.ResourceFilter.ResourceType)
 				w.Header().Set("resourceFilter.rowFilter.headerKey", scopedMethodContent.Permission.ResourceFilter.RowFilter.HeaderKey)
+			}
+
+			if scopedMethod != ALL_METHODS {
+				OASRouter.Handle(scopedMethod, OASPathCleaned, handler)
+				continue
+			}
+
+			OASRouter.WithGroup(OASPathCleaned, func(group *bunrouter.CompatGroup) {
+				if !routeMap.contains(OASPath, http.MethodGet) {
+					group.GET("", handler)
+				}
+				if !routeMap.contains(OASPath, http.MethodPost) {
+					group.POST("", handler)
+				}
+				if !routeMap.contains(OASPath, http.MethodPut) {
+					group.PUT("", handler)
+				}
+				if !routeMap.contains(OASPath, http.MethodPatch) {
+					group.PATCH("", handler)
+				}
+				if !routeMap.contains(OASPath, http.MethodDelete) {
+					group.DELETE("", handler)
+				}
 			})
 		}
 	}
@@ -68,6 +115,7 @@ func (oas *OpenAPISpec) PrepareOASRouter(openAPISpec *OpenAPISpec) *bunrouter.Co
 	return OASRouter
 }
 
+// FIXME: This is not a logic method of OAS, but could be a method of OASRouter
 func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path string, method string) (XPermission, error) {
 	recorder := httptest.NewRecorder()
 	responseReader := strings.NewReader("request-permissions")

@@ -39,6 +39,8 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec) {
 		}
 		router.HandleFunc(convertPathVariables(key), rbacHandler)
 	}
+	// FIXME: All the routes don't inserted above are anyway handled by rbacHandler.
+	//        Maybe the code above can be cleaned.
 	router.PathPrefix("/").HandlerFunc(rbacHandler)
 }
 
