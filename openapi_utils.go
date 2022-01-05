@@ -92,23 +92,21 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 				continue
 			}
 
-			OASRouter.WithGroup(OASPathCleaned, func(group *bunrouter.CompatGroup) {
-				if !routeMap.contains(OASPath, http.MethodGet) {
-					group.GET("", handler)
-				}
-				if !routeMap.contains(OASPath, http.MethodPost) {
-					group.POST("", handler)
-				}
-				if !routeMap.contains(OASPath, http.MethodPut) {
-					group.PUT("", handler)
-				}
-				if !routeMap.contains(OASPath, http.MethodPatch) {
-					group.PATCH("", handler)
-				}
-				if !routeMap.contains(OASPath, http.MethodDelete) {
-					group.DELETE("", handler)
-				}
-			})
+			if !routeMap.contains(OASPath, http.MethodGet) {
+				OASRouter.GET(OASPathCleaned, handler)
+			}
+			if !routeMap.contains(OASPath, http.MethodPost) {
+				OASRouter.POST(OASPathCleaned, handler)
+			}
+			if !routeMap.contains(OASPath, http.MethodPut) {
+				OASRouter.PUT(OASPathCleaned, handler)
+			}
+			if !routeMap.contains(OASPath, http.MethodPatch) {
+				OASRouter.PATCH(OASPathCleaned, handler)
+			}
+			if !routeMap.contains(OASPath, http.MethodDelete) {
+				OASRouter.DELETE(OASPathCleaned, handler)
+			}
 		}
 	}
 
