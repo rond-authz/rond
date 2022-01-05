@@ -49,7 +49,7 @@ var getHeaderFunction = rego.Function2(
 )
 
 func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, envs *EnvironmentVariables) mux.MiddlewareFunc {
-	OASrouter := openAPISpec.PrepareOASRouter(openAPISpec)
+	OASrouter := openAPISpec.PrepareOASRouter()
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
