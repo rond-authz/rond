@@ -5,8 +5,8 @@
                 "x-permission": {
                     "allow": "foo",
                     "resourceFilter": {
-                        "resourceType": "custom",
                         "rowFilter": {
+                            "enabled": true,
                             "headerKey": "customHeaderKey"
                         }
                     }
@@ -16,8 +16,8 @@
                 "x-permission": {
                     "allow": "foo",
                     "resourceFilter": {
-                        "resourceType": "custom",
                         "rowFilter": {
+                            "enabled": true,
                             "headerKey": "customHeaderKey"
                         }
                     }
@@ -27,8 +27,8 @@
                 "x-permission": {
                     "allow": "foo",
                     "resourceFilter": {
-                        "resourceType": "custom",
                         "rowFilter": {
+                            "enabled": true,
                             "headerKey": "customHeaderKey"
                         }
                     }
@@ -50,8 +50,8 @@
                 "x-permission": {
                     "allow": "foo_bar_params",
                     "resourceFilter": {
-                        "resourceType": "custom",
                         "rowFilter": {
+                            "enabled": true,
                             "headerKey": "customHeaderKey"
                         }
                     }
@@ -71,8 +71,8 @@
                 "x-permission": {
                     "allow": "foo_bar",
                     "resourceFilter": {
-                        "resourceType": "custom",
                         "rowFilter": {
+                            "enabled": true,
                             "headerKey": "customHeaderKey"
                         }
                     }
@@ -104,8 +104,8 @@
                 "x-permission": {
                     "allow": "foo_bar_nested",
                     "resourceFilter": {
-                        "resourceType": "custom",
                         "rowFilter": {
+                            "enabled": true,
                             "headerKey": "customHeaderKey"
                         }
                     }
@@ -119,14 +119,34 @@
                 }
             }
         },
-        "/test/all/*":{
-            "all": {"x-permission" : {"allow": "permission_for_all"}},
-            "get": {"x-permission" : {"allow": "permission_for_get"}},
-            "post": {"x-permission" : {"allow": "permission_for_post"}}
+        "/test/all/*": {
+            "all": {
+                "x-permission": {
+                    "allow": "permission_for_all"
+                }
+            },
+            "get": {
+                "x-permission": {
+                    "allow": "permission_for_get"
+                }
+            },
+            "post": {
+                "x-permission": {
+                    "allow": "permission_for_post"
+                }
+            }
         },
-        "/projects/":{
-            "all": {"x-permission" : {"allow": "project_all"}},
-            "get": {"x-permission" : {"allow": "project_get"}}
+        "/projects/": {
+            "all": {
+                "x-permission": {
+                    "allow": "project_all"
+                }
+            },
+            "get": {
+                "x-permission": {
+                    "allow": "project_get"
+                }
+            }
         }
     }
 }

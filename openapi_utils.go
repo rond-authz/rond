@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,11 +25,11 @@ type XPermission struct {
 }
 
 type ResourceFilter struct {
-	ResourceType string                 `json:"resourceType"`
-	RowFilter    RowFilterConfiguration `json:"rowFilter"`
+	RowFilter RowFilterConfiguration `json:"rowFilter"`
 }
 
 type RowFilterConfiguration struct {
+	Enabled   bool   `json:enabled`
 	HeaderKey string `json:"headerKey"`
 }
 
@@ -83,7 +84,7 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 
 			handler := func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("allow", scopedMethodContent.Permission.AllowPermission)
-				w.Header().Set("resourceFilter.resourceType", scopedMethodContent.Permission.ResourceFilter.ResourceType)
+				w.Header().Set("resourceFilter.rowFilter.enabled", strconv.FormatBool(scopedMethodContent.Permission.ResourceFilter.RowFilter.Enabled))
 				w.Header().Set("resourceFilter.rowFilter.headerKey", scopedMethodContent.Permission.ResourceFilter.RowFilter.HeaderKey)
 			}
 
@@ -125,11 +126,14 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 	}
 
 	recorderResult := recorder.Result()
+	rowFilterEnabled, err := strconv.ParseBool(recorderResult.Header.Get("resourceFilter.rowFilter.enabled"))
+	if err != nil {
+		return XPermission{}, fmt.Errorf("Error while parsing rowFilter.enabled: %s", err)
+	}
 	return XPermission{
 		AllowPermission: recorderResult.Header.Get("allow"),
 		ResourceFilter: ResourceFilter{
-			ResourceType: recorderResult.Header.Get("resourceFilter.resourceType"),
-			RowFilter:    RowFilterConfiguration{recorderResult.Header.Get("resourceFilter.rowFilter.headerKey")},
+			RowFilter: RowFilterConfiguration{Enabled: rowFilterEnabled, HeaderKey: recorderResult.Header.Get("resourceFilter.rowFilter.headerKey")},
 		},
 	}, nil
 }

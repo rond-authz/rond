@@ -133,7 +133,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func Evaluate(permission *XPermission, evaluator OPAEvaluator, req *http.Request) (bool, primitive.M, error) {
-	if permission.ResourceFilter.ResourceType != "" {
+	if permission.ResourceFilter.RowFilter.Enabled {
 		partialResults, err := evaluator.PermissionQuery.Partial(context.TODO())
 		if err != nil {
 			return false, nil, fmt.Errorf("Policy Evaluation has failed when partially evaluating the query: %s", err.Error())
