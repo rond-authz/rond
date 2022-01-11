@@ -175,9 +175,9 @@ allow {
 			&XPermission{
 				AllowPermission: "allow",
 				ResourceFilter: ResourceFilter{
-					ResourceType: "test",
 					RowFilter: RowFilterConfiguration{
 						HeaderKey: "rowfilterquery",
+						Enabled:   true,
 					},
 				},
 			},
@@ -248,9 +248,9 @@ allow {
 			&XPermission{
 				AllowPermission: "allow",
 				ResourceFilter: ResourceFilter{
-					ResourceType: "test",
 					RowFilter: RowFilterConfiguration{
 						HeaderKey: "rowfilterquery",
+						Enabled:   true,
 					},
 				},
 			},
@@ -325,9 +325,9 @@ allow {
 			&XPermission{
 				AllowPermission: "allow",
 				ResourceFilter: ResourceFilter{
-					ResourceType: "test",
 					RowFilter: RowFilterConfiguration{
 						HeaderKey: "rowfilterquery",
+						Enabled:   true,
 					},
 				},
 			},

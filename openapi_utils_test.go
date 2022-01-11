@@ -116,9 +116,9 @@ func TestLoadOASFile(t *testing.T) {
 					Permission: XPermission{
 						AllowPermission: "foobar",
 						ResourceFilter: ResourceFilter{
-							ResourceType: "custom",
 							RowFilter: RowFilterConfiguration{
 								HeaderKey: "customHeaderKey",
+								Enabled:   true,
 							},
 						},
 					},
@@ -161,9 +161,9 @@ func TestLoadOAS(t *testing.T) {
 					Permission: XPermission{
 						AllowPermission: "foobar",
 						ResourceFilter: ResourceFilter{
-							ResourceType: "custom",
 							RowFilter: RowFilterConfiguration{
 								HeaderKey: "customHeaderKey",
+								Enabled:   true,
 							},
 						},
 					},
@@ -254,8 +254,10 @@ func TestFindPermission(t *testing.T) {
 	assert.Equal(t, XPermission{
 		AllowPermission: "foo_bar_params",
 		ResourceFilter: ResourceFilter{
-			ResourceType: "custom",
-			RowFilter:    RowFilterConfiguration{HeaderKey: "customHeaderKey"}}},
+			RowFilter: RowFilterConfiguration{
+				HeaderKey: "customHeaderKey",
+				Enabled:   true,
+			}}},
 		found)
 	assert.Equal(t, err, nil)
 
@@ -263,8 +265,10 @@ func TestFindPermission(t *testing.T) {
 	assert.Equal(t, XPermission{
 		AllowPermission: "foo_bar",
 		ResourceFilter: ResourceFilter{
-			ResourceType: "custom",
-			RowFilter:    RowFilterConfiguration{HeaderKey: "customHeaderKey"}}},
+			RowFilter: RowFilterConfiguration{
+				HeaderKey: "customHeaderKey",
+				Enabled:   true,
+			}}},
 		found)
 	assert.Equal(t, err, nil)
 
@@ -276,8 +280,10 @@ func TestFindPermission(t *testing.T) {
 	assert.Equal(t, XPermission{
 		AllowPermission: "foo_bar_nested",
 		ResourceFilter: ResourceFilter{
-			ResourceType: "custom",
-			RowFilter:    RowFilterConfiguration{HeaderKey: "customHeaderKey"}}},
+			RowFilter: RowFilterConfiguration{
+				HeaderKey: "customHeaderKey",
+				Enabled:   true,
+			}}},
 		found)
 	assert.Equal(t, err, nil)
 
@@ -285,8 +291,10 @@ func TestFindPermission(t *testing.T) {
 	assert.Equal(t, XPermission{
 		AllowPermission: "foo",
 		ResourceFilter: ResourceFilter{
-			ResourceType: "custom",
-			RowFilter:    RowFilterConfiguration{HeaderKey: "customHeaderKey"}}},
+			RowFilter: RowFilterConfiguration{
+				HeaderKey: "customHeaderKey",
+				Enabled:   true,
+			}}},
 		found)
 	assert.Equal(t, err, nil)
 

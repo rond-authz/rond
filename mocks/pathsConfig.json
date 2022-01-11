@@ -5,8 +5,8 @@
                 "x-permission": {
                     "allow": "foobar",
                     "resourceFilter": {
-                        "resourceType": "custom",
                         "rowFilter": {
+                            "enabled": true,
                             "headerKey": "customHeaderKey"
                         }
                     }
