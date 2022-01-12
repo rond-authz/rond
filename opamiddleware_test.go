@@ -24,7 +24,6 @@ todo { true }`,
 		var openAPISpec *OpenAPISpec
 		openAPISpecContent, _ := ioutil.ReadFile("./mocks/simplifiedMock.json")
 		_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
-
 		middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
 
 		t.Run(`missing oas paths`, func(t *testing.T) {
@@ -71,27 +70,7 @@ todo { true }`,
 foobar { true }`,
 		}
 
-		t.Run(`ko - path is known on oas`, func(t *testing.T) {
-			var openAPISpec *OpenAPISpec
-			openAPISpecContent, err := ioutil.ReadFile("./mocks/documentationPathMock.json")
-			assert.NilError(t, err)
-			_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
-			var envs = EnvironmentVariables{
-				TargetServiceOASPath: "/documentation/json",
-			}
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
-			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				t.Fail()
-			}))
-
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "http://example.com/documentation/json", nil)
-			builtHandler.ServeHTTP(w, r)
-
-			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
-		})
-
-		t.Run(`ok - path is known on oas`, func(t *testing.T) {
+		t.Run(`ok - path is known on oas with no permission declared`, func(t *testing.T) {
 			var openAPISpec *OpenAPISpec
 			openAPISpecContent, err := ioutil.ReadFile("./mocks/documentationPathMock.json")
 			assert.NilError(t, err)
@@ -121,9 +100,6 @@ foobar { true }`,
 			}
 			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				permission, err := GetXPermission(r.Context())
-				require.Equal(t, permission, &XPermission{AllowPermission: "mia_force_allow"})
-				require.True(t, err == nil, "Unexpected error")
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -134,7 +110,7 @@ foobar { true }`,
 			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
 		})
 
-		t.Run(`ko - path is NOT known on oas`, func(t *testing.T) {
+		t.Run(`ok - path is NOT known on oas but is proxied anyway`, func(t *testing.T) {
 			var openAPISpec *OpenAPISpec
 			openAPISpecContent, err := ioutil.ReadFile("./mocks/simplifiedMock.json")
 			assert.NilError(t, err)
@@ -144,14 +120,14 @@ foobar { true }`,
 			}
 			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				t.Fail()
+				w.WriteHeader(http.StatusOK)
 			}))
 
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "http://example.com/documentation/json", nil)
+			r := httptest.NewRequest(http.MethodGet, "http://example.com/documentation/custom/json", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
 		})
 	})
 

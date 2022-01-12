@@ -17,6 +17,7 @@
 package main
 
 import (
+	"net/http"
 	"rbac-service/internal/utils"
 	"regexp"
 	"strings"
@@ -27,7 +28,15 @@ import (
 var ignoredRoutes = []string{"/-/healthz", "/-/ready", "/-/check-up"}
 var rx = regexp.MustCompile(`\/:(\w+)`)
 
-func setupRoutes(router *mux.Router, oas *OpenAPISpec) {
+func setupRoutes(router *mux.Router, oas *OpenAPISpec, env EnvironmentVariables) {
+	var documentationPermission string
+	documentationPathInOAS := oas.Paths[env.TargetServiceOASPath]
+	if documentationPathInOAS != nil {
+		if getVerb, ok := documentationPathInOAS[http.MethodGet]; ok {
+			documentationPermission = getVerb.Permission.AllowPermission
+		}
+	}
+
 	for key := range oas.Paths {
 		if utils.Contains(ignoredRoutes, key) {
 			continue
@@ -37,7 +46,14 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec) {
 			router.PathPrefix(convertPathVariables(pathWithoutAsterisk)).HandlerFunc(rbacHandler)
 			continue
 		}
+		if key == env.TargetServiceOASPath && documentationPermission == "" {
+			router.HandleFunc(convertPathVariables(key), alwaysProxyHandler)
+			continue
+		}
 		router.HandleFunc(convertPathVariables(key), rbacHandler)
+	}
+	if documentationPathInOAS == nil {
+		router.HandleFunc(convertPathVariables(env.TargetServiceOASPath), alwaysProxyHandler)
 	}
 	// FIXME: All the routes don't inserted above are anyway handled by rbacHandler.
 	//        Maybe the code above can be cleaned.
