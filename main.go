@@ -113,7 +113,7 @@ func setupRouter(log *logrus.Logger, env EnvironmentVariables, opaModuleConfig *
 		router.Use(MongoClientInjectorMiddleware(mongoClient))
 	}
 
-	setupRoutes(router, oas)
+	setupRoutes(router, oas, env)
 
 	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		path, _ := route.GetPathTemplate()

@@ -20,6 +20,32 @@ import (
 const URL_SCHEME = "http"
 const BASE_ROW_FILTER_HEADER_KEY = "acl_rows"
 
+func alwaysProxyHandler(w http.ResponseWriter, req *http.Request) {
+	env, err := GetEnv(req.Context())
+	if err != nil {
+		glogger.Get(req.Context()).WithError(err).Error("no env found in context")
+		failResponse(w, "no environment found in context")
+		return
+	}
+	ReverseProxy(env, w, req)
+}
+
+func ReverseProxy(env EnvironmentVariables, w http.ResponseWriter, req *http.Request) {
+	targetHostFromEnv := env.TargetServiceHost
+
+	proxy := httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL.Host = targetHostFromEnv
+			req.URL.Scheme = URL_SCHEME
+			if _, ok := req.Header["User-Agent"]; !ok {
+				// explicitly disable User-Agent so it's not set to default value
+				req.Header.Set("User-Agent", "")
+			}
+		},
+	}
+	proxy.ServeHTTP(w, req)
+}
+
 func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	env, err := GetEnv(req.Context())
 	if err != nil {
@@ -110,26 +136,16 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	targetHostFromEnv := env.TargetServiceHost
+
 	queryHeaderKey := BASE_ROW_FILTER_HEADER_KEY
 	if permission.ResourceFilter.RowFilter.HeaderKey != "" {
 		queryHeaderKey = permission.ResourceFilter.RowFilter.HeaderKey
 	}
-
-	proxy := httputil.ReverseProxy{
-		Director: func(req *http.Request) {
-			req.URL.Host = targetHostFromEnv
-			req.URL.Scheme = URL_SCHEME
-			if _, ok := req.Header["User-Agent"]; !ok {
-				// explicitly disable User-Agent so it's not set to default value
-				req.Header.Set("User-Agent", "")
-			}
-			if query != nil {
-				req.Header.Set(queryHeaderKey, string(queryToProxy))
-			}
-		},
+	if query != nil {
+		req.Header.Set(queryHeaderKey, string(queryToProxy))
 	}
-	proxy.ServeHTTP(w, req)
+
+	ReverseProxy(env, w, req)
 }
 
 func Evaluate(permission *XPermission, evaluator OPAEvaluator, req *http.Request) (bool, primitive.M, error) {

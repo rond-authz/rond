@@ -18,6 +18,9 @@ import (
 )
 
 func TestSetupRoutes(t *testing.T) {
+	envs := EnvironmentVariables{
+		TargetServiceOASPath: "/documentation/json",
+	}
 	t.Run("expect to register route correctly", func(t *testing.T) {
 		router := mux.NewRouter()
 		oas := &OpenAPISpec{
@@ -31,10 +34,10 @@ func TestSetupRoutes(t *testing.T) {
 				"/-/check-up": PathVerbs{},
 			},
 		}
-		expectedPaths := []string{"/", "/foo", "/bar", "/foo/bar"}
+		expectedPaths := []string{"/", "/foo", "/bar", "/foo/bar", "/documentation/json"}
 		sort.Strings(expectedPaths)
 
-		setupRoutes(router, oas)
+		setupRoutes(router, oas, envs)
 
 		foundPaths := make([]string, 0)
 		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
@@ -66,10 +69,10 @@ func TestSetupRoutes(t *testing.T) {
 				"/foo/bar/:barId": PathVerbs{},
 			},
 		}
-		expectedPaths := []string{"/", "/foo/", "/foo/bar/", "/foo/bar/nested", "/foo/bar/{barId}"}
+		expectedPaths := []string{"/", "/foo/", "/foo/bar/", "/foo/bar/nested", "/foo/bar/{barId}", "/documentation/json"}
 		sort.Strings(expectedPaths)
 
-		setupRoutes(router, oas)
+		setupRoutes(router, oas, envs)
 
 		foundPaths := make([]string, 0)
 		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
@@ -159,7 +162,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		defer server.Close()
 
 		router := mux.NewRouter()
-		setupRoutes(router, oas)
+		setupRoutes(router, oas, envs)
 
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
@@ -195,7 +198,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		defer server.Close()
 
 		router := mux.NewRouter()
-		setupRoutes(router, oas)
+		setupRoutes(router, oas, envs)
 
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
@@ -222,7 +225,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 	t.Run("blocks request on not allowed policy evaluation", func(t *testing.T) {
 		router := mux.NewRouter()
-		setupRoutes(router, oas)
+		setupRoutes(router, oas, envs)
 
 		ctx := createContext(t,
 			context.Background(),
@@ -251,7 +254,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 	t.Run("blocks request on policy evaluation error", func(t *testing.T) {
 		router := mux.NewRouter()
-		setupRoutes(router, oas)
+		setupRoutes(router, oas, envs)
 
 		ctx := createContext(t,
 			context.Background(),
@@ -287,7 +290,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		defer server.Close()
 
 		router := mux.NewRouter()
-		setupRoutes(router, oas)
+		setupRoutes(router, oas, envs)
 
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
@@ -323,7 +326,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		defer server.Close()
 
 		router := mux.NewRouter()
-		setupRoutes(router, oas)
+		setupRoutes(router, oas, envs)
 
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,

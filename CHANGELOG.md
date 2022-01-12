@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - [JAF-156](https://makeitapp.atlassian.net/browse/JAF-156): support the method all in the manual routes oas file
 - [JAF-135](https://makeitapp.atlassian.net/browse/JAF-135): rbac service now support row filtering query for mongo forwarded in a custom header to the requested service
-- [JAF-133](https://makeitapp.atlassian.net/browse/JAF-133): handle path prefix for manual route
+- [JAF-145](https://makeitapp.atlassian.net/browse/JAF-145): handle path prefix for manual route
+- [JAF-133](https://makeitapp.atlassian.net/browse/JAF-133): documentation route handled correctly
 
 ### BREAKING
 

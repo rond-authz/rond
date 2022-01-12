@@ -58,7 +58,7 @@ type RoutesMap map[string]bool
 func (oas *OpenAPISpec) createRoutesMap() RoutesMap {
 	routesMap := make(RoutesMap)
 	for OASPath, OASContent := range oas.Paths {
-		for method, _ := range OASContent {
+		for method := range OASContent {
 			route := OASPath + "/" + strings.ToUpper(method)
 			routesMap[route] = true
 		}

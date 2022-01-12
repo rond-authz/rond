@@ -60,19 +60,9 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 
 			permission, err := openAPISpec.FindPermission(OASrouter, r.URL.Path, r.Method)
 
-			if err != nil && r.Method == http.MethodGet && r.URL.Path == envs.TargetServiceOASPath {
-				// TODO: Gestire meglio lo skip della valutazione delle policy nel caso in cui si cerchi di invocare la rotta
-				// della documentazione e non esista una configurazione specifica di permessi.
-				ctx := WithXPermission(
-					WithOPAModuleConfig(
-						r.Context(),
-						&OPAModuleConfig{
-							Content: `package policies mia_force_allow { true }`,
-						},
-					),
-					&XPermission{AllowPermission: "mia_force_allow"},
-				)
-				next.ServeHTTP(w, r.WithContext(ctx))
+			if r.Method == http.MethodGet && r.URL.Path == envs.TargetServiceOASPath && permission.AllowPermission == "" {
+				glogger.Get(r.Context()).WithError(err).Info("Proxying call to OAS Path even with no permission")
+				next.ServeHTTP(w, r)
 				return
 			}
 
