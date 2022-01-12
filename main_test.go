@@ -24,7 +24,7 @@ import (
 )
 
 func TestProxyOASPath(t *testing.T) {
-	t.Run("without oas documentation api defined", func(t *testing.T) {
+	t.Run("200 - without oas documentation api defined", func(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
@@ -68,7 +68,7 @@ func TestProxyOASPath(t *testing.T) {
 
 	})
 
-	t.Run("with oas documentation api defined", func(t *testing.T) {
+	t.Run("200 - with oas documentation api defined", func(t *testing.T) {
 
 		shutdown := make(chan os.Signal, 1)
 
@@ -109,6 +109,44 @@ func TestProxyOASPath(t *testing.T) {
 		require.True(t, gock.IsDone(), "the proxy allows the request.")
 	})
 
+	t.Run("403 - if oas documentation api defined with permission and user has not", func(t *testing.T) {
+
+		shutdown := make(chan os.Signal, 1)
+
+		defer gock.Off()
+		gock.Observe(gock.DumpRequest)
+		gock.EnableNetworking()
+		gock.NetworkingFilter(func(r *http.Request) bool {
+			if r.URL.Path == "/documentation/json" && r.URL.Host == "localhost:3008" {
+				return false
+			}
+			return true
+		})
+		gock.New("http://localhost:3008").
+			Times(2).
+			Get("/documentation/json").
+			Reply(200).
+			File("./mocks/documentationPathMockWithPermissions.json")
+
+		unsetEnvs := setEnvs([]env{
+			{name: "HTTP_PORT", value: "3009"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:3008"},
+			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+		})
+		go func() {
+			entrypoint(shutdown)
+		}()
+		defer func() {
+			unsetEnvs()
+			shutdown <- syscall.SIGTERM
+		}()
+		time.Sleep(1 * time.Second)
+
+		resp, _ := http.DefaultClient.Get("http://localhost:3009/documentation/json")
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		require.False(t, gock.IsDone(), "the proxy allows the request.")
+	})
 }
 
 // FIXME: This function needs to be performed as last in order to make other tests working

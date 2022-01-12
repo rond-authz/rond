@@ -32,7 +32,7 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env EnvironmentVariables)
 	var documentationPermission string
 	documentationPathInOAS := oas.Paths[env.TargetServiceOASPath]
 	if documentationPathInOAS != nil {
-		if getVerb, ok := documentationPathInOAS[http.MethodGet]; ok {
+		if getVerb, ok := documentationPathInOAS[strings.ToLower(http.MethodGet)]; ok {
 			documentationPermission = getVerb.Permission.AllowPermission
 		}
 	}
