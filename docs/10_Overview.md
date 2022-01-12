@@ -13,3 +13,7 @@ When the variables `MONGODB_URL`, `ROLES_COLLECTION_NAME` and `BINDINGS_COLLECTI
 :::caution
 If `MONGODB_URL` variable is set then the envs  `ROLES_COLLECTION_NAME` and `BINDINGS_COLLECTION_NAME` becomes required and the service will respond 500 to any request received.
 :::
+
+:::info
+Any API invocation to the path matching the one provided as `TARGET_SERVICE_OAS_PATH` with method `GET` will always be proxied to the target service unless the given OpenAPI Specification provides the path with a custom policy configuration, in this case the API will be proxied only if the policy evaluates successfully.
+:::
