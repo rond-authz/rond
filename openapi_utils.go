@@ -29,7 +29,7 @@ type ResourceFilter struct {
 }
 
 type RowFilterConfiguration struct {
-	Enabled   bool   `json:enabled`
+	Enabled   bool   `json:"enabled"`
 	HeaderKey string `json:"headerKey"`
 }
 
