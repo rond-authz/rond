@@ -11,19 +11,25 @@ type User struct {
 
 type MongoClientContextKey struct{}
 
+type Resource struct {
+	ResourceType string `bson:"resourceType" json:"resourceType"`
+	ResourceID   string `bson:"resourceId" json:"resourceId"`
+}
+
 type Binding struct {
-	BindingID         string   `bson:"bindingId"`
-	Groups            []string `bson:"groups"`
-	Subjects          []string `bson:"subjects"`
-	Permissions       []string `bson:"permissions"`
-	Roles             []string `bson:"roles"`
-	CRUDDocumentState string   `bson:"__STATE__"`
+	BindingID         string   `bson:"bindingId" json:"bindingId"`
+	Groups            []string `bson:"groups" json:"groups"`
+	Subjects          []string `bson:"subjects" json:"subjects"`
+	Permissions       []string `bson:"permissions" json:"permissions"`
+	Roles             []string `bson:"roles" json:"roles"`
+	Resource          Resource `bson:"resource" json:"resource"`
+	CRUDDocumentState string   `bson:"__STATE__" json:"-"`
 }
 
 type Role struct {
-	RoleID            string   `bson:"roleId"`
-	Permissions       []string `bson:"permissions"`
-	CRUDDocumentState string   `bson:"__STATE__"`
+	RoleID            string   `bson:"roleId" json:"roleId"`
+	Permissions       []string `bson:"permissions" json:"permissions"`
+	CRUDDocumentState string   `bson:"__STATE__" json:"-"`
 }
 
 // MongoClientContextKey is the context key that shall be used to save

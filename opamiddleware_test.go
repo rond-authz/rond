@@ -221,8 +221,9 @@ func TestGetHeaderFunction(t *testing.T) {
 		input := map[string]interface{}{
 			"headers": headers,
 		}
+		inputBytes, _ := json.Marshal(input)
 
-		opaEvaluator, err := NewOPAEvaluator(queryString, opaModule, input)
+		opaEvaluator, err := NewOPAEvaluator(queryString, opaModule, inputBytes)
 		assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
 
 		results, err := opaEvaluator.PermissionQuery.Eval(context.TODO())
@@ -239,8 +240,9 @@ func TestGetHeaderFunction(t *testing.T) {
 		input := map[string]interface{}{
 			"headers": http.Header{},
 		}
+		inputBytes, _ := json.Marshal(input)
 
-		opaEvaluator, err := NewOPAEvaluator(queryString, opaModule, input)
+		opaEvaluator, err := NewOPAEvaluator(queryString, opaModule, inputBytes)
 		assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
 
 		results, err := opaEvaluator.PermissionQuery.Eval(context.TODO())

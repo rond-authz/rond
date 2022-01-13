@@ -65,7 +65,7 @@ func (c *OPAClient) ProcessQuery(pq *rego.PartialQueries) (bson.M, error) {
 		queries = append(queries, k1)
 	}
 	if len(queries) == 0 {
-		return nil, fmt.Errorf("RBAC policy evaluation failed")
+		return nil, fmt.Errorf("RBAC policy evaluation and query generation failed")
 	}
 	var mongoQueries []bson.M
 	for _, q := range queries {
