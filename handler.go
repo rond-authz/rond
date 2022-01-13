@@ -114,6 +114,10 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	glogger.Get(req.Context()).WithFields(logrus.Fields{
+		"input": string(input),
+	}).Trace("input object passed to the evaluator")
+
 	evaluator, err := NewOPAEvaluator(permission.AllowPermission, opaModuleConfig, input)
 	if err != nil {
 		glogger.Get(req.Context()).WithError(err).Error("failed RBAC policy creation")
@@ -178,7 +182,7 @@ func Evaluate(permission *XPermission, evaluator OPAEvaluator, req *http.Request
 
 	if !results.Allowed() {
 		glogger.Get(req.Context()).Error("policy resulted in not allowed")
-		return false, nil, fmt.Errorf("RBAC policy evaluation failed")
+		return false, nil, fmt.Errorf("RBAC policy evaluation failed, user is not allowed")
 	}
 	return true, nil, nil
 }
@@ -195,7 +199,7 @@ func rolesIdsFromBindings(bindings []types.Binding) []string {
 	return rolesIds
 }
 
-func createRegoQueryInput(req *http.Request, env EnvironmentVariables, userBindings []types.Binding, userRoles []types.Role) (map[string]interface{}, error) {
+func createRegoQueryInput(req *http.Request, env EnvironmentVariables, userBindings []types.Binding, userRoles []types.Role) ([]byte, error) {
 	input := map[string]interface{}{
 		"request": map[string]interface{}{
 			"method":  req.Method,
@@ -230,8 +234,11 @@ func createRegoQueryInput(req *http.Request, env EnvironmentVariables, userBindi
 	if len(userInput) != 0 {
 		input["user"] = userInput
 	}
-
-	return input, nil
+	inputBytes, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed input JSON encode: %v", err)
+	}
+	return inputBytes, nil
 }
 
 func unmarshalHeader(headers http.Header, headerKey string, v interface{}) (bool, error) {

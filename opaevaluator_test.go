@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,8 +10,9 @@ import (
 
 func TestNewOPAEvaluator(t *testing.T) {
 	input := map[string]interface{}{}
+	inputBytes, _ := json.Marshal(input)
 	t.Run("policy sanitization", func(t *testing.T) {
-		evaluator, err := NewOPAEvaluator("very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, input)
+		evaluator, err := NewOPAEvaluator("very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, inputBytes)
 		require.Nil(t, err, "unexpected error")
 		require.Equal(t, "very.composed.policy", evaluator.RequiredAllowPermission)
 

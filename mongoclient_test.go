@@ -177,7 +177,21 @@ func TestMongoCollections(t *testing.T) {
 				Permissions:       []string{"permission11"},
 				CRUDDocumentState: "PUBLIC",
 			},
-
+			{
+				BindingID:         "bindingForRowFiltering",
+				Roles:             []string{"role3", "role4"},
+				Groups:            []string{"group1"},
+				Permissions:       []string{"console.project.view"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "bindingForRowFilteringFromSubject",
+				Subjects:          []string{"filter_test"},
+				Roles:             []string{"role3", "role4"},
+				Groups:            []string{"group1"},
+				Permissions:       []string{"console.project.view"},
+				CRUDDocumentState: "PUBLIC",
+			},
 			{
 				BindingID:         "binding5",
 				Subjects:          []string{"user1"},
@@ -186,6 +200,7 @@ func TestMongoCollections(t *testing.T) {
 				CRUDDocumentState: "PUBLIC",
 			},
 		}
+		fmt.Printf("\n\n%+v\n\n%+v\n\n", result, expected)
 		assert.Assert(t, reflect.DeepEqual(result, expected),
 			"Error while getting permissions")
 	})
@@ -225,7 +240,7 @@ func TestMongoCollections(t *testing.T) {
 			},
 			{
 				RoleID:            "role3",
-				Permissions:       []string{"permission3", "permission5"},
+				Permissions:       []string{"permission3", "permission5", "console.project.view"},
 				CRUDDocumentState: "PUBLIC",
 			},
 			{
@@ -273,7 +288,7 @@ func TestMongoCollections(t *testing.T) {
 			},
 			{
 				RoleID:            "role3",
-				Permissions:       []string{"permission3", "permission5"},
+				Permissions:       []string{"permission3", "permission5", "console.project.view"},
 				CRUDDocumentState: "PUBLIC",
 			},
 		}
@@ -292,7 +307,7 @@ func PopulateDbForTesting(t *testing.T, ctx context.Context, mongoClient *MongoC
 		},
 		types.Role{
 			RoleID:            "role3",
-			Permissions:       []string{"permission3", "permission5"},
+			Permissions:       []string{"permission3", "permission5", "console.project.view"},
 			CRUDDocumentState: "PUBLIC",
 		},
 		types.Role{
@@ -340,6 +355,23 @@ func PopulateDbForTesting(t *testing.T, ctx context.Context, mongoClient *MongoC
 			Roles:             []string{"role3", "role4"},
 			Groups:            []string{"group2"},
 			Permissions:       []string{"permission11"},
+			CRUDDocumentState: "PUBLIC",
+		},
+
+		types.Binding{
+			BindingID:         "bindingForRowFiltering",
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group1"},
+			Permissions:       []string{"console.project.view"},
+			CRUDDocumentState: "PUBLIC",
+		},
+
+		types.Binding{
+			BindingID:         "bindingForRowFilteringFromSubject",
+			Subjects:          []string{"filter_test"},
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group1"},
+			Permissions:       []string{"console.project.view"},
 			CRUDDocumentState: "PUBLIC",
 		},
 

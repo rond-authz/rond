@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -22,13 +21,9 @@ type OPAEvaluator struct {
 	RequiredAllowPermission string
 }
 
-func NewOPAEvaluator(policy string, opaModuleConfig *OPAModuleConfig, input map[string]interface{}) (*OPAEvaluator, error) {
-	inputBytes, err := json.Marshal(input)
-	if err != nil {
-		return nil, fmt.Errorf("failed input JSON encode: %v", err)
-	}
+func NewOPAEvaluator(policy string, opaModuleConfig *OPAModuleConfig, input []byte) (*OPAEvaluator, error) {
 
-	inputTerm, err := ast.ParseTerm(string(inputBytes))
+	inputTerm, err := ast.ParseTerm(string(input))
 	if err != nil {
 		return nil, fmt.Errorf("failed input parse: %v", err)
 	}
