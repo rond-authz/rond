@@ -77,14 +77,20 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 
 	var userBindings []types.Binding
 	var userRoles []types.Role
-	var user types.User
-	userBindings = make([]types.Binding, 0)
-	userRoles = make([]types.Role, 0)
 
-	user.UserGroups = strings.Split(req.Header.Get(env.UserGroupsHeader), ",")
-	user.UserID = req.Header.Get(env.UserIdHeader)
+	if mongoClient != nil {
+		var user types.User
+		userBindings = make([]types.Binding, 0)
+		userRoles = make([]types.Role, 0)
 
-	if mongoClient != nil && user.UserID != "" {
+		user.UserGroups = strings.Split(req.Header.Get(env.UserGroupsHeader), ",")
+		user.UserID = req.Header.Get(env.UserIdHeader)
+
+		if user.UserID == "" {
+			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": "User unknown"}).Error("User is unknown")
+			failResponseWithCode(w, http.StatusForbidden, "Error while retrieving user permissions: user is unknown")
+			return
+		}
 
 		userBindings, err = mongoClient.RetrieveUserBindings(req.Context(), &user)
 		if err != nil {
