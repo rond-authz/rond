@@ -451,14 +451,14 @@ func TestEntryPoint(t *testing.T) {
 		}()
 		time.Sleep(1 * time.Second)
 
-		t.Run("403 - without headers and collections", func(t *testing.T) {
+		t.Run("200 - even without headers", func(t *testing.T) {
 			gock.Flush()
 			gock.New("http://localhost:3002/users/").
 				Get("/users/").
 				Reply(200)
 			resp, err := http.DefaultClient.Get("http://localhost:3003/users/")
 			require.Equal(t, nil, err)
-			require.Equal(t, http.StatusForbidden, resp.StatusCode)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
 		})
 		t.Run("200 - integration passed", func(t *testing.T) {
 			gock.Flush()
