@@ -8,8 +8,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-- If no userId header is provided now mongo is not called in order to retrive user bindings and roles.
-
 - refactored rowFiltering data structure
 
 ### Added
