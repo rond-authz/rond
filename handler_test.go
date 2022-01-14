@@ -975,8 +975,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
 		})
 
-		t.Run("return 403 without user header", func(t *testing.T) {
-			invoked := false
+		t.Run("return 200 without user header", func(t *testing.T) {
 
 			opaModule := &OPAModuleConfig{
 				Name: "example.rego",
@@ -989,7 +988,6 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			}
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				invoked = true
 				w.WriteHeader(http.StatusOK)
 			}))
 			defer server.Close()
@@ -1019,9 +1017,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r.Header.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
 			rbacHandler(w, r)
-			testutils.AssertResponseError(t, w, http.StatusForbidden, "Error while retrieving user permissions: user is unknown")
-			assert.Assert(t, !invoked, "Handler was not invoked.")
-			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
 		})
 	})
 }

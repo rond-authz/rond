@@ -4,7 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+
 ## Unreleased
+
+- If no userId header is provided now mongo is not called in order to retrive user bindings and roles.
 
 ## 0.2.0 - 14/01/2022
 
