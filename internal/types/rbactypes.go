@@ -5,8 +5,10 @@ import (
 )
 
 type User struct {
-	UserID     string
-	UserGroups []string
+	UserID       string
+	UserGroups   []string
+	UserRoles    []Role
+	UserBindings []Binding
 }
 
 type MongoClientContextKey struct{}

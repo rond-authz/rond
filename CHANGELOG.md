@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+- refactor: User struct now contains userBindings and Roles
+
 - If no userId header is provided now mongo is not called in order to retrive user bindings and roles.
 
 ### Added
