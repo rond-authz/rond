@@ -12,6 +12,7 @@ import (
 	"rbac-service/internal/types"
 	"rbac-service/internal/utils"
 
+	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -196,10 +197,11 @@ func rolesIdsFromBindings(bindings []types.Binding) []string {
 func createRegoQueryInput(req *http.Request, env EnvironmentVariables, userBindings []types.Binding, userRoles []types.Role) ([]byte, error) {
 	input := map[string]interface{}{
 		"request": map[string]interface{}{
-			"method":  req.Method,
-			"path":    req.URL.Path,
-			"headers": req.Header,
-			"query":   req.URL.Query(),
+			"method":     req.Method,
+			"path":       req.URL.Path,
+			"headers":    req.Header,
+			"query":      req.URL.Query(),
+			"pathParams": mux.Vars(req),
 		},
 		"clientType": req.Header.Get(env.ClientTypeHeader),
 	}
@@ -208,7 +210,7 @@ func createRegoQueryInput(req *http.Request, env EnvironmentVariables, userBindi
 	userProperties := make(map[string]interface{})
 	ok, err := unmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
 	if err != nil {
-		return nil, fmt.Errorf("User properties header is not valid: %s", err.Error())
+		return nil, fmt.Errorf("user properties header is not valid: %s", err.Error())
 	}
 	if ok {
 		userInput["properties"] = userProperties
