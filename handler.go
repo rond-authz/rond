@@ -21,13 +21,55 @@ import (
 const URL_SCHEME = "http"
 const BASE_ROW_FILTER_HEADER_KEY = "acl_rows"
 
-func alwaysProxyHandler(w http.ResponseWriter, req *http.Request) {
-	env, err := GetEnv(req.Context())
+func rbacHandler(w http.ResponseWriter, req *http.Request) {
+	requestContext := req.Context()
+	logger := glogger.Get(requestContext)
+
+	env, err := GetEnv(requestContext)
 	if err != nil {
-		glogger.Get(req.Context()).WithError(err).Error("no env found in context")
+		logger.WithError(err).Error("no env found in context")
 		failResponse(w, "no environment found in context")
 		return
 	}
+
+	permission, err := GetXPermission(requestContext)
+	if err != nil {
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no policy permission found in context")
+		failResponse(w, "no policy permission found in context")
+		return
+	}
+
+	evaluator, err := createEvaluator(logger, req, w, env, permission)
+	if err != nil {
+		logger.WithError(err).Error("failed RBAC policy creation")
+		failResponse(w, err.Error())
+		return
+	}
+
+	_, query, err := Evaluate(logger, permission, *evaluator, req)
+	if err != nil {
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("RBAC policy evaluation failed")
+		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed")
+		return
+	}
+	var queryToProxy = []byte{}
+	if query != nil {
+		queryToProxy, err = json.Marshal(query)
+		if err != nil {
+			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("Error while marshaling row filter query")
+			failResponseWithCode(w, http.StatusForbidden, "Error while marshaling row filter query")
+			return
+		}
+	}
+
+	queryHeaderKey := BASE_ROW_FILTER_HEADER_KEY
+	if permission.ResourceFilter.RowFilter.HeaderKey != "" {
+		queryHeaderKey = permission.ResourceFilter.RowFilter.HeaderKey
+	}
+	if query != nil {
+		req.Header.Set(queryHeaderKey, string(queryToProxy))
+	}
+
 	ReverseProxy(env, w, req)
 }
 
@@ -47,107 +89,54 @@ func ReverseProxy(env EnvironmentVariables, w http.ResponseWriter, req *http.Req
 	proxy.ServeHTTP(w, req)
 }
 
-func rbacHandler(w http.ResponseWriter, req *http.Request) {
-	env, err := GetEnv(req.Context())
+func alwaysProxyHandler(w http.ResponseWriter, req *http.Request) {
+	requestContext := req.Context()
+	env, err := GetEnv(requestContext)
 	if err != nil {
-		glogger.Get(req.Context()).WithError(err).Error("no env found in context")
+		glogger.Get(requestContext).WithError(err).Error("no env found in context")
 		failResponse(w, "no environment found in context")
 		return
 	}
+	ReverseProxy(env, w, req)
+}
 
-	mongoClient, err := GetMongoClientFromContext(req.Context())
-	if err != nil {
-		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("unexpected MongoDB client not found in context")
-		failResponse(w, "Unexpected error retrieving MongoDB Client from request context")
-		return
-	}
-
-	permission, err := GetXPermission(req.Context())
-	if err != nil {
-		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("no policy permission found in context")
-		failResponse(w, "no policy permission found in context")
-		return
-	}
+func createEvaluator(logger *logrus.Entry, req *http.Request, w http.ResponseWriter, env EnvironmentVariables, permission *XPermission) (*OPAEvaluator, error) {
 
 	opaModuleConfig, err := GetOPAModuleConfig(req.Context())
 	if err != nil {
-		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("no OPA module configuration found in context")
-		failResponse(w, "no OPA module configuration found in context")
-		return
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no OPA module configuration found in context")
+		return nil, fmt.Errorf("no OPA module configuration found in context")
 	}
 
-	var userBindings []types.Binding
-	var userRoles []types.Role
-	var user types.User
-	userBindings = make([]types.Binding, 0)
-	userRoles = make([]types.Role, 0)
-
-	user.UserGroups = strings.Split(req.Header.Get(env.UserGroupsHeader), ",")
-	user.UserID = req.Header.Get(env.UserIdHeader)
-
-	if mongoClient != nil && user.UserID != "" {
-
-		userBindings, err = mongoClient.RetrieveUserBindings(req.Context(), &user)
-		if err != nil {
-			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user bindings")
-			failResponse(w, fmt.Sprintf("Error while retrieving user bindings: %s", err.Error()))
-			return
-		}
-
-		userRolesIds := rolesIdsFromBindings(userBindings)
-		userRoles, err = mongoClient.RetrieveUserRolesByRolesID(req.Context(), userRolesIds)
-		if err != nil {
-			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user roles")
-			failResponse(w, fmt.Sprintf("Error while retrieving user roles: %s", err.Error()))
-			return
-		}
-	}
-	input, err := createRegoQueryInput(req, env, userBindings, userRoles)
+	userInfo, err := retrieveUserBindingsAndRoles(logger, req, w, env)
 	if err != nil {
-		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("user properties header is not valid")
-		failResponse(w, fmt.Sprintf("Failed rego query input creation: %s", err.Error()))
-		return
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed user bindings and roles retrieving")
+		return nil, err
 	}
 
-	glogger.Get(req.Context()).WithFields(logrus.Fields{
+	input, err := createRegoQueryInput(req, env, userInfo)
+	if err != nil {
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("user properties header is not valid")
+		return nil, fmt.Errorf("Failed rego query input creation: %s", err.Error())
+	}
+
+	logger.WithFields(logrus.Fields{
+		"policyName": permission.AllowPermission,
+	}).Info("Policy to be evaluated")
+
+	logger.WithFields(logrus.Fields{
 		"input": string(input),
 	}).Trace("input object passed to the evaluator")
 
 	evaluator, err := NewOPAEvaluator(permission.AllowPermission, opaModuleConfig, input)
 	if err != nil {
-		glogger.Get(req.Context()).WithError(err).Error("failed RBAC policy creation")
-		failResponse(w, err.Error())
-		return
+		logger.WithError(err).Error("failed RBAC policy creation")
+		return nil, err
 	}
-
-	_, query, err := Evaluate(permission, *evaluator, req)
-	if err != nil {
-		glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("RBAC policy evaluation failed")
-		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed")
-		return
-	}
-	var queryToProxy = []byte{}
-	if query != nil {
-		queryToProxy, err = json.Marshal(query)
-		if err != nil {
-			glogger.Get(req.Context()).WithField("error", logrus.Fields{"message": err.Error()}).Error("Error while marshaling row filter query")
-			failResponseWithCode(w, http.StatusForbidden, "Error while marshaling row filter query")
-			return
-		}
-	}
-
-	queryHeaderKey := BASE_ROW_FILTER_HEADER_KEY
-	if permission.ResourceFilter.RowFilter.HeaderKey != "" {
-		queryHeaderKey = permission.ResourceFilter.RowFilter.HeaderKey
-	}
-	if query != nil {
-		req.Header.Set(queryHeaderKey, string(queryToProxy))
-	}
-
-	ReverseProxy(env, w, req)
+	return evaluator, nil
 }
 
-func Evaluate(permission *XPermission, evaluator OPAEvaluator, req *http.Request) (bool, primitive.M, error) {
+func Evaluate(logger *logrus.Entry, permission *XPermission, evaluator OPAEvaluator, req *http.Request) (bool, primitive.M, error) {
 	if permission.ResourceFilter.RowFilter.Enabled {
 		partialResults, err := evaluator.PermissionQuery.Partial(context.TODO())
 		if err != nil {
@@ -158,7 +147,7 @@ func Evaluate(permission *XPermission, evaluator OPAEvaluator, req *http.Request
 		if err != nil {
 			return false, nil, fmt.Errorf("Policy Evaluation has failed when processing query: %s", err.Error())
 		}
-		glogger.Get(req.Context()).WithFields(logrus.Fields{
+		logger.WithFields(logrus.Fields{
 			"allowed": true,
 			"query":   q,
 		}).Tracef("policy results and query")
@@ -170,13 +159,13 @@ func Evaluate(permission *XPermission, evaluator OPAEvaluator, req *http.Request
 		return false, nil, fmt.Errorf("Policy Evaluation has failed when evaluating the query: %s", err.Error())
 	}
 
-	glogger.Get(req.Context()).WithFields(logrus.Fields{
+	logger.WithFields(logrus.Fields{
 		"allowed":       results.Allowed(),
 		"resultsLength": len(results),
 	}).Tracef("policy results")
 
 	if !results.Allowed() {
-		glogger.Get(req.Context()).Error("policy resulted in not allowed")
+		logger.Error("policy resulted in not allowed")
 		return false, nil, fmt.Errorf("RBAC policy evaluation failed, user is not allowed")
 	}
 	return true, nil, nil
@@ -194,7 +183,38 @@ func rolesIdsFromBindings(bindings []types.Binding) []string {
 	return rolesIds
 }
 
-func createRegoQueryInput(req *http.Request, env EnvironmentVariables, userBindings []types.Binding, userRoles []types.Role) ([]byte, error) {
+func retrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, w http.ResponseWriter, env EnvironmentVariables) (types.User, error) {
+	requestContext := req.Context()
+	mongoClient, err := GetMongoClientFromContext(requestContext)
+	if err != nil {
+		return types.User{}, fmt.Errorf("Unexpected error retrieving MongoDB Client from request context")
+	}
+
+	var user types.User
+
+	user.UserGroups = strings.Split(req.Header.Get(env.UserGroupsHeader), ",")
+	user.UserID = req.Header.Get(env.UserIdHeader)
+
+	if mongoClient != nil && user.UserID != "" {
+
+		user.UserBindings, err = mongoClient.RetrieveUserBindings(requestContext, &user)
+		if err != nil {
+			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user bindings")
+			return types.User{}, fmt.Errorf("Error while retrieving user bindings: %s", err.Error())
+		}
+
+		userRolesIds := rolesIdsFromBindings(user.UserBindings)
+		user.UserRoles, err = mongoClient.RetrieveUserRolesByRolesID(requestContext, userRolesIds)
+		if err != nil {
+			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user roles")
+
+			return types.User{}, fmt.Errorf("Error while retrieving user Roles: %s", err.Error())
+		}
+	}
+	return user, nil
+}
+
+func createRegoQueryInput(req *http.Request, env EnvironmentVariables, user types.User) ([]byte, error) {
 	input := map[string]interface{}{
 		"request": map[string]interface{}{
 			"method":     req.Method,
@@ -220,16 +240,11 @@ func createRegoQueryInput(req *http.Request, env EnvironmentVariables, userBindi
 	if userGroupsNotSplitted != "" {
 		userInput["groups"] = strings.Split(userGroupsNotSplitted, ",")
 	}
-	if len(userBindings) != 0 {
-		userInput["bindings"] = userBindings
-	}
-	if len(userRoles) != 0 {
-		userInput["roles"] = userRoles
-	}
 
-	if len(userInput) != 0 {
-		input["user"] = userInput
-	}
+	userInput["bindings"] = user.UserBindings
+	userInput["roles"] = user.UserRoles
+	input["user"] = userInput
+
 	inputBytes, err := json.Marshal(input)
 	if err != nil {
 		return nil, fmt.Errorf("failed input JSON encode: %v", err)
