@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - If no userId header is provided now mongo is not called in order to retrive user bindings and roles.
 
+### Added
+- [JAF-205](https://makeitapp.atlassian.net/browse/JAF-205): Added `pathParameter` to rego input request.
+
 ## 0.2.0 - 14/01/2022
 
 ### Changed

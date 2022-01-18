@@ -17,6 +17,7 @@ import (
 	"rbac-service/internal/types"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"gotest.tools/v3/assert"
 )
 
@@ -1017,6 +1018,71 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r.Header.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
 			rbacHandler(w, r)
+			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		})
+
+		t.Run("return 200 with policy on pathParams", func(t *testing.T) {
+
+			customerId, productId := "1234", "5678"
+
+			opaModule := &OPAModuleConfig{
+				Name: "example.rego",
+				Content: fmt.Sprintf(`
+				package policies
+				todo {
+					input.request.pathParams.customerId == "%s"
+					input.request.pathParams.productId == "%s"
+				}`, customerId, productId),
+			}
+
+			invoked := false
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				invoked = true
+				assert.Equal(t, r.Header.Get(userPropertiesHeaderKey), string(mockedUserPropertiesStringified), "Mocked User properties not found")
+				assert.Equal(t, r.Header.Get(userGroupsHeaderKey), string(mockedUserGroupsHeaderValue), "Mocked User groups not found")
+				assert.Equal(t, r.Header.Get(clientTypeHeaderKey), mockedClientType, "Mocked client type not found")
+				assert.Equal(t, r.Header.Get(userIdHeaderKey), userIdHeaderKey, "Mocked user id not found")
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			userBindings := []types.Binding{}
+
+			userRoles := []types.Role{}
+
+			serverURL, _ := url.Parse(server.URL)
+			ctx := createContext(t,
+				context.Background(),
+				EnvironmentVariables{
+					TargetServiceHost:      serverURL.Host,
+					UserPropertiesHeader:   userPropertiesHeaderKey,
+					UserGroupsHeader:       userGroupsHeaderKey,
+					UserIdHeader:           userIdHeaderKey,
+					ClientTypeHeader:       clientTypeHeaderKey,
+					MongoDBUrl:             "mongodb://test",
+					RolesCollectionName:    "roles",
+					BindingsCollectionName: "bindings",
+				},
+				&mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles},
+				mockXPermission,
+				opaModule,
+			)
+
+			w := httptest.NewRecorder()
+			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
+			r = mux.SetURLVars(r, map[string]string{
+				"customerId": customerId,
+				"productId":  productId,
+			})
+			assert.Equal(t, err, nil, "Unexpected error")
+
+			r.Header.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
+			r.Header.Set(userGroupsHeaderKey, string(mockedUserGroupsHeaderValue))
+			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
+			r.Header.Set(userIdHeaderKey, "miauserid")
+			rbacHandler(w, r)
+			assert.Assert(t, invoked, "Handler was not invoked.")
 			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
 		})
 	})
