@@ -58,7 +58,7 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 				return
 			}
 
-			permission, err := openAPISpec.FindPermission(OASrouter, r.URL.Path, r.Method)
+			permission, err := openAPISpec.FindPermission(OASrouter, r.URL.EscapedPath(), r.Method)
 
 			if r.Method == http.MethodGet && r.URL.Path == envs.TargetServiceOASPath && permission.AllowPermission == "" {
 				glogger.Get(r.Context()).WithError(err).Info("Proxying call to OAS Path even with no permission")

@@ -235,104 +235,119 @@ func TestLoadOAS(t *testing.T) {
 }
 
 func TestFindPermission(t *testing.T) {
-	oas := prepareOASFromFile(t, "./mocks/nestedPathsConfig.json")
-	OASRouter := oas.PrepareOASRouter()
+	t.Run("nested cases", func(t *testing.T) {
+		oas := prepareOASFromFile(t, "./mocks/nestedPathsConfig.json")
+		OASRouter := oas.PrepareOASRouter()
 
-	found, err := oas.FindPermission(OASRouter, "/not/existing/route", "GET")
-	assert.Equal(t, XPermission{}, found)
-	assert.Equal(t, err.Error(), "not found oas permission: GET /not/existing/route")
+		found, err := oas.FindPermission(OASRouter, "/not/existing/route", "GET")
+		assert.Equal(t, XPermission{}, found)
+		assert.Equal(t, err.Error(), "not found oas permission: GET /not/existing/route")
 
-	found, err = oas.FindPermission(OASRouter, "/no/method", "PUT")
-	assert.Equal(t, XPermission{}, found)
-	assert.Equal(t, err.Error(), "not found oas permission: PUT /no/method")
+		found, err = oas.FindPermission(OASRouter, "/no/method", "PUT")
+		assert.Equal(t, XPermission{}, found)
+		assert.Equal(t, err.Error(), "not found oas permission: PUT /no/method")
 
-	found, err = oas.FindPermission(OASRouter, "/use/method/that/not/existing/put", "PUT")
-	assert.Equal(t, XPermission{}, found)
-	assert.Equal(t, err.Error(), "not found oas permission: PUT /use/method/that/not/existing/put")
+		found, err = oas.FindPermission(OASRouter, "/use/method/that/not/existing/put", "PUT")
+		assert.Equal(t, XPermission{}, found)
+		assert.Equal(t, err.Error(), "not found oas permission: PUT /use/method/that/not/existing/put")
 
-	found, err = oas.FindPermission(OASRouter, "/foo/bar/barId", "GET")
-	assert.Equal(t, XPermission{
-		AllowPermission: "foo_bar_params",
-		ResourceFilter: ResourceFilter{
-			RowFilter: RowFilterConfiguration{
-				HeaderKey: "customHeaderKey",
-				Enabled:   true,
-			}}},
-		found)
-	assert.Equal(t, err, nil)
+		found, err = oas.FindPermission(OASRouter, "/foo/bar/barId", "GET")
+		assert.Equal(t, XPermission{
+			AllowPermission: "foo_bar_params",
+			ResourceFilter: ResourceFilter{
+				RowFilter: RowFilterConfiguration{
+					HeaderKey: "customHeaderKey",
+					Enabled:   true,
+				}}},
+			found)
+		assert.Equal(t, err, nil)
 
-	found, err = oas.FindPermission(OASRouter, "/foo/bar/barId/another-params-not-configured", "GET")
-	assert.Equal(t, XPermission{
-		AllowPermission: "foo_bar",
-		ResourceFilter: ResourceFilter{
-			RowFilter: RowFilterConfiguration{
-				HeaderKey: "customHeaderKey",
-				Enabled:   true,
-			}}},
-		found)
-	assert.Equal(t, err, nil)
+		found, err = oas.FindPermission(OASRouter, "/foo/bar/barId/another-params-not-configured", "GET")
+		assert.Equal(t, XPermission{
+			AllowPermission: "foo_bar",
+			ResourceFilter: ResourceFilter{
+				RowFilter: RowFilterConfiguration{
+					HeaderKey: "customHeaderKey",
+					Enabled:   true,
+				}}},
+			found)
+		assert.Equal(t, err, nil)
 
-	found, err = oas.FindPermission(OASRouter, "/foo/bar/nested/case/really/nested", "GET")
-	assert.Equal(t, XPermission{AllowPermission: "foo_bar_nested_case"}, found)
-	assert.Equal(t, err, nil)
+		found, err = oas.FindPermission(OASRouter, "/foo/bar/nested/case/really/nested", "GET")
+		assert.Equal(t, XPermission{AllowPermission: "foo_bar_nested_case"}, found)
+		assert.Equal(t, err, nil)
 
-	found, err = oas.FindPermission(OASRouter, "/foo/bar/nested", "GET")
-	assert.Equal(t, XPermission{
-		AllowPermission: "foo_bar_nested",
-		ResourceFilter: ResourceFilter{
-			RowFilter: RowFilterConfiguration{
-				HeaderKey: "customHeaderKey",
-				Enabled:   true,
-			}}},
-		found)
-	assert.Equal(t, err, nil)
+		found, err = oas.FindPermission(OASRouter, "/foo/bar/nested", "GET")
+		assert.Equal(t, XPermission{
+			AllowPermission: "foo_bar_nested",
+			ResourceFilter: ResourceFilter{
+				RowFilter: RowFilterConfiguration{
+					HeaderKey: "customHeaderKey",
+					Enabled:   true,
+				}}},
+			found)
+		assert.Equal(t, err, nil)
 
-	found, err = oas.FindPermission(OASRouter, "/foo/simble", "PATCH")
-	assert.Equal(t, XPermission{
-		AllowPermission: "foo",
-		ResourceFilter: ResourceFilter{
-			RowFilter: RowFilterConfiguration{
-				HeaderKey: "customHeaderKey",
-				Enabled:   true,
-			}}},
-		found)
-	assert.Equal(t, err, nil)
+		found, err = oas.FindPermission(OASRouter, "/foo/simble", "PATCH")
+		assert.Equal(t, XPermission{
+			AllowPermission: "foo",
+			ResourceFilter: ResourceFilter{
+				RowFilter: RowFilterConfiguration{
+					HeaderKey: "customHeaderKey",
+					Enabled:   true,
+				}}},
+			found)
+		assert.Equal(t, err, nil)
 
-	found, err = oas.FindPermission(OASRouter, "/test/all", "GET")
-	assert.Equal(t, XPermission{}, found)
-	assert.Equal(t, err.Error(), "not found oas permission: GET /test/all")
+		found, err = oas.FindPermission(OASRouter, "/test/all", "GET")
+		assert.Equal(t, XPermission{}, found)
+		assert.Equal(t, err.Error(), "not found oas permission: GET /test/all")
 
-	found, err = oas.FindPermission(OASRouter, "/test/all/", "GET")
-	assert.Equal(t, XPermission{AllowPermission: "permission_for_get"}, found)
-	assert.Equal(t, err, nil)
+		found, err = oas.FindPermission(OASRouter, "/test/all/", "GET")
+		assert.Equal(t, XPermission{AllowPermission: "permission_for_get"}, found)
+		assert.Equal(t, err, nil)
 
-	found, err = oas.FindPermission(OASRouter, "/test/all/verb", "GET")
-	assert.Equal(t, XPermission{AllowPermission: "permission_for_get"}, found)
-	assert.Equal(t, err, nil)
+		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "GET")
+		assert.Equal(t, XPermission{AllowPermission: "permission_for_get"}, found)
+		assert.Equal(t, err, nil)
 
-	found, err = oas.FindPermission(OASRouter, "/test/all/verb", "POST")
-	assert.Equal(t, XPermission{AllowPermission: "permission_for_post"}, found)
-	assert.Equal(t, err, nil)
+		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "POST")
+		assert.Equal(t, XPermission{AllowPermission: "permission_for_post"}, found)
+		assert.Equal(t, err, nil)
 
-	found, err = oas.FindPermission(OASRouter, "/test/all/verb", "PUT")
-	assert.Equal(t, XPermission{AllowPermission: "permission_for_all"}, found)
-	assert.Equal(t, err, nil)
+		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "PUT")
+		assert.Equal(t, XPermission{AllowPermission: "permission_for_all"}, found)
+		assert.Equal(t, err, nil)
 
-	found, err = oas.FindPermission(OASRouter, "/test/all/verb", "PATCH")
-	assert.Equal(t, XPermission{AllowPermission: "permission_for_all"}, found)
-	assert.Equal(t, err, nil)
+		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "PATCH")
+		assert.Equal(t, XPermission{AllowPermission: "permission_for_all"}, found)
+		assert.Equal(t, err, nil)
 
-	found, err = oas.FindPermission(OASRouter, "/test/all/verb", "DELETE")
-	assert.Equal(t, XPermission{AllowPermission: "permission_for_all"}, found)
-	assert.Equal(t, err, nil)
+		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "DELETE")
+		assert.Equal(t, XPermission{AllowPermission: "permission_for_all"}, found)
+		assert.Equal(t, err, nil)
 
-	found, err = oas.FindPermission(OASRouter, "/projects/", "POST")
-	assert.Equal(t, XPermission{AllowPermission: "project_all"}, found)
-	assert.Equal(t, err, nil)
+		found, err = oas.FindPermission(OASRouter, "/projects/", "POST")
+		assert.Equal(t, XPermission{AllowPermission: "project_all"}, found)
+		assert.Equal(t, err, nil)
 
-	found, err = oas.FindPermission(OASRouter, "/projects/", "GET")
-	assert.Equal(t, XPermission{AllowPermission: "project_get"}, found)
-	assert.Equal(t, err, nil)
+		found, err = oas.FindPermission(OASRouter, "/projects/", "GET")
+		assert.Equal(t, XPermission{AllowPermission: "project_get"}, found)
+		assert.Equal(t, err, nil)
+	})
+
+	t.Run("encoded cases", func(t *testing.T) {
+		oas := prepareOASFromFile(t, "./mocks/mockForEncodedTest.json")
+		OASRouter := oas.PrepareOASRouter()
+
+		found, err := oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%252Fcms-backend%252FcmsProperties.json", "POST")
+		assert.Equal(t, XPermission{AllowPermission: "allow_commit"}, found)
+		assert.Equal(t, err, nil)
+
+		found, err = oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%2Fcms-backend%2FcmsProperties.json", "POST")
+		assert.Equal(t, XPermission{AllowPermission: "allow_commit"}, found)
+		assert.Equal(t, err, nil)
+	})
 }
 
 func TestGetXPermission(t *testing.T) {
