@@ -12,9 +12,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
-	"github.com/open-policy-agent/opa/ast"
-	"github.com/open-policy-agent/opa/rego"
-	"github.com/open-policy-agent/opa/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,24 +26,6 @@ type OPAModuleConfig struct {
 	Name    string
 	Content string
 }
-
-var getHeaderFunction = rego.Function2(
-	&rego.Function{
-		Name: "get_header",
-		Decl: types.NewFunction(types.Args(types.S, types.A), types.S),
-	},
-	func(_ rego.BuiltinContext, a, b *ast.Term) (*ast.Term, error) {
-		var headerKey string
-		var headers http.Header
-		if err := ast.As(a.Value, &headerKey); err != nil {
-			return nil, err
-		}
-		if err := ast.As(b.Value, &headers); err != nil {
-			return nil, err
-		}
-		return ast.StringTerm(headers.Get(headerKey)), nil
-	},
-)
 
 func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, envs *EnvironmentVariables) mux.MiddlewareFunc {
 	OASrouter := openAPISpec.PrepareOASRouter()

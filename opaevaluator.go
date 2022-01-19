@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"rbac-service/custom_builtins"
 	"rbac-service/internal/opatranslator"
 
 	"github.com/open-policy-agent/opa/ast"
@@ -40,7 +41,7 @@ func NewOPAEvaluator(policy string, opaModuleConfig *OPAModuleConfig, input []by
 		rego.Module(opaModuleConfig.Name, opaModuleConfig.Content),
 		rego.ParsedInput(inputTerm.Value),
 		rego.Unknowns(unknowns),
-		getHeaderFunction,
+		custom_builtins.GetHeaderFunction,
 	)
 
 	return &OPAEvaluator{
