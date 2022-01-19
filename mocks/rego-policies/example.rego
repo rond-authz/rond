@@ -4,6 +4,8 @@ foobar = true
 
 foo_bar = true
 
+allow_commit = true
+
 filter_projects {
 	resource := data.resources[_]
 	bindings := input.user.bindings[_]
