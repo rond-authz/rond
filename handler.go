@@ -1,21 +1,12 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httputil"
-	"strings"
 
-	"rbac-service/internal/opatranslator"
-	"rbac-service/internal/types"
-	"rbac-service/internal/utils"
-
-	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
 	"github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const URL_SCHEME = "http"
@@ -46,7 +37,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, query, err := Evaluate(logger, permission, *evaluator, req)
+	query, err := evaluator.PolicyEvaluation(logger, permission)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("RBAC policy evaluation failed")
 		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed")
@@ -99,167 +90,4 @@ func alwaysProxyHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ReverseProxy(env, w, req)
-}
-
-func createEvaluator(logger *logrus.Entry, req *http.Request, w http.ResponseWriter, env EnvironmentVariables, permission *XPermission) (*OPAEvaluator, error) {
-
-	opaModuleConfig, err := GetOPAModuleConfig(req.Context())
-	if err != nil {
-		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no OPA module configuration found in context")
-		return nil, fmt.Errorf("no OPA module configuration found in context")
-	}
-
-	userInfo, err := retrieveUserBindingsAndRoles(logger, req, w, env)
-	if err != nil {
-		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed user bindings and roles retrieving")
-		return nil, err
-	}
-
-	input, err := createRegoQueryInput(req, env, userInfo)
-	if err != nil {
-		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("user properties header is not valid")
-		return nil, fmt.Errorf("Failed rego query input creation: %s", err.Error())
-	}
-
-	logger.WithFields(logrus.Fields{
-		"policyName": permission.AllowPermission,
-	}).Info("Policy to be evaluated")
-
-	logger.WithFields(logrus.Fields{
-		"input": string(input),
-	}).Trace("input object passed to the evaluator")
-
-	evaluator, err := NewOPAEvaluator(permission.AllowPermission, opaModuleConfig, input)
-	if err != nil {
-		logger.WithError(err).Error("failed RBAC policy creation")
-		return nil, err
-	}
-	return evaluator, nil
-}
-
-func Evaluate(logger *logrus.Entry, permission *XPermission, evaluator OPAEvaluator, req *http.Request) (bool, primitive.M, error) {
-	if permission.ResourceFilter.RowFilter.Enabled {
-		partialResults, err := evaluator.PermissionQuery.Partial(context.TODO())
-		if err != nil {
-			return false, nil, fmt.Errorf("Policy Evaluation has failed when partially evaluating the query: %s", err.Error())
-		}
-		client := opatranslator.OPAClient{}
-		q, err := client.ProcessQuery(partialResults)
-		if err != nil {
-			return false, nil, fmt.Errorf("Policy Evaluation has failed when processing query: %s", err.Error())
-		}
-		logger.WithFields(logrus.Fields{
-			"allowed": true,
-			"query":   q,
-		}).Tracef("policy results and query")
-		return true, q, nil
-	}
-
-	results, err := evaluator.PermissionQuery.Eval(context.TODO())
-	if err != nil {
-		return false, nil, fmt.Errorf("Policy Evaluation has failed when evaluating the query: %s", err.Error())
-	}
-
-	logger.WithFields(logrus.Fields{
-		"allowed":       results.Allowed(),
-		"resultsLength": len(results),
-	}).Tracef("policy results")
-
-	if !results.Allowed() {
-		logger.Error("policy resulted in not allowed")
-		return false, nil, fmt.Errorf("RBAC policy evaluation failed, user is not allowed")
-	}
-	return true, nil, nil
-}
-
-func rolesIdsFromBindings(bindings []types.Binding) []string {
-	rolesIds := []string{}
-	for _, binding := range bindings {
-		for _, role := range binding.Roles {
-			if !utils.Contains(rolesIds, role) {
-				rolesIds = append(rolesIds, role)
-			}
-		}
-	}
-	return rolesIds
-}
-
-func retrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, w http.ResponseWriter, env EnvironmentVariables) (types.User, error) {
-	requestContext := req.Context()
-	mongoClient, err := GetMongoClientFromContext(requestContext)
-	if err != nil {
-		return types.User{}, fmt.Errorf("Unexpected error retrieving MongoDB Client from request context")
-	}
-
-	var user types.User
-
-	user.UserGroups = strings.Split(req.Header.Get(env.UserGroupsHeader), ",")
-	user.UserID = req.Header.Get(env.UserIdHeader)
-
-	if mongoClient != nil && user.UserID != "" {
-
-		user.UserBindings, err = mongoClient.RetrieveUserBindings(requestContext, &user)
-		if err != nil {
-			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user bindings")
-			return types.User{}, fmt.Errorf("Error while retrieving user bindings: %s", err.Error())
-		}
-
-		userRolesIds := rolesIdsFromBindings(user.UserBindings)
-		user.UserRoles, err = mongoClient.RetrieveUserRolesByRolesID(requestContext, userRolesIds)
-		if err != nil {
-			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user roles")
-
-			return types.User{}, fmt.Errorf("Error while retrieving user Roles: %s", err.Error())
-		}
-	}
-	return user, nil
-}
-
-func createRegoQueryInput(req *http.Request, env EnvironmentVariables, user types.User) ([]byte, error) {
-	input := map[string]interface{}{
-		"request": map[string]interface{}{
-			"method":     req.Method,
-			"path":       req.URL.Path,
-			"headers":    req.Header,
-			"query":      req.URL.Query(),
-			"pathParams": mux.Vars(req),
-		},
-		"clientType": req.Header.Get(env.ClientTypeHeader),
-	}
-
-	userInput := make(map[string]interface{})
-	userProperties := make(map[string]interface{})
-	ok, err := unmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
-	if err != nil {
-		return nil, fmt.Errorf("user properties header is not valid: %s", err.Error())
-	}
-	if ok {
-		userInput["properties"] = userProperties
-	}
-
-	userGroupsNotSplitted := req.Header.Get(env.UserGroupsHeader)
-	if userGroupsNotSplitted != "" {
-		userInput["groups"] = strings.Split(userGroupsNotSplitted, ",")
-	}
-
-	userInput["bindings"] = user.UserBindings
-	userInput["roles"] = user.UserRoles
-	input["user"] = userInput
-
-	inputBytes, err := json.Marshal(input)
-	if err != nil {
-		return nil, fmt.Errorf("failed input JSON encode: %v", err)
-	}
-	return inputBytes, nil
-}
-
-func unmarshalHeader(headers http.Header, headerKey string, v interface{}) (bool, error) {
-	headerValueStringified := headers.Get(headerKey)
-	if headerValueStringified != "" {
-		if err := json.Unmarshal([]byte(headerValueStringified), &v); err != nil {
-			return false, err
-		}
-		return true, nil
-	}
-	return false, nil
 }

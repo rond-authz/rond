@@ -22,3 +22,12 @@ func failResponseWithCode(w http.ResponseWriter, statusCode int, message string)
 	}
 	w.Write(content)
 }
+
+func unmarshalHeader(headers http.Header, headerKey string, v interface{}) (bool, error) {
+	headerValueStringified := headers.Get(headerKey)
+	if headerValueStringified != "" {
+		err := json.Unmarshal([]byte(headerValueStringified), &v)
+		return err == nil, err
+	}
+	return false, nil
+}
