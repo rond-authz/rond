@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"rbac-service/internal/utils"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -37,20 +38,28 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env EnvironmentVariables)
 		}
 	}
 
-	for key := range oas.Paths {
-		if utils.Contains(ignoredRoutes, key) {
+	// NOTE: The following sort is required by mux router because it expects
+	// routes to be registered in the proper order
+	paths := make([]string, 0)
+	for path := range oas.Paths {
+		paths = append(paths, path)
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(paths)))
+
+	for _, path := range paths {
+		if utils.Contains(ignoredRoutes, path) {
 			continue
 		}
-		if strings.Contains(key, "*") {
-			pathWithoutAsterisk := strings.ReplaceAll(key, "*", "")
+		if strings.Contains(path, "*") {
+			pathWithoutAsterisk := strings.ReplaceAll(path, "*", "")
 			router.PathPrefix(convertPathVariables(pathWithoutAsterisk)).HandlerFunc(rbacHandler)
 			continue
 		}
-		if key == env.TargetServiceOASPath && documentationPermission == "" {
-			router.HandleFunc(convertPathVariables(key), alwaysProxyHandler)
+		if path == env.TargetServiceOASPath && documentationPermission == "" {
+			router.HandleFunc(convertPathVariables(path), alwaysProxyHandler)
 			continue
 		}
-		router.HandleFunc(convertPathVariables(key), rbacHandler)
+		router.HandleFunc(convertPathVariables(path), rbacHandler)
 	}
 	if documentationPathInOAS == nil {
 		router.HandleFunc(convertPathVariables(env.TargetServiceOASPath), alwaysProxyHandler)

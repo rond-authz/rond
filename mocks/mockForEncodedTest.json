@@ -16,7 +16,7 @@
        "/api/backend/projects/:projectId/branches/:branchName/configuration/":{
           "post":{
              "x-permission":{
-                "allow":"allow_commit",
+                "allow": "allow_commit",
                 "resourceFilter":{
                    "rowFilter":{
                       "enabled":false,
