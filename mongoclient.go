@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"rbac-service/internal/types"
+	"rbac-service/internal/utils"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -160,4 +162,47 @@ func (mongoClient *MongoClient) RetrieveUserRolesByRolesID(ctx context.Context, 
 		return nil, err
 	}
 	return rolesResult, nil
+}
+
+func rolesIdsFromBindings(bindings []types.Binding) []string {
+	rolesIds := []string{}
+	for _, binding := range bindings {
+		for _, role := range binding.Roles {
+			if !utils.Contains(rolesIds, role) {
+				rolesIds = append(rolesIds, role)
+			}
+		}
+	}
+	return rolesIds
+}
+
+func retrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, w http.ResponseWriter, env EnvironmentVariables) (types.User, error) {
+	requestContext := req.Context()
+	mongoClient, err := GetMongoClientFromContext(requestContext)
+	if err != nil {
+		return types.User{}, fmt.Errorf("Unexpected error retrieving MongoDB Client from request context")
+	}
+
+	var user types.User
+
+	user.UserGroups = strings.Split(req.Header.Get(env.UserGroupsHeader), ",")
+	user.UserID = req.Header.Get(env.UserIdHeader)
+
+	if mongoClient != nil && user.UserID != "" {
+
+		user.UserBindings, err = mongoClient.RetrieveUserBindings(requestContext, &user)
+		if err != nil {
+			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user bindings")
+			return types.User{}, fmt.Errorf("Error while retrieving user bindings: %s", err.Error())
+		}
+
+		userRolesIds := rolesIdsFromBindings(user.UserBindings)
+		user.UserRoles, err = mongoClient.RetrieveUserRolesByRolesID(requestContext, userRolesIds)
+		if err != nil {
+			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user roles")
+
+			return types.User{}, fmt.Errorf("Error while retrieving user Roles: %s", err.Error())
+		}
+	}
+	return user, nil
 }

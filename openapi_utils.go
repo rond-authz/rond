@@ -7,10 +7,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
+	"rbac-service/internal/types"
+
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bunrouter"
 )
@@ -53,6 +57,31 @@ type OpenAPIPaths map[string]PathVerbs
 
 type OpenAPISpec struct {
 	Paths OpenAPIPaths `json:"paths"`
+}
+
+type Input struct {
+	Request    InputRequest  `json:"request"`
+	Response   InputResponse `json:"response"`
+	User       InputUser     `json:"user"`
+	ClientType string        `json:"clientType"`
+}
+type InputRequest struct {
+	Method     string            `json:"method"`
+	Path       string            `json:"path"`
+	Headers    http.Header       `json:"headers"`
+	Query      url.Values        `json:"query"`
+	PathParams map[string]string `json:"pathParams"`
+}
+
+type InputResponse struct {
+	Body interface{} `json:"body"`
+}
+
+type InputUser struct {
+	Properties map[string]interface{} `json:"properties"`
+	Groups     []string               `json:"groups"`
+	Bindings   []types.Binding        `json:"bindings"`
+	Roles      []types.Role           `json:"roles"`
 }
 
 func cleanWildcard(path string) string {
@@ -232,4 +261,41 @@ func GetXPermission(requestContext context.Context) (*XPermission, error) {
 	}
 
 	return permission, nil
+}
+
+func createRegoQueryInput(req *http.Request, env EnvironmentVariables, user types.User) ([]byte, error) {
+	userProperties := make(map[string]interface{})
+	_, err := unmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
+	if err != nil {
+		return nil, fmt.Errorf("user properties header is not valid: %s", err.Error())
+	}
+
+	userGroup := make([]string, 0)
+	userGroupsNotSplitted := req.Header.Get(env.UserGroupsHeader)
+	if userGroupsNotSplitted != "" {
+		userGroup = strings.Split(userGroupsNotSplitted, ",")
+	}
+
+	input := Input{
+		ClientType: req.Header.Get(env.ClientTypeHeader),
+		Request: InputRequest{
+			Method:     req.Method,
+			Path:       req.URL.Path,
+			Headers:    req.Header,
+			Query:      req.URL.Query(),
+			PathParams: mux.Vars(req),
+		},
+		User: InputUser{
+			Bindings:   user.UserBindings,
+			Roles:      user.UserRoles,
+			Properties: userProperties,
+			Groups:     userGroup,
+		},
+	}
+
+	inputBytes, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed input JSON encode: %v", err)
+	}
+	return inputBytes, nil
 }

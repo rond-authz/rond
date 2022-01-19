@@ -13,8 +13,7 @@ func NewOpaResponseWriter(w http.ResponseWriter) http.ResponseWriter {
 }
 
 func (w *OpaResponseWriter) Write(b []byte) (int, error) {
-	result, err := w.ResponseDefaultWriter.Write(b)
-	return result, err
+	return w.ResponseDefaultWriter.Write(b)
 }
 
 func (w *OpaResponseWriter) Header() http.Header {
