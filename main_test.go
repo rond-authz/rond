@@ -464,12 +464,14 @@ func TestEntryPoint(t *testing.T) {
 			gock.Flush()
 			gock.New("http://localhost:3002/users/").
 				Get("/users/").
-				Reply(200)
+				Reply(200).
+				SetHeader("someuserheader", "user1")
 			req, err := http.NewRequest("GET", "http://localhost:3003/users/", nil)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
 			client := &http.Client{}
 			resp, err := client.Do(req)
+			require.Equal(t, "user1", resp.Header.Get("someuserheader"))
 			require.Equal(t, nil, err)
 			require.Equal(t, http.StatusOK, resp.StatusCode)
 		})
@@ -477,11 +479,12 @@ func TestEntryPoint(t *testing.T) {
 			gock.Flush()
 			gock.New("http://localhost:3002/users/").
 				Get("/users/").
-				Reply(200)
+				Reply(200).
+				SetHeader("headerProxiedTest", "user1")
 			req, err := http.NewRequest("GET", "http://localhost:3003/users/", nil)
-			req.Header.Set("miauserid", "user1")
 			client := &http.Client{}
 			resp, err := client.Do(req)
+			require.Equal(t, "user1", resp.Header.Get("headerProxiedTest"))
 			require.Equal(t, nil, err)
 			require.Equal(t, http.StatusOK, resp.StatusCode)
 		})

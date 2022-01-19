@@ -25,12 +25,22 @@ type XPermission struct {
 }
 
 type ResourceFilter struct {
-	RowFilter RowFilterConfiguration `json:"rowFilter"`
+	RowFilter    RowFilterConfiguration    `json:"rowFilter"`
+	ColumnFilter ColumnFilterConfiguration `json:"columnFilter"`
 }
 
 type RowFilterConfiguration struct {
 	Enabled   bool   `json:"enabled"`
 	HeaderKey string `json:"headerKey"`
+}
+
+type ColumnFilterConfiguration struct {
+	Enabled    bool                    `json:"enabled"`
+	OnResponse OnResponseConfiguration `json:"onResponse"`
+}
+
+type OnResponseConfiguration struct {
+	Policy string `json:"policy"`
 }
 
 type VerbConfig struct {
