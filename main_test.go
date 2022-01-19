@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"syscall"
 	"testing"
@@ -376,6 +377,53 @@ func TestEntryPoint(t *testing.T) {
 			Reply(200)
 
 		resp, err := http.DefaultClient.Get("http://localhost:3333/foo/bar/not/registered/explicitly")
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code.")
+		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
+	})
+
+	t.Run("api permissions file path with nested routes with pathParams", func(t *testing.T) {
+		gock.Flush()
+		shutdown := make(chan os.Signal, 1)
+
+		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+
+		path := "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%252Fcms-backend%252FcmsProperties.json"
+		decodedPath, _ := url.PathUnescape(path)
+
+		gock.EnableNetworking()
+		gock.NetworkingFilter(func(r *http.Request) bool {
+			if r.URL.Path == "/documentation/json" {
+				return false
+			}
+			if r.URL.Path == decodedPath && r.URL.Host == "localhost:6000" {
+				return false
+			}
+			return true
+		})
+
+		unsetEnvs := setEnvs([]env{
+			{name: "HTTP_PORT", value: "5555"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
+			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+		})
+
+		go func() {
+			entrypoint(shutdown)
+		}()
+		defer func() {
+			unsetEnvs()
+			shutdown <- syscall.SIGTERM
+		}()
+		time.Sleep(1 * time.Second)
+
+		gock.New("http://localhost:6000").
+			Post(decodedPath).
+			Reply(200)
+
+		resp, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5555%s", path), "application/json", nil)
 		require.Equal(t, nil, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code.")
 		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
