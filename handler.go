@@ -86,7 +86,8 @@ func ReverseProxy(env EnvironmentVariables, w http.ResponseWriter, req *http.Req
 			}
 		},
 	}
-	proxy.ServeHTTP(w, req)
+	opaWriter := NewOpaResponseWriter(w)
+	proxy.ServeHTTP(opaWriter, req)
 }
 
 func alwaysProxyHandler(w http.ResponseWriter, req *http.Request) {
