@@ -1,4 +1,4 @@
-module rbac-service
+module git.tools.mia-platform.eu/platform/core/rbac-service
 
 go 1.14
 

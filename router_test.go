@@ -10,8 +10,8 @@ import (
 	"sort"
 	"testing"
 
-	"rbac-service/internal/mocks"
-	"rbac-service/internal/types"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mocks"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
 	"github.com/gorilla/mux"
 	"gotest.tools/v3/assert"

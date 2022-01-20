@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"rbac-service/internal/types"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"rbac-service/internal/types"
-	"rbac-service/internal/utils"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/utils"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"

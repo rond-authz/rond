@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"rbac-service/internal/types"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 )
 
 func failResponse(w http.ResponseWriter, message string) {

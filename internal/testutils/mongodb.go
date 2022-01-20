@@ -13,9 +13,10 @@ import (
 	"math/rand"
 	"net/http/httptest"
 	"os"
-	"rbac-service/internal/types"
 	"testing"
 	"time"
+
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

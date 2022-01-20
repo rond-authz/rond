@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"rbac-service/internal/testutils"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/testutils"
 
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"

@@ -12,7 +12,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"rbac-service/helpers"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/helpers"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/configlib"
