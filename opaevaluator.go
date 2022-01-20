@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"rbac-service/custom_builtins"
-	"rbac-service/internal/opatranslator"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/opatranslator"
+
+	"git.tools.mia-platform.eu/platform/core/rbac-service/custom_builtins"
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"

@@ -12,10 +12,11 @@ import (
 	"reflect"
 	"strings"
 
-	"rbac-service/internal/mocks"
-	"rbac-service/internal/testutils"
-	"rbac-service/internal/types"
 	"testing"
+
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mocks"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/testutils"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
 	"github.com/gorilla/mux"
 	"gotest.tools/v3/assert"

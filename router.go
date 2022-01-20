@@ -18,10 +18,11 @@ package main
 
 import (
 	"net/http"
-	"rbac-service/internal/utils"
 	"regexp"
 	"sort"
 	"strings"
+
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/utils"
 
 	"github.com/gorilla/mux"
 )

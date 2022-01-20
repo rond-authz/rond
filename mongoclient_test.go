@@ -9,8 +9,9 @@ import (
 	"reflect"
 	"testing"
 
-	"rbac-service/internal/testutils"
-	"rbac-service/internal/types"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/testutils"
+
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
 	"github.com/sirupsen/logrus/hooks/test"
 	"go.mongodb.org/mongo-driver/bson"
