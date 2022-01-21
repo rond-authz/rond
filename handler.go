@@ -12,7 +12,7 @@ import (
 const URL_SCHEME = "http"
 const BASE_ROW_FILTER_HEADER_KEY = "acl_rows"
 const GENERIC_BUSINESS_ERROR_MESSAGE = "Internal server error, please try again later"
-const NO_PERMISSIONS_ERROR_MESSAGE = "You do not have permissions to access this feature.\nContact the project administrator for more information."
+const NO_PERMISSIONS_ERROR_MESSAGE = "You do not have permissions to access this feature, contact the project administrator for more information."
 
 func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	requestContext := req.Context()
