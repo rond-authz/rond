@@ -52,12 +52,14 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 					"method":              r.Method,
 					"allowPermission":     permission.AllowPermission,
 				}
+				technicalError := ""
 				if err != nil {
+					technicalError = err.Error()
 					fields["error"] = logrus.Fields{"message": err.Error()}
 					errorMessage = "The request doesn't match any known API"
 				}
 				glogger.Get(r.Context()).WithFields(fields).Errorf(errorMessage)
-				failResponseWithCode(w, http.StatusForbidden, errorMessage)
+				failResponseWithCode(w, http.StatusForbidden, technicalError, errorMessage)
 				return
 			}
 

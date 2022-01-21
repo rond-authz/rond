@@ -7,15 +7,16 @@ import (
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 )
 
-func failResponse(w http.ResponseWriter, message string) {
-	failResponseWithCode(w, http.StatusInternalServerError, message)
+func failResponse(w http.ResponseWriter, technicalError, businessError string) {
+	failResponseWithCode(w, http.StatusInternalServerError, technicalError, businessError)
 }
 
-func failResponseWithCode(w http.ResponseWriter, statusCode int, message string) {
+func failResponseWithCode(w http.ResponseWriter, statusCode int, technicalError, businessError string) {
 	w.WriteHeader(statusCode)
 	content, err := json.Marshal(types.RequestError{
 		StatusCode: statusCode,
-		Message:    message,
+		Error:      technicalError,
+		Message:    businessError,
 	})
 	if err != nil {
 		return
