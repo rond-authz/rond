@@ -78,7 +78,11 @@ func GetDBAndCollections(t *testing.T, client *mongo.Client) (*mongo.Database, *
 	return db, db.Collection("roles"), db.Collection("bindings")
 }
 
-func AssertResponseError(t *testing.T, resp *httptest.ResponseRecorder, statusCode int, errMsg string) {
+func AssertResponseError(t *testing.T, resp *httptest.ResponseRecorder, statusCode int, technicalErrMsg string) {
+	AssertResponseFullErrorMessages(t, resp, statusCode, technicalErrMsg, "")
+}
+
+func AssertResponseFullErrorMessages(t *testing.T, resp *httptest.ResponseRecorder, statusCode int, technicalErrMsg, businessErrMsg string) {
 	t.Helper()
 	respBodyBuff, err := ioutil.ReadAll(resp.Body)
 	assert.Equal(t, err, nil, "Unexpected error in the response body")
@@ -89,7 +93,11 @@ func AssertResponseError(t *testing.T, resp *httptest.ResponseRecorder, statusCo
 
 	assert.Equal(t, respBody.StatusCode, statusCode, "Unexpected status code")
 
-	if errMsg != "" {
-		assert.Equal(t, respBody.Message, errMsg, "Unexpected error message")
+	if technicalErrMsg != "" {
+		assert.Equal(t, respBody.Error, technicalErrMsg, "Unexpected technical error message")
+	}
+
+	if businessErrMsg != "" {
+		assert.Equal(t, respBody.Message, businessErrMsg, "Unexpected technical error message")
 	}
 }

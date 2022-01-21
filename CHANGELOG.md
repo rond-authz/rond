@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - [JAF-205](https://makeitapp.atlassian.net/browse/JAF-205): Added `pathParameter` to rego input request.
 - [JAF-205](https://makeitapp.atlassian.net/browse/JAF-205): routes sorting during registration to prevent pathParams retrieval error
+- [JAF-233](https://makeitapp.atlassian.net/browse/JAF-233): better business errors for policies evaluation
 
 ## 0.2.0 - 14/01/2022
 

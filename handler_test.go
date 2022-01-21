@@ -673,7 +673,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
 
 			rbacHandler(w, r)
-			testutils.AssertResponseError(t, w, http.StatusInternalServerError, "Error while retrieving user bindings: MongoDB Error")
+			testutils.AssertResponseFullErrorMessages(t, w, http.StatusInternalServerError, "Failed RBAC policy creation", "Internal server error, please try again later")
 			assert.Assert(t, !invoked, "Handler was not invoked.")
 			assert.Equal(t, w.Code, http.StatusInternalServerError, "Unexpected status code.")
 		})
@@ -755,7 +755,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r.Header.Set(userIdHeaderKey, "miauserid")
 
 			rbacHandler(w, r)
-			testutils.AssertResponseError(t, w, http.StatusForbidden, "RBAC policy evaluation failed")
+			testutils.AssertResponseFullErrorMessages(t, w, http.StatusForbidden, "RBAC policy evaluation failed", "You do not have permissions to access this feature.\nContact the project administrator for more information.")
 			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
 		})
 

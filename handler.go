@@ -11,6 +11,8 @@ import (
 
 const URL_SCHEME = "http"
 const BASE_ROW_FILTER_HEADER_KEY = "acl_rows"
+const GENERIC_BUSINESS_ERROR_MESSAGE = "Internal server error, please try again later"
+const NO_PERMISSIONS_ERROR_MESSAGE = "You do not have permissions to access this feature.\nContact the project administrator for more information."
 
 func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	requestContext := req.Context()
@@ -19,28 +21,28 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	env, err := GetEnv(requestContext)
 	if err != nil {
 		logger.WithError(err).Error("no env found in context")
-		failResponse(w, "no environment found in context")
+		failResponse(w, "No environment found in context", GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
 	permission, err := GetXPermission(requestContext)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no policy permission found in context")
-		failResponse(w, "no policy permission found in context")
+		failResponse(w, "No policy permission found in context", GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
 	evaluator, err := createEvaluator(logger, req, w, env, permission)
 	if err != nil {
 		logger.WithError(err).Error("failed RBAC policy creation")
-		failResponse(w, err.Error())
+		failResponse(w, "Failed RBAC policy creation", GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
 	query, err := evaluator.PolicyEvaluation(logger, permission)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("RBAC policy evaluation failed")
-		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed")
+		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed", NO_PERMISSIONS_ERROR_MESSAGE)
 		return
 	}
 	var queryToProxy = []byte{}
@@ -48,7 +50,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		queryToProxy, err = json.Marshal(query)
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("Error while marshaling row filter query")
-			failResponseWithCode(w, http.StatusForbidden, "Error while marshaling row filter query")
+			failResponseWithCode(w, http.StatusForbidden, "Error while marshaling row filter query", GENERIC_BUSINESS_ERROR_MESSAGE)
 			return
 		}
 	}
@@ -86,7 +88,7 @@ func alwaysProxyHandler(w http.ResponseWriter, req *http.Request) {
 	env, err := GetEnv(requestContext)
 	if err != nil {
 		glogger.Get(requestContext).WithError(err).Error("no env found in context")
-		failResponse(w, "no environment found in context")
+		failResponse(w, "no environment found in context", GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 	ReverseProxy(env, w, req)
