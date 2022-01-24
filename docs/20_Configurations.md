@@ -22,12 +22,6 @@ To setup correctly this service you need to follow this steps
 | BINDINGS_COLLECTION_NAME | string | - | - | name of the bindings collection |
 | DELAY_SHUTDOWN_SECONDS | int | 10 (seconds) | - | the sidecar graceful shutdown |
 
-:::warning
-
-**Be careful**: the value of the environment variable LOG_LEVEL is replaced by the console's backend with the value of the LOG_LEVEL environment variable of the service to which the sidecar attach to.
-
-:::
-
 ## How to write a policy
 The policies must be write in Rego language and they could use the input variable or our built-in function.
 
