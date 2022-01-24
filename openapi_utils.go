@@ -67,6 +67,7 @@ type Input struct {
 type InputRequest struct {
 	Method     string            `json:"method"`
 	Path       string            `json:"path"`
+	Body       interface{}       `json:"body"`
 	Headers    http.Header       `json:"headers"`
 	Query      url.Values        `json:"query"`
 	PathParams map[string]string `json:"pathParams"`

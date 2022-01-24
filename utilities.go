@@ -7,6 +7,8 @@ import (
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 )
 
+const JSONContentTypeHeader = "application/json"
+
 func failResponse(w http.ResponseWriter, technicalError, businessError string) {
 	failResponseWithCode(w, http.StatusInternalServerError, technicalError, businessError)
 }
