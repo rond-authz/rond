@@ -14,7 +14,6 @@ import (
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
-	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bunrouter"
 )
@@ -261,41 +260,4 @@ func GetXPermission(requestContext context.Context) (*XPermission, error) {
 	}
 
 	return permission, nil
-}
-
-func createRegoQueryInput(req *http.Request, env EnvironmentVariables, user types.User) ([]byte, error) {
-	userProperties := make(map[string]interface{})
-	_, err := unmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
-	if err != nil {
-		return nil, fmt.Errorf("user properties header is not valid: %s", err.Error())
-	}
-
-	userGroup := make([]string, 0)
-	userGroupsNotSplitted := req.Header.Get(env.UserGroupsHeader)
-	if userGroupsNotSplitted != "" {
-		userGroup = strings.Split(userGroupsNotSplitted, ",")
-	}
-
-	input := Input{
-		ClientType: req.Header.Get(env.ClientTypeHeader),
-		Request: InputRequest{
-			Method:     req.Method,
-			Path:       req.URL.Path,
-			Headers:    req.Header,
-			Query:      req.URL.Query(),
-			PathParams: mux.Vars(req),
-		},
-		User: InputUser{
-			Bindings:   user.UserBindings,
-			Roles:      user.UserRoles,
-			Properties: userProperties,
-			Groups:     userGroup,
-		},
-	}
-
-	inputBytes, err := json.Marshal(input)
-	if err != nil {
-		return nil, fmt.Errorf("failed input JSON encode: %v", err)
-	}
-	return inputBytes, nil
 }

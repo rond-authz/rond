@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/opatranslator"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/custom_builtins"
 
+	"github.com/gorilla/mux"
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/sirupsen/logrus"
@@ -52,7 +55,6 @@ func NewOPAEvaluator(policy string, opaModuleConfig *OPAModuleConfig, input []by
 }
 
 func createEvaluator(logger *logrus.Entry, req *http.Request, w http.ResponseWriter, env EnvironmentVariables, permission *XPermission) (*OPAEvaluator, error) {
-
 	opaModuleConfig, err := GetOPAModuleConfig(req.Context())
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no OPA module configuration found in context")
@@ -134,4 +136,41 @@ func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission
 	}
 
 	return nil, nil
+}
+
+func createRegoQueryInput(req *http.Request, env EnvironmentVariables, user types.User) ([]byte, error) {
+	userProperties := make(map[string]interface{})
+	_, err := unmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
+	if err != nil {
+		return nil, fmt.Errorf("user properties header is not valid: %s", err.Error())
+	}
+
+	userGroup := make([]string, 0)
+	userGroupsNotSplitted := req.Header.Get(env.UserGroupsHeader)
+	if userGroupsNotSplitted != "" {
+		userGroup = strings.Split(userGroupsNotSplitted, ",")
+	}
+
+	input := Input{
+		ClientType: req.Header.Get(env.ClientTypeHeader),
+		Request: InputRequest{
+			Method:     req.Method,
+			Path:       req.URL.Path,
+			Headers:    req.Header,
+			Query:      req.URL.Query(),
+			PathParams: mux.Vars(req),
+		},
+		User: InputUser{
+			Bindings:   user.UserBindings,
+			Roles:      user.UserRoles,
+			Properties: userProperties,
+			Groups:     userGroup,
+		},
+	}
+
+	inputBytes, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed input JSON encode: %v", err)
+	}
+	return inputBytes, nil
 }
