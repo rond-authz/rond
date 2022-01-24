@@ -17,11 +17,11 @@ func TestStatusRoutes(testCase *testing.T) {
 	serviceVersion := "0.0.0"
 	StatusRoutes(testRouter, serviceName, serviceVersion)
 
-	testCase.Run("/-/healthz - ok", func(t *testing.T) {
+	testCase.Run("/-/rbac-healthz - ok", func(t *testing.T) {
 		expectedResponse := fmt.Sprintf("{\"status\":\"OK\",\"name\":\"%s\",\"version\":\"%s\"}", serviceName, serviceVersion)
 		responseRecorder := httptest.NewRecorder()
-		request, requestError := http.NewRequest(http.MethodGet, "/-/healthz", nil)
-		require.NoError(t, requestError, "Error creating the /-/healthz request")
+		request, requestError := http.NewRequest(http.MethodGet, "/-/rbac-healthz", nil)
+		require.NoError(t, requestError, "Error creating the /-/rbac-healthz request")
 
 		testRouter.ServeHTTP(responseRecorder, request)
 		statusCode := responseRecorder.Result().StatusCode
@@ -33,11 +33,11 @@ func TestStatusRoutes(testCase *testing.T) {
 		require.Equal(t, expectedResponse, string(body), "The response body should be the expected one")
 	})
 
-	testCase.Run("/-/ready - ok", func(t *testing.T) {
+	testCase.Run("/-/rbac-ready - ok", func(t *testing.T) {
 		expectedResponse := fmt.Sprintf("{\"status\":\"OK\",\"name\":\"%s\",\"version\":\"%s\"}", serviceName, serviceVersion)
 		responseRecorder := httptest.NewRecorder()
-		request, requestError := http.NewRequest(http.MethodGet, "/-/ready", nil)
-		require.NoError(t, requestError, "Error creating the /-/ready request")
+		request, requestError := http.NewRequest(http.MethodGet, "/-/rbac-ready", nil)
+		require.NoError(t, requestError, "Error creating the /-/rbac-ready request")
 
 		testRouter.ServeHTTP(responseRecorder, request)
 		statusCode := responseRecorder.Result().StatusCode
@@ -49,11 +49,11 @@ func TestStatusRoutes(testCase *testing.T) {
 		require.Equal(t, expectedResponse, string(body), "The response body should be the expected one")
 	})
 
-	testCase.Run("/-/check-up - ok", func(t *testing.T) {
+	testCase.Run("/-/rbac-check-up - ok", func(t *testing.T) {
 		expectedResponse := fmt.Sprintf("{\"status\":\"OK\",\"name\":\"%s\",\"version\":\"%s\"}", serviceName, serviceVersion)
 		responseRecorder := httptest.NewRecorder()
-		request, requestError := http.NewRequest(http.MethodGet, "/-/check-up", nil)
-		require.NoError(t, requestError, "Error creating the /-/check-up request")
+		request, requestError := http.NewRequest(http.MethodGet, "/-/rbac-check-up", nil)
+		require.NoError(t, requestError, "Error creating the /-/rbac-check-up request")
 
 		testRouter.ServeHTTP(responseRecorder, request)
 		statusCode := responseRecorder.Result().StatusCode

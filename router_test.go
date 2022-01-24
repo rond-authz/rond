@@ -25,17 +25,15 @@ func TestSetupRoutes(t *testing.T) {
 		router := mux.NewRouter()
 		oas := &OpenAPISpec{
 			Paths: OpenAPIPaths{
-				"/foo":     PathVerbs{},
-				"/bar":     PathVerbs{},
-				"/foo/bar": PathVerbs{},
-				// Ignored routes
+				"/foo":        PathVerbs{},
+				"/bar":        PathVerbs{},
+				"/foo/bar":    PathVerbs{},
 				"/-/ready":    PathVerbs{},
 				"/-/healthz":  PathVerbs{},
 				"/-/check-up": PathVerbs{},
 			},
 		}
-		expectedPaths := []string{"/", "/foo", "/bar", "/foo/bar", "/documentation/json"}
-		sort.Strings(expectedPaths)
+		expectedPaths := []string{"/", "/-/check-up", "/-/healthz", "/-/ready", "/bar", "/documentation/json", "/foo", "/foo/bar"}
 
 		setupRoutes(router, oas, envs)
 
@@ -58,7 +56,6 @@ func TestSetupRoutes(t *testing.T) {
 		router := mux.NewRouter()
 		oas := &OpenAPISpec{
 			Paths: OpenAPIPaths{
-				// Ignored routes
 				"/-/ready":    PathVerbs{},
 				"/-/healthz":  PathVerbs{},
 				"/-/check-up": PathVerbs{},
@@ -69,7 +66,7 @@ func TestSetupRoutes(t *testing.T) {
 				"/foo/bar/:barId": PathVerbs{},
 			},
 		}
-		expectedPaths := []string{"/", "/foo/", "/foo/bar/", "/foo/bar/nested", "/foo/bar/{barId}", "/documentation/json"}
+		expectedPaths := []string{"/", "/-/ready", "/-/healthz", "/-/check-up", "/foo/", "/foo/bar/", "/foo/bar/nested", "/foo/bar/{barId}", "/documentation/json"}
 		sort.Strings(expectedPaths)
 
 		setupRoutes(router, oas, envs)
