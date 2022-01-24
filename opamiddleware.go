@@ -8,7 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/utils"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
@@ -32,7 +33,7 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasPrefix(r.URL.RequestURI(), "/-/") {
+			if utils.Contains(statusRoutes, r.URL.RequestURI()) {
 				next.ServeHTTP(w, r)
 				return
 			}

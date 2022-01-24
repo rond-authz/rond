@@ -194,7 +194,7 @@ func TestEntryPoint(t *testing.T) {
 		}()
 
 		time.Sleep(1 * time.Second)
-		resp, err := http.DefaultClient.Get("http://localhost:3000/-/ready")
+		resp, err := http.DefaultClient.Get("http://localhost:3000/-/rbac-ready")
 		require.Equal(t, nil, err)
 		require.Equal(t, 200, resp.StatusCode)
 	})

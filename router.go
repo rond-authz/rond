@@ -27,7 +27,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var ignoredRoutes = []string{"/-/healthz", "/-/ready", "/-/check-up"}
 var rx = regexp.MustCompile(`\/:(\w+)`)
 
 func setupRoutes(router *mux.Router, oas *OpenAPISpec, env EnvironmentVariables) {
@@ -48,7 +47,7 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env EnvironmentVariables)
 	sort.Sort(sort.Reverse(sort.StringSlice(paths)))
 
 	for _, path := range paths {
-		if utils.Contains(ignoredRoutes, path) {
+		if utils.Contains(statusRoutes, path) {
 			continue
 		}
 		if strings.Contains(path, "*") {

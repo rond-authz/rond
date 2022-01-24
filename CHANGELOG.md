@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [JAF-205](https://makeitapp.atlassian.net/browse/JAF-205): routes sorting during registration to prevent pathParams retrieval error
 - [JAF-233](https://makeitapp.atlassian.net/browse/JAF-233): better business errors for policies evaluation
 - [JAF-215](https://makeitapp.atlassian.net/browse/JAF-215): support body serialization in Rego input for specific content type and methods
+- [JAF-226](https://makeitapp.atlassian.net/browse/JAF-226): Removed limitation to dashed routes
 
 ## 0.2.0 - 14/01/2022
 

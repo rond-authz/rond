@@ -46,19 +46,21 @@ func handleStatusRoutes(w http.ResponseWriter, serviceName, serviceVersion strin
 	return &status, body
 }
 
+var statusRoutes = []string{"/-/rbac-healthz", "/-/rbac-ready", "/-/rbac-check-up"}
+
 // StatusRoutes add status routes to router.
 func StatusRoutes(r *mux.Router, serviceName, serviceVersion string) {
-	r.HandleFunc("/-/healthz", func(w http.ResponseWriter, req *http.Request) {
+	r.HandleFunc("/-/rbac-healthz", func(w http.ResponseWriter, req *http.Request) {
 		_, body := handleStatusRoutes(w, serviceName, serviceVersion)
 		w.Write(body)
 	})
 
-	r.HandleFunc("/-/ready", func(w http.ResponseWriter, req *http.Request) {
+	r.HandleFunc("/-/rbac-ready", func(w http.ResponseWriter, req *http.Request) {
 		_, body := handleStatusRoutes(w, serviceName, serviceVersion)
 		w.Write(body)
 	})
 
-	r.HandleFunc("/-/check-up", func(w http.ResponseWriter, req *http.Request) {
+	r.HandleFunc("/-/rbac-check-up", func(w http.ResponseWriter, req *http.Request) {
 		_, body := handleStatusRoutes(w, serviceName, serviceVersion)
 		w.Write(body)
 	})
