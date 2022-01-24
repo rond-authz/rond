@@ -34,9 +34,11 @@ The policies must be write in Rego language and they could use the input variabl
             "headers": Object {
                 String: Array[String]
             },
+            "pathParams": Object,
             "query":   Object {
                 String: Array[String]
             },
+            "body": Object
     },
     "user": {
             "properties": Object{
@@ -47,6 +49,10 @@ The policies must be write in Rego language and they could use the input variabl
     "clientType": String
 }
 ```
+
+:::caution
+The request body in the input object is only provided if the request method is either `POST`, `PUT` or `PATCH` and the request Content Type is `application/json`
+:::
 
 :::caution
 The headers keys are in canonical form (i.e. "x-api-key" become "X-Api-Key"). 

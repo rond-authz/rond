@@ -126,6 +126,50 @@ func TestDirectProxyHandler(t *testing.T) {
 		assert.Equal(t, string(buf), "Mocked Backend Body Example", "Unexpected body response")
 	})
 
+	t.Run("sends request with body after serialization in rego input", func(t *testing.T) {
+		invoked := false
+		mockBodySting := `{"hello":"world"}`
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			invoked = true
+			defer r.Body.Close()
+			buf, err := ioutil.ReadAll(r.Body)
+			assert.Equal(t, err, nil, "Mocked backend: Unexpected error")
+			assert.Equal(t, string(buf), mockBodySting, "Mocked backend: Unexpected Body received")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Mocked Backend Body Example"))
+		}))
+		defer server.Close()
+
+		body := strings.NewReader(mockBodySting)
+
+		serverURL, _ := url.Parse(server.URL)
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			nil,
+			&XPermission{AllowPermission: "todo"},
+			&OPAModuleConfig{
+				Name: "example.rego",
+				Content: `package policies
+			todo { input.request.body.hello == "world" }`,
+			},
+		)
+
+		r, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://www.example.com:8080/api", body)
+		r.Header.Set("content-type", "application/json")
+		assert.Equal(t, err, nil, "Unexpected error")
+		w := httptest.NewRecorder()
+
+		rbacHandler(w, r)
+
+		assert.Assert(t, invoked, "Handler was not invoked.")
+		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		buf, err := ioutil.ReadAll(w.Body)
+		assert.Equal(t, err, nil, "Unexpected error to read body response")
+		assert.Equal(t, string(buf), "Mocked Backend Body Example", "Unexpected body response")
+	})
+
 	t.Run("sends filter query", func(t *testing.T) {
 		policy := `package policies
 allow {
