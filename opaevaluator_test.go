@@ -62,7 +62,7 @@ func TestCreateRegoInput(t *testing.T) {
 			require.True(t, !strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)))
 		})
 
-		t.Run("added on method accepted methods", func(t *testing.T) {
+		t.Run("added on accepted methods", func(t *testing.T) {
 			acceptedMethods := []string{http.MethodPost, http.MethodPut, http.MethodPatch}
 
 			for _, method := range acceptedMethods {
@@ -73,6 +73,15 @@ func TestCreateRegoInput(t *testing.T) {
 
 				require.True(t, strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)), "Unexpected body for method %s", method)
 			}
+		})
+
+		t.Run("added with content-type specifying charset", func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(reqBodyBytes))
+			req.Header.Set("Content-Type", "application/json;charset=UTF-8")
+			inputBytes, err := createRegoQueryInput(req, env, user)
+			require.Nil(t, err, "Unexpected error")
+
+			require.True(t, strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)), "Unexpected body for method %s", http.MethodPost)
 		})
 
 		t.Run("reject on method POST but with invalid body", func(t *testing.T) {

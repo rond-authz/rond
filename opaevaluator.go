@@ -170,9 +170,11 @@ func createRegoQueryInput(req *http.Request, env EnvironmentVariables, user type
 		},
 	}
 
-	if req.Header.Get("content-type") == JSONContentTypeHeader &&
+	shouldParseJSONBody := strings.HasPrefix(req.Header.Get("content-type"), JSONContentTypeHeader) &&
 		req.ContentLength > 0 &&
-		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut) {
+		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut)
+
+	if shouldParseJSONBody {
 		bodyBytes, err := ioutil.ReadAll(req.Body)
 		if err != nil {
 			return nil, fmt.Errorf("failed request body parse: %s", err.Error())
