@@ -1,5 +1,7 @@
 package policies
 
+import future.keywords.in
+
 foobar = true
 
 foo_bar = true
@@ -24,4 +26,19 @@ filter_projects {
 	bindings.resource.resourceType == "custom"
 	bindings.permissions[_] == "console.project.view"
 	resource._id == bindings.resource.resourceId
+}
+
+projection_feature_toggle[res] {
+    ft_not_allowed := {x | 
+  	 	some key, val in input.response.body
+        ft_checker with input.ft as key
+   		x = key
+    }
+   	res := object.remove(input.response.body, ft_not_allowed)
+}
+
+ft_checker {
+    ft := input.ft
+    ft == "TEST_FT_1"
+    true
 }

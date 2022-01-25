@@ -19,6 +19,7 @@ import (
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
 	"github.com/gorilla/mux"
+	"github.com/mia-platform/glogger/v2"
 	"gotest.tools/v3/assert"
 )
 
@@ -587,6 +588,56 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
 			})
 		})
+
+		t.Run("testing return value of the evaluation", func(t *testing.T) {
+			invoked := false
+			mockHeader := "X-Backdoor"
+			mockHeaderValue := "mocked value"
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				invoked = true
+				assert.Equal(t, r.Header.Get(mockHeader), mockHeaderValue, "Mocked Backend: Mocked Header not found")
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			serverURL, _ := url.Parse(server.URL)
+
+			opaModule := &OPAModuleConfig{
+				Name: "example.rego",
+				Content: fmt.Sprintf(`package policies
+				todo[msg]{
+					count(input.request.headers["%s"]) != 0
+					msg := {"ciao":"boh"} 
+					test
+				}
+				test[x]{
+					true
+					x:= ["x"] 
+				} 
+				`, mockHeader),
+			}
+
+			ctx := createContext(t,
+				context.Background(),
+				EnvironmentVariables{TargetServiceHost: serverURL.Host},
+				nil,
+				&XPermission{AllowPermission: "todo"},
+				opaModule,
+			)
+
+			t.Run("request respects the policy", func(t *testing.T) {
+				w := httptest.NewRecorder()
+				r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
+				assert.Equal(t, err, nil, "Unexpected error")
+
+				r.Header.Set(mockHeader, mockHeaderValue)
+
+				rbacHandler(w, r)
+				assert.Assert(t, invoked, "Handler was not invoked.")
+				assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			})
+		})
 	})
 
 	t.Run("Test retrieve roles ids from bindings", func(t *testing.T) {
@@ -1095,5 +1146,58 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			assert.Assert(t, invoked, "Handler was not invoked.")
 			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
 		})
+	})
+}
+
+func TestHandlerUtilities(t *testing.T) {
+	policy := `package policies
+allow {
+	true
+}
+column_policy{
+	false
+}
+`
+	permission := XPermission{
+		AllowPermission: "allow",
+		ResourceFilter: ResourceFilter{
+			ColumnFilter: ColumnFilterConfiguration{
+				OnResponse: OnResponseConfiguration{
+					Policy: "column_policy",
+				},
+			},
+		},
+	}
+
+	ctx := createContext(t,
+		context.Background(),
+		EnvironmentVariables{TargetServiceHost: "test"},
+		nil,
+		&XPermission{
+			AllowPermission: "allow",
+			ResourceFilter: ResourceFilter{
+				ColumnFilter: ColumnFilterConfiguration{
+					OnResponse: OnResponseConfiguration{
+						Policy: "column_policy",
+					},
+				},
+			},
+		},
+
+		&OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
+	)
+
+	r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
+	assert.Equal(t, err, nil, "Unexpected error")
+	logger := glogger.Get(r.Context())
+
+	t.Run("create  evaluator with allowPolicy", func(t *testing.T) {
+		evaluator, _ := createEvaluator(logger, r, envs, permission.AllowPermission, nil)
+		assert.Equal(t, evaluator.Policy, "allow", "Unexpected status code.")
+	})
+
+	t.Run("create  evaluator with policy for column filtering", func(t *testing.T) {
+		evaluator, _ := createEvaluator(logger, r, envs, permission.ResourceFilter.ColumnFilter.OnResponse.Policy, nil)
+		assert.Equal(t, evaluator.Policy, "column_policy", "Unexpected status code.")
 	})
 }

@@ -21,7 +21,7 @@ func TestNewOPAEvaluator(t *testing.T) {
 	t.Run("policy sanitization", func(t *testing.T) {
 		evaluator, err := NewOPAEvaluator("very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, inputBytes)
 		require.Nil(t, err, "unexpected error")
-		require.Equal(t, "very.composed.policy", evaluator.RequiredAllowPermission)
+		require.Equal(t, "very.composed.policy", evaluator.Policy)
 
 		result, err := evaluator.PermissionQuery.Eval(context.TODO())
 		require.Nil(t, err, "unexpected error")
@@ -48,7 +48,7 @@ func TestCreateRegoInput(t *testing.T) {
 		t.Run("ignored on method GET", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", bytes.NewReader(reqBodyBytes))
 
-			inputBytes, err := createRegoQueryInput(req, env, user)
+			inputBytes, err := createRegoQueryInput(req, env, user, nil)
 			require.Nil(t, err, "Unexpected error")
 			require.True(t, !strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)))
 		})
@@ -57,7 +57,7 @@ func TestCreateRegoInput(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", nil)
 			req.Header.Set("Content-Type", "application/json")
 
-			inputBytes, err := createRegoQueryInput(req, env, user)
+			inputBytes, err := createRegoQueryInput(req, env, user, nil)
 			require.Nil(t, err, "Unexpected error")
 			require.True(t, !strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)))
 		})
@@ -68,7 +68,7 @@ func TestCreateRegoInput(t *testing.T) {
 			for _, method := range acceptedMethods {
 				req := httptest.NewRequest(method, "/", bytes.NewReader(reqBodyBytes))
 				req.Header.Set("Content-Type", "application/json")
-				inputBytes, err := createRegoQueryInput(req, env, user)
+				inputBytes, err := createRegoQueryInput(req, env, user, nil)
 				require.Nil(t, err, "Unexpected error")
 
 				require.True(t, strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)), "Unexpected body for method %s", method)
@@ -78,7 +78,7 @@ func TestCreateRegoInput(t *testing.T) {
 		t.Run("added with content-type specifying charset", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(reqBodyBytes))
 			req.Header.Set("Content-Type", "application/json;charset=UTF-8")
-			inputBytes, err := createRegoQueryInput(req, env, user)
+			inputBytes, err := createRegoQueryInput(req, env, user, nil)
 			require.Nil(t, err, "Unexpected error")
 
 			require.True(t, strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)), "Unexpected body for method %s", http.MethodPost)
@@ -87,7 +87,7 @@ func TestCreateRegoInput(t *testing.T) {
 		t.Run("reject on method POST but with invalid body", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
 			req.Header.Set("Content-Type", "application/json")
-			_, err := createRegoQueryInput(req, env, user)
+			_, err := createRegoQueryInput(req, env, user, nil)
 			require.True(t, err != nil)
 		})
 
@@ -95,7 +95,7 @@ func TestCreateRegoInput(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
 			req.Header.Set("Content-Type", "multipart/form-data")
 
-			inputBytes, err := createRegoQueryInput(req, env, user)
+			inputBytes, err := createRegoQueryInput(req, env, user, nil)
 			require.Nil(t, err, "Unexpected error")
 			require.True(t, !strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)))
 		})

@@ -38,7 +38,6 @@ type RowFilterConfiguration struct {
 }
 
 type ColumnFilterConfiguration struct {
-	Enabled    bool                    `json:"enabled"`
 	OnResponse OnResponseConfiguration `json:"onResponse"`
 }
 
@@ -125,6 +124,7 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 				w.Header().Set("allow", scopedMethodContent.Permission.AllowPermission)
 				w.Header().Set("resourceFilter.rowFilter.enabled", strconv.FormatBool(scopedMethodContent.Permission.ResourceFilter.RowFilter.Enabled))
 				w.Header().Set("resourceFilter.rowFilter.headerKey", scopedMethodContent.Permission.ResourceFilter.RowFilter.HeaderKey)
+				w.Header().Set("resourceFilter.columnFilter.onResponse.policy", scopedMethodContent.Permission.ResourceFilter.ColumnFilter.OnResponse.Policy)
 			}
 
 			if scopedMethod != ALL_METHODS {
@@ -172,7 +172,8 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 	return XPermission{
 		AllowPermission: recorderResult.Header.Get("allow"),
 		ResourceFilter: ResourceFilter{
-			RowFilter: RowFilterConfiguration{Enabled: rowFilterEnabled, HeaderKey: recorderResult.Header.Get("resourceFilter.rowFilter.headerKey")},
+			RowFilter:    RowFilterConfiguration{Enabled: rowFilterEnabled, HeaderKey: recorderResult.Header.Get("resourceFilter.rowFilter.headerKey")},
+			ColumnFilter: ColumnFilterConfiguration{OnResponse: OnResponseConfiguration{Policy: recorderResult.Header.Get("resourceFilter.columnFilter.onResponse.policy")}},
 		},
 	}, nil
 }
