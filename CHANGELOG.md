@@ -7,13 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
-- [JAF-182](https://makeitapp.atlassian.net/browse/JAF-182): Implemented column filtering on response body base on policy evaluation
-- 
-- refactor: User struct now contains userBindings and Roles
+## 0.3.0 - 25/01/2022
 
+### Changed
+
+- [JAF-182](https://makeitapp.atlassian.net/browse/JAF-182): Implemented column filtering on response body base on policy evaluation
+- refactor: User struct now contains userBindings and Roles
 - If no userId header is provided now mongo is not called in order to retrive user bindings and roles.
 
 ### Added
+
 - [JAF-205](https://makeitapp.atlassian.net/browse/JAF-205): Added `pathParameter` to rego input request.
 - [JAF-205](https://makeitapp.atlassian.net/browse/JAF-205): routes sorting during registration to prevent pathParams retrieval error
 - [JAF-233](https://makeitapp.atlassian.net/browse/JAF-233): better business errors for policies evaluation
@@ -44,7 +47,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## 0.1.0 - 17/12/2021
 
-### Changes
+### Changed
 
 - [JAF-89](https://makeitapp.atlassian.net/browse/JAF-89): Convert API path with variables according the gorilla mux requirements
 - [JAF-103](https://makeitapp.atlassian.net/browse/JAF-103): Support dot character as divider in the x-permission string, replaced as underscore for rego policy query
