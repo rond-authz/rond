@@ -32,14 +32,14 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	evaluator, err := createEvaluator(logger, req, w, env, permission)
+	evaluator, err := createEvaluator(logger, req, env, permission.AllowPermission, nil)
 	if err != nil {
 		logger.WithError(err).Error("failed RBAC policy creation")
 		failResponse(w, "Failed RBAC policy creation", GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
-	query, err := evaluator.PolicyEvaluation(logger, permission)
+	_, query, err := evaluator.PolicyEvaluation(logger, permission)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("RBAC policy evaluation failed")
 		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed", NO_PERMISSIONS_ERROR_MESSAGE)
@@ -62,13 +62,11 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	if query != nil {
 		req.Header.Set(queryHeaderKey, string(queryToProxy))
 	}
-
-	ReverseProxy(env, w, req)
+	ReverseProxy(logger, env, w, req, permission)
 }
 
-func ReverseProxy(env EnvironmentVariables, w http.ResponseWriter, req *http.Request) {
+func ReverseProxy(logger *logrus.Entry, env EnvironmentVariables, w http.ResponseWriter, req *http.Request, permission *XPermission) {
 	targetHostFromEnv := env.TargetServiceHost
-
 	proxy := httputil.ReverseProxy{
 		Director: func(req *http.Request) {
 			req.URL.Host = targetHostFromEnv
@@ -79,17 +77,23 @@ func ReverseProxy(env EnvironmentVariables, w http.ResponseWriter, req *http.Req
 			}
 		},
 	}
-	opaWriter := NewOpaResponseWriter(w)
-	proxy.ServeHTTP(opaWriter, req)
+	// Check on nil is performed to proxy the oas documentation path
+	if permission == nil || permission.ResourceFilter.ColumnFilter.OnResponse.Policy == "" {
+		proxy.ServeHTTP(w, req)
+		return
+	}
+	proxy.Transport = &OPATransport{http.DefaultTransport, logger, req, env, permission}
+	proxy.ServeHTTP(w, req)
 }
 
 func alwaysProxyHandler(w http.ResponseWriter, req *http.Request) {
 	requestContext := req.Context()
+	logger := glogger.Get(req.Context())
 	env, err := GetEnv(requestContext)
 	if err != nil {
 		glogger.Get(requestContext).WithError(err).Error("no env found in context")
 		failResponse(w, "no environment found in context", GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
-	ReverseProxy(env, w, req)
+	ReverseProxy(logger, env, w, req, nil)
 }

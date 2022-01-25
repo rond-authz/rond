@@ -176,7 +176,7 @@ func rolesIdsFromBindings(bindings []types.Binding) []string {
 	return rolesIds
 }
 
-func retrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, w http.ResponseWriter, env EnvironmentVariables) (types.User, error) {
+func retrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, env EnvironmentVariables) (types.User, error) {
 	requestContext := req.Context()
 	mongoClient, err := GetMongoClientFromContext(requestContext)
 	if err != nil {
