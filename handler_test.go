@@ -321,6 +321,105 @@ allow {
 		assert.Equal(t, string(buf), "Mocked Backend Body Example", "Unexpected body response")
 	})
 
+	t.Run("sends empty filter query with application-json as content-type", func(t *testing.T) {
+		policy := `package policies
+allow {
+	false
+	employee := data.resources[_]
+	employee.name == "name_test"
+}
+`
+
+		invoked := false
+		mockBodySting := "I am a body"
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			invoked = true
+		}))
+		defer server.Close()
+
+		body := strings.NewReader(mockBodySting)
+
+		serverURL, _ := url.Parse(server.URL)
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			nil,
+			&XPermission{
+				AllowPermission: "allow",
+				ResourceFilter: ResourceFilter{
+					RowFilter: RowFilterConfiguration{
+						HeaderKey: "rowfilterquery",
+						Enabled:   true,
+					},
+				},
+			},
+
+			&OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
+		)
+
+		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
+		assert.Equal(t, err, nil, "Unexpected error")
+		r.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		rbacHandler(w, r)
+
+		assert.Assert(t, !invoked, "Handler was not invoked.")
+		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		buf, err := ioutil.ReadAll(w.Body)
+		assert.Equal(t, err, nil, "Unexpected error to read body response")
+		assert.Equal(t, string(buf), "[]", "Unexpected body response")
+	})
+
+	t.Run("sends empty filter query with text/plain as content-type", func(t *testing.T) {
+		policy := `package policies
+allow {
+	false
+	employee := data.resources[_]
+	employee.name == "name_test"
+}
+`
+
+		invoked := false
+		mockBodySting := "I am a body"
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			invoked = true
+		}))
+		defer server.Close()
+
+		body := strings.NewReader(mockBodySting)
+
+		serverURL, _ := url.Parse(server.URL)
+		ctx := createContext(t,
+			context.Background(),
+			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			nil,
+			&XPermission{
+				AllowPermission: "allow",
+				ResourceFilter: ResourceFilter{
+					RowFilter: RowFilterConfiguration{
+						HeaderKey: "rowfilterquery",
+						Enabled:   true,
+					},
+				},
+			},
+
+			&OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
+		)
+
+		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
+		assert.Equal(t, err, nil, "Unexpected error")
+		r.Header.Set("Content-Type", "text/plain")
+		w := httptest.NewRecorder()
+
+		rbacHandler(w, r)
+
+		assert.Assert(t, !invoked, "Handler was not invoked.")
+		assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+	})
+
 	t.Run("filter query return not allow", func(t *testing.T) {
 		policy := `package policies
 allow {

@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httputil"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/opatranslator"
 	"github.com/mia-platform/glogger/v2"
 	"github.com/sirupsen/logrus"
 )
@@ -41,10 +43,18 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 
 	_, query, err := evaluator.PolicyEvaluation(logger, permission)
 	if err != nil {
+		hasApplicationJSONContentType := shouldParseJSONBody(req)
+		if errors.Is(err, opatranslator.ErrEmptyQuery) && hasApplicationJSONContentType {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("[]"))
+			return
+		}
+
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("RBAC policy evaluation failed")
 		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed", NO_PERMISSIONS_ERROR_MESSAGE)
 		return
 	}
+
 	var queryToProxy = []byte{}
 	if query != nil {
 		queryToProxy, err = json.Marshal(query)

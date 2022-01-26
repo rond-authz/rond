@@ -203,7 +203,6 @@ func TestMongoCollections(t *testing.T) {
 				CRUDDocumentState: "PUBLIC",
 			},
 		}
-		fmt.Printf("\n\n%+v\n\n%+v\n\n", result, expected)
 		assert.Assert(t, reflect.DeepEqual(result, expected),
 			"Error while getting permissions")
 	})
