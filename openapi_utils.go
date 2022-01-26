@@ -113,9 +113,9 @@ func (rMap RoutesMap) contains(path string, method string) bool {
 func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 	OASRouter := bunrouter.New().Compat()
 	routeMap := oas.createRoutesMap()
-
 	for OASPath, OASContent := range oas.Paths {
-		OASPathCleaned := cleanWildcard(OASPath)
+
+		OASPathCleaned := convertPathVariablesToColons(cleanWildcard(OASPath))
 		for method, methodContent := range OASContent {
 			scopedMethod := strings.ToUpper(method)
 			scopedMethodContent := methodContent

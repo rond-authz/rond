@@ -27,8 +27,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var rx = regexp.MustCompile(`\/:(\w+)`)
-
 func setupRoutes(router *mux.Router, oas *OpenAPISpec, env EnvironmentVariables) {
 	var documentationPermission string
 	documentationPathInOAS := oas.Paths[env.TargetServiceOASPath]
@@ -52,23 +50,31 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env EnvironmentVariables)
 		}
 		if strings.Contains(path, "*") {
 			pathWithoutAsterisk := strings.ReplaceAll(path, "*", "")
-			router.PathPrefix(convertPathVariables(pathWithoutAsterisk)).HandlerFunc(rbacHandler)
+			router.PathPrefix(convertPathVariablesToBrackets(pathWithoutAsterisk)).HandlerFunc(rbacHandler)
 			continue
 		}
 		if path == env.TargetServiceOASPath && documentationPermission == "" {
-			router.HandleFunc(convertPathVariables(path), alwaysProxyHandler)
+			router.HandleFunc(convertPathVariablesToBrackets(path), alwaysProxyHandler)
 			continue
 		}
-		router.HandleFunc(convertPathVariables(path), rbacHandler)
+		router.HandleFunc(convertPathVariablesToBrackets(path), rbacHandler)
 	}
 	if documentationPathInOAS == nil {
-		router.HandleFunc(convertPathVariables(env.TargetServiceOASPath), alwaysProxyHandler)
+		router.HandleFunc(convertPathVariablesToBrackets(env.TargetServiceOASPath), alwaysProxyHandler)
 	}
 	// FIXME: All the routes don't inserted above are anyway handled by rbacHandler.
 	//        Maybe the code above can be cleaned.
 	router.PathPrefix("/").HandlerFunc(rbacHandler)
 }
 
-func convertPathVariables(path string) string {
-	return rx.ReplaceAllString(path, "/{$1}")
+var matchColons = regexp.MustCompile(`\/:(\w+)`)
+
+func convertPathVariablesToBrackets(path string) string {
+	return matchColons.ReplaceAllString(path, "/{$1}")
+}
+
+var matchBrackets = regexp.MustCompile(`\/{(\w+)}`)
+
+func convertPathVariablesToColons(path string) string {
+	return matchBrackets.ReplaceAllString(path, "/:$1")
 }
