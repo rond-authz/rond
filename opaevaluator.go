@@ -188,7 +188,7 @@ func createRegoQueryInput(req *http.Request, env EnvironmentVariables, user type
 		},
 	}
 
-	shouldParseJSONBody := shouldParseJSONBody(req) &&
+	shouldParseJSONBody := hasApplicationJSONContentType(req.Header) &&
 		req.ContentLength > 0 &&
 		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut)
 

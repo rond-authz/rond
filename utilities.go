@@ -10,8 +10,8 @@ import (
 
 const JSONContentTypeHeader = "application/json"
 
-func shouldParseJSONBody(req *http.Request) bool {
-	return strings.HasPrefix(req.Header.Get("content-type"), JSONContentTypeHeader)
+func hasApplicationJSONContentType(headers http.Header) bool {
+	return strings.HasPrefix(headers.Get("content-type"), JSONContentTypeHeader)
 }
 
 func failResponse(w http.ResponseWriter, technicalError, businessError string) {

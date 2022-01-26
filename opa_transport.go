@@ -39,8 +39,8 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	shouldParseJSONBody := shouldParseJSONBody(req)
-	if shouldParseJSONBody {
+	if !hasApplicationJSONContentType(resp.Header) {
+		t.logger.WithField("foundContentType", resp.Header.Get("content-type")).Error("found content type")
 		t.responseWithError(resp, fmt.Errorf("Content-type is not application/json"), http.StatusInternalServerError)
 		return resp, nil
 	}

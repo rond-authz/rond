@@ -43,8 +43,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 
 	_, query, err := evaluator.PolicyEvaluation(logger, permission)
 	if err != nil {
-		hasApplicationJSONContentType := shouldParseJSONBody(req)
-		if errors.Is(err, opatranslator.ErrEmptyQuery) && hasApplicationJSONContentType {
+		if errors.Is(err, opatranslator.ErrEmptyQuery) && hasApplicationJSONContentType(req.Header) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("[]"))
 			return
