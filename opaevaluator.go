@@ -100,7 +100,7 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 	client := opatranslator.OPAClient{}
 	q, err := client.ProcessQuery(partialResults)
 	if err != nil {
-		return nil, fmt.Errorf("Policy Evaluation has failed when processing query: %s", err.Error())
+		return nil, err
 	}
 
 	logger.WithFields(logrus.Fields{
@@ -188,7 +188,7 @@ func createRegoQueryInput(req *http.Request, env EnvironmentVariables, user type
 		},
 	}
 
-	shouldParseJSONBody := strings.HasPrefix(req.Header.Get("content-type"), JSONContentTypeHeader) &&
+	shouldParseJSONBody := shouldParseJSONBody(req) &&
 		req.ContentLength > 0 &&
 		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut)
 

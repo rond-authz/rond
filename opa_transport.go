@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
@@ -40,7 +39,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	shouldParseJSONBody := strings.HasPrefix(req.Header.Get("content-type"), JSONContentTypeHeader)
+	shouldParseJSONBody := shouldParseJSONBody(req)
 	if shouldParseJSONBody {
 		t.responseWithError(resp, fmt.Errorf("Content-type is not application/json"), http.StatusInternalServerError)
 		return resp, nil

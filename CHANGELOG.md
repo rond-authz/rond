@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Changed
+
+- [JAF-235](https://makeitapp.atlassian.net/browse/JAF-235): when the filter row query is empty and content-type is application json, the rbac handler return empty array
+
 ## 0.3.0 - 25/01/2022
 
 ### Changed

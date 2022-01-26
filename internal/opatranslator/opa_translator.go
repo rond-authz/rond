@@ -1,6 +1,7 @@
 package opatranslator
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -8,6 +9,8 @@ import (
 	"github.com/open-policy-agent/opa/rego"
 	"go.mongodb.org/mongo-driver/bson"
 )
+
+var ErrEmptyQuery = errors.New("empty query")
 
 const minimumResultLength = 3
 
@@ -64,9 +67,11 @@ func (c *OPAClient) ProcessQuery(pq *rego.PartialQueries) (bson.M, error) {
 		k1 := Queries{Pipeline: bson.M{"$and": *pipeline}}
 		queries = append(queries, k1)
 	}
+
 	if len(queries) == 0 {
-		return nil, fmt.Errorf("RBAC policy evaluation and query generation failed")
+		return nil, fmt.Errorf("%w: RBAC policy evaluation and query generation failed", ErrEmptyQuery)
 	}
+
 	var mongoQueries []bson.M
 	for _, q := range queries {
 		mongoQueries = append(mongoQueries, q.Pipeline)
