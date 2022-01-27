@@ -54,7 +54,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		t.logger,
 		t.request,
 		t.env,
-		t.permission.ResourceFilter.ColumnFilter.OnResponse.Policy,
+		t.permission.ResponseFilter.Policy,
 		decodedBody,
 	)
 	if err != nil {

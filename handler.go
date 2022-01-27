@@ -87,7 +87,7 @@ func ReverseProxy(logger *logrus.Entry, env EnvironmentVariables, w http.Respons
 		},
 	}
 	// Check on nil is performed to proxy the oas documentation path
-	if permission == nil || permission.ResourceFilter.ColumnFilter.OnResponse.Policy == "" {
+	if permission == nil || permission.ResponseFilter.Policy == "" {
 		proxy.ServeHTTP(w, req)
 		return
 	}
