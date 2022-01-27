@@ -753,7 +753,7 @@ func TestEntryPoint(t *testing.T) {
 	})
 }
 
-func TestEntrypointWithColumnFiltering(t *testing.T) {
+func TestEntrypointWithResponseFiltering(t *testing.T) {
 	shutdown := make(chan os.Signal, 1)
 
 	defer gock.Off()
@@ -774,7 +774,7 @@ func TestEntrypointWithColumnFiltering(t *testing.T) {
 	gock.New("http://localhost:3040").
 		Get("/documentation/json").
 		Reply(200).
-		File("./mocks/mockForColumnFilteringOnResponse.json")
+		File("./mocks/mockForResponseFilteringOnResponse.json")
 
 	unsetBaseEnvs := setEnvs([]env{
 		{name: "HTTP_PORT", value: "3041"},

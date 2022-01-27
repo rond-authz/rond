@@ -1259,12 +1259,8 @@ column_policy{
 `
 	permission := XPermission{
 		AllowPermission: "allow",
-		ResourceFilter: ResourceFilter{
-			ColumnFilter: ColumnFilterConfiguration{
-				OnResponse: OnResponseConfiguration{
-					Policy: "column_policy",
-				},
-			},
+		ResponseFilter: ResponseFilterConfiguration{
+			Policy: "column_policy",
 		},
 	}
 
@@ -1274,12 +1270,8 @@ column_policy{
 		nil,
 		&XPermission{
 			AllowPermission: "allow",
-			ResourceFilter: ResourceFilter{
-				ColumnFilter: ColumnFilterConfiguration{
-					OnResponse: OnResponseConfiguration{
-						Policy: "column_policy",
-					},
-				},
+			ResponseFilter: ResponseFilterConfiguration{
+				Policy: "column_policy",
 			},
 		},
 
@@ -1296,7 +1288,7 @@ column_policy{
 	})
 
 	t.Run("create  evaluator with policy for column filtering", func(t *testing.T) {
-		evaluator, _ := createEvaluator(logger, r, envs, permission.ResourceFilter.ColumnFilter.OnResponse.Policy, nil)
+		evaluator, _ := createEvaluator(logger, r, envs, permission.ResponseFilter.Policy, nil)
 		assert.Equal(t, evaluator.Policy, "column_policy", "Unexpected status code.")
 	})
 }

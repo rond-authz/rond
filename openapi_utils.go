@@ -23,13 +23,13 @@ const ALL_METHODS = "ALL"
 type XPermissionKey struct{}
 
 type XPermission struct {
-	AllowPermission string         `json:"allow"`
-	ResourceFilter  ResourceFilter `json:"resourceFilter"`
+	AllowPermission string                      `json:"allow"`
+	ResponseFilter  ResponseFilterConfiguration `json:"responseFilter"`
+	ResourceFilter  ResourceFilter              `json:"resourceFilter"`
 }
 
 type ResourceFilter struct {
-	RowFilter    RowFilterConfiguration    `json:"rowFilter"`
-	ColumnFilter ColumnFilterConfiguration `json:"columnFilter"`
+	RowFilter RowFilterConfiguration `json:"rowFilter"`
 }
 
 type RowFilterConfiguration struct {
@@ -37,11 +37,7 @@ type RowFilterConfiguration struct {
 	HeaderKey string `json:"headerKey"`
 }
 
-type ColumnFilterConfiguration struct {
-	OnResponse OnResponseConfiguration `json:"onResponse"`
-}
-
-type OnResponseConfiguration struct {
+type ResponseFilterConfiguration struct {
 	Policy string `json:"policy"`
 }
 
@@ -124,7 +120,7 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 				w.Header().Set("allow", scopedMethodContent.Permission.AllowPermission)
 				w.Header().Set("resourceFilter.rowFilter.enabled", strconv.FormatBool(scopedMethodContent.Permission.ResourceFilter.RowFilter.Enabled))
 				w.Header().Set("resourceFilter.rowFilter.headerKey", scopedMethodContent.Permission.ResourceFilter.RowFilter.HeaderKey)
-				w.Header().Set("resourceFilter.columnFilter.onResponse.policy", scopedMethodContent.Permission.ResourceFilter.ColumnFilter.OnResponse.Policy)
+				w.Header().Set("responseFilter.policy", scopedMethodContent.Permission.ResponseFilter.Policy)
 			}
 
 			if scopedMethod != ALL_METHODS {
@@ -171,9 +167,9 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 	}
 	return XPermission{
 		AllowPermission: recorderResult.Header.Get("allow"),
+		ResponseFilter:  ResponseFilterConfiguration{Policy: recorderResult.Header.Get("responseFilter.policy")},
 		ResourceFilter: ResourceFilter{
-			RowFilter:    RowFilterConfiguration{Enabled: rowFilterEnabled, HeaderKey: recorderResult.Header.Get("resourceFilter.rowFilter.headerKey")},
-			ColumnFilter: ColumnFilterConfiguration{OnResponse: OnResponseConfiguration{Policy: recorderResult.Header.Get("resourceFilter.columnFilter.onResponse.policy")}},
+			RowFilter: RowFilterConfiguration{Enabled: rowFilterEnabled, HeaderKey: recorderResult.Header.Get("resourceFilter.rowFilter.headerKey")},
 		},
 	}, nil
 }

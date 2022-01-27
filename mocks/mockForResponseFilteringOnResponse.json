@@ -10,12 +10,8 @@
             "get": {
                 "x-permission": {
                     "allow": "foobar",
-                    "resourceFilter": {
-                        "columnFilter": {
-                            "onResponse": {
-                                "policy": "filter_ft_not existing"
-                            }
-                        }
+                    "responseFilter": {
+                        "policy": "filter_ft_not existing"
                     }
                 }
             }
@@ -24,12 +20,8 @@
             "get": {
                 "x-permission": {
                     "allow": "foobar",
-                    "resourceFilter": {
-                        "columnFilter": {
-                            "onResponse": {
-                                "policy": "projection_feature_toggle"
-                            }
-                        }
+                    "responseFilter": {
+                        "policy": "projection_feature_toggle"
                     }
                 }
             }
