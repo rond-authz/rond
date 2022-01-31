@@ -33,7 +33,7 @@ LABEL maintainer="undefined" \
   eu.mia-platform.url="https://www.mia-platform.eu" \
   vcs.sha="$COMMIT_SHA"
 
-ENV SERVICE_VERSION="0.3.0"
+ENV SERVICE_VERSION="0.3.1"
 
 # Import the user and group files from the builder.
 COPY --from=builder /etc/passwd /etc/passwd
