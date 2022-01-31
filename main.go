@@ -13,6 +13,8 @@ import (
 	"syscall"
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/helpers"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/configlib"
@@ -28,8 +30,8 @@ func main() {
 }
 
 func entrypoint(shutdown chan os.Signal) {
-	var env EnvironmentVariables
-	err := configlib.GetEnvVariables(envVariablesConfig, &env)
+	var env config.EnvironmentVariables
+	err := configlib.GetEnvVariables(config.EnvVariablesConfig, &env)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -96,21 +98,21 @@ func entrypoint(shutdown chan os.Signal) {
 	helpers.GracefulShutdown(srv, shutdown, log, env.DelayShutdownSeconds)
 }
 
-func setupRouter(log *logrus.Logger, env EnvironmentVariables, opaModuleConfig *OPAModuleConfig, oas *OpenAPISpec) (*mux.Router, *MongoClient, error) {
+func setupRouter(log *logrus.Logger, env config.EnvironmentVariables, opaModuleConfig *OPAModuleConfig, oas *OpenAPISpec) (*mux.Router, *mongoclient.MongoClient, error) {
 	router := mux.NewRouter()
 	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
 	StatusRoutes(router, "rbac-service", env.ServiceVersion)
 
-	router.Use(RequestMiddlewareEnvironments(env))
+	router.Use(config.RequestMiddlewareEnvironments(env))
 	router.Use(OPAMiddleware(opaModuleConfig, oas, &env))
 
-	mongoClient, err := newMongoClient(env, log)
+	mongoClient, err := mongoclient.NewMongoClient(env, log)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error during init of mongo collection: %s", err.Error())
 	}
 	if mongoClient != nil {
-		router.Use(MongoClientInjectorMiddleware(mongoClient))
+		router.Use(mongoclient.MongoClientInjectorMiddleware(mongoClient))
 	}
 
 	setupRoutes(router, oas, env)

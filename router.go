@@ -22,12 +22,13 @@ import (
 	"sort"
 	"strings"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/utils"
 
 	"github.com/gorilla/mux"
 )
 
-func setupRoutes(router *mux.Router, oas *OpenAPISpec, env EnvironmentVariables) {
+func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVariables) {
 	var documentationPermission string
 	documentationPathInOAS := oas.Paths[env.TargetServiceOASPath]
 	if documentationPathInOAS != nil {

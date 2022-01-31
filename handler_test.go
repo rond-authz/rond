@@ -14,7 +14,9 @@ import (
 
 	"testing"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mocks"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/testutils"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
@@ -38,7 +40,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			mockXPermission,
 			mockOPAModule,
@@ -70,7 +72,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			mockXPermission,
 			mockOPAModule,
@@ -107,7 +109,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			mockXPermission,
 			mockOPAModule,
@@ -147,7 +149,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			&XPermission{AllowPermission: "todo"},
 			&OPAModuleConfig{
@@ -217,7 +219,7 @@ allow {
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			&XPermission{
 				AllowPermission: "allow",
@@ -290,7 +292,7 @@ allow {
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			&XPermission{
 				AllowPermission: "allow",
@@ -343,7 +345,7 @@ allow {
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			&XPermission{
 				AllowPermission: "allow",
@@ -394,7 +396,7 @@ allow {
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			&XPermission{
 				AllowPermission: "allow",
@@ -466,7 +468,7 @@ allow {
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			&XPermission{
 				AllowPermission: "allow",
@@ -553,7 +555,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 				ctx := createContext(t,
 					context.Background(),
-					EnvironmentVariables{TargetServiceHost: serverURL.Host},
+					config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 					nil,
 					&XPermission{AllowPermission: "todo"},
 					opaModule,
@@ -593,7 +595,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 				ctx := createContext(t,
 					context.Background(),
-					EnvironmentVariables{TargetServiceHost: serverURL.Host},
+					config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 					nil,
 					mockXPermission,
 					opaModule,
@@ -651,7 +653,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			ctx := createContext(t,
 				context.Background(),
-				EnvironmentVariables{
+				config.EnvironmentVariables{
 					TargetServiceHost:    serverURL.Host,
 					UserPropertiesHeader: userPropertiesHeaderKey,
 					UserGroupsHeader:     userGroupsHeaderKey,
@@ -719,7 +721,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			ctx := createContext(t,
 				context.Background(),
-				EnvironmentVariables{TargetServiceHost: serverURL.Host},
+				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 				nil,
 				&XPermission{AllowPermission: "todo"},
 				opaModule,
@@ -781,7 +783,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				CRUDDocumentState: "PUBLIC",
 			},
 		}
-		rolesIds := rolesIdsFromBindings(bindings)
+		rolesIds := mongoclient.RolesIDsFromBindings(bindings)
 		expected := []string{"role1", "role2", "role3", "role4"}
 		assert.Assert(t, reflect.DeepEqual(rolesIds, expected),
 			"Error while getting permissions")
@@ -801,7 +803,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			ctx := createContext(t,
 				context.Background(),
-				EnvironmentVariables{
+				config.EnvironmentVariables{
 					TargetServiceHost:      serverURL.Host,
 					UserPropertiesHeader:   userPropertiesHeaderKey,
 					UserGroupsHeader:       userGroupsHeaderKey,
@@ -843,7 +845,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			ctx := createContext(t,
 				context.Background(),
-				EnvironmentVariables{
+				config.EnvironmentVariables{
 					TargetServiceHost:      serverURL.Host,
 					UserPropertiesHeader:   userPropertiesHeaderKey,
 					UserGroupsHeader:       userGroupsHeaderKey,
@@ -924,7 +926,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			ctx := createContext(t,
 				context.Background(),
-				EnvironmentVariables{
+				config.EnvironmentVariables{
 					TargetServiceHost:      serverURL.Host,
 					UserPropertiesHeader:   userPropertiesHeaderKey,
 					UserGroupsHeader:       userGroupsHeaderKey,
@@ -1009,7 +1011,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			serverURL, _ := url.Parse(server.URL)
 			ctx := createContext(t,
 				context.Background(),
-				EnvironmentVariables{
+				config.EnvironmentVariables{
 					TargetServiceHost:      serverURL.Host,
 					UserPropertiesHeader:   userPropertiesHeaderKey,
 					UserGroupsHeader:       userGroupsHeaderKey,
@@ -1108,7 +1110,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			serverURL, _ := url.Parse(server.URL)
 			ctx := createContext(t,
 				context.Background(),
-				EnvironmentVariables{
+				config.EnvironmentVariables{
 					TargetServiceHost:      serverURL.Host,
 					UserPropertiesHeader:   userPropertiesHeaderKey,
 					UserGroupsHeader:       userGroupsHeaderKey,
@@ -1156,7 +1158,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			serverURL, _ := url.Parse(server.URL)
 			ctx := createContext(t,
 				context.Background(),
-				EnvironmentVariables{
+				config.EnvironmentVariables{
 					TargetServiceHost:      serverURL.Host,
 					UserPropertiesHeader:   userPropertiesHeaderKey,
 					UserGroupsHeader:       userGroupsHeaderKey,
@@ -1214,7 +1216,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			serverURL, _ := url.Parse(server.URL)
 			ctx := createContext(t,
 				context.Background(),
-				EnvironmentVariables{
+				config.EnvironmentVariables{
 					TargetServiceHost:      serverURL.Host,
 					UserPropertiesHeader:   userPropertiesHeaderKey,
 					UserGroupsHeader:       userGroupsHeaderKey,
@@ -1266,7 +1268,7 @@ column_policy{
 
 	ctx := createContext(t,
 		context.Background(),
-		EnvironmentVariables{TargetServiceHost: "test"},
+		config.EnvironmentVariables{TargetServiceHost: "test"},
 		nil,
 		&XPermission{
 			AllowPermission: "allow",

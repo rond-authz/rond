@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
 	"github.com/sirupsen/logrus"
@@ -208,7 +209,7 @@ func loadOASFile(APIPermissionsFilePath string) (*OpenAPISpec, error) {
 	return &oas, nil
 }
 
-func loadOAS(log *logrus.Logger, env EnvironmentVariables) (*OpenAPISpec, error) {
+func loadOAS(log *logrus.Logger, env config.EnvironmentVariables) (*OpenAPISpec, error) {
 	if env.APIPermissionsFilePath != "" {
 		oas, err := loadOASFile(env.APIPermissionsFilePath)
 		if err != nil {
@@ -243,7 +244,7 @@ func loadOAS(log *logrus.Logger, env EnvironmentVariables) (*OpenAPISpec, error)
 		return oas, nil
 	}
 
-	return nil, fmt.Errorf("missing environment variables one of %s or %s is required", TargetServiceOASPathEnvKey, APIPermissionsFilePathEnvKey)
+	return nil, fmt.Errorf("missing environment variables one of %s or %s is required", config.TargetServiceOASPathEnvKey, config.APIPermissionsFilePathEnvKey)
 }
 
 func WithXPermission(requestContext context.Context, permission *XPermission) context.Context {

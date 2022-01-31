@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
 	"github.com/stretchr/testify/require"
@@ -34,7 +35,7 @@ func TestNewOPAEvaluator(t *testing.T) {
 }
 
 func TestCreateRegoInput(t *testing.T) {
-	env := EnvironmentVariables{}
+	env := config.EnvironmentVariables{}
 	user := types.User{}
 
 	t.Run("body integration", func(t *testing.T) {

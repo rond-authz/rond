@@ -3,7 +3,7 @@
  * All rights reserved
  */
 
-package main
+package config
 
 import (
 	"context"
@@ -40,7 +40,7 @@ type EnvironmentVariables struct {
 	DelayShutdownSeconds   int
 }
 
-var envVariablesConfig = []configlib.EnvConfig{
+var EnvVariablesConfig = []configlib.EnvConfig{
 	{
 		Key:          "LOG_LEVEL",
 		Variable:     "LogLevel",
@@ -112,14 +112,14 @@ var envVariablesConfig = []configlib.EnvConfig{
 	},
 }
 
-type envKey struct{}
+type EnvKey struct{}
 
 // RequestMiddlewareEnvironments is a gorilla/mux middleware used to inject
 // env variables into requests.
 func RequestMiddlewareEnvironments(env EnvironmentVariables) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := context.WithValue(r.Context(), envKey{}, env)
+			ctx := context.WithValue(r.Context(), EnvKey{}, env)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -127,7 +127,7 @@ func RequestMiddlewareEnvironments(env EnvironmentVariables) mux.MiddlewareFunc 
 
 // GetEnv can be used by a request handler to get environment variables from its context.
 func GetEnv(requestContext context.Context) (EnvironmentVariables, error) {
-	env, ok := requestContext.Value(envKey{}).(EnvironmentVariables)
+	env, ok := requestContext.Value(EnvKey{}).(EnvironmentVariables)
 	if !ok {
 		return EnvironmentVariables{}, fmt.Errorf("no environment in request context")
 	}

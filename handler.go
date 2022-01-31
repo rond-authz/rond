@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/http/httputil"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/opatranslator"
+
 	"github.com/mia-platform/glogger/v2"
 	"github.com/sirupsen/logrus"
 )
@@ -20,7 +22,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	requestContext := req.Context()
 	logger := glogger.Get(requestContext)
 
-	env, err := GetEnv(requestContext)
+	env, err := config.GetEnv(requestContext)
 	if err != nil {
 		logger.WithError(err).Error("no env found in context")
 		failResponse(w, "No environment found in context", GENERIC_BUSINESS_ERROR_MESSAGE)
@@ -74,7 +76,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	ReverseProxy(logger, env, w, req, permission)
 }
 
-func ReverseProxy(logger *logrus.Entry, env EnvironmentVariables, w http.ResponseWriter, req *http.Request, permission *XPermission) {
+func ReverseProxy(logger *logrus.Entry, env config.EnvironmentVariables, w http.ResponseWriter, req *http.Request, permission *XPermission) {
 	targetHostFromEnv := env.TargetServiceHost
 	proxy := httputil.ReverseProxy{
 		Director: func(req *http.Request) {
@@ -98,7 +100,7 @@ func ReverseProxy(logger *logrus.Entry, env EnvironmentVariables, w http.Respons
 func alwaysProxyHandler(w http.ResponseWriter, req *http.Request) {
 	requestContext := req.Context()
 	logger := glogger.Get(req.Context())
-	env, err := GetEnv(requestContext)
+	env, err := config.GetEnv(requestContext)
 	if err != nil {
 		glogger.Get(requestContext).WithError(err).Error("no env found in context")
 		failResponse(w, "no environment found in context", GENERIC_BUSINESS_ERROR_MESSAGE)

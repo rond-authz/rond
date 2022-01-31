@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
@@ -147,7 +148,7 @@ func TestLoadOAS(t *testing.T) {
 	log, _ := test.NewNullLogger()
 
 	t.Run("if TargetServiceOASPath & APIPermissionsFilePath are set together, expect to read oas from static file", func(t *testing.T) {
-		envs := EnvironmentVariables{
+		envs := config.EnvironmentVariables{
 			TargetServiceHost:      "localhost:3000",
 			TargetServiceOASPath:   "/documentation/json",
 			APIPermissionsFilePath: "./mocks/pathsConfig.json",
@@ -181,7 +182,7 @@ func TestLoadOAS(t *testing.T) {
 	})
 
 	t.Run("expect to fetch oasApiSpec from API", func(t *testing.T) {
-		envs := EnvironmentVariables{
+		envs := config.EnvironmentVariables{
 			TargetServiceHost:    "localhost:3000",
 			TargetServiceOASPath: "/documentation/json",
 		}
@@ -224,13 +225,13 @@ func TestLoadOAS(t *testing.T) {
 	})
 
 	t.Run("expect to throw if TargetServiceOASPath or APIPermissionsFilePath is not set", func(t *testing.T) {
-		envs := EnvironmentVariables{
+		envs := config.EnvironmentVariables{
 			TargetServiceHost: "localhost:3000",
 		}
 		_, err := loadOAS(log, envs)
 
 		t.Logf("Expected error occurred: %s", err.Error())
-		assert.Assert(t, err != nil, fmt.Errorf("missing environment variables one of %s or %s is required", TargetServiceOASPathEnvKey, APIPermissionsFilePathEnvKey))
+		assert.Assert(t, err != nil, fmt.Errorf("missing environment variables one of %s or %s is required", config.TargetServiceOASPathEnvKey, config.APIPermissionsFilePathEnvKey))
 	})
 }
 

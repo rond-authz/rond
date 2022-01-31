@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/opatranslator"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
@@ -57,14 +59,14 @@ func NewOPAEvaluator(policy string, opaModuleConfig *OPAModuleConfig, input []by
 	}, nil
 }
 
-func createEvaluator(logger *logrus.Entry, req *http.Request, env EnvironmentVariables, policy string, responseBody interface{}) (*OPAEvaluator, error) {
+func createEvaluator(logger *logrus.Entry, req *http.Request, env config.EnvironmentVariables, policy string, responseBody interface{}) (*OPAEvaluator, error) {
 	opaModuleConfig, err := GetOPAModuleConfig(req.Context())
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no OPA module configuration found in context")
 		return nil, fmt.Errorf("no OPA module configuration found in context")
 	}
 
-	userInfo, err := retrieveUserBindingsAndRoles(logger, req, env)
+	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(logger, req, env)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed user bindings and roles retrieving")
 		return nil, err
@@ -155,7 +157,7 @@ func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission
 	return dataFromEvaluation, nil, nil
 }
 
-func createRegoQueryInput(req *http.Request, env EnvironmentVariables, user types.User, responseBody interface{}) ([]byte, error) {
+func createRegoQueryInput(req *http.Request, env config.EnvironmentVariables, user types.User, responseBody interface{}) ([]byte, error) {
 	userProperties := make(map[string]interface{})
 	_, err := unmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
 	if err != nil {

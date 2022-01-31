@@ -529,14 +529,14 @@ func TestEntryPoint(t *testing.T) {
 		if err = client.Ping(ctx, readpref.Primary()); err != nil {
 			fmt.Printf("error verifying MongoDB connection: %s", err.Error())
 		}
-		mongoClient := MongoClient{
-			client:   client,
-			roles:    client.Database(mongoDBName).Collection("roles"),
-			bindings: client.Database(mongoDBName).Collection("bindings"),
-		}
-		defer mongoClient.client.Disconnect(ctx)
+		defer client.Disconnect(ctx)
 
-		PopulateDbForTesting(t, ctx, &mongoClient)
+		testutils.PopulateDBForTesting(
+			t,
+			ctx,
+			client.Database(mongoDBName).Collection("roles"),
+			client.Database(mongoDBName).Collection("bindings"),
+		)
 
 		go func() {
 			entrypoint(shutdown)
@@ -641,14 +641,14 @@ func TestEntryPoint(t *testing.T) {
 		if err = client.Ping(ctx, readpref.Primary()); err != nil {
 			fmt.Printf("error verifying MongoDB connection: %s", err.Error())
 		}
-		mongoClient := MongoClient{
-			client:   client,
-			roles:    client.Database(mongoDBName).Collection("roles"),
-			bindings: client.Database(mongoDBName).Collection("bindings"),
-		}
-		defer mongoClient.client.Disconnect(ctx)
+		defer client.Disconnect(ctx)
 
-		PopulateDbForTesting(t, ctx, &mongoClient)
+		testutils.PopulateDBForTesting(
+			t,
+			ctx,
+			client.Database(mongoDBName).Collection("roles"),
+			client.Database(mongoDBName).Collection("bindings"),
+		)
 
 		go func() {
 			entrypoint(shutdown)
@@ -723,14 +723,14 @@ func TestEntryPoint(t *testing.T) {
 		if err = client.Ping(ctx, readpref.Primary()); err != nil {
 			fmt.Printf("error verifying MongoDB connection: %s", err.Error())
 		}
-		mongoClient := MongoClient{
-			client:   client,
-			roles:    client.Database(mongoDBName).Collection("roles"),
-			bindings: client.Database(mongoDBName).Collection("bindings"),
-		}
-		defer mongoClient.client.Disconnect(ctx)
+		defer client.Disconnect(ctx)
 
-		PopulateDbForTesting(t, ctx, &mongoClient)
+		testutils.PopulateDBForTesting(
+			t,
+			ctx,
+			client.Database(mongoDBName).Collection("roles"),
+			client.Database(mongoDBName).Collection("bindings"),
+		)
 
 		go func() {
 			entrypoint(shutdown)
@@ -807,14 +807,14 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 	if err = client.Ping(ctx, readpref.Primary()); err != nil {
 		fmt.Printf("error verifying MongoDB connection: %s", err.Error())
 	}
-	mongoClient := MongoClient{
-		client:   client,
-		roles:    client.Database(mongoDBName).Collection("roles"),
-		bindings: client.Database(mongoDBName).Collection("bindings"),
-	}
-	defer mongoClient.client.Disconnect(ctx)
+	defer client.Disconnect(ctx)
 
-	PopulateDbForTesting(t, ctx, &mongoClient)
+	testutils.PopulateDBForTesting(
+		t,
+		ctx,
+		client.Database(mongoDBName).Collection("roles"),
+		client.Database(mongoDBName).Collection("bindings"),
+	)
 
 	go func() {
 		entrypoint(shutdown)
@@ -942,14 +942,15 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 	if err = client.Ping(ctx, readpref.Primary()); err != nil {
 		fmt.Printf("error verifying MongoDB connection: %s", err.Error())
 	}
-	mongoClient := MongoClient{
-		client:   client,
-		roles:    client.Database(mongoDBName).Collection("roles"),
-		bindings: client.Database(mongoDBName).Collection("bindings"),
-	}
-	defer mongoClient.client.Disconnect(ctx)
 
-	PopulateDbForTesting(t, ctx, &mongoClient)
+	defer client.Disconnect(ctx)
+
+	testutils.PopulateDBForTesting(
+		t,
+		ctx,
+		client.Database(mongoDBName).Collection("roles"),
+		client.Database(mongoDBName).Collection("bindings"),
+	)
 
 	go func() {
 		entrypoint(shutdown)
