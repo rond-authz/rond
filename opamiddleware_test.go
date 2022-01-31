@@ -8,11 +8,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/v3/assert"
 )
 
-var envs = EnvironmentVariables{}
+var envs = config.EnvironmentVariables{}
 
 func TestOPAMiddleware(t *testing.T) {
 	t.Run(`strict mode failure`, func(t *testing.T) {
@@ -75,7 +76,7 @@ foobar { true }`,
 			openAPISpecContent, err := ioutil.ReadFile("./mocks/documentationPathMock.json")
 			assert.NilError(t, err)
 			_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
-			var envs = EnvironmentVariables{
+			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/json",
 			}
 			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
@@ -95,7 +96,7 @@ foobar { true }`,
 			openAPISpecContent, err := ioutil.ReadFile("./mocks/simplifiedMock.json")
 			assert.NilError(t, err)
 			_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
-			var envs = EnvironmentVariables{
+			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/json",
 			}
 			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
@@ -115,7 +116,7 @@ foobar { true }`,
 			openAPISpecContent, err := ioutil.ReadFile("./mocks/simplifiedMock.json")
 			assert.NilError(t, err)
 			_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
-			var envs = EnvironmentVariables{
+			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/custom/json",
 			}
 			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)

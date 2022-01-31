@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/utils"
 
 	"github.com/gorilla/mux"
@@ -28,7 +29,7 @@ type OPAModuleConfig struct {
 	Content string
 }
 
-func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, envs *EnvironmentVariables) mux.MiddlewareFunc {
+func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, envs *config.EnvironmentVariables) mux.MiddlewareFunc {
 	OASrouter := openAPISpec.PrepareOASRouter()
 
 	return func(next http.Handler) http.Handler {

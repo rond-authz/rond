@@ -10,6 +10,7 @@ import (
 	"sort"
 	"testing"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mocks"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
@@ -18,7 +19,7 @@ import (
 )
 
 func TestSetupRoutes(t *testing.T) {
-	envs := EnvironmentVariables{
+	envs := config.EnvironmentVariables{
 		TargetServiceOASPath: "/documentation/json",
 	}
 	t.Run("expect to register route correctly", func(t *testing.T) {
@@ -137,7 +138,7 @@ func TestConvertPathVariables2(t *testing.T) {
 func createContext(
 	t *testing.T,
 	originalCtx context.Context,
-	env EnvironmentVariables,
+	env config.EnvironmentVariables,
 	mongoClient *mocks.MongoClientMock,
 	permission *XPermission,
 	opaModuleConfig *OPAModuleConfig,
@@ -145,7 +146,7 @@ func createContext(
 	t.Helper()
 
 	var partialContext context.Context
-	partialContext = context.WithValue(originalCtx, envKey{}, env)
+	partialContext = context.WithValue(originalCtx, config.EnvKey{}, env)
 	partialContext = context.WithValue(partialContext, XPermissionKey{}, permission)
 	partialContext = context.WithValue(partialContext, OPAModuleConfigKey{}, opaModuleConfig)
 	if mongoClient != nil {
@@ -187,7 +188,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			mockXPermission,
 			mockOPAModule,
@@ -223,7 +224,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			mockXPermission,
 			mockOPAModule,
@@ -249,7 +250,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{LogLevel: "silent", TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
+			config.EnvironmentVariables{LogLevel: "silent", TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			nil,
 			mockXPermission,
 			&OPAModuleConfig{
@@ -278,7 +279,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
+			config.EnvironmentVariables{TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			nil,
 			mockXPermission,
 			&OPAModuleConfig{
@@ -315,7 +316,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			mockXPermission,
 			mockOPAModule,
@@ -351,7 +352,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
 			context.Background(),
-			EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			mockXPermission,
 			mockOPAModule,

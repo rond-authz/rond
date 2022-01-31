@@ -1,4 +1,4 @@
-package main
+package mongoclient
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/utils"
 
@@ -60,7 +61,7 @@ func (mongoClient *MongoClient) Disconnect() {
 	}
 }
 
-func newMongoClient(env EnvironmentVariables, logger *logrus.Logger) (*MongoClient, error) {
+func NewMongoClient(env config.EnvironmentVariables, logger *logrus.Logger) (*MongoClient, error) {
 	if env.MongoDBUrl == "" {
 		return nil, nil
 	}
@@ -164,7 +165,7 @@ func (mongoClient *MongoClient) RetrieveUserRolesByRolesID(ctx context.Context, 
 	return rolesResult, nil
 }
 
-func rolesIdsFromBindings(bindings []types.Binding) []string {
+func RolesIDsFromBindings(bindings []types.Binding) []string {
 	rolesIds := []string{}
 	for _, binding := range bindings {
 		for _, role := range binding.Roles {
@@ -176,7 +177,7 @@ func rolesIdsFromBindings(bindings []types.Binding) []string {
 	return rolesIds
 }
 
-func retrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, env EnvironmentVariables) (types.User, error) {
+func RetrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, env config.EnvironmentVariables) (types.User, error) {
 	requestContext := req.Context()
 	mongoClient, err := GetMongoClientFromContext(requestContext)
 	if err != nil {
@@ -189,14 +190,13 @@ func retrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, env E
 	user.UserID = req.Header.Get(env.UserIdHeader)
 
 	if mongoClient != nil && user.UserID != "" {
-
 		user.UserBindings, err = mongoClient.RetrieveUserBindings(requestContext, &user)
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user bindings")
 			return types.User{}, fmt.Errorf("Error while retrieving user bindings: %s", err.Error())
 		}
 
-		userRolesIds := rolesIdsFromBindings(user.UserBindings)
+		userRolesIds := RolesIDsFromBindings(user.UserBindings)
 		user.UserRoles, err = mongoClient.RetrieveUserRolesByRolesID(requestContext, userRolesIds)
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user roles")

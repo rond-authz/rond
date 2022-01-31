@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
 	"github.com/sirupsen/logrus"
@@ -17,7 +18,7 @@ type OPATransport struct {
 	http.RoundTripper
 	logger     *logrus.Entry
 	request    *http.Request
-	env        EnvironmentVariables
+	env        config.EnvironmentVariables
 	permission *XPermission
 }
 

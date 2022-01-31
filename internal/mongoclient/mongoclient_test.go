@@ -1,4 +1,4 @@
-package main
+package mongoclient
 
 import (
 	"context"
@@ -9,12 +9,11 @@ import (
 	"reflect"
 	"testing"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/testutils"
-
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
 	"github.com/sirupsen/logrus/hooks/test"
-	"go.mongodb.org/mongo-driver/bson"
 	"gotest.tools/v3/assert"
 )
 
@@ -64,19 +63,19 @@ func TestGetMongoCollectionFromContext(t *testing.T) {
 
 func TestSetupMongoCollection(t *testing.T) {
 	t.Run("if MongoDBUrl empty, returns nil", func(t *testing.T) {
-		env := EnvironmentVariables{}
+		env := config.EnvironmentVariables{}
 		log, _ := test.NewNullLogger()
-		adapter, _ := newMongoClient(env, log)
+		adapter, _ := NewMongoClient(env, log)
 		assert.Assert(t, adapter == nil, "MongoDBUrl is not nil")
 	})
 
 	t.Run("if RolesCollectionName empty, returns error", func(t *testing.T) {
-		env := EnvironmentVariables{
+		env := config.EnvironmentVariables{
 			MongoDBUrl:             "MONGODB_URL",
 			BindingsCollectionName: "Some different name",
 		}
 		log, _ := test.NewNullLogger()
-		adapter, err := newMongoClient(env, log)
+		adapter, err := NewMongoClient(env, log)
 		assert.Assert(t, adapter == nil, "RolesCollectionName collection is not nil")
 		assert.ErrorContains(t, err, `MongoDB url is not empty, required variables might be missing: BindingsCollectionName: "Some different name",  RolesCollectionName: ""`)
 	})
@@ -84,13 +83,13 @@ func TestSetupMongoCollection(t *testing.T) {
 	t.Run("throws if mongo url is without protocol", func(t *testing.T) {
 		mongoHost := "not-valid-mongo-url"
 
-		env := EnvironmentVariables{
+		env := config.EnvironmentVariables{
 			MongoDBUrl:             mongoHost,
 			RolesCollectionName:    "something new",
 			BindingsCollectionName: "Some different name",
 		}
 		log, _ := test.NewNullLogger()
-		adapter, err := newMongoClient(env, log)
+		adapter, err := NewMongoClient(env, log)
 		assert.Assert(t, err != nil, "setup mongo not returns error")
 		assert.ErrorContains(t, err, "failed MongoDB connection string validation:")
 		assert.Assert(t, adapter == nil)
@@ -103,14 +102,14 @@ func TestSetupMongoCollection(t *testing.T) {
 			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
 		}
 
-		env := EnvironmentVariables{
+		env := config.EnvironmentVariables{
 			MongoDBUrl:             fmt.Sprintf("mongodb://%s/test", mongoHost),
 			RolesCollectionName:    "roles",
 			BindingsCollectionName: "bindings",
 		}
 
 		log, _ := test.NewNullLogger()
-		mongoClient, err := newMongoClient(env, log)
+		mongoClient, err := NewMongoClient(env, log)
 
 		defer mongoClient.Disconnect()
 		assert.Assert(t, err == nil, "setup mongo returns error")
@@ -126,14 +125,14 @@ func TestMongoCollections(t *testing.T) {
 			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
 		}
 
-		env := EnvironmentVariables{
+		env := config.EnvironmentVariables{
 			MongoDBUrl:             fmt.Sprintf("mongodb://%s/test", mongoHost),
 			RolesCollectionName:    "roles",
 			BindingsCollectionName: "bindings",
 		}
 
 		log, _ := test.NewNullLogger()
-		mongoClient, err := newMongoClient(env, log)
+		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
 		assert.Assert(t, err == nil, "setup mongo returns error")
 		client, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
@@ -143,7 +142,7 @@ func TestMongoCollections(t *testing.T) {
 
 		ctx := context.Background()
 
-		PopulateDbForTesting(t, ctx, mongoClient)
+		testutils.PopulateDBForTesting(t, ctx, rolesCollection, bindingsCollection)
 
 		result, _ := mongoClient.RetrieveUserBindings(ctx, &types.User{UserID: "user1", UserGroups: []string{"group1", "group2"}})
 		expected := []types.Binding{
@@ -214,14 +213,14 @@ func TestMongoCollections(t *testing.T) {
 			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
 		}
 
-		env := EnvironmentVariables{
+		env := config.EnvironmentVariables{
 			MongoDBUrl:             fmt.Sprintf("mongodb://%s/test", mongoHost),
 			RolesCollectionName:    "roles",
 			BindingsCollectionName: "bindings",
 		}
 
 		log, _ := test.NewNullLogger()
-		mongoClient, err := newMongoClient(env, log)
+		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
 		assert.Assert(t, err == nil, "setup mongo returns error")
 		client, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
@@ -231,7 +230,7 @@ func TestMongoCollections(t *testing.T) {
 
 		ctx := context.Background()
 
-		PopulateDbForTesting(t, ctx, mongoClient)
+		testutils.PopulateDBForTesting(t, ctx, rolesCollection, bindingsCollection)
 
 		result, _ := mongoClient.RetrieveRoles(ctx)
 		expected := []types.Role{
@@ -262,14 +261,14 @@ func TestMongoCollections(t *testing.T) {
 			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
 		}
 
-		env := EnvironmentVariables{
+		env := config.EnvironmentVariables{
 			MongoDBUrl:             fmt.Sprintf("mongodb://%s/test", mongoHost),
 			RolesCollectionName:    "roles",
 			BindingsCollectionName: "bindings",
 		}
 
 		log, _ := test.NewNullLogger()
-		mongoClient, err := newMongoClient(env, log)
+		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
 		assert.Assert(t, err == nil, "setup mongo returns error")
 		client, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
@@ -279,7 +278,7 @@ func TestMongoCollections(t *testing.T) {
 
 		ctx := context.Background()
 
-		PopulateDbForTesting(t, ctx, mongoClient)
+		testutils.PopulateDBForTesting(t, ctx, rolesCollection, bindingsCollection)
 
 		result, _ := mongoClient.RetrieveUserRolesByRolesID(ctx, []string{"role1", "role3", "notExistingRole"})
 		expected := []types.Role{
@@ -297,110 +296,4 @@ func TestMongoCollections(t *testing.T) {
 		assert.Assert(t, reflect.DeepEqual(result, expected),
 			"Error while getting permissions")
 	})
-}
-
-func PopulateDbForTesting(t *testing.T, ctx context.Context, mongoClient *MongoClient) {
-	t.Helper()
-	roles := []interface{}{
-		types.Role{
-			RoleID:            "role1",
-			Permissions:       []string{"permission1", "permission2", "foobar"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		types.Role{
-			RoleID:            "role3",
-			Permissions:       []string{"permission3", "permission5", "console.project.view"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		types.Role{
-			RoleID:            "role6",
-			Permissions:       []string{"permission3", "permission5"},
-			CRUDDocumentState: "PRIVATE",
-		},
-		types.Role{
-			RoleID:            "notUsedByAnyone",
-			Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
-			CRUDDocumentState: "PUBLIC",
-		},
-	}
-	mongoClient.roles.DeleteMany(ctx, bson.D{})
-	mongoClient.roles.InsertMany(ctx, roles)
-
-	bindings := []interface{}{
-		types.Binding{
-			BindingID:         "binding1",
-			Subjects:          []string{"user1"},
-			Roles:             []string{"role1", "role2"},
-			Groups:            []string{"group1"},
-			Permissions:       []string{"permission4"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		types.Binding{
-			BindingID:         "binding2",
-			Subjects:          []string{"user1"},
-			Roles:             []string{"role3", "role4"},
-			Groups:            []string{"group4"},
-			Permissions:       []string{"permission7"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		types.Binding{
-			BindingID:         "binding3",
-			Subjects:          []string{"user5"},
-			Roles:             []string{"role3", "role4"},
-			Groups:            []string{"group2"},
-			Permissions:       []string{"permission10", "permission4"},
-			CRUDDocumentState: "PUBLIC",
-		},
-
-		types.Binding{
-			BindingID:         "binding4",
-			Roles:             []string{"role3", "role4"},
-			Groups:            []string{"group2"},
-			Permissions:       []string{"permission11"},
-			CRUDDocumentState: "PUBLIC",
-		},
-
-		types.Binding{
-			BindingID:         "bindingForRowFiltering",
-			Roles:             []string{"role3", "role4"},
-			Groups:            []string{"group1"},
-			Permissions:       []string{"console.project.view"},
-			Resource:          types.Resource{ResourceType: "custom", ResourceID: "9876"},
-			CRUDDocumentState: "PUBLIC",
-		},
-
-		types.Binding{
-			BindingID:         "bindingForRowFilteringFromSubject",
-			Subjects:          []string{"filter_test"},
-			Roles:             []string{"role3", "role4"},
-			Groups:            []string{"group1"},
-			Permissions:       []string{"console.project.view"},
-			Resource:          types.Resource{ResourceType: "custom", ResourceID: "12345"},
-			CRUDDocumentState: "PUBLIC",
-		},
-
-		types.Binding{
-			BindingID:         "binding5",
-			Subjects:          []string{"user1"},
-			Roles:             []string{"role3", "role4"},
-			Permissions:       []string{"permission12"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		types.Binding{
-			BindingID:         "notUsedByAnyone",
-			Subjects:          []string{"user5"},
-			Roles:             []string{"role3", "role4"},
-			Permissions:       []string{"permissionNotUsed"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		types.Binding{
-			BindingID:         "notUsedByAnyone2",
-			Subjects:          []string{"user1"},
-			Roles:             []string{"role3", "role6"},
-			Permissions:       []string{"permissionNotUsed"},
-			CRUDDocumentState: "PRIVATE",
-		},
-	}
-	mongoClient.bindings.DeleteMany(ctx, bson.D{})
-	mongoClient.bindings.InsertMany(ctx, bindings)
 }

@@ -18,6 +18,7 @@ import (
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gotest.tools/v3/assert"
@@ -100,4 +101,115 @@ func AssertResponseFullErrorMessages(t *testing.T, resp *httptest.ResponseRecord
 	if businessErrMsg != "" {
 		assert.Equal(t, respBody.Message, businessErrMsg, "Unexpected technical error message")
 	}
+}
+
+func PopulateDBForTesting(
+	t *testing.T,
+	ctx context.Context,
+	rolesCollection *mongo.Collection,
+	bindingsCollection *mongo.Collection,
+) {
+	t.Helper()
+	roles := []interface{}{
+		types.Role{
+			RoleID:            "role1",
+			Permissions:       []string{"permission1", "permission2", "foobar"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		types.Role{
+			RoleID:            "role3",
+			Permissions:       []string{"permission3", "permission5", "console.project.view"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		types.Role{
+			RoleID:            "role6",
+			Permissions:       []string{"permission3", "permission5"},
+			CRUDDocumentState: "PRIVATE",
+		},
+		types.Role{
+			RoleID:            "notUsedByAnyone",
+			Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
+			CRUDDocumentState: "PUBLIC",
+		},
+	}
+	rolesCollection.DeleteMany(ctx, bson.D{})
+	rolesCollection.InsertMany(ctx, roles)
+
+	bindings := []interface{}{
+		types.Binding{
+			BindingID:         "binding1",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role1", "role2"},
+			Groups:            []string{"group1"},
+			Permissions:       []string{"permission4"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		types.Binding{
+			BindingID:         "binding2",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group4"},
+			Permissions:       []string{"permission7"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		types.Binding{
+			BindingID:         "binding3",
+			Subjects:          []string{"user5"},
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group2"},
+			Permissions:       []string{"permission10", "permission4"},
+			CRUDDocumentState: "PUBLIC",
+		},
+
+		types.Binding{
+			BindingID:         "binding4",
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group2"},
+			Permissions:       []string{"permission11"},
+			CRUDDocumentState: "PUBLIC",
+		},
+
+		types.Binding{
+			BindingID:         "bindingForRowFiltering",
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group1"},
+			Permissions:       []string{"console.project.view"},
+			Resource:          types.Resource{ResourceType: "custom", ResourceID: "9876"},
+			CRUDDocumentState: "PUBLIC",
+		},
+
+		types.Binding{
+			BindingID:         "bindingForRowFilteringFromSubject",
+			Subjects:          []string{"filter_test"},
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group1"},
+			Permissions:       []string{"console.project.view"},
+			Resource:          types.Resource{ResourceType: "custom", ResourceID: "12345"},
+			CRUDDocumentState: "PUBLIC",
+		},
+
+		types.Binding{
+			BindingID:         "binding5",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role3", "role4"},
+			Permissions:       []string{"permission12"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		types.Binding{
+			BindingID:         "notUsedByAnyone",
+			Subjects:          []string{"user5"},
+			Roles:             []string{"role3", "role4"},
+			Permissions:       []string{"permissionNotUsed"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		types.Binding{
+			BindingID:         "notUsedByAnyone2",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role3", "role6"},
+			Permissions:       []string{"permissionNotUsed"},
+			CRUDDocumentState: "PRIVATE",
+		},
+	}
+	bindingsCollection.DeleteMany(ctx, bson.D{})
+	bindingsCollection.InsertMany(ctx, bindings)
 }
