@@ -38,9 +38,12 @@ type Role struct {
 // mongo Collection reference in request contexts.
 type IMongoClient interface {
 	Disconnect()
+
 	RetrieveUserBindings(ctx context.Context, user *User) ([]Binding, error)
 	RetrieveRoles(ctx context.Context) ([]Role, error)
 	RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]Role, error)
+
+	FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error)
 }
 
 type RequestError struct {

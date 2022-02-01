@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -16,6 +17,7 @@ import (
 
 type OPATransport struct {
 	http.RoundTripper
+	context    context.Context
 	logger     *logrus.Entry
 	request    *http.Request
 	env        config.EnvironmentVariables
@@ -52,6 +54,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 	}
 
 	evaluator, err := createEvaluator(
+		t.context,
 		t.logger,
 		t.request,
 		t.env,

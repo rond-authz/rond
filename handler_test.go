@@ -1285,12 +1285,139 @@ column_policy{
 	logger := glogger.Get(r.Context())
 
 	t.Run("create  evaluator with allowPolicy", func(t *testing.T) {
-		evaluator, _ := createEvaluator(logger, r, envs, permission.AllowPermission, nil)
+		evaluator, _ := createEvaluator(context.Background(), logger, r, envs, permission.AllowPermission, nil)
 		assert.Equal(t, evaluator.Policy, "allow", "Unexpected status code.")
 	})
 
 	t.Run("create  evaluator with policy for column filtering", func(t *testing.T) {
-		evaluator, _ := createEvaluator(logger, r, envs, permission.ResponseFilter.Policy, nil)
+		evaluator, _ := createEvaluator(context.Background(), logger, r, envs, permission.ResponseFilter.Policy, nil)
 		assert.Equal(t, evaluator.Policy, "column_policy", "Unexpected status code.")
+	})
+}
+
+func TestPolicyWithMongoBuiltinIntegration(t *testing.T) {
+	var mockOPAModule = &OPAModuleConfig{
+		Name: "example.rego",
+		Content: `
+package policies
+todo {
+project := find_one("projects", {"projectId": "1234"})
+project.tenantId == "1234"
+}`,
+	}
+	var mockXPermission = &XPermission{AllowPermission: "todo"}
+
+	t.Run("invokes target service", func(t *testing.T) {
+		invoked := false
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			invoked = true
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		mongoMock := &mocks.MongoClientMock{
+			FindOneExpectation: func(collectionName string, query interface{}) {
+				assert.Equal(t, collectionName, "projects")
+				assert.DeepEqual(t, query, map[string]interface{}{
+					"projectId": "1234",
+				})
+			},
+			FindOneResult: map[string]interface{}{"tenantId": "1234"},
+		}
+
+		serverURL, _ := url.Parse(server.URL)
+		ctx := createContext(t,
+			context.Background(),
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			mongoMock,
+			mockXPermission,
+			mockOPAModule,
+		)
+
+		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
+		assert.Equal(t, err, nil, "Unexpected error")
+
+		w := httptest.NewRecorder()
+
+		rbacHandler(w, r)
+
+		assert.Assert(t, invoked, "Handler was not invoked.")
+		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+	})
+
+	t.Run("blocks for mongo error", func(t *testing.T) {
+		invoked := false
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			invoked = true
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		mongoMock := &mocks.MongoClientMock{
+			FindOneExpectation: func(collectionName string, query interface{}) {
+				assert.Equal(t, collectionName, "projects")
+				assert.DeepEqual(t, query, map[string]interface{}{
+					"projectId": "1234",
+				})
+			},
+			FindOneError: fmt.Errorf("FAILED MONGO QUERY"),
+		}
+
+		serverURL, _ := url.Parse(server.URL)
+		ctx := createContext(t,
+			context.Background(),
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			mongoMock,
+			mockXPermission,
+			mockOPAModule,
+		)
+
+		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
+		assert.Equal(t, err, nil, "Unexpected error")
+
+		w := httptest.NewRecorder()
+
+		rbacHandler(w, r)
+
+		assert.Assert(t, !invoked, "Handler was invoked.")
+		assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+	})
+
+	t.Run("blocks for mongo not found", func(t *testing.T) {
+		invoked := false
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			invoked = true
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		mongoMock := &mocks.MongoClientMock{
+			FindOneExpectation: func(collectionName string, query interface{}) {
+				assert.Equal(t, collectionName, "projects")
+				assert.DeepEqual(t, query, map[string]interface{}{
+					"projectId": "1234",
+				})
+			},
+			FindOneResult: nil, // not found corresponds to a nil interface.
+		}
+
+		serverURL, _ := url.Parse(server.URL)
+		ctx := createContext(t,
+			context.Background(),
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			mongoMock,
+			mockXPermission,
+			mockOPAModule,
+		)
+
+		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
+		assert.Equal(t, err, nil, "Unexpected error")
+
+		w := httptest.NewRecorder()
+
+		rbacHandler(w, r)
+
+		assert.Assert(t, !invoked, "Handler was invoked.")
+		assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
 	})
 }

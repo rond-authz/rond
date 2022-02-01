@@ -33,9 +33,10 @@ var unknowns = []string{"data.resources"}
 type OPAEvaluator struct {
 	PermissionQuery Evaluator
 	Policy          string
+	Context         context.Context
 }
 
-func NewOPAEvaluator(policy string, opaModuleConfig *OPAModuleConfig, input []byte) (*OPAEvaluator, error) {
+func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte) (*OPAEvaluator, error) {
 
 	inputTerm, err := ast.ParseTerm(string(input))
 	if err != nil {
@@ -51,15 +52,17 @@ func NewOPAEvaluator(policy string, opaModuleConfig *OPAModuleConfig, input []by
 		rego.Unknowns(unknowns),
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
 		custom_builtins.GetHeaderFunction,
+		custom_builtins.MongoFindOne,
 	)
 
 	return &OPAEvaluator{
 		PermissionQuery: query,
 		Policy:          policy,
+		Context:         ctx,
 	}, nil
 }
 
-func createEvaluator(logger *logrus.Entry, req *http.Request, env config.EnvironmentVariables, policy string, responseBody interface{}) (*OPAEvaluator, error) {
+func createEvaluator(ctx context.Context, logger *logrus.Entry, req *http.Request, env config.EnvironmentVariables, policy string, responseBody interface{}) (*OPAEvaluator, error) {
 	opaModuleConfig, err := GetOPAModuleConfig(req.Context())
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no OPA module configuration found in context")
@@ -85,7 +88,7 @@ func createEvaluator(logger *logrus.Entry, req *http.Request, env config.Environ
 		"input": string(input),
 	}).Trace("input object passed to the evaluator")
 
-	evaluator, err := NewOPAEvaluator(policy, opaModuleConfig, input)
+	evaluator, err := NewOPAEvaluator(ctx, policy, opaModuleConfig, input)
 	if err != nil {
 		logger.WithError(err).Error("failed RBAC policy creation")
 		return nil, err
@@ -114,7 +117,7 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 }
 
 func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, error) {
-	results, err := evaluator.PermissionQuery.Eval(context.TODO())
+	results, err := evaluator.PermissionQuery.Eval(evaluator.Context)
 	if err != nil {
 		return nil, fmt.Errorf("Policy Evaluation has failed when evaluating the query: %s", err.Error())
 	}

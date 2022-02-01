@@ -36,7 +36,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	evaluator, err := createEvaluator(logger, req, env, permission.AllowPermission, nil)
+	evaluator, err := createEvaluator(requestContext, logger, req, env, permission.AllowPermission, nil)
 	if err != nil {
 		logger.WithError(err).Error("failed RBAC policy creation")
 		failResponse(w, "Failed RBAC policy creation", GENERIC_BUSINESS_ERROR_MESSAGE)
@@ -93,7 +93,14 @@ func ReverseProxy(logger *logrus.Entry, env config.EnvironmentVariables, w http.
 		proxy.ServeHTTP(w, req)
 		return
 	}
-	proxy.Transport = &OPATransport{http.DefaultTransport, logger, req, env, permission}
+	proxy.Transport = &OPATransport{
+		http.DefaultTransport,
+		req.Context(),
+		logger,
+		req,
+		env,
+		permission,
+	}
 	proxy.ServeHTTP(w, req)
 }
 
