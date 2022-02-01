@@ -27,7 +27,7 @@ FROM scratch
 
 ARG COMMIT_SHA=<not-specified>
 
-LABEL maintainer="undefined" \
+LABEL maintainer="team-james@mia-platform.eu" \
   name="rbac-service" \
   description="" \
   eu.mia-platform.url="https://www.mia-platform.eu" \

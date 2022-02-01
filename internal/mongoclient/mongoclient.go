@@ -2,6 +2,8 @@ package mongoclient
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -12,6 +14,7 @@ import (
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/utils"
 
 	"github.com/gorilla/mux"
+	"github.com/mia-platform/glogger/v2"
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -21,9 +24,11 @@ import (
 )
 
 type MongoClient struct {
+	client       *mongo.Client
+	databaseName string
+
 	bindings *mongo.Collection
 	roles    *mongo.Collection
-	client   *mongo.Client
 }
 
 const STATE string = "__STATE__"
@@ -91,9 +96,10 @@ func NewMongoClient(env config.EnvironmentVariables, logger *logrus.Logger) (*Mo
 	}
 
 	mongoClient := MongoClient{
-		client:   client,
-		roles:    client.Database(parsedConnectionString.Database).Collection(env.RolesCollectionName),
-		bindings: client.Database(parsedConnectionString.Database).Collection(env.BindingsCollectionName),
+		client:       client,
+		databaseName: parsedConnectionString.Database,
+		roles:        client.Database(parsedConnectionString.Database).Collection(env.RolesCollectionName),
+		bindings:     client.Database(parsedConnectionString.Database).Collection(env.BindingsCollectionName),
 	}
 	return &mongoClient, nil
 }
@@ -163,6 +169,40 @@ func (mongoClient *MongoClient) RetrieveUserRolesByRolesID(ctx context.Context, 
 		return nil, err
 	}
 	return rolesResult, nil
+}
+
+func (mongoClient *MongoClient) FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error) {
+	collection := mongoClient.client.Database(mongoClient.databaseName).Collection(collectionName)
+	result := collection.FindOne(ctx, query)
+	glogger.Get(ctx).WithFields(logrus.Fields{
+		"mongoQuery":     query,
+		"dbName":         mongoClient.databaseName,
+		"collectionName": collectionName,
+	}).Debug("performing query")
+
+	var bsonDocument bson.D
+	err := result.Decode(&bsonDocument)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			glogger.Get(ctx).WithField("error", logrus.Fields{"message": err.Error()}).Warn("no document found")
+			return nil, nil
+		}
+		glogger.Get(ctx).WithField("error", logrus.Fields{"message": err.Error()}).Error("failed query decode")
+		return nil, err
+	}
+
+	temporaryBytes, err := bson.MarshalExtJSON(bsonDocument, true, true)
+	if err != nil {
+		glogger.Get(ctx).WithField("error", logrus.Fields{"message": err.Error()}).Error("failed query result marshalling")
+		return nil, err
+	}
+
+	var res map[string]interface{}
+	if err := json.Unmarshal(temporaryBytes, &res); err != nil {
+		glogger.Get(ctx).WithField("error", logrus.Fields{"message": err.Error()}).Error("failed query result deserialization")
+		return nil, err
+	}
+	return res, nil
 }
 
 func RolesIDsFromBindings(bindings []types.Binding) []string {

@@ -53,6 +53,7 @@ func TestFetchOpenAPI(t *testing.T) {
 				"get":  VerbConfig{},
 				"post": VerbConfig{},
 			},
+			"/with-mongo-find-one": {"get": {Permission: XPermission{AllowPermission: "allow_with_find_one"}}},
 		})
 	})
 
@@ -221,6 +222,7 @@ func TestLoadOAS(t *testing.T) {
 				"post": VerbConfig{},
 				"get":  VerbConfig{},
 			},
+			"/with-mongo-find-one": {"get": {Permission: XPermission{AllowPermission: "allow_with_find_one"}}},
 		})
 	})
 

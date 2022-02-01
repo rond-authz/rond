@@ -156,12 +156,6 @@ func createContext(
 	return partialContext
 }
 
-func buildMockMongoClient(roles []types.Role, bindings []types.Binding) mocks.MongoClientMock {
-	return mocks.MongoClientMock{}
-}
-
-var mockGetUserPermissions = buildMockMongoClient(nil, nil)
-
 var mockOPAModule = &OPAModuleConfig{
 	Name: "example.rego",
 	Content: `package policies

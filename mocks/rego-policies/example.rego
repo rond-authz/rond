@@ -29,16 +29,22 @@ filter_projects {
 }
 
 projection_feature_toggle[res] {
-    ft_not_allowed := {x | 
-  	 	some key, val in input.response.body
-        ft_checker with input.ft as key
-   		x = key
-    }
-   	res := object.remove(input.response.body, ft_not_allowed)
+	ft_not_allowed := {x | 
+		some key, val in input.response.body
+			ft_checker with input.ft as key
+		x = key
+	}
+	res := object.remove(input.response.body, ft_not_allowed)
 }
 
 ft_checker {
-    ft := input.ft
-    ft == "TEST_FT_1"
-    true
+	ft := input.ft
+	ft == "TEST_FT_1"
+	true
+}
+
+allow_with_find_one {
+	project := find_one("projects", {"projectId": "some-project"})
+	true
+	project.tenantId == "some-tenant"
 }

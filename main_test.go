@@ -490,6 +490,9 @@ func TestEntryPoint(t *testing.T) {
 			if r.URL.Path == "/users/" && r.URL.Host == "localhost:3002" {
 				return false
 			}
+			if r.URL.Path == "/with-mongo-find-one" && r.URL.Host == "localhost:3002" {
+				return false
+			}
 			return true
 		})
 
@@ -585,6 +588,37 @@ func TestEntryPoint(t *testing.T) {
 			client := &http.Client{}
 			resp, err := client.Do(req)
 			require.Equal(t, "user1", resp.Header.Get("headerProxiedTest"))
+			require.Equal(t, nil, err)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+		})
+
+		t.Run("200 - integration find_one builtin", func(t *testing.T) {
+			doc := struct {
+				TenantID  string `bson:"tenantId"`
+				ProjectID string `bson:"projectId"`
+			}{
+				TenantID:  "some-tenant",
+				ProjectID: "some-project",
+			}
+
+			_, err = client.Database(mongoDBName).Collection("projects").InsertOne(ctx, doc)
+			defer client.Database(mongoDBName).Collection("projects").Drop(context.Background())
+			require.Equal(t, nil, err)
+
+			gock.Flush()
+			gock.New("http://localhost:3002/").
+				Get("/with-mongo-find-one").
+				Reply(200).
+				SetHeader("someuserheader", "user1").
+				JSON(map[string]string{"foo": "bar"})
+
+			req, err := http.NewRequest("GET", "http://localhost:3003/with-mongo-find-one", nil)
+			req.Header.Set("miauserid", "user1")
+			req.Header.Set("miausergroups", "user1,user2")
+			req.Header.Set("Content-type", "application/json")
+			client := &http.Client{}
+			resp, err := client.Do(req)
+
 			require.Equal(t, nil, err)
 			require.Equal(t, http.StatusOK, resp.StatusCode)
 		})

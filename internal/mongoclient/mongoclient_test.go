@@ -135,7 +135,7 @@ func TestMongoCollections(t *testing.T) {
 		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
 		assert.Assert(t, err == nil, "setup mongo returns error")
-		client, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
+		client, _, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
 		mongoClient.client = client
 		mongoClient.roles = rolesCollection
 		mongoClient.bindings = bindingsCollection
@@ -223,7 +223,7 @@ func TestMongoCollections(t *testing.T) {
 		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
 		assert.Assert(t, err == nil, "setup mongo returns error")
-		client, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
+		client, _, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
 		mongoClient.client = client
 		mongoClient.roles = rolesCollection
 		mongoClient.bindings = bindingsCollection
@@ -271,7 +271,7 @@ func TestMongoCollections(t *testing.T) {
 		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
 		assert.Assert(t, err == nil, "setup mongo returns error")
-		client, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
+		client, _, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
 		mongoClient.client = client
 		mongoClient.roles = rolesCollection
 		mongoClient.bindings = bindingsCollection
@@ -295,5 +295,61 @@ func TestMongoCollections(t *testing.T) {
 		}
 		assert.Assert(t, reflect.DeepEqual(result, expected),
 			"Error while getting permissions")
+	})
+}
+
+func TestMongoFindOne(t *testing.T) {
+	mongoHost := os.Getenv("MONGO_HOST_CI")
+	if mongoHost == "" {
+		mongoHost = testutils.LocalhostMongoDB
+		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
+	}
+
+	env := config.EnvironmentVariables{
+		MongoDBUrl:             fmt.Sprintf("mongodb://%s/test", mongoHost),
+		RolesCollectionName:    "roles",
+		BindingsCollectionName: "bindings",
+	}
+	log, _ := test.NewNullLogger()
+	mongoClient, err := NewMongoClient(env, log)
+	defer mongoClient.Disconnect()
+	assert.Assert(t, err == nil, "setup mongo returns error")
+
+	client, dbName, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
+	mongoClient.client = client
+	mongoClient.databaseName = dbName
+	mongoClient.roles = rolesCollection
+	mongoClient.bindings = bindingsCollection
+
+	ctx := context.Background()
+
+	testutils.PopulateDBForTesting(t, ctx, rolesCollection, bindingsCollection)
+
+	t.Run("finds a document", func(t *testing.T) {
+		result, err := mongoClient.FindOne(context.Background(), "roles", map[string]interface{}{
+			"roleId": "role3",
+		})
+		assert.NilError(t, err)
+		resultMap := result.(map[string]interface{})
+		assert.Assert(t, resultMap["_id"] != nil)
+
+		delete(resultMap, "_id")
+		assert.DeepEqual(t, result, map[string]interface{}{
+			"roleId":    "role3",
+			"__STATE__": "PUBLIC",
+			"permissions": []interface{}{
+				string("permission3"),
+				string("permission5"),
+				string("console.project.view"),
+			},
+		})
+	})
+
+	t.Run("does not find a document", func(t *testing.T) {
+		result, err := mongoClient.FindOne(context.Background(), "roles", map[string]interface{}{
+			"key": 42,
+		})
+		assert.NilError(t, err)
+		assert.Assert(t, result == nil)
 	})
 }

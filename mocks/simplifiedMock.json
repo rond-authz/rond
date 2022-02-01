@@ -348,6 +348,32 @@
     "/no-permission": {
       "post": {},
       "get": {}
+    },
+    "/with-mongo-find-one": {
+      "get": {
+        "x-permission" : {
+          "allow": "allow_with_find_one"
+        },
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "address": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "description": "address of the user"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

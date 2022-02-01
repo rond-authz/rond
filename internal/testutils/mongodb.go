@@ -26,6 +26,10 @@ import (
 
 const LocalhostMongoDB = "localhost:27017"
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 func GetRandomName(n uint) string {
 	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	b := make([]rune, n)
@@ -37,7 +41,7 @@ func GetRandomName(n uint) string {
 
 // GetAndDisposeTestCollection returns a collection from a random database.
 // The function performs test clean up by dropping the database and closing MongoDB client connection.
-func GetAndDisposeTestClientsAndCollections(t *testing.T) (*mongo.Client, *mongo.Collection, *mongo.Collection) {
+func GetAndDisposeTestClientsAndCollections(t *testing.T) (*mongo.Client, string, *mongo.Collection, *mongo.Collection) {
 	t.Helper()
 
 	client := GetMongoClient(t)
@@ -50,7 +54,7 @@ func GetAndDisposeTestClientsAndCollections(t *testing.T) (*mongo.Client, *mongo
 		client.Disconnect(context.Background())
 	})
 
-	return client, rolesCollection, bindingsCollection
+	return client, db.Name(), rolesCollection, bindingsCollection
 }
 
 // GetMongoClient returns a mongodb client. The function does not perform any cleanup, you have to

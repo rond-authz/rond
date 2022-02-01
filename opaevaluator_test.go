@@ -20,7 +20,7 @@ func TestNewOPAEvaluator(t *testing.T) {
 	input := map[string]interface{}{}
 	inputBytes, _ := json.Marshal(input)
 	t.Run("policy sanitization", func(t *testing.T) {
-		evaluator, err := NewOPAEvaluator("very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, inputBytes)
+		evaluator, err := NewOPAEvaluator(context.Background(), "very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, inputBytes)
 		require.Nil(t, err, "unexpected error")
 		require.Equal(t, "very.composed.policy", evaluator.Policy)
 
