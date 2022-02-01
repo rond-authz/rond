@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## 0.4.0 - 01/02/2022
+
 ### Added
 
 - [JAF-231](https://makeitapp.atlassian.net/browse/JAF-231): added support for `find_one` builtin in Rego policies
