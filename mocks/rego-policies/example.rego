@@ -48,3 +48,11 @@ allow_with_find_one {
 	true
 	project.tenantId == "some-tenant"
 }
+
+allow_with_find_many {
+	projects := find_many("projects", {"$or": [{"projectId": "some-project"}, {"projectId": "some-project2"}]})
+	count(projects) == 2
+
+	projects[0].tenantId == "some-tenant"
+	projects[1].tenantId == "some-tenant2"
+}

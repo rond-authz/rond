@@ -353,3 +353,86 @@ func TestMongoFindOne(t *testing.T) {
 		assert.Assert(t, result == nil)
 	})
 }
+
+func TestMongoFindMany(t *testing.T) {
+	mongoHost := os.Getenv("MONGO_HOST_CI")
+	if mongoHost == "" {
+		mongoHost = testutils.LocalhostMongoDB
+		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
+	}
+
+	env := config.EnvironmentVariables{
+		MongoDBUrl:             fmt.Sprintf("mongodb://%s/test", mongoHost),
+		RolesCollectionName:    "roles",
+		BindingsCollectionName: "bindings",
+	}
+	log, _ := test.NewNullLogger()
+	mongoClient, err := NewMongoClient(env, log)
+	defer mongoClient.Disconnect()
+	assert.Assert(t, err == nil, "setup mongo returns error")
+
+	client, dbName, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
+	mongoClient.client = client
+	mongoClient.databaseName = dbName
+	mongoClient.roles = rolesCollection
+	mongoClient.bindings = bindingsCollection
+
+	ctx := context.Background()
+
+	testutils.PopulateDBForTesting(t, ctx, rolesCollection, bindingsCollection)
+
+	t.Run("finds multiple documents", func(t *testing.T) {
+		result, err := mongoClient.FindMany(context.Background(), "roles", map[string]interface{}{
+			"$or": []map[string]interface{}{
+				{"roleId": "role3"},
+				{"roleId": "role9999"},
+				{"roleId": "role6"},
+			},
+		})
+		assert.NilError(t, err)
+
+		assert.Equal(t, len(result), 2)
+		resultMap := result[0].(map[string]interface{})
+		assert.Assert(t, resultMap["_id"] != nil)
+
+		delete(resultMap, "_id")
+		assert.DeepEqual(t, resultMap, map[string]interface{}{
+			"roleId":    "role3",
+			"__STATE__": "PUBLIC",
+			"permissions": []interface{}{
+				string("permission3"),
+				string("permission5"),
+				string("console.project.view"),
+			},
+		})
+
+		result1Map := result[1].(map[string]interface{})
+		assert.Assert(t, result1Map["_id"] != nil)
+
+		delete(result1Map, "_id")
+		assert.DeepEqual(t, result1Map, map[string]interface{}{
+			"roleId":    "role6",
+			"__STATE__": "PRIVATE",
+			"permissions": []interface{}{
+				string("permission3"),
+				string("permission5"),
+			},
+		})
+	})
+
+	t.Run("does not find any document", func(t *testing.T) {
+		result, err := mongoClient.FindMany(context.Background(), "roles", map[string]interface{}{
+			"roleId": "role9999",
+		})
+		assert.NilError(t, err)
+		assert.Equal(t, len(result), 0)
+	})
+
+	t.Run("returns error on invalid query", func(t *testing.T) {
+		result, err := mongoClient.FindMany(context.Background(), "roles", map[string]interface{}{
+			"$UNKWNONW": "role9999",
+		})
+		assert.ErrorContains(t, err, "unknown top level operator")
+		assert.Equal(t, len(result), 0)
+	})
+}

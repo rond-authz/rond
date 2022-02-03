@@ -374,6 +374,32 @@
           }
         }
       }
+    },
+    "/with-mongo-find-many": {
+      "get": {
+        "x-permission" : {
+          "allow": "allow_with_find_many"
+        },
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "address": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "description": "address of the user"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

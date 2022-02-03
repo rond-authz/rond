@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Added
+
+- added support for `find_many` builtin in Rego policies
+
 ## 0.4.0 - 01/02/2022
 
 ### Added

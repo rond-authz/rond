@@ -29,22 +29,22 @@ The policies must be write in Rego language and they could use the input variabl
 ```
 {
     "request": {
-            "method":  String,
-            "path":    String,
-            "headers": Object {
-                String: Array[String]
-            },
-            "pathParams": Object,
-            "query":   Object {
-                String: Array[String]
-            },
-            "body": Object
+        "method":  String,
+        "path":    String,
+        "headers": Object {
+            String: Array[String]
+        },
+        "pathParams": Object,
+        "query":   Object {
+            String: Array[String]
+        },
+        "body": Object
     },
     "user": {
-            "properties": Object{
-                // this object contains the user properties inserted by the authorization service in the request user properties platform header 
-            },
-            "groups": Array[String],
+        "properties": Object{
+            // this object contains the user properties inserted by the authorization service in the request user properties platform header 
+        },
+        "groups": Array[String],
     },
     "clientType": String
 }

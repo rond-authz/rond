@@ -53,3 +53,49 @@ var MongoFindOne = rego.Function2(
 		return ast.NewTerm(t), nil
 	},
 )
+
+var MongoFindManyDecl = &ast.Builtin{
+	Name: "find_many",
+	Decl: types.NewFunction(
+		types.Args(
+			types.S, // collectionName
+			types.A, // query
+		),
+		types.A, // found document
+	),
+}
+
+var MongoFindMany = rego.Function2(
+	&rego.Function{
+		Name: MongoFindManyDecl.Name,
+		Decl: MongoFindManyDecl.Decl,
+	},
+	func(ctx rego.BuiltinContext, collectionNameTerm, queryTerm *ast.Term) (*ast.Term, error) {
+		mongoClient, err := mongoclient.GetMongoClientFromContext(ctx.Context)
+		if err != nil {
+			return nil, err
+		}
+
+		var collectionName string
+		if err := ast.As(collectionNameTerm.Value, &collectionName); err != nil {
+			return nil, err
+		}
+
+		query := make(map[string]interface{})
+		if err := ast.As(queryTerm.Value, &query); err != nil {
+			return nil, err
+		}
+
+		result, err := mongoClient.FindMany(ctx.Context, collectionName, query)
+		if err != nil {
+			return nil, err
+		}
+
+		t, err := ast.InterfaceToValue(result)
+		if err != nil {
+			return nil, err
+		}
+
+		return ast.NewTerm(t), nil
+	},
+)
