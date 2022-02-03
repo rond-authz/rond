@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
@@ -17,6 +18,7 @@ import (
 	"git.tools.mia-platform.eu/platform/core/rbac-service/custom_builtins"
 
 	"github.com/gorilla/mux"
+	"github.com/mia-platform/glogger/v2"
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/sirupsen/logrus"
@@ -78,7 +80,7 @@ func createEvaluator(ctx context.Context, logger *logrus.Entry, req *http.Reques
 	input, err := createRegoQueryInput(req, env, userInfo, responseBody)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed rego query input creation")
-		return nil, fmt.Errorf("Failed rego query input creation: %s", err.Error())
+		return nil, fmt.Errorf("failed rego query input creation: %s", err.Error())
 	}
 	logger.WithFields(logrus.Fields{
 		"policyName": policy,
@@ -88,18 +90,20 @@ func createEvaluator(ctx context.Context, logger *logrus.Entry, req *http.Reques
 		"input": string(input),
 	}).Trace("input object passed to the evaluator")
 
+	opaEvaluatorInstanceTime := time.Now()
 	evaluator, err := NewOPAEvaluator(ctx, policy, opaModuleConfig, input)
 	if err != nil {
 		logger.WithError(err).Error("failed RBAC policy creation")
 		return nil, err
 	}
+	logger.Tracef("OPA evaluator istanciated in: %+v", time.Since(opaEvaluatorInstanceTime))
 	return evaluator, nil
 }
 
 func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitive.M, error) {
 	partialResults, err := evaluator.PermissionQuery.Partial(context.TODO())
 	if err != nil {
-		return nil, fmt.Errorf("Policy Evaluation has failed when partially evaluating the query: %s", err.Error())
+		return nil, fmt.Errorf("policy Evaluation has failed when partially evaluating the query: %s", err.Error())
 	}
 
 	client := opatranslator.OPAClient{}
@@ -119,7 +123,7 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, error) {
 	results, err := evaluator.PermissionQuery.Eval(evaluator.Context)
 	if err != nil {
-		return nil, fmt.Errorf("Policy Evaluation has failed when evaluating the query: %s", err.Error())
+		return nil, fmt.Errorf("policy Evaluation has failed when evaluating the query: %s", err.Error())
 	}
 
 	if results.Allowed() {
@@ -148,19 +152,24 @@ func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, erro
 }
 
 func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission *XPermission) (interface{}, primitive.M, error) {
+	opaEvaluationTime := time.Now()
 	if permission.ResourceFilter.RowFilter.Enabled {
 		query, err := evaluator.partiallyEvaluate(logger)
+		logger.Tracef("OPA partial evaluation in: %+v", time.Since(opaEvaluationTime))
 		return nil, query, err
 	}
 	dataFromEvaluation, err := evaluator.evaluate(logger)
 	if err != nil {
 		return nil, nil, err
 	}
-
+	logger.Tracef("OPA evaluation in: %+v", time.Since(opaEvaluationTime))
 	return dataFromEvaluation, nil, nil
 }
 
 func createRegoQueryInput(req *http.Request, env config.EnvironmentVariables, user types.User, responseBody interface{}) ([]byte, error) {
+	requestContext := req.Context()
+	logger := glogger.Get(requestContext)
+	opaInputCreationTime := time.Now()
 	userProperties := make(map[string]interface{})
 	_, err := unmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
 	if err != nil {
@@ -212,5 +221,6 @@ func createRegoQueryInput(req *http.Request, env config.EnvironmentVariables, us
 	if err != nil {
 		return nil, fmt.Errorf("failed input JSON encode: %v", err)
 	}
+	logger.Tracef("OPA input rego creation in: %+v", time.Since(opaInputCreationTime))
 	return inputBytes, nil
 }
