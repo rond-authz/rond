@@ -493,6 +493,9 @@ func TestEntryPoint(t *testing.T) {
 			if r.URL.Path == "/with-mongo-find-one" && r.URL.Host == "localhost:3002" {
 				return false
 			}
+			if r.URL.Path == "/with-mongo-find-many" && r.URL.Host == "localhost:3002" {
+				return false
+			}
 			return true
 		})
 
@@ -613,6 +616,41 @@ func TestEntryPoint(t *testing.T) {
 				JSON(map[string]string{"foo": "bar"})
 
 			req, err := http.NewRequest("GET", "http://localhost:3003/with-mongo-find-one", nil)
+			req.Header.Set("miauserid", "user1")
+			req.Header.Set("miausergroups", "user1,user2")
+			req.Header.Set("Content-type", "application/json")
+			client := &http.Client{}
+			resp, err := client.Do(req)
+
+			require.Equal(t, nil, err)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+		})
+
+		t.Run("200 - integration find_many builtin", func(t *testing.T) {
+			type MockData struct {
+				TenantID  string `bson:"tenantId"`
+				ProjectID string `bson:"projectId"`
+			}
+			_, err = client.Database(mongoDBName).Collection("projects").InsertOne(ctx, MockData{
+				TenantID:  "some-tenant",
+				ProjectID: "some-project",
+			})
+			_, err = client.Database(mongoDBName).Collection("projects").InsertOne(ctx, MockData{
+				TenantID:  "some-tenant2",
+				ProjectID: "some-project2",
+			})
+
+			defer client.Database(mongoDBName).Collection("projects").Drop(context.Background())
+			require.Equal(t, nil, err)
+
+			gock.Flush()
+			gock.New("http://localhost:3002/").
+				Get("/with-mongo-find-many").
+				Reply(200).
+				SetHeader("someuserheader", "user1").
+				JSON(map[string]string{"foo": "bar"})
+
+			req, err := http.NewRequest("GET", "http://localhost:3003/with-mongo-find-many", nil)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
 			req.Header.Set("Content-type", "application/json")

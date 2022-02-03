@@ -55,6 +55,7 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
 		custom_builtins.GetHeaderFunction,
 		custom_builtins.MongoFindOne,
+		custom_builtins.MongoFindMany,
 	)
 
 	return &OPAEvaluator{

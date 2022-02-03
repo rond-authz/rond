@@ -44,6 +44,7 @@ type IMongoClient interface {
 	RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]Role, error)
 
 	FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error)
+	FindMany(ctx context.Context, collectionName string, query map[string]interface{}) ([]interface{}, error)
 }
 
 type RequestError struct {

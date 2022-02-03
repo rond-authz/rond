@@ -173,12 +173,13 @@ func (mongoClient *MongoClient) RetrieveUserRolesByRolesID(ctx context.Context, 
 
 func (mongoClient *MongoClient) FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error) {
 	collection := mongoClient.client.Database(mongoClient.databaseName).Collection(collectionName)
-	result := collection.FindOne(ctx, query)
 	glogger.Get(ctx).WithFields(logrus.Fields{
 		"mongoQuery":     query,
 		"dbName":         mongoClient.databaseName,
 		"collectionName": collectionName,
 	}).Debug("performing query")
+
+	result := collection.FindOne(ctx, query)
 
 	var bsonDocument bson.D
 	err := result.Decode(&bsonDocument)
@@ -203,6 +204,46 @@ func (mongoClient *MongoClient) FindOne(ctx context.Context, collectionName stri
 		return nil, err
 	}
 	return res, nil
+}
+
+func (mongoClient *MongoClient) FindMany(ctx context.Context, collectionName string, query map[string]interface{}) ([]interface{}, error) {
+	collection := mongoClient.client.Database(mongoClient.databaseName).Collection(collectionName)
+	glogger.Get(ctx).WithFields(logrus.Fields{
+		"mongoQuery":     query,
+		"dbName":         mongoClient.databaseName,
+		"collectionName": collectionName,
+	}).Debug("performing query")
+
+	resultCursor, err := collection.Find(ctx, query)
+	if err != nil {
+		glogger.Get(ctx).WithField("error", logrus.Fields{"message": err.Error()}).Error("failed query execution")
+		return nil, err
+	}
+
+	results := make([]interface{}, 0)
+	if err := resultCursor.All(ctx, &results); err != nil {
+		glogger.Get(ctx).WithField("error", logrus.Fields{"message": err.Error()}).Error("failed complete query result deserialization")
+		return nil, err
+	}
+
+	for i := 0; i < len(results); i++ {
+		temporaryBytes, err := bson.MarshalExtJSON(results[i], true, true)
+		if err != nil {
+			glogger.Get(ctx).WithFields(logrus.Fields{
+				"error":       logrus.Fields{"message": err.Error()},
+				"resultIndex": i,
+			}).Error("failed query result marshalling")
+			return nil, err
+		}
+		if err := json.Unmarshal(temporaryBytes, &results[i]); err != nil {
+			glogger.Get(ctx).WithFields(logrus.Fields{
+				"error":       logrus.Fields{"message": err.Error()},
+				"resultIndex": i,
+			}).Error("failed result document deserialization")
+			return nil, err
+		}
+	}
+	return results, nil
 }
 
 func RolesIDsFromBindings(bindings []types.Binding) []string {

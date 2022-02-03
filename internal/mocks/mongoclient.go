@@ -20,6 +20,10 @@ type MongoClientMock struct {
 	FindOneExpectation func(collectionName string, query interface{})
 	FindOneResult      interface{}
 	FindOneError       error
+
+	FindManyExpectation func(collectionName string, query interface{})
+	FindManyResult      []interface{}
+	FindManyError       error
 }
 
 func (mongoClient *MongoClientMock) Disconnect() {
@@ -50,4 +54,13 @@ func (mongoClient *MongoClientMock) FindOne(ctx context.Context, collectionName 
 	}
 
 	return mongoClient.FindOneResult, nil
+}
+
+func (mongoClient *MongoClientMock) FindMany(ctx context.Context, collectionName string, query map[string]interface{}) ([]interface{}, error) {
+	mongoClient.FindManyExpectation(collectionName, query)
+	if mongoClient.FindManyError != nil {
+		return nil, mongoClient.FindManyError
+	}
+
+	return mongoClient.FindManyResult, nil
 }
