@@ -22,6 +22,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"gotest.tools/v3/assert"
 )
 
@@ -332,11 +334,10 @@ allow {
 }
 `
 
-		invoked := false
 		mockBodySting := "I am a body"
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			invoked = true
+			t.Fail()
 		}))
 		defer server.Close()
 
@@ -367,7 +368,6 @@ allow {
 
 		rbacHandler(w, r)
 
-		assert.Assert(t, !invoked, "Handler was not invoked.")
 		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
 		buf, err := ioutil.ReadAll(w.Body)
 		assert.Equal(t, err, nil, "Unexpected error to read body response")
@@ -1420,4 +1420,151 @@ project.tenantId == "1234"
 		assert.Assert(t, !invoked, "Handler was invoked.")
 		assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
 	})
+}
+
+func BenchmarkEvaluateRequest(b *testing.B) {
+	moduleConfig, err := loadRegoModule("./mocks/bench-policies")
+	assert.NilError(b, err, "Unexpected error")
+
+	envs := config.EnvironmentVariables{
+		UserGroupsHeader: "miausergroups",
+		UserIdHeader:     "miauserid",
+	}
+	nilLogger, _ := test.NewNullLogger()
+
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		b.StopTimer()
+
+		permission := &XPermission{AllowPermission: "allow_view_project"}
+		originalRequest := httptest.NewRequest(http.MethodGet, "/projects/project123", nil)
+		req := originalRequest.WithContext(
+			glogger.WithLogger(
+				context.WithValue(
+					context.WithValue(
+						WithXPermission(
+							WithOPAModuleConfig(originalRequest.Context(), moduleConfig),
+							permission,
+						),
+						types.MongoClientContextKey{}, testmongoMock,
+					),
+					config.EnvKey{}, envs,
+				),
+				logrus.NewEntry(nilLogger),
+			),
+		)
+		req.Header.Set("miausergroups", "area_rocket")
+		req.Header.Set("miauserid", "user1")
+		req = mux.SetURLVars(req, map[string]string{
+			"projectId": "project123",
+		})
+		recorder := httptest.NewRecorder()
+		b.StartTimer()
+
+		EvaluateRequest(req, envs, recorder)
+
+		b.StopTimer()
+		assert.Equal(b, recorder.Code, http.StatusOK)
+	}
+}
+
+var testmongoMock = &mocks.MongoClientMock{
+	UserBindings: []types.Binding{
+		{
+			BindingID:   "binding1",
+			Subjects:    []string{"user1"},
+			Roles:       []string{"admin"},
+			Groups:      []string{"area_rocket"},
+			Permissions: []string{"permission4"},
+			Resource: types.Resource{
+				ResourceType: "project",
+				ResourceID:   "project123",
+			},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "binding2",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group4"},
+			Permissions:       []string{"permission7"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "binding3",
+			Subjects:          []string{"user5"},
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group2"},
+			Permissions:       []string{"permission10", "permission4"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "binding4",
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group2"},
+			Permissions:       []string{"permission11"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "bindingForRowFiltering",
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group1"},
+			Permissions:       []string{"console.project.view"},
+			Resource:          types.Resource{ResourceType: "custom", ResourceID: "9876"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "bindingForRowFilteringFromSubject",
+			Subjects:          []string{"filter_test"},
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group1"},
+			Permissions:       []string{"console.project.view"},
+			Resource:          types.Resource{ResourceType: "custom", ResourceID: "12345"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "binding5",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role3", "role4"},
+			Permissions:       []string{"permission12"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "notUsedByAnyone",
+			Subjects:          []string{"user5"},
+			Roles:             []string{"role3", "role4"},
+			Permissions:       []string{"permissionNotUsed"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "notUsedByAnyone2",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role3", "role6"},
+			Permissions:       []string{"permissionNotUsed"},
+			CRUDDocumentState: "PRIVATE",
+		},
+	},
+	UserRoles: []types.Role{
+		{
+			RoleID:            "admin",
+			Permissions:       []string{"console.project.view", "permission2", "foobar"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			RoleID:            "role3",
+			Permissions:       []string{"permission3", "permission5", "console.project.view"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			RoleID:            "role6",
+			Permissions:       []string{"permission3", "permission5"},
+			CRUDDocumentState: "PRIVATE",
+		},
+		{
+			RoleID:            "notUsedByAnyone",
+			Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
+			CRUDDocumentState: "PUBLIC",
+		},
+	},
 }

@@ -30,3 +30,23 @@ docker run --rm -p 27017:27017 mongo
 ```go
 go test -v
 ```
+
+## Benchmark
+
+To run benchmark use:
+
+```sh
+go test ./... -bench=. -run=Bench  -benchmem
+```
+
+### Bench results
+
+03/02/2022 - h18
+
+```
+goos: darwin
+goarch: amd64
+pkg: git.tools.mia-platform.eu/platform/core/rbac-service
+cpu: Intel(R) Core(TM) i5-1038NG7 CPU @ 2.00GHz
+BenchmarkEvaluateRequest-8            82          12741684 ns/op         3417740 B/op      85394 allocs/op
+```
