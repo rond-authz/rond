@@ -29,18 +29,27 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	permission := EvaluateRequest(req, env, w)
+	if permission != nil {
+		ReverseProxy(logger, env, w, req, permission)
+	}
+}
+
+func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.ResponseWriter) *XPermission {
+	requestContext := req.Context()
+	logger := glogger.Get(requestContext)
+
 	permission, err := GetXPermission(requestContext)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no policy permission found in context")
 		failResponse(w, "No policy permission found in context", GENERIC_BUSINESS_ERROR_MESSAGE)
-		return
+		return nil
 	}
-
 	evaluator, err := createEvaluator(requestContext, logger, req, env, permission.AllowPermission, nil)
 	if err != nil {
 		logger.WithError(err).Error("failed RBAC policy creation")
 		failResponse(w, "Failed RBAC policy creation", GENERIC_BUSINESS_ERROR_MESSAGE)
-		return
+		return nil
 	}
 
 	_, query, err := evaluator.PolicyEvaluation(logger, permission)
@@ -48,12 +57,12 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		if errors.Is(err, opatranslator.ErrEmptyQuery) && hasApplicationJSONContentType(req.Header) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("[]"))
-			return
+			return nil
 		}
 
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("RBAC policy evaluation failed")
 		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed", NO_PERMISSIONS_ERROR_MESSAGE)
-		return
+		return nil
 	}
 
 	var queryToProxy = []byte{}
@@ -62,7 +71,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("Error while marshaling row filter query")
 			failResponseWithCode(w, http.StatusForbidden, "Error while marshaling row filter query", GENERIC_BUSINESS_ERROR_MESSAGE)
-			return
+			return nil
 		}
 	}
 
@@ -73,7 +82,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	if query != nil {
 		req.Header.Set(queryHeaderKey, string(queryToProxy))
 	}
-	ReverseProxy(logger, env, w, req, permission)
+	return permission
 }
 
 func ReverseProxy(logger *logrus.Entry, env config.EnvironmentVariables, w http.ResponseWriter, req *http.Request, permission *XPermission) {
