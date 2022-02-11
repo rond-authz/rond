@@ -339,7 +339,7 @@ func TestEntryPoint(t *testing.T) {
 		require.False(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
 	})
 
-	t.Run("api permissions file path with nested routes (/*)", func(t *testing.T) {
+	t.Run("api permissions file path with nested routes with wildcard", func(t *testing.T) {
 		gock.Flush()
 		shutdown := make(chan os.Signal, 1)
 
@@ -490,10 +490,10 @@ func TestEntryPoint(t *testing.T) {
 			if r.URL.Path == "/users/" && r.URL.Host == "localhost:3002" {
 				return false
 			}
-			if r.URL.Path == "/with-mongo-find-one" && r.URL.Host == "localhost:3002" {
+			if r.URL.Path == "/with-mongo-find-one/some-project" && r.URL.Host == "localhost:3002" {
 				return false
 			}
-			if r.URL.Path == "/with-mongo-find-many" && r.URL.Host == "localhost:3002" {
+			if r.URL.Path == "/with-mongo-find-many/some-project" && r.URL.Host == "localhost:3002" {
 				return false
 			}
 			return true
@@ -502,14 +502,8 @@ func TestEntryPoint(t *testing.T) {
 		gock.New("http://localhost:3002").
 			Get("/documentation/json").
 			Reply(200).
-			File("./mocks/simplifiedMock.json")
+			File("./mocks/simplifiedMockWithFindBuiltins.json")
 
-		unsetBaseEnvs := setEnvs([]env{
-			{name: "HTTP_PORT", value: "3003"},
-			{name: "TARGET_SERVICE_HOST", value: "localhost:3002"},
-			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
-			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
-		})
 		mongoHost := os.Getenv("MONGO_HOST_CI")
 		if mongoHost == "" {
 			mongoHost = testutils.LocalhostMongoDB
@@ -518,7 +512,11 @@ func TestEntryPoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetOtherEnvs := setEnvs([]env{
+		unsetEnvs := setEnvs([]env{
+			{name: "HTTP_PORT", value: "3003"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:3002"},
+			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies-with-mongo-builtins"},
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -548,8 +546,7 @@ func TestEntryPoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetBaseEnvs()
-			unsetOtherEnvs()
+			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -615,7 +612,7 @@ func TestEntryPoint(t *testing.T) {
 				SetHeader("someuserheader", "user1").
 				JSON(map[string]string{"foo": "bar"})
 
-			req, err := http.NewRequest("GET", "http://localhost:3003/with-mongo-find-one", nil)
+			req, err := http.NewRequest("GET", "http://localhost:3003/with-mongo-find-one/some-project", nil)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
 			req.Header.Set("Content-type", "application/json")
@@ -650,7 +647,7 @@ func TestEntryPoint(t *testing.T) {
 				SetHeader("someuserheader", "user1").
 				JSON(map[string]string{"foo": "bar"})
 
-			req, err := http.NewRequest("GET", "http://localhost:3003/with-mongo-find-many", nil)
+			req, err := http.NewRequest("GET", "http://localhost:3003/with-mongo-find-many/some-project", nil)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
 			req.Header.Set("Content-type", "application/json")
@@ -734,6 +731,7 @@ func TestEntryPoint(t *testing.T) {
 		gock.Flush()
 		gock.New("http://localhost:3033/users/").
 			Get("/users/").
+			MatchHeader("acl_rows", `{"$or":[{"$and":[{"_id":{"$eq":"9876"}}]},{"$and":[{"_id":{"$eq":"12345"}}]},{"$and":[{"_id":{"$eq":"9876"}}]},{"$and":[{"_id":{"$eq":"12345"}}]}]}`).
 			Reply(200)
 		req, err := http.NewRequest("GET", "http://localhost:3034/users/", nil)
 		req.Header.Set("miausergroups", "group1")
@@ -911,21 +909,6 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 		gock.Flush()
 		require.Equal(t, nil, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
-	})
-
-	t.Run("403 - with body and no requested policy existing", func(t *testing.T) {
-		gock.Flush()
-		gock.Observe(gock.DumpRequest)
-
-		gock.New("http://localhost:3040/users/").
-			Get("/users/").
-			Reply(200).
-			JSON(map[string]interface{}{"error": "no error", "statusCode": 200, "message": "you do not have permission to perform this action"})
-
-		req, _ := http.NewRequest("GET", "http://localhost:3041/users/", nil)
-		client1 := &http.Client{}
-		resp, _ := client1.Do(req)
-		require.Equal(t, http.StatusForbidden, resp.StatusCode)
 	})
 
 	t.Run("200 - with correct body filtered returned", func(t *testing.T) {

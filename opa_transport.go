@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
 	"github.com/sirupsen/logrus"
@@ -17,11 +18,12 @@ import (
 
 type OPATransport struct {
 	http.RoundTripper
-	context    context.Context
-	logger     *logrus.Entry
-	request    *http.Request
-	env        config.EnvironmentVariables
-	permission *XPermission
+	context                  context.Context
+	logger                   *logrus.Entry
+	request                  *http.Request
+	env                      config.EnvironmentVariables
+	permission               *XPermission
+	partialResultsEvaluators PartialResultsEvaluators
 }
 
 func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
@@ -53,14 +55,19 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return nil, fmt.Errorf("response body is not valid: %s", err.Error())
 	}
 
-	evaluator, err := createEvaluator(
-		t.context,
-		t.logger,
-		t.request,
-		t.env,
-		t.permission.ResponseFilter.Policy,
-		decodedBody,
-	)
+	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(t.logger, t.request, t.env)
+	if err != nil {
+		t.responseWithError(resp, err, http.StatusInternalServerError)
+		return resp, nil
+	}
+
+	input, err := createRegoQueryInput(t.request, t.env, userInfo, decodedBody)
+	if err != nil {
+		t.responseWithError(resp, err, http.StatusInternalServerError)
+		return resp, nil
+	}
+
+	evaluator, err := t.partialResultsEvaluators.GetEvaluatorFromPolicy(t.context, t.permission.ResponseFilter.Policy, input)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusInternalServerError)
 		return resp, nil
@@ -73,7 +80,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 	}
 	marshalledBody, err := json.Marshal(bodyToProxy)
 	if err != nil {
-		t.responseWithError(resp, err, http.StatusForbidden)
+		t.responseWithError(resp, err, http.StatusInternalServerError)
 		return resp, nil
 	}
 	overwriteResponse(resp, marshalledBody)

@@ -15,6 +15,8 @@ import (
 
 var envs = config.EnvironmentVariables{}
 
+var partialEvaluators = PartialResultsEvaluators{}
+
 func TestOPAMiddleware(t *testing.T) {
 	t.Run(`strict mode failure`, func(t *testing.T) {
 		opaModule := &OPAModuleConfig{
@@ -25,7 +27,7 @@ todo { true }`,
 		var openAPISpec *OpenAPISpec
 		openAPISpecContent, _ := ioutil.ReadFile("./mocks/simplifiedMock.json")
 		_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
-		middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
+		middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
 
 		t.Run(`missing oas paths`, func(t *testing.T) {
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +81,7 @@ foobar { true }`,
 			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/json",
 			}
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -99,7 +101,7 @@ foobar { true }`,
 			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/json",
 			}
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -119,7 +121,7 @@ foobar { true }`,
 			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/custom/json",
 			}
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -144,11 +146,11 @@ foobar { true }`,
 todo { true }`,
 			}
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, permission, &XPermission{AllowPermission: "foobar"})
+				require.Equal(t, permission, &XPermission{AllowPermission: "todo"})
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -166,11 +168,11 @@ todo { true }`,
 foobar { true }`,
 			}
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, permission, &XPermission{AllowPermission: "foobar"})
+				require.Equal(t, permission, &XPermission{AllowPermission: "todo"})
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -188,7 +190,7 @@ foobar { true }`,
 very_very_composed_permission { true }`,
 			}
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs)
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
@@ -227,11 +229,11 @@ func TestGetHeaderFunction(t *testing.T) {
 		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes)
 		assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
 
-		results, err := opaEvaluator.PermissionQuery.Eval(context.TODO())
+		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())
 		assert.NilError(t, err, "Unexpected error during rego validation")
 		assert.Assert(t, results.Allowed(), "The input is not allowed by rego")
 
-		partialResults, err := opaEvaluator.PermissionQuery.Partial(context.TODO())
+		partialResults, err := opaEvaluator.PolicyEvaluator.Partial(context.TODO())
 		assert.NilError(t, err, "Unexpected error during rego validation")
 
 		assert.Equal(t, 1, len(partialResults.Queries), "Rego policy allows illegal input")
@@ -246,11 +248,11 @@ func TestGetHeaderFunction(t *testing.T) {
 		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes)
 		assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
 
-		results, err := opaEvaluator.PermissionQuery.Eval(context.TODO())
+		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())
 		assert.NilError(t, err, "Unexpected error during rego validation")
 		assert.Assert(t, !results.Allowed(), "Rego policy allows illegal input")
 
-		partialResults, err := opaEvaluator.PermissionQuery.Partial(context.TODO())
+		partialResults, err := opaEvaluator.PolicyEvaluator.Partial(context.TODO())
 		assert.NilError(t, err, "Unexpected error during rego validation")
 
 		assert.Equal(t, 0, len(partialResults.Queries), "Rego policy allows illegal input")

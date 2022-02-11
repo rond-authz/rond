@@ -1,0 +1,36 @@
+{
+    "paths": {
+        "/users/": {
+            "get": {
+                "x-permission": {
+                    "allow": "foobar",
+                    "resourceFilter": {
+                        "rowFilter": {
+                            "enabled": true,
+                            "headerKey": "customHeaderKey"
+                        }
+                    },
+                    "responseFilter": {
+                        "policy": "response_policy1"
+                    }
+                }
+            },
+            "post": {
+                "x-permission": {
+                    "allow": "foo_bar",
+                    "responseFilter": {
+                        "policy": "response_policy2"
+                    }
+                }
+            },
+            "put": {
+                "x-permission": {
+                    "allow": "foobar",
+                    "responseFilter": {
+                        "policy": "response_policy2"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -13,22 +13,24 @@ import (
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
+	"github.com/mia-platform/glogger/v2"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/v3/assert"
 )
 
 func TestNewOPAEvaluator(t *testing.T) {
 	input := map[string]interface{}{}
 	inputBytes, _ := json.Marshal(input)
 	t.Run("policy sanitization", func(t *testing.T) {
-		evaluator, err := NewOPAEvaluator(context.Background(), "very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, inputBytes)
-		require.Nil(t, err, "unexpected error")
-		require.Equal(t, "very.composed.policy", evaluator.Policy)
+		evaluator, _ := NewOPAEvaluator(context.Background(), "very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, inputBytes)
 
-		result, err := evaluator.PermissionQuery.Eval(context.TODO())
+		result, err := evaluator.PolicyEvaluator.Eval(context.TODO())
 		require.Nil(t, err, "unexpected error")
 		require.True(t, result.Allowed(), "Unexpected failing policy")
 
-		parialResult, err := evaluator.PermissionQuery.Partial(context.TODO())
+		parialResult, err := evaluator.PolicyEvaluator.Partial(context.TODO())
 		require.Nil(t, err, "unexpected error")
 		require.Equal(t, 1, len(parialResult.Queries), "Unexpected failing policy")
 	})
@@ -100,5 +102,43 @@ func TestCreateRegoInput(t *testing.T) {
 			require.Nil(t, err, "Unexpected error")
 			require.True(t, !strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)))
 		})
+	})
+}
+
+func TestCreatePolicyEvaluators(t *testing.T) {
+	t.Run("with simplified mock", func(t *testing.T) {
+		log, _ := test.NewNullLogger()
+		envs := config.EnvironmentVariables{
+			APIPermissionsFilePath: "./mocks/simplifiedMock.json",
+			OPAModulesDirectory:    "./mocks/rego-policies",
+		}
+		openApiSpec, err := loadOAS(log, envs)
+		assert.Assert(t, err == nil, "unexpected error")
+
+		opaModuleConfig, err := loadRegoModule(envs.OPAModulesDirectory)
+		assert.Assert(t, err == nil, "unexpected error")
+
+		policyEvals, err := setupEvaluators(context.Background(), nil, openApiSpec, opaModuleConfig)
+		assert.Assert(t, err == nil, "unexpected error creating evaluators")
+		assert.Equal(t, len(policyEvals), 3, "unexpected length")
+	})
+
+	t.Run("with complete oas mock", func(t *testing.T) {
+		log, _ := test.NewNullLogger()
+		ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
+
+		envs := config.EnvironmentVariables{
+			APIPermissionsFilePath: "./mocks/pathsConfigAllInclusive.json",
+			OPAModulesDirectory:    "./mocks/rego-policies",
+		}
+		openApiSpec, err := loadOAS(log, envs)
+		assert.Assert(t, err == nil, "unexpected error")
+
+		opaModuleConfig, err := loadRegoModule(envs.OPAModulesDirectory)
+		assert.Assert(t, err == nil, "unexpected error")
+
+		policyEvals, err := setupEvaluators(ctx, nil, openApiSpec, opaModuleConfig)
+		assert.Assert(t, err == nil, "unexpected error creating evaluators")
+		assert.Equal(t, len(policyEvals), 4, "unexpected length")
 	})
 }

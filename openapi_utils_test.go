@@ -33,7 +33,7 @@ func TestFetchOpenAPI(t *testing.T) {
 			"/users/": PathVerbs{
 				"get": VerbConfig{
 					Permission: XPermission{
-						AllowPermission: "foobar",
+						AllowPermission: "todo",
 					},
 				},
 				"post": VerbConfig{
@@ -53,8 +53,6 @@ func TestFetchOpenAPI(t *testing.T) {
 				"get":  VerbConfig{},
 				"post": VerbConfig{},
 			},
-			"/with-mongo-find-one":  {"get": {Permission: XPermission{AllowPermission: "allow_with_find_one"}}},
-			"/with-mongo-find-many": {"get": {Permission: XPermission{AllowPermission: "allow_with_find_many"}}},
 		})
 	})
 
@@ -203,7 +201,7 @@ func TestLoadOAS(t *testing.T) {
 			"/users/": PathVerbs{
 				"get": VerbConfig{
 					Permission: XPermission{
-						AllowPermission: "foobar",
+						AllowPermission: "todo",
 					},
 				},
 				"post": VerbConfig{
@@ -223,8 +221,6 @@ func TestLoadOAS(t *testing.T) {
 				"post": VerbConfig{},
 				"get":  VerbConfig{},
 			},
-			"/with-mongo-find-one":  {"get": {Permission: XPermission{AllowPermission: "allow_with_find_one"}}},
-			"/with-mongo-find-many": {"get": {Permission: XPermission{AllowPermission: "allow_with_find_many"}}},
 		})
 	})
 
@@ -368,5 +364,21 @@ func TestGetXPermission(t *testing.T) {
 		permission, err := GetXPermission(ctx)
 		require.True(t, err == nil, "Unexpected error.")
 		require.True(t, permission != nil, "XPermission not found.")
+	})
+}
+
+func TestGetPolicyEvaluators(t *testing.T) {
+	t.Run(`GetPolicyEvaluators fails because no key has been passed`, func(t *testing.T) {
+		ctx := context.Background()
+		env, err := GetPartialResultsEvaluators(ctx)
+		require.True(t, err != nil, "An error was expected.")
+		t.Logf("Expected error: %s - env: %+v", err.Error(), env)
+	})
+
+	t.Run(`GetPartialResultsEvaluators returns PartialResultsEvaluators from context`, func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), PartialResultsEvaluatorConfigKey{}, PartialResultsEvaluators{})
+		opaEval, err := GetPartialResultsEvaluators(ctx)
+		require.True(t, err == nil, "Unexpected error.")
+		require.True(t, opaEval != nil, "OPA Module config not found.")
 	})
 }

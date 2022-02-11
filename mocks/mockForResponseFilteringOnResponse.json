@@ -9,10 +9,7 @@
         "/users/": {
             "get": {
                 "x-permission": {
-                    "allow": "foobar",
-                    "responseFilter": {
-                        "policy": "filter_ft_not existing"
-                    }
+                    "allow": "foobar"
                 }
             }
         },
