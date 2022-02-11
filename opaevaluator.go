@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/opatranslator"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
@@ -33,9 +32,65 @@ type Evaluator interface {
 var unknowns = []string{"data.resources"}
 
 type OPAEvaluator struct {
-	PermissionQuery Evaluator
-	Policy          string
+	PolicyEvaluator Evaluator
 	Context         context.Context
+}
+type PartialResultsEvaluatorConfigKey struct{}
+
+type PartialResultsEvaluators map[string]PartialEvaluator
+
+type PartialEvaluator struct {
+	PartialEvaluator *rego.PartialResult
+}
+
+func setupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *OpenAPISpec, opaModuleConfig *OPAModuleConfig) (PartialResultsEvaluators, error) {
+	policyEvaluators := PartialResultsEvaluators{}
+	for path, OASContent := range oas.Paths {
+		for verb, xPermission := range OASContent {
+
+			allowPolicy := xPermission.Permission.AllowPermission
+			responsePolicy := xPermission.Permission.ResponseFilter.Policy
+
+			glogger.Get(ctx).Infof("precomputing rego queries for API: %s %s. Allow policy: %s. Response policy: %s.", verb, path, allowPolicy, responsePolicy)
+			if allowPolicy == "" {
+				// allow policy is required, if missing assume the API has no x-permission configuration.
+				continue
+			}
+
+			if _, ok := policyEvaluators[allowPolicy]; !ok {
+				glogger.Get(ctx).Infof("precomputing rego query for allow policy: %s", allowPolicy)
+
+				allowPolicyEvaluatorTime := time.Now()
+				allowPartialResultEvaluator, err := NewPartialResultEvaluator(ctx, allowPolicy, opaModuleConfig, mongoClient)
+				if err != nil {
+					return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
+				}
+				glogger.Get(ctx).Infof("computed rego query for allow policy: %s in %s", allowPolicy, time.Since(allowPolicyEvaluatorTime))
+
+				policyEvaluators[allowPolicy] = PartialEvaluator{
+					PartialEvaluator: allowPartialResultEvaluator,
+				}
+			}
+
+			if responsePolicy != "" {
+				if _, ok := policyEvaluators[responsePolicy]; !ok {
+					glogger.Get(ctx).Infof("precomputing rego query for response filtering policy: %s", responsePolicy)
+					responsePolicyEvaluatorTime := time.Now()
+
+					responsePartialResultEvaluator, err := NewPartialResultEvaluator(ctx, responsePolicy, opaModuleConfig, mongoClient)
+					if err != nil {
+						return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
+					}
+					glogger.Get(ctx).Tracef("computed rego query for response filtering policy: %s in %s", responsePolicy, time.Since(responsePolicyEvaluatorTime))
+
+					policyEvaluators[responsePolicy] = PartialEvaluator{
+						PartialEvaluator: responsePartialResultEvaluator,
+					}
+				}
+			}
+		}
+	}
+	return policyEvaluators, nil
 }
 
 func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte) (*OPAEvaluator, error) {
@@ -59,30 +114,18 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 	)
 
 	return &OPAEvaluator{
-		PermissionQuery: query,
-		Policy:          policy,
+		PolicyEvaluator: query,
 		Context:         ctx,
 	}, nil
 }
 
-func createEvaluator(ctx context.Context, logger *logrus.Entry, req *http.Request, env config.EnvironmentVariables, policy string, responseBody interface{}) (*OPAEvaluator, error) {
+func createQueryEvaluator(ctx context.Context, logger *logrus.Entry, req *http.Request, env config.EnvironmentVariables, policy string, input []byte, responseBody interface{}) (*OPAEvaluator, error) {
 	opaModuleConfig, err := GetOPAModuleConfig(req.Context())
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no OPA module configuration found in context")
 		return nil, fmt.Errorf("no OPA module configuration found in context")
 	}
 
-	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(logger, req, env)
-	if err != nil {
-		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed user bindings and roles retrieving")
-		return nil, err
-	}
-
-	input, err := createRegoQueryInput(req, env, userInfo, responseBody)
-	if err != nil {
-		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed rego query input creation")
-		return nil, fmt.Errorf("failed rego query input creation: %s", err.Error())
-	}
 	logger.WithFields(logrus.Fields{
 		"policyName": policy,
 	}).Info("Policy to be evaluated")
@@ -101,8 +144,47 @@ func createEvaluator(ctx context.Context, logger *logrus.Entry, req *http.Reques
 	return evaluator, nil
 }
 
+func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, mongoClient types.IMongoClient) (*rego.PartialResult, error) {
+	sanitizedPolicy := strings.Replace(policy, ".", "_", -1)
+	queryString := fmt.Sprintf("data.policies.%s", sanitizedPolicy)
+
+	options := []func(*rego.Rego){
+		rego.Query(queryString),
+		rego.Module(opaModuleConfig.Name, opaModuleConfig.Content),
+		rego.Unknowns(unknowns),
+		rego.Capabilities(ast.CapabilitiesForThisVersion()),
+		custom_builtins.GetHeaderFunction,
+	}
+	if mongoClient != nil {
+		options = append(options, custom_builtins.MongoFindOne, custom_builtins.MongoFindMany)
+	}
+	regoInstance := rego.New(options...)
+
+	results, err := regoInstance.PartialResult(ctx)
+	return &results, err
+}
+
+func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx context.Context, policy string, input []byte) (*OPAEvaluator, error) {
+	if eval, ok := partialEvaluators[policy]; ok {
+		inputTerm, err := ast.ParseTerm(string(input))
+		if err != nil {
+			return nil, fmt.Errorf("failed input parse: %v", err)
+		}
+
+		evaluator := eval.PartialEvaluator.Rego(
+			rego.ParsedInput(inputTerm.Value),
+		)
+
+		return &OPAEvaluator{
+			PolicyEvaluator: evaluator,
+			Context:         ctx,
+		}, nil
+	}
+	return nil, fmt.Errorf("policy evaluator not found")
+}
+
 func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitive.M, error) {
-	partialResults, err := evaluator.PermissionQuery.Partial(context.TODO())
+	partialResults, err := evaluator.PolicyEvaluator.Partial(evaluator.Context)
 	if err != nil {
 		return nil, fmt.Errorf("policy Evaluation has failed when partially evaluating the query: %s", err.Error())
 	}
@@ -122,7 +204,7 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 }
 
 func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, error) {
-	results, err := evaluator.PermissionQuery.Eval(evaluator.Context)
+	results, err := evaluator.PolicyEvaluator.Eval(evaluator.Context)
 	if err != nil {
 		return nil, fmt.Errorf("policy Evaluation has failed when evaluating the query: %s", err.Error())
 	}
@@ -217,11 +299,24 @@ func createRegoQueryInput(req *http.Request, env config.EnvironmentVariables, us
 		}
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
-
 	inputBytes, err := json.Marshal(input)
 	if err != nil {
 		return nil, fmt.Errorf("failed input JSON encode: %v", err)
 	}
 	logger.Tracef("OPA input rego creation in: %+v", time.Since(opaInputCreationTime))
 	return inputBytes, nil
+}
+
+func WithPartialResultsEvaluators(requestContext context.Context, evaluators PartialResultsEvaluators) context.Context {
+	return context.WithValue(requestContext, PartialResultsEvaluatorConfigKey{}, evaluators)
+}
+
+// GetPartialResultsEvaluators can be used by a request handler to get PartialResult evaluator instance from context.
+func GetPartialResultsEvaluators(requestContext context.Context) (PartialResultsEvaluators, error) {
+	evaluators, ok := requestContext.Value(PartialResultsEvaluatorConfigKey{}).(PartialResultsEvaluators)
+	if !ok {
+		return nil, fmt.Errorf("no policy evaluators found in request context")
+	}
+
+	return evaluators, nil
 }

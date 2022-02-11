@@ -39,10 +39,14 @@ const PUBLIC string = "PUBLIC"
 func MongoClientInjectorMiddleware(collections types.IMongoClient) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := context.WithValue(r.Context(), types.MongoClientContextKey{}, collections)
+			ctx := WithMongoClient(r.Context(), collections)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func WithMongoClient(ctx context.Context, mongoClient types.IMongoClient) context.Context {
+	return context.WithValue(ctx, types.MongoClientContextKey{}, mongoClient)
 }
 
 // GetMongoClientFromContext extracts mongo collections adapter struct from

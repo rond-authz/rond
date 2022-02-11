@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -58,6 +59,7 @@ func entrypoint(shutdown chan os.Signal) {
 		}).Errorf("failed rego file read")
 		return
 	}
+	log.WithField("opaModuleFileName", opaModuleConfig.Name).Trace("rego module successfully loaded")
 
 	oas, err := loadOAS(log, env)
 	if err != nil {
@@ -66,9 +68,30 @@ func entrypoint(shutdown chan os.Signal) {
 		}).Errorf("failed to load oas")
 		return
 	}
+	log.WithField("oasAPIPermissionsFilePath", env.APIPermissionsFilePath).Trace("OAS successfully loaded")
+
+	mongoClient, err := mongoclient.NewMongoClient(env, log)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"error": logrus.Fields{"message": err.Error()},
+		}).Errorf("error during init of mongo collection")
+		return
+	}
+	log.Trace("MongoDB client set up completed")
+
+	ctx := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoClient), logrus.NewEntry(log))
+
+	policiesEvaluators, err := setupEvaluators(ctx, mongoClient, oas, opaModuleConfig)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"error": logrus.Fields{"message": err.Error()},
+		}).Errorf("failed to create evaluators")
+		return
+	}
+	log.WithField("policiesLength", len(policiesEvaluators)).Trace("policies evaluators partial results computed")
 
 	// Routing
-	router, mongoClient, err := setupRouter(log, env, opaModuleConfig, oas)
+	router, err := setupRouter(log, env, opaModuleConfig, oas, policiesEvaluators, mongoClient)
 	if mongoClient != nil {
 		defer mongoClient.Disconnect()
 	}
@@ -78,6 +101,7 @@ func entrypoint(shutdown chan os.Signal) {
 		}).Errorf("failed router setup")
 		return
 	}
+	log.Trace("router setup completed")
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("0.0.0.0:%s", env.HTTPPort),
@@ -98,19 +122,14 @@ func entrypoint(shutdown chan os.Signal) {
 	helpers.GracefulShutdown(srv, shutdown, log, env.DelayShutdownSeconds)
 }
 
-func setupRouter(log *logrus.Logger, env config.EnvironmentVariables, opaModuleConfig *OPAModuleConfig, oas *OpenAPISpec) (*mux.Router, *mongoclient.MongoClient, error) {
+func setupRouter(log *logrus.Logger, env config.EnvironmentVariables, opaModuleConfig *OPAModuleConfig, oas *OpenAPISpec, policiesEvaluators PartialResultsEvaluators, mongoClient *mongoclient.MongoClient) (*mux.Router, error) {
 	router := mux.NewRouter()
 	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
 	StatusRoutes(router, "rbac-service", env.ServiceVersion)
 
 	router.Use(config.RequestMiddlewareEnvironments(env))
-	router.Use(OPAMiddleware(opaModuleConfig, oas, &env))
+	router.Use(OPAMiddleware(opaModuleConfig, oas, &env, policiesEvaluators))
 
-	mongoClient, err := mongoclient.NewMongoClient(env, log)
-
-	if err != nil {
-		return nil, nil, fmt.Errorf("error during init of mongo collection: %s", err.Error())
-	}
 	if mongoClient != nil {
 		router.Use(mongoclient.MongoClientInjectorMiddleware(mongoClient))
 	}
@@ -119,9 +138,9 @@ func setupRouter(log *logrus.Logger, env config.EnvironmentVariables, opaModuleC
 
 	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		path, _ := route.GetPathTemplate()
-		log.Infof("Registered path: %s", path)
+		log.Tracef("Registered path: %s", path)
 		return nil
 	})
 
-	return router, mongoClient, nil
+	return router, nil
 }

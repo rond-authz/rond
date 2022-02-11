@@ -164,7 +164,7 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 	recorderResult := recorder.Result()
 	rowFilterEnabled, err := strconv.ParseBool(recorderResult.Header.Get("resourceFilter.rowFilter.enabled"))
 	if err != nil {
-		return XPermission{}, fmt.Errorf("Error while parsing rowFilter.enabled: %s", err)
+		return XPermission{}, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
 	}
 	return XPermission{
 		AllowPermission: recorderResult.Header.Get("allow"),

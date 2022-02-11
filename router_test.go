@@ -142,6 +142,7 @@ func createContext(
 	mongoClient *mocks.MongoClientMock,
 	permission *XPermission,
 	opaModuleConfig *OPAModuleConfig,
+	partialResultEvaluators PartialResultsEvaluators,
 ) context.Context {
 	t.Helper()
 
@@ -152,6 +153,7 @@ func createContext(
 	if mongoClient != nil {
 		partialContext = context.WithValue(partialContext, types.MongoClientContextKey{}, mongoClient)
 	}
+	partialContext = context.WithValue(partialContext, PartialResultsEvaluatorConfigKey{}, partialResultEvaluators)
 
 	return partialContext
 }
@@ -165,7 +167,7 @@ var mockXPermission = &XPermission{AllowPermission: "todo"}
 
 func TestSetupRoutesIntegration(t *testing.T) {
 	oas := prepareOASFromFile(t, "./mocks/simplifiedMock.json")
-
+	mockPartialEvaluators, _ := setupEvaluators(context.Background(), nil, oas, mockOPAModule)
 	t.Run("invokes known API", func(t *testing.T) {
 		var invoked bool
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -186,6 +188,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			nil,
 			mockXPermission,
 			mockOPAModule,
+			mockPartialEvaluators,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
@@ -222,6 +225,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			nil,
 			mockXPermission,
 			mockOPAModule,
+			mockPartialEvaluators,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/unknown/path?foo=bar", nil)
@@ -239,6 +243,12 @@ func TestSetupRoutesIntegration(t *testing.T) {
 	})
 
 	t.Run("blocks request on not allowed policy evaluation", func(t *testing.T) {
+		var mockOPAModule = &OPAModuleConfig{
+			Name: "example.rego",
+			Content: `package policies
+		todo { false }`,
+		}
+		mockPartialEvaluators, _ := setupEvaluators(context.Background(), nil, oas, mockOPAModule)
 		router := mux.NewRouter()
 		setupRoutes(router, oas, envs)
 
@@ -247,11 +257,8 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			config.EnvironmentVariables{LogLevel: "silent", TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			nil,
 			mockXPermission,
-			&OPAModuleConfig{
-				Name: "example.rego",
-				Content: `package policies
-			todo { false }`,
-			},
+			mockOPAModule,
+			mockPartialEvaluators,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
@@ -268,6 +275,12 @@ func TestSetupRoutesIntegration(t *testing.T) {
 	})
 
 	t.Run("blocks request on policy evaluation error", func(t *testing.T) {
+
+		var mockOPAModule = &OPAModuleConfig{
+			Content: "FAILING POLICY!!!!",
+		}
+		mockPartialEvaluators, _ := setupEvaluators(context.Background(), nil, oas, mockOPAModule)
+
 		router := mux.NewRouter()
 		setupRoutes(router, oas, envs)
 
@@ -276,9 +289,8 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			config.EnvironmentVariables{TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			nil,
 			mockXPermission,
-			&OPAModuleConfig{
-				Content: "FAILING POLICY!!!!",
-			},
+			mockOPAModule,
+			mockPartialEvaluators,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://my-service.com/users/?foo=bar", nil)
@@ -291,7 +303,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		w := httptest.NewRecorder()
 		matchedRouted.Handler.ServeHTTP(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusForbidden)
+		assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
 	})
 
 	t.Run("invokes the API not explicitly set in the oas file", func(t *testing.T) {
@@ -314,6 +326,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			nil,
 			mockXPermission,
 			mockOPAModule,
+			mockPartialEvaluators,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://my-service.com/foo/route-not-registered-explicitly", nil)
@@ -350,6 +363,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			nil,
 			mockXPermission,
 			mockOPAModule,
+			mockPartialEvaluators,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/foo/bar/nested", nil)

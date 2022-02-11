@@ -29,7 +29,7 @@ type OPAModuleConfig struct {
 	Content string
 }
 
-func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, envs *config.EnvironmentVariables) mux.MiddlewareFunc {
+func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, envs *config.EnvironmentVariables, policyEvaluators PartialResultsEvaluators) mux.MiddlewareFunc {
 	OASrouter := openAPISpec.PrepareOASRouter()
 
 	return func(next http.Handler) http.Handler {
@@ -66,7 +66,10 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 
 			ctx := WithXPermission(
 				WithOPAModuleConfig(
-					r.Context(),
+					WithPartialResultsEvaluators(
+						r.Context(),
+						policyEvaluators,
+					),
 					opaModuleConfig,
 				),
 				&permission,

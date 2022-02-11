@@ -4,8 +4,6 @@ import future.keywords.in
 
 foobar = true
 
-todo = true
-
 foo_bar = true
 
 allow_commit {
@@ -45,11 +43,18 @@ ft_checker {
 	true
 }
 
-
-response_policy1 {
+allow_with_find_one {
+	projectId := input.request.pathParams.projectId
+	project := find_one("projects", {"projectId": projectId})
 	true
+	project.tenantId == "some-tenant"
 }
 
-response_policy2 {
-	true
+allow_with_find_many {
+	projectId := input.request.pathParams.projectId
+	projects := find_many("projects", {"$or": [{"projectId": projectId}, {"projectId": "some-project2"}]})
+	count(projects) == 2
+
+	projects[0].tenantId == "some-tenant"
+	projects[1].tenantId == "some-tenant2"
 }
