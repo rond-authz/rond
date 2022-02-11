@@ -58,7 +58,7 @@ func TestCreateRegoInput(t *testing.T) {
 
 		t.Run("ignore nil body on method POST", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", nil)
-			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set(ContentTypeHeaderKey, "application/json")
 
 			inputBytes, err := createRegoQueryInput(req, env, user, nil)
 			require.Nil(t, err, "Unexpected error")
@@ -70,7 +70,7 @@ func TestCreateRegoInput(t *testing.T) {
 
 			for _, method := range acceptedMethods {
 				req := httptest.NewRequest(method, "/", bytes.NewReader(reqBodyBytes))
-				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set(ContentTypeHeaderKey, "application/json")
 				inputBytes, err := createRegoQueryInput(req, env, user, nil)
 				require.Nil(t, err, "Unexpected error")
 
@@ -80,7 +80,7 @@ func TestCreateRegoInput(t *testing.T) {
 
 		t.Run("added with content-type specifying charset", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(reqBodyBytes))
-			req.Header.Set("Content-Type", "application/json;charset=UTF-8")
+			req.Header.Set(ContentTypeHeaderKey, "application/json;charset=UTF-8")
 			inputBytes, err := createRegoQueryInput(req, env, user, nil)
 			require.Nil(t, err, "Unexpected error")
 
@@ -89,14 +89,14 @@ func TestCreateRegoInput(t *testing.T) {
 
 		t.Run("reject on method POST but with invalid body", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
-			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set(ContentTypeHeaderKey, "application/json")
 			_, err := createRegoQueryInput(req, env, user, nil)
 			require.True(t, err != nil)
 		})
 
 		t.Run("ignore body on method POST but with another content type", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
-			req.Header.Set("Content-Type", "multipart/form-data")
+			req.Header.Set(ContentTypeHeaderKey, "multipart/form-data")
 
 			inputBytes, err := createRegoQueryInput(req, env, user, nil)
 			require.Nil(t, err, "Unexpected error")

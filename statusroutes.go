@@ -31,7 +31,7 @@ type StatusResponse struct {
 }
 
 func handleStatusRoutes(w http.ResponseWriter, serviceName, serviceVersion string) (*StatusResponse, []byte) {
-	w.Header().Add("Content-Type", "application/json")
+	w.Header().Add(ContentTypeHeaderKey, "application/json")
 	status := StatusResponse{
 		Status:  "OK",
 		Name:    serviceName,

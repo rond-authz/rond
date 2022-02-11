@@ -164,7 +164,7 @@ func TestDirectProxyHandler(t *testing.T) {
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
 		assert.Equal(t, err, nil, "Unexpected error")
-		r.Header.Set("Content-Type", "text/plain")
+		r.Header.Set(ContentTypeHeaderKey, "text/plain")
 		w := httptest.NewRecorder()
 
 		rbacHandler(w, r)
@@ -211,7 +211,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		)
 
 		r, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://www.example.com:8080/api", body)
-		r.Header.Set("content-type", "application/json")
+		r.Header.Set(ContentTypeHeaderKey, "application/json")
 		assert.Equal(t, err, nil, "Unexpected error")
 		w := httptest.NewRecorder()
 
@@ -294,7 +294,7 @@ allow {
 		assert.Equal(t, err, nil, "Unexpected error")
 		r.Header.Set("miauserproperties", `{"name":"gianni"}`)
 		r.Header.Set("examplekey", "value")
-		r.Header.Set("Content-Type", "text/plain")
+		r.Header.Set(ContentTypeHeaderKey, "text/plain")
 		w := httptest.NewRecorder()
 
 		rbacHandler(w, r)
@@ -372,7 +372,7 @@ allow {
 		assert.Equal(t, err, nil, "Unexpected error")
 		r.Header.Set("miauserproperties", `{"name":"gianni"}`)
 		r.Header.Set("examplekey", "value")
-		r.Header.Set("Content-Type", "text/plain")
+		r.Header.Set(ContentTypeHeaderKey, "text/plain")
 		w := httptest.NewRecorder()
 
 		rbacHandler(w, r)
@@ -427,12 +427,13 @@ allow {
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
 		assert.Equal(t, err, nil, "Unexpected error")
-		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set(ContentTypeHeaderKey, "application/json")
 		w := httptest.NewRecorder()
 
 		rbacHandler(w, r)
 
 		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Header().Get(ContentTypeHeaderKey), JSONContentTypeHeader, "Unexpected content type header")
 		buf, err := ioutil.ReadAll(w.Body)
 		assert.Equal(t, err, nil, "Unexpected error to read body response")
 		assert.Equal(t, string(buf), "[]", "Unexpected body response")
@@ -482,7 +483,7 @@ allow {
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
 		assert.Equal(t, err, nil, "Unexpected error")
-		r.Header.Set("Content-Type", "text/plain")
+		r.Header.Set(ContentTypeHeaderKey, "text/plain")
 		w := httptest.NewRecorder()
 
 		rbacHandler(w, r)
@@ -561,7 +562,7 @@ allow {
 		assert.Equal(t, err, nil, "Unexpected error")
 		r.Header.Set("miauserproperties", `{"name":"gianni"}`)
 		r.Header.Set("examplekey", "value")
-		r.Header.Set("Content-Type", "text/plain")
+		r.Header.Set(ContentTypeHeaderKey, "text/plain")
 		w := httptest.NewRecorder()
 
 		rbacHandler(w, r)

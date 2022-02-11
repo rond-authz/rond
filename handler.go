@@ -88,6 +88,7 @@ func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.
 	if err != nil {
 		if errors.Is(err, opatranslator.ErrEmptyQuery) && hasApplicationJSONContentType(req.Header) {
 			w.WriteHeader(http.StatusOK)
+			w.Header().Set(ContentTypeHeaderKey, JSONContentTypeHeader)
 			w.Write([]byte("[]"))
 			return err
 		}
