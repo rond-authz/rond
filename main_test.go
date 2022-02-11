@@ -571,7 +571,7 @@ func TestEntryPoint(t *testing.T) {
 			req, err := http.NewRequest("GET", "http://localhost:3003/users/", nil)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
-			req.Header.Set("Content-type", "application/json")
+			req.Header.Set(ContentTypeHeaderKey, "application/json")
 			client := &http.Client{}
 			resp, err := client.Do(req)
 			require.Equal(t, "user1", resp.Header.Get("someuserheader"))
@@ -615,7 +615,7 @@ func TestEntryPoint(t *testing.T) {
 			req, err := http.NewRequest("GET", "http://localhost:3003/with-mongo-find-one/some-project", nil)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
-			req.Header.Set("Content-type", "application/json")
+			req.Header.Set(ContentTypeHeaderKey, "application/json")
 			client := &http.Client{}
 			resp, err := client.Do(req)
 
@@ -650,7 +650,7 @@ func TestEntryPoint(t *testing.T) {
 			req, err := http.NewRequest("GET", "http://localhost:3003/with-mongo-find-many/some-project", nil)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
-			req.Header.Set("Content-type", "application/json")
+			req.Header.Set(ContentTypeHeaderKey, "application/json")
 			client := &http.Client{}
 			resp, err := client.Do(req)
 

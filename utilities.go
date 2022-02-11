@@ -8,10 +8,11 @@ import (
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 )
 
+const ContentTypeHeaderKey = "content-type"
 const JSONContentTypeHeader = "application/json"
 
 func hasApplicationJSONContentType(headers http.Header) bool {
-	return strings.HasPrefix(headers.Get("content-type"), JSONContentTypeHeader)
+	return strings.HasPrefix(headers.Get(ContentTypeHeaderKey), JSONContentTypeHeader)
 }
 
 func failResponse(w http.ResponseWriter, technicalError, businessError string) {
@@ -28,6 +29,8 @@ func failResponseWithCode(w http.ResponseWriter, statusCode int, technicalError,
 	if err != nil {
 		return
 	}
+
+	w.Header().Set(ContentTypeHeaderKey, JSONContentTypeHeader)
 	w.Write(content)
 }
 
