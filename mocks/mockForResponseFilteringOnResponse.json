@@ -22,6 +22,17 @@
                     }
                 }
             }
+        },
+        "/body-edit-with-request-filter/": {
+            "get": {
+                "x-permission": {
+                    "allow": "filter_req",
+                    "resourceFilter":{ "rowFilter":{ "enabled": true } },
+                    "responseFilter": {
+                        "policy": "projection_feature_toggle"
+                    }
+                }
+            }
         }
     }
 }

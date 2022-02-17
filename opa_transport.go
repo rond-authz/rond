@@ -73,7 +73,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	bodyToProxy, _, err := evaluator.PolicyEvaluation(t.logger, t.permission)
+	bodyToProxy, err := evaluator.evaluate(t.logger)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusForbidden)
 		return resp, nil
