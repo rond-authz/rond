@@ -184,10 +184,12 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 }
 
 func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitive.M, error) {
+	opaEvaluationTime := time.Now()
 	partialResults, err := evaluator.PolicyEvaluator.Partial(evaluator.Context)
 	if err != nil {
 		return nil, fmt.Errorf("policy Evaluation has failed when partially evaluating the query: %s", err.Error())
 	}
+	logger.Tracef("OPA partial evaluation in: %+v", time.Since(opaEvaluationTime))
 
 	client := opatranslator.OPAClient{}
 	q, err := client.ProcessQuery(partialResults)
@@ -204,10 +206,12 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 }
 
 func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, error) {
+	opaEvaluationTime := time.Now()
 	results, err := evaluator.PolicyEvaluator.Eval(evaluator.Context)
 	if err != nil {
 		return nil, fmt.Errorf("policy Evaluation has failed when evaluating the query: %s", err.Error())
 	}
+	logger.Tracef("OPA evaluation in: %+v", time.Since(opaEvaluationTime))
 
 	if results.Allowed() {
 		logger.WithFields(logrus.Fields{
@@ -235,17 +239,14 @@ func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, erro
 }
 
 func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission *XPermission) (interface{}, primitive.M, error) {
-	opaEvaluationTime := time.Now()
 	if permission.ResourceFilter.RowFilter.Enabled {
 		query, err := evaluator.partiallyEvaluate(logger)
-		logger.Tracef("OPA partial evaluation in: %+v", time.Since(opaEvaluationTime))
 		return nil, query, err
 	}
 	dataFromEvaluation, err := evaluator.evaluate(logger)
 	if err != nil {
 		return nil, nil, err
 	}
-	logger.Tracef("OPA evaluation in: %+v", time.Since(opaEvaluationTime))
 	return dataFromEvaluation, nil, nil
 }
 

@@ -53,3 +53,8 @@ response_policy1 {
 response_policy2 {
 	true
 }
+
+filter_req {
+	filter := data.resources[_]
+	filter.key == 42
+}

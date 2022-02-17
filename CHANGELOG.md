@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 
 - provide `application/json` Content-Type header when sending error responses
+- response policy proper evaluation when the same API has also a request filter policy
 
 ## 0.5.0 - 07/02/2022
 

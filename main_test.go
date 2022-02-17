@@ -838,6 +838,9 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 		if r.URL.Path == "/filters/" && r.URL.Host == "localhost:3040" {
 			return false
 		}
+		if r.URL.Path == "/body-edit-with-request-filter/" && r.URL.Host == "localhost:3040" {
+			return false
+		}
 		return true
 	})
 
@@ -921,6 +924,24 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 			JSON(map[string]interface{}{"FT_1": true, "TEST_FT_1": true})
 
 		req, _ := http.NewRequest("GET", "http://localhost:3041/filters/", nil)
+		client1 := &http.Client{}
+		resp, _ := client1.Do(req)
+		respBody, _ := ioutil.ReadAll(resp.Body)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Equal(t, `{"FT_1":true}`, string(respBody))
+	})
+
+	t.Run("200 - with request filter policy", func(t *testing.T) {
+		gock.Flush()
+		gock.Observe(gock.DumpRequest)
+
+		gock.New("http://localhost:3040/").
+			Get("/body-edit-with-request-filter/").
+			MatchHeader("acl_rows", `{"$or":[{"$and":[{"key":{"$eq":42}}]}]}`).
+			Reply(200).
+			JSON(map[string]interface{}{"FT_1": true, "TEST_FT_1": true})
+
+		req, _ := http.NewRequest("GET", "http://localhost:3041/body-edit-with-request-filter/", nil)
 		client1 := &http.Client{}
 		resp, _ := client1.Do(req)
 		respBody, _ := ioutil.ReadAll(resp.Body)
