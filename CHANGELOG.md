@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## 0.6.0 - 17/02/2022
+
 ### Changed
 
 - [JAF-278](https://makeitapp.atlassian.net/browse/JAF-278): optimized query evaluation with precomputed evaluators
