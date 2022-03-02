@@ -31,12 +31,17 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 	if err != nil {
 		return nil, err
 	}
+
+	if resp.StatusCode < http.StatusOK || // < 200
+		resp.StatusCode >= http.StatusMultipleChoices { // >= 300
+		return resp, nil
+	}
+
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	err = resp.Body.Close()
-	if err != nil {
+	if err := resp.Body.Close(); err != nil {
 		return nil, err
 	}
 
