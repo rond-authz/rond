@@ -61,7 +61,7 @@ The headers keys are in canonical form (i.e. "x-api-key" become "X-Api-Key").
 In order to read the headers in case-insensitive mode, you can use our built-in function [`get_header`](#get_header-built-in-function)
 :::
 
-### Get_Header Built-in function
+### get_header Built-in function
 
 ```
 output := get_header(headerKey: String, headers: Map[String]Array<String>) 
