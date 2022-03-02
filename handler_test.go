@@ -572,6 +572,244 @@ allow {
 	})
 }
 
+func TestStandaloneMode(t *testing.T) {
+	env := config.EnvironmentVariables{Standalone: true}
+	oas := OpenAPISpec{
+		Paths: OpenAPIPaths{
+			"/api": PathVerbs{
+				"get": VerbConfig{
+					XPermission{
+						AllowPermission: "todo",
+					},
+				},
+			},
+		},
+	}
+
+	oasWithFilter := OpenAPISpec{
+		Paths: OpenAPIPaths{
+			"/api": PathVerbs{
+				"get": VerbConfig{
+					XPermission{
+						AllowPermission: "allow",
+						ResourceFilter: ResourceFilter{
+							RowFilter: RowFilterConfiguration{
+								HeaderKey: "rowfilterquery",
+								Enabled:   true,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("ok", func(t *testing.T) {
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, mockOPAModule)
+		assert.Equal(t, err, nil, "Unexpected error")
+		ctx := createContext(t,
+			context.Background(),
+			env,
+			nil,
+			mockXPermission,
+			mockOPAModule,
+			partialEvaluators,
+		)
+
+		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
+		assert.Equal(t, err, nil, "Unexpected error")
+
+		w := httptest.NewRecorder()
+
+		rbacHandler(w, r)
+
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
+	})
+
+	t.Run("sends filter query", func(t *testing.T) {
+		policy := `package policies
+allow {
+	get_header("examplekey", input.headers) == "value"
+	input.request.method == "GET"
+	employee := data.resources[_]
+	employee.name == "name_test"
+}
+
+allow {
+	input.request.method == "GET"
+
+	employee := data.resources[_]
+	employee.manager == "manager_test"
+}
+
+allow {
+	input.request.method == "GET"
+	input.request.path == "/api"
+	employee := data.resources[_]
+	employee.salary > 0
+}
+`
+
+		mockBodySting := "I am a body"
+
+		body := strings.NewReader(mockBodySting)
+
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, mockOPAModule)
+		assert.Equal(t, err, nil, "Unexpected error")
+
+		ctx := createContext(t,
+			context.Background(),
+			env,
+			nil,
+			&XPermission{
+				AllowPermission: "allow",
+				ResourceFilter: ResourceFilter{
+					RowFilter: RowFilterConfiguration{
+						HeaderKey: "rowfilterquery",
+						Enabled:   true,
+					},
+				},
+			},
+
+			&OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
+			partialEvaluators,
+		)
+
+		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
+		assert.Equal(t, err, nil, "Unexpected error")
+		r.Header.Set("miauserproperties", `{"name":"gianni"}`)
+		r.Header.Set("examplekey", "value")
+		r.Header.Set("Content-Type", "text/plain")
+		w := httptest.NewRecorder()
+
+		rbacHandler(w, r)
+
+		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		filterQuery := r.Header.Get("rowfilterquery")
+		expectedQuery := `{"$or":[{"$and":[{"manager":{"$eq":"manager_test"}}]},{"$and":[{"salary":{"$gt":0}}]}]}`
+		assert.Equal(t, expectedQuery, filterQuery)
+	})
+
+	t.Run("sends empty filter query", func(t *testing.T) {
+		policy := `package policies
+allow {
+	get_header("examplekey", input.headers) == "value"
+	input.request.method == "GET"
+	employee := data.resources[_]
+}
+
+allow {
+	input.request.method == "GET"
+
+	employee := data.resources[_]
+}
+
+allow {
+	input.request.method == "GET"
+	input.request.path == "/api"
+}
+`
+
+		mockBodySting := "I am a body"
+
+		body := strings.NewReader(mockBodySting)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, mockOPAModule)
+		assert.Equal(t, err, nil, "Unexpected error")
+
+		ctx := createContext(t,
+			context.Background(),
+			env,
+			nil,
+			&XPermission{
+				AllowPermission: "allow",
+				ResourceFilter: ResourceFilter{
+					RowFilter: RowFilterConfiguration{
+						HeaderKey: "rowfilterquery",
+						Enabled:   true,
+					},
+				},
+			},
+
+			&OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
+			partialEvaluators,
+		)
+
+		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
+		assert.Equal(t, err, nil, "Unexpected error")
+		r.Header.Set("miauserproperties", `{"name":"gianni"}`)
+		r.Header.Set("examplekey", "value")
+		r.Header.Set("Content-Type", "text/plain")
+		w := httptest.NewRecorder()
+
+		rbacHandler(w, r)
+
+		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		filterQuery := r.Header.Get("rowfilterquery")
+		expectedQuery := ``
+		assert.Equal(t, expectedQuery, filterQuery)
+	})
+
+	t.Run("filter query return not allow", func(t *testing.T) {
+		policy := `package policies
+allow {
+	get_header("examplekey", input.headers) == "test"
+	input.request.method == "DELETE"
+	employee := data.resources[_]
+	employee.name == "name_test"
+}
+
+allow {
+	input.request.method == "GET111"
+
+	employee := data.resources[_]
+	employee.manager == "manager_test"
+}
+
+allow {
+	input.request.method == "GETAAA"
+	input.request.path == "/api"
+	employee := data.resources[_]
+	employee.salary < 0
+}
+`
+
+		mockBodySting := "I am a body"
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, mockOPAModule)
+		assert.Equal(t, err, nil, "Unexpected error")
+
+		body := strings.NewReader(mockBodySting)
+
+		ctx := createContext(t,
+			context.Background(),
+			env,
+			nil,
+			&XPermission{
+				AllowPermission: "allow",
+				ResourceFilter: ResourceFilter{
+					RowFilter: RowFilterConfiguration{
+						HeaderKey: "rowfilterquery",
+						Enabled:   true,
+					},
+				},
+			},
+
+			&OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
+			partialEvaluators,
+		)
+
+		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
+		assert.Equal(t, err, nil, "Unexpected error")
+		r.Header.Set("miauserproperties", `{"name":"gianni"}`)
+		r.Header.Set("examplekey", "value")
+		r.Header.Set("Content-Type", "text/plain")
+		w := httptest.NewRecorder()
+
+		rbacHandler(w, r)
+
+		assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+	})
+}
+
 func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 	userPropertiesHeaderKey := "miauserproperties"
 	mockedUserProperties := map[string]interface{}{
@@ -818,7 +1056,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				`, mockHeader),
 			}
 
-			oas := *&OpenAPISpec{
+			oas := OpenAPISpec{
 				Paths: OpenAPIPaths{
 					"/api": PathVerbs{
 						"get": VerbConfig{

@@ -18,7 +18,6 @@ import (
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
 
 	"github.com/gorilla/mux"
-	"github.com/mia-platform/configlib"
 	"github.com/mia-platform/glogger/v2"
 	"github.com/sirupsen/logrus"
 )
@@ -31,11 +30,7 @@ func main() {
 }
 
 func entrypoint(shutdown chan os.Signal) {
-	var env config.EnvironmentVariables
-	err := configlib.GetEnvVariables(config.EnvVariablesConfig, &env)
-	if err != nil {
-		panic(err.Error())
-	}
+	env := config.GetEnvOrDie()
 
 	// Init logger instance.
 	log, err := glogger.InitHelper(glogger.InitOptions{Level: env.LogLevel})

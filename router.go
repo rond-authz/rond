@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
 	"sort"
@@ -46,26 +47,30 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVar
 	sort.Sort(sort.Reverse(sort.StringSlice(paths)))
 
 	for _, path := range paths {
-		if utils.Contains(statusRoutes, path) {
+		pathToRegister := path
+		if env.Standalone {
+			pathToRegister = fmt.Sprintf("%s%s", env.PathPrefixStandalone, path)
+		}
+		if utils.Contains(statusRoutes, pathToRegister) {
 			continue
 		}
-		if strings.Contains(path, "*") {
-			pathWithoutAsterisk := strings.ReplaceAll(path, "*", "")
+		if strings.Contains(pathToRegister, "*") {
+			pathWithoutAsterisk := strings.ReplaceAll(pathToRegister, "*", "")
 			router.PathPrefix(convertPathVariablesToBrackets(pathWithoutAsterisk)).HandlerFunc(rbacHandler)
 			continue
 		}
 		if path == env.TargetServiceOASPath && documentationPermission == "" {
-			router.HandleFunc(convertPathVariablesToBrackets(path), alwaysProxyHandler)
+			router.HandleFunc(convertPathVariablesToBrackets(pathToRegister), alwaysProxyHandler)
 			continue
 		}
-		router.HandleFunc(convertPathVariablesToBrackets(path), rbacHandler)
+		router.HandleFunc(convertPathVariablesToBrackets(pathToRegister), rbacHandler)
 	}
 	if documentationPathInOAS == nil {
 		router.HandleFunc(convertPathVariablesToBrackets(env.TargetServiceOASPath), alwaysProxyHandler)
 	}
 	// FIXME: All the routes don't inserted above are anyway handled by rbacHandler.
 	//        Maybe the code above can be cleaned.
-	router.PathPrefix("/").HandlerFunc(rbacHandler)
+	router.PathPrefix(fmt.Sprintf("%s/", env.PathPrefixStandalone)).HandlerFunc(rbacHandler)
 }
 
 var matchColons = regexp.MustCompile(`\/:(\w+)`)

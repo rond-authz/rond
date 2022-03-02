@@ -19,6 +19,23 @@ const BASE_ROW_FILTER_HEADER_KEY = "acl_rows"
 const GENERIC_BUSINESS_ERROR_MESSAGE = "Internal server error, please try again later"
 const NO_PERMISSIONS_ERROR_MESSAGE = "You do not have permissions to access this feature, contact the project administrator for more information."
 
+func ReverseProxyOrResponse(
+	logger *logrus.Entry,
+	env config.EnvironmentVariables,
+	w http.ResponseWriter,
+	req *http.Request,
+	permission *XPermission,
+	partialResultsEvaluators PartialResultsEvaluators,
+) {
+	if env.Standalone {
+		w.Header().Set(BASE_ROW_FILTER_HEADER_KEY, req.Header.Get(BASE_ROW_FILTER_HEADER_KEY))
+		w.WriteHeader(http.StatusOK)
+		w.Write(nil)
+		return
+	}
+	ReverseProxy(logger, env, w, req, permission, partialResultsEvaluators)
+}
+
 func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	requestContext := req.Context()
 	logger := glogger.Get(requestContext)
@@ -46,7 +63,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	if err := EvaluateRequest(req, env, w, partialResultEvaluators, permission); err != nil {
 		return
 	}
-	ReverseProxy(logger, env, w, req, permission, partialResultEvaluators)
+	ReverseProxyOrResponse(logger, env, w, req, permission, partialResultEvaluators)
 }
 
 func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.ResponseWriter, partialResultsEvaluators PartialResultsEvaluators, permission *XPermission) error {
@@ -155,5 +172,5 @@ func alwaysProxyHandler(w http.ResponseWriter, req *http.Request) {
 		failResponse(w, "no environment found in context", GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
-	ReverseProxy(logger, env, w, req, nil, nil)
+	ReverseProxyOrResponse(logger, env, w, req, nil, nil)
 }

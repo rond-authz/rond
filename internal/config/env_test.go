@@ -7,10 +7,13 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"gotest.tools/v3/assert"
 )
 
@@ -51,4 +54,93 @@ func TestGetEnv(t *testing.T) {
 		assert.Equal(t, err, nil, "Unexpected error.")
 		assert.Equal(t, env.TargetServiceHost, "localhost:3000", "Unexpected session duration seconds env variable.")
 	})
+}
+
+func TestGetEnvOrDie(t *testing.T) {
+	requiredEnvs := []env{
+		{name: "OPA_MODULES_DIRECTORY", value: "/modules"},
+	}
+	defaultAndRequiredEnvironmentVariables := EnvironmentVariables{
+		LogLevel:             "info",
+		HTTPPort:             "8080",
+		UserPropertiesHeader: "miauserproperties",
+		UserGroupsHeader:     "miausergroups",
+		UserIdHeader:         "miauserid",
+		ClientTypeHeader:     "Client-Type",
+		DelayShutdownSeconds: 10,
+		PathPrefixStandalone: "/eval",
+
+		OPAModulesDirectory: "/modules",
+	}
+
+	t.Run(`returns correctly - with TargetServiceHost`, func(t *testing.T) {
+		otherEnvs := []env{
+			{name: "TARGET_SERVICE_HOST", value: "http://localhost:3000"},
+		}
+		envs := append(requiredEnvs, otherEnvs...)
+		unsetEnvs := setEnvs(envs)
+		defer unsetEnvs()
+
+		actualEnvs := GetEnvOrDie()
+		expectedEnvs := defaultAndRequiredEnvironmentVariables
+		expectedEnvs.TargetServiceHost = "http://localhost:3000"
+
+		require.Equal(t, actualEnvs, expectedEnvs, "Unexpected envs variables.")
+	})
+
+	t.Run(`returns correctly - with Standalone`, func(t *testing.T) {
+		otherEnvs := []env{
+			{name: "STANDALONE", value: "true"},
+		}
+		envs := append(requiredEnvs, otherEnvs...)
+		unsetEnvs := setEnvs(envs)
+		defer unsetEnvs()
+
+		actualEnvs := GetEnvOrDie()
+		expectedEnvs := defaultAndRequiredEnvironmentVariables
+		expectedEnvs.Standalone = true
+
+		require.Equal(t, actualEnvs, expectedEnvs, "Unexpected envs variables.")
+	})
+
+	t.Run(`throws - with Standalone to false`, func(t *testing.T) {
+		otherEnvs := []env{
+			{name: "STANDALONE", value: "false"},
+		}
+		envs := append(requiredEnvs, otherEnvs...)
+		unsetEnvs := setEnvs(envs)
+		defer unsetEnvs()
+
+		require.PanicsWithError(t, fmt.Sprintf("missing environment variables, one of %s or %s set to true is required", TargetServiceHostEnvKey, StandaloneEnvKey), func() {
+			GetEnvOrDie()
+		}, "Unexpected envs variables.")
+	})
+
+	t.Run(`throws - no Standalone or TargetServiceHost`, func(t *testing.T) {
+		otherEnvs := []env{}
+		envs := append(requiredEnvs, otherEnvs...)
+		unsetEnvs := setEnvs(envs)
+		defer unsetEnvs()
+
+		require.PanicsWithError(t, fmt.Sprintf("missing environment variables, one of %s or %s set to true is required", TargetServiceHostEnvKey, StandaloneEnvKey), func() {
+			GetEnvOrDie()
+		}, "Unexpected envs variables.")
+	})
+}
+
+type env struct {
+	name  string
+	value string
+}
+
+func setEnvs(envsToSet []env) func() {
+	for _, env := range envsToSet {
+		os.Setenv(env.name, env.value)
+	}
+
+	return func() {
+		for _, env := range envsToSet {
+			os.Unsetenv(env.name)
+		}
+	}
 }

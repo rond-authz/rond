@@ -86,6 +86,42 @@ func TestSetupRoutes(t *testing.T) {
 
 		assert.DeepEqual(t, foundPaths, expectedPaths)
 	})
+
+	t.Run("expect to register route correctly in standalone mode", func(t *testing.T) {
+		envs := config.EnvironmentVariables{
+			TargetServiceOASPath: "/documentation/json",
+			Standalone:           true,
+			PathPrefixStandalone: "/validate",
+		}
+		router := mux.NewRouter()
+		oas := &OpenAPISpec{
+			Paths: OpenAPIPaths{
+				"/documentation/json": PathVerbs{},
+				"/foo/*":              PathVerbs{},
+				"/foo/bar/*":          PathVerbs{},
+				"/foo/bar/nested":     PathVerbs{},
+				"/foo/bar/:barId":     PathVerbs{},
+			},
+		}
+		expectedPaths := []string{"/validate/", "/validate/documentation/json", "/validate/foo/", "/validate/foo/bar/", "/validate/foo/bar/nested", "/validate/foo/bar/{barId}"}
+		sort.Strings(expectedPaths)
+
+		setupRoutes(router, oas, envs)
+
+		foundPaths := make([]string, 0)
+		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+			path, err := route.GetPathTemplate()
+			if err != nil {
+				t.Fatalf("Unexpected error during walk: %s", err.Error())
+			}
+
+			foundPaths = append(foundPaths, path)
+			return nil
+		})
+		sort.Strings(foundPaths)
+
+		assert.DeepEqual(t, foundPaths, expectedPaths)
+	})
 }
 
 func TestConvertPathVariables(t *testing.T) {
