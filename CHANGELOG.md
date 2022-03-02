@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Added
+
+- [RJMR-177](https://makeitapp.atlassian.net/browse/RJMR-177): RBAC now supports standalone mode. The new mode can be set up with the use of `STANDALONE` and `PATH_PREFIX_STANDALONE` environment variables
+
 ## 0.6.0 - 17/02/2022
 
 ### Changed

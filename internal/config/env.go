@@ -17,6 +17,8 @@ import (
 const (
 	APIPermissionsFilePathEnvKey = "API_PERMISSIONS_FILE_PATH"
 	TargetServiceOASPathEnvKey   = "TARGET_SERVICE_OAS_PATH"
+	StandaloneEnvKey             = "STANDALONE"
+	TargetServiceHostEnvKey      = "TARGET_SERVICE_HOST"
 )
 
 // EnvironmentVariables struct with the mapping of desired
@@ -38,6 +40,8 @@ type EnvironmentVariables struct {
 	RolesCollectionName    string
 	BindingsCollectionName string
 	DelayShutdownSeconds   int
+	Standalone             bool
+	PathPrefixStandalone   string
 }
 
 var EnvVariablesConfig = []configlib.EnvConfig{
@@ -56,9 +60,8 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		Variable: "ServiceVersion",
 	},
 	{
-		Key:      "TARGET_SERVICE_HOST",
+		Key:      TargetServiceHostEnvKey,
 		Variable: "TargetServiceHost",
-		Required: true,
 	},
 	{
 		Key:      TargetServiceOASPathEnvKey,
@@ -110,6 +113,16 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		Key:      "ROLES_COLLECTION_NAME",
 		Variable: "RolesCollectionName",
 	},
+	{
+		Key:          StandaloneEnvKey,
+		Variable:     "Standalone",
+		DefaultValue: "false",
+	},
+	{
+		Key:          "PATH_PREFIX_STANDALONE",
+		Variable:     "PathPrefixStandalone",
+		DefaultValue: "/eval",
+	},
 }
 
 type EnvKey struct{}
@@ -133,4 +146,17 @@ func GetEnv(requestContext context.Context) (EnvironmentVariables, error) {
 	}
 
 	return env, nil
+}
+
+func GetEnvOrDie() EnvironmentVariables {
+	var env EnvironmentVariables
+	if err := configlib.GetEnvVariables(EnvVariablesConfig, &env); err != nil {
+		panic(err.Error())
+	}
+
+	if env.TargetServiceHost == "" && !env.Standalone {
+		panic(fmt.Errorf("missing environment variables, one of %s or %s set to true is required", TargetServiceHostEnvKey, StandaloneEnvKey))
+	}
+
+	return env
 }
