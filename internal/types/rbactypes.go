@@ -14,8 +14,8 @@ type User struct {
 type MongoClientContextKey struct{}
 
 type Resource struct {
-	ResourceType string `bson:"resourceType" json:"resourceType"`
-	ResourceID   string `bson:"resourceId" json:"resourceId"`
+	ResourceType string `bson:"resourceType" json:"resourceType,omitempty"`
+	ResourceID   string `bson:"resourceId" json:"resourceId,omitempty"`
 }
 
 type Binding struct {
@@ -26,6 +26,15 @@ type Binding struct {
 	Roles             []string `bson:"roles" json:"roles"`
 	Resource          Resource `bson:"resource" json:"resource"`
 	CRUDDocumentState string   `bson:"__STATE__" json:"-"`
+}
+
+type BindingFilter struct {
+	BindingID string `bson:"bindingId" json:"bindingId"`
+}
+
+type BindingUpdate struct {
+	Groups   []string `bson:"groups" json:"groups"`
+	Subjects []string `bson:"subjects" json:"subjects"`
 }
 
 type Role struct {

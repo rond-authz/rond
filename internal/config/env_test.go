@@ -88,9 +88,10 @@ func TestGetEnvOrDie(t *testing.T) {
 		require.Equal(t, actualEnvs, expectedEnvs, "Unexpected envs variables.")
 	})
 
-	t.Run(`returns correctly - with Standalone`, func(t *testing.T) {
+	t.Run(`returns correctly - with Standalone and BindingsCrudServiceURL`, func(t *testing.T) {
 		otherEnvs := []env{
 			{name: "STANDALONE", value: "true"},
+			{name: "BINDINGS_CRUD_SERVICE_URL", value: "http://crud-client"},
 		}
 		envs := append(requiredEnvs, otherEnvs...)
 		unsetEnvs := setEnvs(envs)
@@ -99,8 +100,27 @@ func TestGetEnvOrDie(t *testing.T) {
 		actualEnvs := GetEnvOrDie()
 		expectedEnvs := defaultAndRequiredEnvironmentVariables
 		expectedEnvs.Standalone = true
+		expectedEnvs.BindingsCrudServiceURL = "http://crud-client"
 
 		require.Equal(t, actualEnvs, expectedEnvs, "Unexpected envs variables.")
+	})
+
+	t.Run(`returns error - with Standalone and not BindingsCrudServiceURL`, func(t *testing.T) {
+		otherEnvs := []env{
+			{name: "STANDALONE", value: "true"},
+		}
+		envs := append(requiredEnvs, otherEnvs...)
+		unsetEnvs := setEnvs(envs)
+		defer unsetEnvs()
+
+		defer func() {
+			r := recover()
+			t.Logf("expected panic %+v", r)
+
+		}()
+
+		GetEnvOrDie()
+		t.Fail()
 	})
 
 	t.Run(`throws - with Standalone to false`, func(t *testing.T) {

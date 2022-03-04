@@ -19,6 +19,7 @@ const (
 	TargetServiceOASPathEnvKey   = "TARGET_SERVICE_OAS_PATH"
 	StandaloneEnvKey             = "STANDALONE"
 	TargetServiceHostEnvKey      = "TARGET_SERVICE_HOST"
+	BindingsCrudServiceURL       = "BINDINGS_CRUD_SERVICE_URL"
 )
 
 // EnvironmentVariables struct with the mapping of desired
@@ -35,6 +36,7 @@ type EnvironmentVariables struct {
 	UserGroupsHeader       string
 	UserIdHeader           string
 	ClientTypeHeader       string
+	BindingsCrudServiceURL string
 
 	MongoDBUrl             string
 	RolesCollectionName    string
@@ -114,14 +116,17 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		Variable: "RolesCollectionName",
 	},
 	{
-		Key:          StandaloneEnvKey,
-		Variable:     "Standalone",
-		DefaultValue: "false",
+		Key:      StandaloneEnvKey,
+		Variable: "Standalone",
 	},
 	{
 		Key:          "PATH_PREFIX_STANDALONE",
 		Variable:     "PathPrefixStandalone",
 		DefaultValue: "/eval",
+	},
+	{
+		Key:      BindingsCrudServiceURL,
+		Variable: "BindingsCrudServiceURL",
 	},
 }
 
@@ -156,6 +161,10 @@ func GetEnvOrDie() EnvironmentVariables {
 
 	if env.TargetServiceHost == "" && !env.Standalone {
 		panic(fmt.Errorf("missing environment variables, one of %s or %s set to true is required", TargetServiceHostEnvKey, StandaloneEnvKey))
+	}
+
+	if env.Standalone && env.BindingsCrudServiceURL == "" {
+		panic(fmt.Errorf("missing environment variables, %s must be set if mode is standalone", BindingsCrudServiceURL))
 	}
 
 	return env

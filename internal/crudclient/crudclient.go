@@ -53,6 +53,34 @@ func (crud CRUD) Get(ctx context.Context, queryParam string, responseBody interf
 	return nil
 }
 
+func (crud CRUD) Delete(ctx context.Context, queryParam string, responseBody interface{}) error {
+	req, err := crud.httpClient.NewRequestWithContext(ctx, http.MethodDelete, "?"+queryParam, nil)
+	if err != nil {
+		return err
+	}
+
+	helpers.SetHeadersToProxy(ctx, req.Header)
+
+	if _, err := crud.httpClient.Do(req, responseBody); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (crud CRUD) PatchBulk(ctx context.Context, requestBody interface{}, responseBody interface{}) error {
+	req, err := crud.httpClient.NewRequestWithContext(ctx, http.MethodPatch, "", requestBody)
+	if err != nil {
+		return err
+	}
+
+	helpers.SetHeadersToProxy(ctx, req.Header)
+
+	if _, err := crud.httpClient.Do(req, responseBody); err != nil {
+		return err
+	}
+	return nil
+}
+
 // IsHealthy checks if crud is healthy.
 func (crud CRUD) IsHealthy(ctx context.Context) error {
 	req, err := crud.httpClient.NewRequest(http.MethodGet, "/-/healthz", nil)

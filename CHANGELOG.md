@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Added
+
+ - [JAP-2](https://makeitapp.atlassian.net/browse/JAP-2): Added `/revoke/bindings/resource/{resourceType}` api to handle the revoke of a user role on a set resources
+
 ## 0.7.0 - 02/03/2022
 
 ### Fixed
