@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/utils"
@@ -38,8 +39,8 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 				next.ServeHTTP(w, r)
 				return
 			}
-
-			permission, err := openAPISpec.FindPermission(OASrouter, r.URL.EscapedPath(), r.Method)
+			path := strings.Replace(r.URL.EscapedPath(), envs.PathPrefixStandalone, "", 1)
+			permission, err := openAPISpec.FindPermission(OASrouter, path, r.Method)
 			if r.Method == http.MethodGet && r.URL.Path == envs.TargetServiceOASPath && permission.AllowPermission == "" {
 				glogger.Get(r.Context()).WithError(err).Info("Proxying call to OAS Path even with no permission")
 				next.ServeHTTP(w, r)

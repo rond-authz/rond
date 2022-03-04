@@ -293,6 +293,53 @@ func TestEntryPoint(t *testing.T) {
 		})
 	})
 
+	t.Run("standalone integration", func(t *testing.T) {
+		shutdown := make(chan os.Signal, 1)
+
+		defer gock.Off()
+		gock.EnableNetworking()
+		gock.NetworkingFilter(func(r *http.Request) bool {
+			if r.URL.Path == "/documentation/json" {
+				return false
+			}
+			if r.URL.Path == "eval/users/" && r.URL.Host == "localhost:3026" {
+				return false
+			}
+			return true
+		})
+
+		gock.New("http://localhost:3001").
+			Get("/documentation/json").
+			Reply(200).
+			File("./mocks/simplifiedMock.json")
+
+		unsetEnvs := setEnvs([]env{
+			{name: "HTTP_PORT", value: "3026"},
+			{name: "LOG_LEVEL", value: "trace"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
+			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "STANDALONE", value: "true"},
+			{name: "BINDINGS_CRUD_SERVICE_URL", value: "http://crud-service"},
+		})
+
+		go func() {
+			entrypoint(shutdown)
+		}()
+		defer func() {
+			unsetEnvs()
+			shutdown <- syscall.SIGTERM
+		}()
+		time.Sleep(1 * time.Second)
+
+		t.Run("ok - standalone evaluation success", func(t *testing.T) {
+			resp, err := http.DefaultClient.Get("http://localhost:3026/eval/users/")
+
+			require.Equal(t, nil, err)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+		})
+	})
+
 	t.Run("x-permissions is empty", func(t *testing.T) {
 		gock.Flush()
 		shutdown := make(chan os.Signal, 1)
