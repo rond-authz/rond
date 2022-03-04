@@ -123,6 +123,11 @@ func setupRouter(log *logrus.Logger, env config.EnvironmentVariables, opaModuleC
 	StatusRoutes(router, "rbac-service", env.ServiceVersion)
 
 	router.Use(config.RequestMiddlewareEnvironments(env))
+
+	if env.Standalone {
+		addStandaloneRoutes(router)
+	}
+
 	router.Use(OPAMiddleware(opaModuleConfig, oas, &env, policiesEvaluators))
 
 	if mongoClient != nil {

@@ -29,6 +29,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
+func addStandaloneRoutes(router *mux.Router) {
+	router.HandleFunc("/revoke/bindings/resource/{resourceType}", revokeHandler)
+}
+
 func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVariables) {
 	var documentationPermission string
 	documentationPathInOAS := oas.Paths[env.TargetServiceOASPath]
