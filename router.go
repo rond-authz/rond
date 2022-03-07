@@ -31,6 +31,7 @@ import (
 
 func addStandaloneRoutes(router *mux.Router) {
 	router.HandleFunc("/revoke/bindings/resource/{resourceType}", revokeHandler)
+	router.HandleFunc("/grant/bindings/resource/{resourceType}", grantHandler)
 }
 
 func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVariables) {

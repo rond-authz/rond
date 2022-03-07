@@ -37,6 +37,48 @@ func MockGet(t *testing.T, baseURL string, statusCode int, responseBody interfac
 		JSON(responseBody)
 }
 
+// MockPost mocks post in a collection.
+func MockPost(t *testing.T, baseURL string, statusCode int, responseBody interface{}, headersToProxy http.Header) {
+	t.Helper()
+	t.Cleanup(func() {
+		gockCleanup(t)
+	})
+	gock.DisableNetworking()
+
+	gock.New(baseURL).
+		MatchHeaders(getHeadersMap(headersToProxy)).
+		Reply(statusCode).
+		JSON(responseBody)
+}
+
+// MockDelete mocks post in a collection.
+func MockDelete(t *testing.T, baseURL string, statusCode int, responseBody interface{}, headersToProxy http.Header) {
+	t.Helper()
+	t.Cleanup(func() {
+		gockCleanup(t)
+	})
+	gock.DisableNetworking()
+
+	gock.New(baseURL).
+		MatchHeaders(getHeadersMap(headersToProxy)).
+		Reply(statusCode).
+		JSON(responseBody)
+}
+
+// MockPatchBulk mocks post in a collection.
+func MockPatchBulk(t *testing.T, baseURL string, statusCode int, responseBody interface{}, headersToProxy http.Header) {
+	t.Helper()
+	t.Cleanup(func() {
+		gockCleanup(t)
+	})
+	gock.DisableNetworking()
+
+	gock.New(baseURL).
+		MatchHeaders(getHeadersMap(headersToProxy)).
+		Reply(statusCode).
+		JSON(responseBody)
+}
+
 // MockIsHealthy mock the healthy function
 func MockIsHealthy(t *testing.T, baseURL string, statusCode int, headersToProxy http.Header) {
 	t.Helper()

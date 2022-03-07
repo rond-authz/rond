@@ -10,6 +10,7 @@ import (
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/utils"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
 	"github.com/sirupsen/logrus"
@@ -125,6 +126,89 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 			w,
 			http.StatusInternalServerError,
 			fmt.Sprintf("failed response body creation. removed bindings: %d, modified bindings: %d", deleteCrudResponse, patchCrudResponse),
+			GENERIC_BUSINESS_ERROR_MESSAGE,
+		)
+	}
+	w.Write(responseBytes)
+}
+
+type GrantRequestBody struct {
+	Subjects    []string `json:"subjects"`
+	Groups      []string `json:"groups"`
+	Roles       []string `json:"roles"`
+	Permissions []string `json:"permissions"`
+	ResourceID  string   `json:"resourceId"`
+}
+type GrantResponseBody struct {
+	BindingID string `json:"bindingId"`
+}
+
+func grantHandler(w http.ResponseWriter, r *http.Request) {
+	logger := glogger.Get(r.Context())
+	env, err := config.GetEnv(r.Context())
+	if err != nil {
+		failResponseWithCode(w, http.StatusInternalServerError, err.Error(), GENERIC_BUSINESS_ERROR_MESSAGE)
+		return
+	}
+
+	reqBody := GrantRequestBody{}
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		failResponseWithCode(w, http.StatusInternalServerError, err.Error(), GENERIC_BUSINESS_ERROR_MESSAGE)
+		return
+	}
+	logger.WithField("request", reqBody).Debug("grant request body")
+
+	if reqBody.ResourceID == "" {
+		failResponseWithCode(w, http.StatusBadRequest, "missing resource id", GENERIC_BUSINESS_ERROR_MESSAGE)
+		return
+	}
+
+	if len(reqBody.Groups) == 0 && len(reqBody.Permissions) == 0 && len(reqBody.Subjects) == 0 && len(reqBody.Roles) == 0 {
+		failResponseWithCode(w, http.StatusBadRequest, "missing body fields, one of groups, permissions, subjects or roles is required", GENERIC_BUSINESS_ERROR_MESSAGE)
+		return
+	}
+
+	client, err := crudclient.New(env.BindingsCrudServiceURL)
+	if err != nil {
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud setup")
+		failResponseWithCode(w, http.StatusInternalServerError, err.Error(), GENERIC_BUSINESS_ERROR_MESSAGE)
+		return
+	}
+
+	resourceType := mux.Vars(r)["resourceType"]
+	bindingToCreate := types.Binding{
+		BindingID: uuid.New().String(),
+		Groups:    reqBody.Groups,
+		Roles:     reqBody.Roles,
+		Subjects:  reqBody.Subjects,
+		Resource: types.Resource{
+			ResourceType: resourceType,
+			ResourceID:   reqBody.ResourceID,
+		},
+	}
+
+	var bindingIDCreated types.BindingCreateResponse
+	if err := client.Post(r.Context(), &bindingToCreate, &bindingIDCreated); err != nil {
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud request")
+		failResponseWithCode(w, http.StatusInternalServerError, "failed crud request for creating bindings", GENERIC_BUSINESS_ERROR_MESSAGE)
+		return
+	}
+	logger.WithFields(logrus.Fields{
+		"createdBindingObjectId": bindingIDCreated.ObjectID,
+		"createdBindingId":       bindingToCreate.BindingID,
+		"resourceId":             reqBody.ResourceID,
+		"resourceType":           resourceType,
+	}).Debug("created bindings")
+
+	response := GrantResponseBody{BindingID: bindingToCreate.BindingID}
+
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed response body")
+		failResponseWithCode(
+			w,
+			http.StatusInternalServerError,
+			fmt.Sprintf("failed response body creation"),
 			GENERIC_BUSINESS_ERROR_MESSAGE,
 		)
 	}

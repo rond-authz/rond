@@ -37,6 +37,10 @@ type BindingUpdate struct {
 	Subjects []string `bson:"subjects" json:"subjects"`
 }
 
+type BindingCreateResponse struct {
+	ObjectID string `json:"_id"`
+}
+
 type Role struct {
 	RoleID            string   `bson:"roleId" json:"roleId"`
 	Permissions       []string `bson:"permissions" json:"permissions"`

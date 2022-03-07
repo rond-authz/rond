@@ -1153,4 +1153,14 @@ test_policy { true }
 		t.Logf("Response body: %s\n", string(w.Body.Bytes()))
 		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 	})
+
+	t.Run("grant API", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/grant/bindings/resource/some-resource", nil)
+		router.ServeHTTP(w, req)
+
+		// Bad request expected for missing body and so decoder fails!
+		t.Logf("Response body: %s\n", string(w.Body.Bytes()))
+		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+	})
 }

@@ -53,6 +53,22 @@ func (crud CRUD) Get(ctx context.Context, queryParam string, responseBody interf
 	return nil
 }
 
+func (crud CRUD) Post(ctx context.Context, body interface{}, responseBody interface{}) error {
+	req, err := crud.httpClient.NewRequestWithContext(ctx, http.MethodPost, "", body)
+	if err != nil {
+		return err
+	}
+
+	helpers.SetHeadersToProxy(ctx, req.Header)
+
+	_, err = crud.httpClient.Do(req, responseBody)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (crud CRUD) Delete(ctx context.Context, queryParam string, responseBody interface{}) error {
 	req, err := crud.httpClient.NewRequestWithContext(ctx, http.MethodDelete, "?"+queryParam, nil)
 	if err != nil {
