@@ -10,19 +10,24 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"syscall"
 	"testing"
 	"time"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/testutils"
 
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"gopkg.in/h2non/gock.v1"
+	"gotest.tools/v3/assert"
 )
 
 func TestProxyOASPath(t *testing.T) {
@@ -149,7 +154,7 @@ func TestProxyOASPath(t *testing.T) {
 }
 
 // FIXME: This function needs to be performed as last in order to make other tests working
-func TestEntryPoint(t *testing.T) {
+func TestEntrypoint(t *testing.T) {
 	t.Run("fails for invalid module path, no module found", func(t *testing.T) {
 		unsetEnvs := setEnvs([]env{
 			{name: "HTTP_PORT", value: "3000"},
@@ -1093,5 +1098,59 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 		gock.Flush()
 		require.Equal(t, nil, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+}
+
+func TestSetupRouterStandaloneMode(t *testing.T) {
+	defer gock.Off()
+	defer gock.Flush()
+
+	log, _ := test.NewNullLogger()
+	env := config.EnvironmentVariables{
+		Standalone:           true,
+		TargetServiceHost:    "my-service:4444",
+		PathPrefixStandalone: "/my-prefix",
+	}
+	opa := &OPAModuleConfig{
+		Name: "policies",
+		Content: `package policies
+test_policy { true }
+`,
+	}
+	oas := &OpenAPISpec{
+		Paths: OpenAPIPaths{
+			"/evalapi": PathVerbs{
+				"get": VerbConfig{
+					XPermission{
+						AllowPermission: "test_policy",
+					},
+				},
+			},
+		},
+	}
+
+	var mongoClient *mongoclient.MongoClient
+	evaluatorsMap, err := setupEvaluators(context.TODO(), mongoClient, oas, opa)
+	assert.NilError(t, err, "unexpected error")
+
+	router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+	assert.NilError(t, err, "unexpected error")
+
+	t.Run("some eval API", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/my-prefix/evalapi", nil)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+	})
+
+	t.Run("revoke API", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/revoke/bindings/resource/some-resource", nil)
+		router.ServeHTTP(w, req)
+
+		// Bad request expected for missing body and so decoder fails!
+		t.Logf("Response body: %s\n", string(w.Body.Bytes()))
+		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 	})
 }

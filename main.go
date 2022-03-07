@@ -117,24 +117,33 @@ func entrypoint(shutdown chan os.Signal) {
 	helpers.GracefulShutdown(srv, shutdown, log, env.DelayShutdownSeconds)
 }
 
-func setupRouter(log *logrus.Logger, env config.EnvironmentVariables, opaModuleConfig *OPAModuleConfig, oas *OpenAPISpec, policiesEvaluators PartialResultsEvaluators, mongoClient *mongoclient.MongoClient) (*mux.Router, error) {
+func setupRouter(
+	log *logrus.Logger,
+	env config.EnvironmentVariables,
+	opaModuleConfig *OPAModuleConfig,
+	oas *OpenAPISpec,
+	policiesEvaluators PartialResultsEvaluators,
+	mongoClient *mongoclient.MongoClient,
+) (*mux.Router, error) {
 	router := mux.NewRouter()
 	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
 	StatusRoutes(router, "rbac-service", env.ServiceVersion)
 
 	router.Use(config.RequestMiddlewareEnvironments(env))
 
+	evalRouter := router
 	if env.Standalone {
 		addStandaloneRoutes(router)
+		evalRouter = router.NewRoute().Subrouter()
 	}
 
-	router.Use(OPAMiddleware(opaModuleConfig, oas, &env, policiesEvaluators))
+	evalRouter.Use(OPAMiddleware(opaModuleConfig, oas, &env, policiesEvaluators))
 
 	if mongoClient != nil {
-		router.Use(mongoclient.MongoClientInjectorMiddleware(mongoClient))
+		evalRouter.Use(mongoclient.MongoClientInjectorMiddleware(mongoClient))
 	}
 
-	setupRoutes(router, oas, env)
+	setupRoutes(evalRouter, oas, env)
 
 	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		path, _ := route.GetPathTemplate()
