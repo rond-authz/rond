@@ -10,13 +10,13 @@ import (
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
 	"gotest.tools/v3/assert"
 )
 
 func TestRevokeHandler(t *testing.T) {
-
 	ctx := createContext(t,
 		context.Background(),
 		config.EnvironmentVariables{BindingsCrudServiceURL: "http://crud-service/bindings/"},
@@ -31,8 +31,8 @@ func TestRevokeHandler(t *testing.T) {
 			Subjects: []string{"piero"},
 			Groups:   []string{"litfiba"},
 		})
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody))
-		assert.NilError(t, err, "unexpcted error")
+
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), nil)
 		w := httptest.NewRecorder()
 
 		revokeHandler(w, req)
@@ -71,8 +71,7 @@ func TestRevokeHandler(t *testing.T) {
 			Reply(http.StatusBadRequest).
 			JSON(responseBody)
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody))
-		assert.NilError(t, err, "unexpcted error")
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), nil)
 		w := httptest.NewRecorder()
 
 		revokeHandler(w, req)
@@ -109,8 +108,9 @@ func TestRevokeHandler(t *testing.T) {
 			ResourceIDs: []string{"mike"},
 		})
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/revoke/bindings/resource/project", bytes.NewBuffer(reqBody))
-		assert.NilError(t, err, "unexpcted error")
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
+			"resourceType": "project",
+		})
 		w := httptest.NewRecorder()
 
 		revokeHandler(w, req)
@@ -135,6 +135,11 @@ func TestRevokeHandler(t *testing.T) {
 		gock.DisableNetworking()
 		gock.New("http://crud-service").
 			Get("/bindings/").
+			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
+				mongoQueryString := req.URL.Query().Get("_q")
+				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"project"},{"$or":[{"subjects":{"$in":["piero"]}}]}]}`
+				return match, nil
+			}).
 			Reply(http.StatusOK).
 			JSON(bindingsFromCrud)
 
@@ -147,8 +152,9 @@ func TestRevokeHandler(t *testing.T) {
 			ResourceIDs: []string{"mike"},
 		})
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/revoke/bindings/resource/project", bytes.NewBuffer(reqBody))
-		assert.NilError(t, err, "unexpcted error")
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
+			"resourceType": "project",
+		})
 		w := httptest.NewRecorder()
 
 		revokeHandler(w, req)
@@ -174,9 +180,7 @@ func TestRevokeHandler(t *testing.T) {
 			Get("/bindings/").
 			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
 				mongoQueryString := req.URL.Query().Get("_q")
-
-				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":""},{"$or":[{"subjects":{"$in":["piero"]}}]}]}`
-
+				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"myResource"},{"$or":[{"subjects":{"$in":["piero"]}}]}]}`
 				return match, nil
 			}).
 			Reply(http.StatusOK).
@@ -197,8 +201,9 @@ func TestRevokeHandler(t *testing.T) {
 			ResourceIDs: []string{"mike"},
 		})
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/revoke/bindings/resource/project", bytes.NewBuffer(reqBody))
-		assert.NilError(t, err, "unexpcted error")
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
+			"resourceType": "myResource",
+		})
 		w := httptest.NewRecorder()
 
 		revokeHandler(w, req)
@@ -224,9 +229,7 @@ func TestRevokeHandler(t *testing.T) {
 			Get("/bindings/").
 			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
 				mongoQueryString := req.URL.Query().Get("_q")
-
-				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":""},{"$or":[{"groups":{"$in":["litfiba"]}}]}]}`
-
+				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"some-resource"},{"$or":[{"groups":{"$in":["litfiba"]}}]}]}`
 				return match, nil
 			}).
 			Reply(http.StatusOK).
@@ -247,8 +250,9 @@ func TestRevokeHandler(t *testing.T) {
 			ResourceIDs: []string{"mike"},
 		})
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/revoke/bindings/resource/project", bytes.NewBuffer(reqBody))
-		assert.NilError(t, err, "unexpcted error")
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
+			"resourceType": "some-resource",
+		})
 		w := httptest.NewRecorder()
 
 		revokeHandler(w, req)
@@ -272,6 +276,11 @@ func TestRevokeHandler(t *testing.T) {
 		gock.DisableNetworking()
 		gock.New("http://crud-service").
 			Get("/bindings/").
+			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
+				mongoQueryString := req.URL.Query().Get("_q")
+				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"some-resource"},{"$or":[{"subjects":{"$in":["piero"]}}]}]}`
+				return match, nil
+			}).
 			Reply(http.StatusOK).
 			JSON(bindingsFromCrud)
 
@@ -303,8 +312,9 @@ func TestRevokeHandler(t *testing.T) {
 			ResourceIDs: []string{"mike"},
 		})
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/revoke/bindings/resource/project", bytes.NewBuffer(reqBody))
-		assert.NilError(t, err, "unexpcted error")
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
+			"resourceType": "some-resource",
+		})
 		w := httptest.NewRecorder()
 
 		revokeHandler(w, req)
@@ -338,6 +348,11 @@ func TestRevokeHandler(t *testing.T) {
 		gock.DisableNetworking()
 		gock.New("http://crud-service").
 			Get("/bindings/").
+			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
+				mongoQueryString := req.URL.Query().Get("_q")
+				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"resource"},{"$or":[{"subjects":{"$in":["piero","liam","noel"]}},{"groups":{"$in":["brutte_band"]}}]}]}`
+				return match, nil
+			}).
 			Reply(http.StatusOK).
 			JSON(bindingsFromCrud)
 
@@ -381,8 +396,9 @@ func TestRevokeHandler(t *testing.T) {
 			ResourceIDs: []string{"mike"},
 		})
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/revoke/bindings/resource/project", bytes.NewBuffer(reqBody))
-		assert.NilError(t, err, "unexpcted error")
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
+			"resourceType": "resource",
+		})
 		w := httptest.NewRecorder()
 
 		revokeHandler(w, req)
@@ -390,7 +406,7 @@ func TestRevokeHandler(t *testing.T) {
 		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
 
 		revokeResponse := RevokeResponseBody{}
-		err = json.NewDecoder(w.Body).Decode(&revokeResponse)
+		err := json.NewDecoder(w.Body).Decode(&revokeResponse)
 		assert.NilError(t, err)
 	})
 }
@@ -502,4 +518,16 @@ func setupRevokeRequestBody(t *testing.T, body RevokeRequestBody) []byte {
 	bodyBytes, err := json.Marshal(body)
 	assert.NilError(t, err, "unexpected error")
 	return bodyBytes
+}
+
+func requestWithParams(t *testing.T, ctx context.Context, method string, path string, body *bytes.Buffer, params map[string]string) *http.Request {
+	t.Helper()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/revoke/bindings/resource/project", body)
+	assert.NilError(t, err, "unexpcted error creating request with context and params")
+
+	if params != nil {
+		req = mux.SetURLVars(req, params)
+	}
+	return req
 }
