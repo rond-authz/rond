@@ -20,10 +20,10 @@ type Resource struct {
 
 type Binding struct {
 	BindingID         string   `bson:"bindingId" json:"bindingId"`
-	Groups            []string `bson:"groups" json:"groups"`
-	Subjects          []string `bson:"subjects" json:"subjects"`
-	Permissions       []string `bson:"permissions" json:"permissions"`
-	Roles             []string `bson:"roles" json:"roles"`
+	Groups            []string `bson:"groups" json:"groups,omitempty"`
+	Subjects          []string `bson:"subjects" json:"subjects,omitempty"`
+	Permissions       []string `bson:"permissions" json:"permissions,omitempty"`
+	Roles             []string `bson:"roles" json:"roles,omitempty"`
 	Resource          Resource `bson:"resource" json:"resource"`
 	CRUDDocumentState string   `bson:"__STATE__" json:"-"`
 }

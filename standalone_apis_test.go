@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
@@ -466,11 +468,17 @@ func TestGrantHandler(t *testing.T) {
 			Post("/bindings/").
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
 				var body types.Binding
-				err := json.NewDecoder(req.Body).Decode(&body)
-				assert.NilError(t, err, "unxpected error parsing body in matcher")
+				bodyBytes, err := ioutil.ReadAll(req.Body)
+				require.Nil(t, err, "unxpected error reading body in matcher")
+
+				containsNull := strings.Contains(string(bodyBytes), `"permissions":null`)
+				require.False(t, containsNull, "unexpected null found")
+
+				err = json.Unmarshal(bodyBytes, &body)
+				require.Nil(t, err, "unxpected error parsing body in matcher")
 
 				_, err = uuid.Parse(body.BindingID)
-				assert.NilError(t, err, "unexpected error")
+				require.Nil(t, err, "unexpected error")
 
 				body.BindingID = "REDACTED"
 				require.Equal(t, types.Binding{
@@ -494,6 +502,8 @@ func TestGrantHandler(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		grantHandler(w, req)
+
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
 
 		var response GrantResponseBody
 		err := json.NewDecoder(w.Body).Decode(&response)
