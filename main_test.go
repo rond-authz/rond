@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/testutils"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
 
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
@@ -1150,8 +1152,13 @@ test_policy { true }
 		router.ServeHTTP(w, req)
 
 		// Bad request expected for missing body and so decoder fails!
-		t.Logf("Response body: %s\n", string(w.Body.Bytes()))
 		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+
+		var requestError types.RequestError
+		err := json.Unmarshal(w.Body.Bytes(), &requestError)
+		assert.NilError(t, err, "unexpected error")
+		assert.Equal(t, requestError.Message, "Internal server error, please try again later")
+		assert.Equal(t, requestError.Error, "EOF")
 	})
 
 	t.Run("grant API", func(t *testing.T) {
@@ -1160,7 +1167,12 @@ test_policy { true }
 		router.ServeHTTP(w, req)
 
 		// Bad request expected for missing body and so decoder fails!
-		t.Logf("Response body: %s\n", string(w.Body.Bytes()))
 		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+
+		var requestError types.RequestError
+		err := json.Unmarshal(w.Body.Bytes(), &requestError)
+		assert.NilError(t, err, "unexpected error")
+		assert.Equal(t, requestError.Message, "Internal server error, please try again later")
+		assert.Equal(t, requestError.Error, "EOF")
 	})
 }
