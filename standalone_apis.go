@@ -59,7 +59,6 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resourceType := mux.Vars(r)["resourceType"]
-
 	query, err := buildQuery(resourceType, reqBody.ResourceIDs, reqBody.Subjects, reqBody.Groups)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed find query crud setup")
@@ -133,21 +132,21 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func buildQuery(resourceType string, resourceIDs []string, subjects []string, groups []string) ([]byte, error) {
-
 	queryPartForSubjectOrGroups := map[string]interface{}{
 		"$or": []map[string]interface{}{},
 	}
+
 	if len(subjects) > 0 {
 		subjectQuery := map[string]interface{}{"subjects": map[string]interface{}{"$in": subjects}}
 		tempQuery := queryPartForSubjectOrGroups["$or"].([]map[string]interface{})
 		queryPartForSubjectOrGroups["$or"] = append(tempQuery, subjectQuery)
 	}
-
 	if len(groups) > 0 {
 		groupsQuery := map[string]interface{}{"groups": map[string]interface{}{"$in": groups}}
 		tempQuery := queryPartForSubjectOrGroups["$or"].([]map[string]interface{})
 		queryPartForSubjectOrGroups["$or"] = append(tempQuery, groupsQuery)
 	}
+
 	query := map[string]interface{}{
 		"$and": []map[string]interface{}{
 			{
