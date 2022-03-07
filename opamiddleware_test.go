@@ -204,6 +204,88 @@ very_very_composed_permission { true }`,
 
 			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
 		})
+
+		t.Run("injects correct permission", func(t *testing.T) {
+			opaModule := &OPAModuleConfig{
+				Name: "example.rego",
+				Content: `package policies
+very_very_composed_permission_with_eval { true }`,
+			}
+
+			envs := config.EnvironmentVariables{
+				Standalone:           false,
+				PathPrefixStandalone: "/eval", // default value
+			}
+
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
+			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				permission, err := GetXPermission(r.Context())
+				require.True(t, err == nil, "Unexpected error")
+				require.Equal(t, &XPermission{AllowPermission: "very.very.composed.permission.with.eval"}, permission)
+				w.WriteHeader(http.StatusOK)
+			}))
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "http://example.com/eval/composed/permission/", nil)
+			builtHandler.ServeHTTP(w, r)
+
+			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		})
+	})
+}
+
+func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
+	var openAPISpec *OpenAPISpec
+	openAPISpecContent, _ := ioutil.ReadFile("./mocks/simplifiedMock.json")
+	_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
+
+	envs := config.EnvironmentVariables{
+		Standalone:           true,
+		PathPrefixStandalone: "/eval", // default value
+	}
+
+	t.Run("injects correct path removing prefix", func(t *testing.T) {
+		opaModule := &OPAModuleConfig{
+			Name: "example.rego",
+			Content: `package policies
+			very_very_composed_permission { true }`,
+		}
+
+		middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
+		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			permission, err := GetXPermission(r.Context())
+			require.True(t, err == nil, "Unexpected error")
+			require.Equal(t, &XPermission{AllowPermission: "very.very.composed.permission"}, permission)
+			w.WriteHeader(http.StatusOK)
+		}))
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodGet, "http://example.com/eval/composed/permission/", nil)
+		builtHandler.ServeHTTP(w, r)
+
+		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+	})
+
+	t.Run("injects correct path removing only one prefix", func(t *testing.T) {
+		opaModule := &OPAModuleConfig{
+			Name: "example.rego",
+			Content: `package policies
+very_very_composed_permission_with_eval { true }`,
+		}
+
+		middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
+		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			permission, err := GetXPermission(r.Context())
+			require.True(t, err == nil, "Unexpected error")
+			require.Equal(t, &XPermission{AllowPermission: "very.very.composed.permission.with.eval"}, permission)
+			w.WriteHeader(http.StatusOK)
+		}))
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodGet, "http://example.com/eval/eval/composed/permission/", nil)
+		builtHandler.ServeHTTP(w, r)
+
+		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
 	})
 }
 

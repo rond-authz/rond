@@ -345,6 +345,15 @@
         "description": "The list can be filtered specifying the following parameters"
       }
     },
+    "/eval/composed/permission/": {
+      "get": {
+        "x-permission": {
+          "allow": "very.very.composed.permission.with.eval"
+        },
+        "summary": "Get a list of users",
+        "description": "The list can be filtered specifying the following parameters"
+      }
+    },
     "/no-permission": {
       "post": {},
       "get": {}

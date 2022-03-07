@@ -31,7 +31,6 @@ func TestProxyOASPath(t *testing.T) {
 
 		defer gock.Off()
 		defer gock.Flush()
-		gock.Observe(gock.DumpRequest)
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
 			if r.URL.Path == "/custom/documentation/json" && r.URL.Host == "localhost:3001" {
@@ -75,7 +74,6 @@ func TestProxyOASPath(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
-		gock.Observe(gock.DumpRequest)
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
 			if r.URL.Path == "/documentation/json" && r.URL.Host == "localhost:3006" {
@@ -116,7 +114,6 @@ func TestProxyOASPath(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
-		gock.Observe(gock.DumpRequest)
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
 			if r.URL.Path == "/documentation/json" && r.URL.Host == "localhost:3008" {
@@ -963,7 +960,6 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 
 	t.Run("200 - with correct body filtered returned", func(t *testing.T) {
 		gock.Flush()
-		gock.Observe(gock.DumpRequest)
 
 		gock.New("http://localhost:3040/").
 			Get("/filters/").
@@ -980,7 +976,6 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 
 	t.Run("200 - with request filter policy", func(t *testing.T) {
 		gock.Flush()
-		gock.Observe(gock.DumpRequest)
 
 		gock.New("http://localhost:3040/").
 			Get("/body-edit-with-request-filter/").

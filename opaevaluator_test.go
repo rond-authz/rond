@@ -120,7 +120,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 
 		policyEvals, err := setupEvaluators(context.Background(), nil, openApiSpec, opaModuleConfig)
 		assert.Assert(t, err == nil, "unexpected error creating evaluators")
-		assert.Equal(t, len(policyEvals), 3, "unexpected length")
+		assert.Equal(t, len(policyEvals), 4, "unexpected length")
 	})
 
 	t.Run("with complete oas mock", func(t *testing.T) {
