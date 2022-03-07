@@ -10,6 +10,7 @@ import (
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
@@ -411,6 +412,144 @@ func TestRevokeHandler(t *testing.T) {
 	})
 }
 
+func TestGrantHandler(t *testing.T) {
+	ctx := createContext(t,
+		context.Background(),
+		config.EnvironmentVariables{BindingsCrudServiceURL: "http://crud-service/bindings/"},
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+
+	t.Run("400 on missing resourceId from body", func(t *testing.T) {
+		reqBody := setupGrantRequestBody(t, GrantRequestBody{
+			Subjects:    []string{"a"},
+			Groups:      []string{"b"},
+			Permissions: []string{"c"},
+			Roles:       []string{"d"},
+		})
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody))
+		assert.NilError(t, err, "unexpcted error")
+		w := httptest.NewRecorder()
+
+		grantHandler(w, req)
+
+		assert.Equal(t, w.Result().StatusCode, http.StatusBadRequest)
+	})
+
+	t.Run("400 on missing body fields", func(t *testing.T) {
+		reqBody := setupGrantRequestBody(t, GrantRequestBody{
+			ResourceID: "my-resource",
+		})
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody))
+		assert.NilError(t, err, "unexpcted error")
+		w := httptest.NewRecorder()
+
+		grantHandler(w, req)
+
+		assert.Equal(t, w.Result().StatusCode, http.StatusBadRequest)
+	})
+
+	t.Run("performs correct API invocation insert bindings only on subject", func(t *testing.T) {
+		defer gock.Flush()
+
+		reqBody := setupGrantRequestBody(t, GrantRequestBody{
+			Subjects:   []string{"piero"},
+			ResourceID: "projectID",
+			Roles:      []string{"editor"},
+			Groups:     []string{"test-group"},
+		})
+
+		gock.DisableNetworking()
+		gock.New("http://crud-service").
+			Post("/bindings/").
+			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
+				var body types.Binding
+				err := json.NewDecoder(req.Body).Decode(&body)
+				assert.NilError(t, err, "unxpected error parsing body in matcher")
+
+				_, err = uuid.Parse(body.BindingID)
+				assert.NilError(t, err, "unexpected error")
+
+				body.BindingID = "REDACTED"
+				require.Equal(t, types.Binding{
+					BindingID: "REDACTED",
+					Groups:    []string{"test-group"},
+					Roles:     []string{"editor"},
+					Subjects:  []string{"piero"},
+					Resource: types.Resource{
+						ResourceType: "my-resource",
+						ResourceID:   "projectID",
+					},
+				}, body)
+				return true, nil
+			}).
+			Reply(http.StatusOK).
+			JSON(map[string]interface{}{"_id": "newObjectId"})
+
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
+			"resourceType": "my-resource",
+		})
+		w := httptest.NewRecorder()
+
+		grantHandler(w, req)
+
+		var response GrantResponseBody
+		err := json.NewDecoder(w.Body).Decode(&response)
+		assert.NilError(t, err, "unexpected error")
+
+		_, err = uuid.Parse(response.BindingID)
+		assert.NilError(t, err, "unxpected error")
+	})
+
+	t.Run("crud request return error", func(t *testing.T) {
+		defer gock.Flush()
+
+		reqBody := setupGrantRequestBody(t, GrantRequestBody{
+			Subjects:   []string{"piero"},
+			ResourceID: "projectID",
+			Roles:      []string{"editor"},
+			Groups:     []string{"test-group"},
+		})
+
+		gock.DisableNetworking()
+		gock.New("http://crud-service").
+			Post("/bindings/").
+			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
+				var body types.Binding
+				err := json.NewDecoder(req.Body).Decode(&body)
+				assert.NilError(t, err, "unxpected error parsing body in matcher")
+
+				_, err = uuid.Parse(body.BindingID)
+				assert.NilError(t, err, "unexpected error")
+
+				body.BindingID = "REDACTED"
+				require.Equal(t, types.Binding{
+					BindingID: "REDACTED",
+					Groups:    []string{"test-group"},
+					Roles:     []string{"editor"},
+					Subjects:  []string{"piero"},
+					Resource: types.Resource{
+						ResourceType: "my-resource",
+						ResourceID:   "projectID",
+					},
+				}, body)
+				return true, nil
+			}).
+			Reply(http.StatusInternalServerError).
+			JSON(map[string]interface{}{"code": 500, "message": "some error"})
+
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
+			"resourceType": "my-resource",
+		})
+		w := httptest.NewRecorder()
+
+		grantHandler(w, req)
+		assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
+	})
+}
+
 func TestBindingsToUpdate(t *testing.T) {
 	t.Run("expect to generate correct bindings to update", func(t *testing.T) {
 		bindingsFromCrud := []types.Binding{
@@ -513,6 +652,16 @@ func TestBindingsToUpdate(t *testing.T) {
 }
 
 func setupRevokeRequestBody(t *testing.T, body RevokeRequestBody) []byte {
+	t.Helper()
+	return setupBodyBytes(t, body)
+}
+
+func setupGrantRequestBody(t *testing.T, body GrantRequestBody) []byte {
+	t.Helper()
+	return setupBodyBytes(t, body)
+}
+
+func setupBodyBytes(t *testing.T, body interface{}) []byte {
 	t.Helper()
 
 	bodyBytes, err := json.Marshal(body)

@@ -123,6 +123,207 @@ func TestGet(t *testing.T) {
 	})
 }
 
+func TestPost(t *testing.T) {
+	usersCrudBaseURL := "http://crud.example.org/my-coll-name/"
+
+	crudClient, err := New(usersCrudBaseURL)
+	require.NoError(t, err)
+	require.NotNil(t, crudClient)
+	var ctx = context.Background()
+
+	type ResponseBody struct {
+		Bar string `json:"bar"`
+	}
+
+	t.Run("returns error creating request", func(t *testing.T) {
+		err := crudClient.Post(ctx, nil, nil)
+		require.Error(t, err)
+	})
+
+	t.Run("returns error if context timeout", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(ctx, 0)
+		defer cancel()
+
+		err := crudClient.Post(ctx, "", nil)
+		require.EqualError(t, err, context.DeadlineExceeded.Error())
+	})
+
+	t.Run("returns error if crud returns 404", func(t *testing.T) {
+		MockPost(t, usersCrudBaseURL, 404, nil, nil)
+
+		err := crudClient.Post(ctx, "", nil)
+		require.EqualError(t, err, "POST http://crud.example.org/my-coll-name/: 404 - null\n")
+	})
+
+	t.Run("correctly returns if crud returns 200", func(t *testing.T) {
+		expectedResponseBody := ResponseBody{
+			Bar: "some",
+		}
+
+		MockPost(t, usersCrudBaseURL, 200, expectedResponseBody, nil)
+
+		var responseBody ResponseBody
+		err := crudClient.Get(ctx, "", &responseBody)
+
+		require.NoError(t, err)
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("correctly returns if crud returns 200 with additional headers to proxy", func(t *testing.T) {
+		expectedResponseBody := ResponseBody{
+			Bar: "some",
+		}
+
+		headersToProxy := http.Header{}
+		headersToProxy.Set("request-id", "123")
+		headersToProxy.Set("taz", "ok")
+
+		ctx = helpers.AddHeadersToProxyToContext(ctx, headersToProxy)
+
+		MockPost(t, usersCrudBaseURL, 200, expectedResponseBody, headersToProxy)
+
+		var responseBody ResponseBody
+		err := crudClient.Get(ctx, "", &responseBody)
+
+		require.NoError(t, err)
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+}
+
+func TestDelete(t *testing.T) {
+	usersCrudBaseURL := "http://crud.example.org/my-coll-name/"
+
+	crudClient, err := New(usersCrudBaseURL)
+	require.NoError(t, err)
+	require.NotNil(t, crudClient)
+	var ctx = context.Background()
+
+	type ResponseBody struct {
+		Bar string `json:"bar"`
+	}
+
+	t.Run("returns error creating request", func(t *testing.T) {
+		err := crudClient.Delete(ctx, "", nil)
+		require.Error(t, err)
+	})
+
+	t.Run("returns error if context timeout", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(ctx, 0)
+		defer cancel()
+
+		err := crudClient.Delete(ctx, "", nil)
+		require.EqualError(t, err, context.DeadlineExceeded.Error())
+	})
+
+	t.Run("returns error if crud returns 404", func(t *testing.T) {
+		MockDelete(t, usersCrudBaseURL, 404, nil, nil)
+
+		err := crudClient.Delete(ctx, "", nil)
+		require.EqualError(t, err, "DELETE http://crud.example.org/my-coll-name/?: 404 - null\n")
+	})
+
+	t.Run("correctly returns if crud returns 200", func(t *testing.T) {
+		expectedResponseBody := ResponseBody{
+			Bar: "some",
+		}
+
+		MockDelete(t, usersCrudBaseURL, 200, expectedResponseBody, nil)
+
+		var responseBody ResponseBody
+		err := crudClient.Delete(ctx, "", &responseBody)
+
+		require.NoError(t, err)
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("correctly returns if crud returns 200 with additional headers to proxy", func(t *testing.T) {
+		expectedResponseBody := ResponseBody{
+			Bar: "some",
+		}
+
+		headersToProxy := http.Header{}
+		headersToProxy.Set("request-id", "123")
+		headersToProxy.Set("taz", "ok")
+
+		ctx = helpers.AddHeadersToProxyToContext(ctx, headersToProxy)
+
+		MockDelete(t, usersCrudBaseURL, 200, expectedResponseBody, headersToProxy)
+
+		var responseBody ResponseBody
+		err := crudClient.Delete(ctx, "", &responseBody)
+
+		require.NoError(t, err)
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+}
+
+func TestPatchBulk(t *testing.T) {
+	usersCrudBaseURL := "http://crud.example.org/my-coll-name/"
+
+	crudClient, err := New(usersCrudBaseURL)
+	require.NoError(t, err)
+	require.NotNil(t, crudClient)
+	var ctx = context.Background()
+
+	type ResponseBody struct {
+		Bar string `json:"bar"`
+	}
+
+	t.Run("returns error creating request", func(t *testing.T) {
+		err := crudClient.PatchBulk(ctx, nil, nil)
+		require.Error(t, err)
+	})
+
+	t.Run("returns error if context timeout", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(ctx, 0)
+		defer cancel()
+
+		err := crudClient.PatchBulk(ctx, "", nil)
+		require.EqualError(t, err, context.DeadlineExceeded.Error())
+	})
+
+	t.Run("returns error if crud returns 404", func(t *testing.T) {
+		MockPatchBulk(t, usersCrudBaseURL, 404, nil, nil)
+
+		err := crudClient.PatchBulk(ctx, "", nil)
+		require.EqualError(t, err, "PATCH http://crud.example.org/my-coll-name/: 404 - null\n")
+	})
+
+	t.Run("correctly returns if crud returns 200", func(t *testing.T) {
+		expectedResponseBody := ResponseBody{
+			Bar: "some",
+		}
+
+		MockPatchBulk(t, usersCrudBaseURL, 200, expectedResponseBody, nil)
+
+		var responseBody ResponseBody
+		err := crudClient.PatchBulk(ctx, "", &responseBody)
+
+		require.NoError(t, err)
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+
+	t.Run("correctly returns if crud returns 200 with additional headers to proxy", func(t *testing.T) {
+		expectedResponseBody := ResponseBody{
+			Bar: "some",
+		}
+
+		headersToProxy := http.Header{}
+		headersToProxy.Set("request-id", "123")
+		headersToProxy.Set("taz", "ok")
+
+		ctx = helpers.AddHeadersToProxyToContext(ctx, headersToProxy)
+
+		MockPatchBulk(t, usersCrudBaseURL, 200, expectedResponseBody, headersToProxy)
+
+		var responseBody ResponseBody
+		err := crudClient.PatchBulk(ctx, "", &responseBody)
+
+		require.NoError(t, err)
+		require.Equal(t, expectedResponseBody, responseBody)
+	})
+}
+
 func TestIsHealthy(t *testing.T) {
 	usersCrudBaseURL := "http://crud.example.org/my-coll-name/"
 
