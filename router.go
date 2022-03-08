@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -75,7 +76,11 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVar
 	}
 	// FIXME: All the routes don't inserted above are anyway handled by rbacHandler.
 	//        Maybe the code above can be cleaned.
-	router.PathPrefix(fmt.Sprintf("%s/", env.PathPrefixStandalone)).HandlerFunc(rbacHandler)
+	fallbackRoute := "/"
+	if env.Standalone {
+		fallbackRoute = fmt.Sprintf("%s/", path.Join(env.PathPrefixStandalone, fallbackRoute))
+	}
+	router.PathPrefix(fallbackRoute).HandlerFunc(rbacHandler)
 }
 
 var matchColons = regexp.MustCompile(`\/:(\w+)`)

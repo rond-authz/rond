@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Fix
+
+- Fixed fallback path registration on setupRoutes
+
 ## 0.8.0 - 08/03/2022
 
 ### Added
