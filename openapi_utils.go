@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
 
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bunrouter"

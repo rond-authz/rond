@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
 
 	"gotest.tools/v3/assert"
 )
