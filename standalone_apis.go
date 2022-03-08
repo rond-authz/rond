@@ -16,6 +16,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// TODO: handle pagination!
+const BINDINGS_MAX_PAGE_SIZE = 200
+
 type RevokeRequestBody struct {
 	Subjects    []string `json:"subjects,omitempty"`
 	Groups      []string `json:"groups,omitempty"`
@@ -67,7 +70,7 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := client.Get(r.Context(), fmt.Sprintf("_q=%s", string(query)), &bindings); err != nil {
+	if err := client.Get(r.Context(), fmt.Sprintf("_q=%s&_l=%d", string(query), BINDINGS_MAX_PAGE_SIZE), &bindings); err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud request")
 		failResponseWithCode(w, http.StatusInternalServerError, "failed crud request for finding bindings", GENERIC_BUSINESS_ERROR_MESSAGE)
 		return

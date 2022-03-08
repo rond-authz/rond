@@ -141,7 +141,10 @@ func TestRevokeHandler(t *testing.T) {
 			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
 				mongoQueryString := req.URL.Query().Get("_q")
 				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"project"},{"$or":[{"subjects":{"$in":["piero"]}}]}]}`
-				return match, nil
+
+				limit := req.URL.Query().Get("_l")
+				matchLimit := limit == "200"
+				return match && matchLimit, nil
 			}).
 			Reply(http.StatusOK).
 			JSON(bindingsFromCrud)
