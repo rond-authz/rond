@@ -3,7 +3,7 @@ package mocks
 import (
 	"context"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
 )
 
 type FindOneExpectation struct {

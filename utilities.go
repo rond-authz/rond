@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/types"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
 )
 
 const ContentTypeHeaderKey = "content-type"
