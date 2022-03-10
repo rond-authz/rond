@@ -7,9 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
-### Fix
+### Fixed
 
-- Fixed fallback path registration on setupRoutes
+- [JMRBA-100](https://makeitapp.atlassian.net/JMRBA-100): added `REVERSE_PROXY_FLUSH_INTERVAL` env var (with default `-1`) to fix issues with streaming APIs passing through the container
+- Fixed fallback path registration
 
 ## 0.8.0 - 08/03/2022
 
