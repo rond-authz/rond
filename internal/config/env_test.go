@@ -70,7 +70,8 @@ func TestGetEnvOrDie(t *testing.T) {
 		DelayShutdownSeconds: 10,
 		PathPrefixStandalone: "/eval",
 
-		OPAModulesDirectory: "/modules",
+		OPAModulesDirectory:       "/modules",
+		ReverseProxyFlushInterval: -1,
 	}
 
 	t.Run(`returns correctly - with TargetServiceHost`, func(t *testing.T) {
@@ -85,7 +86,35 @@ func TestGetEnvOrDie(t *testing.T) {
 		expectedEnvs := defaultAndRequiredEnvironmentVariables
 		expectedEnvs.TargetServiceHost = "http://localhost:3000"
 
-		require.Equal(t, actualEnvs, expectedEnvs, "Unexpected envs variables.")
+		require.Equal(t, expectedEnvs, actualEnvs, "Unexpected envs variables.")
+	})
+
+	t.Run(`returns correctly - with FLUSH INTERVAL`, func(t *testing.T) {
+		otherEnvs := []env{
+			{name: "TARGET_SERVICE_HOST", value: "abc"},
+			{name: "REVERSE_PROXY_FLUSH_INTERVAL", value: "25"},
+		}
+		envs := append(requiredEnvs, otherEnvs...)
+		unsetEnvs := setEnvs(envs)
+		defer unsetEnvs()
+
+		actualEnvs := GetEnvOrDie()
+
+		require.Equal(t, 25, actualEnvs.ReverseProxyFlushInterval, "Unexpected session duration seconds env variable.")
+	})
+
+	t.Run(`returns correctly - with FLUSH INTERVAL 0`, func(t *testing.T) {
+		otherEnvs := []env{
+			{name: "TARGET_SERVICE_HOST", value: "abc"},
+			{name: "REVERSE_PROXY_FLUSH_INTERVAL", value: "0"},
+		}
+		envs := append(requiredEnvs, otherEnvs...)
+		unsetEnvs := setEnvs(envs)
+		defer unsetEnvs()
+
+		actualEnvs := GetEnvOrDie()
+
+		require.Equal(t, 0, actualEnvs.ReverseProxyFlushInterval, "Unexpected session duration seconds env variable.")
 	})
 
 	t.Run(`returns correctly - with Standalone and BindingsCrudServiceURL`, func(t *testing.T) {
@@ -102,7 +131,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		expectedEnvs.Standalone = true
 		expectedEnvs.BindingsCrudServiceURL = "http://crud-client"
 
-		require.Equal(t, actualEnvs, expectedEnvs, "Unexpected envs variables.")
+		require.Equal(t, expectedEnvs, actualEnvs, "Unexpected envs variables.")
 	})
 
 	t.Run(`returns error - with Standalone and not BindingsCrudServiceURL`, func(t *testing.T) {

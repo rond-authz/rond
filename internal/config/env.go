@@ -38,12 +38,13 @@ type EnvironmentVariables struct {
 	ClientTypeHeader       string
 	BindingsCrudServiceURL string
 
-	MongoDBUrl             string
-	RolesCollectionName    string
-	BindingsCollectionName string
-	DelayShutdownSeconds   int
-	Standalone             bool
-	PathPrefixStandalone   string
+	MongoDBUrl                string
+	RolesCollectionName       string
+	BindingsCollectionName    string
+	DelayShutdownSeconds      int
+	Standalone                bool
+	PathPrefixStandalone      string
+	ReverseProxyFlushInterval int
 }
 
 var EnvVariablesConfig = []configlib.EnvConfig{
@@ -127,6 +128,11 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 	{
 		Key:      BindingsCrudServiceURL,
 		Variable: "BindingsCrudServiceURL",
+	},
+	{
+		Key:          "REVERSE_PROXY_FLUSH_INTERVAL",
+		Variable:     "ReverseProxyFlushInterval",
+		DefaultValue: "-1",
 	},
 }
 
