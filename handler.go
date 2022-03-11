@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httputil"
-	"time"
 
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
 	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
@@ -138,7 +137,7 @@ func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.
 func ReverseProxy(logger *logrus.Entry, env config.EnvironmentVariables, w http.ResponseWriter, req *http.Request, permission *XPermission, partialResultsEvaluators PartialResultsEvaluators) {
 	targetHostFromEnv := env.TargetServiceHost
 	proxy := httputil.ReverseProxy{
-		FlushInterval: time.Duration(env.ReverseProxyFlushInterval),
+		FlushInterval: -1,
 		Director: func(req *http.Request) {
 			req.URL.Host = targetHostFromEnv
 			req.URL.Scheme = URL_SCHEME
@@ -148,6 +147,7 @@ func ReverseProxy(logger *logrus.Entry, env config.EnvironmentVariables, w http.
 			}
 		},
 	}
+
 	// Check on nil is performed to proxy the oas documentation path
 	if permission == nil || permission.ResponseFilter.Policy == "" {
 		proxy.ServeHTTP(w, req)

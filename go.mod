@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/mia-platform/configlib v1.0.0
-	github.com/mia-platform/glogger/v2 v2.1.2
+	github.com/mia-platform/glogger/v2 v2.1.3
 	github.com/open-policy-agent/opa v0.38.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0
