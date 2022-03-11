@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Update
+
++- glogger v2.1.3 that implements `http.Flusher` interface, useful to fix flushing behaviour in reverse proxy for streaming APIs
+
 ### Fixed
 
-- [JMRBA-100](https://makeitapp.atlassian.net/JMRBA-100): added `REVERSE_PROXY_FLUSH_INTERVAL` env var (with default `-1`) to fix issues with streaming APIs passing through the container
+- [JMRBA-100](https://makeitapp.atlassian.net/JMRBA-100): set reverse proxy flush interval to -1 to fix issues with streaming APIs passing through the container
 - Fixed fallback path registration
 
 ## 0.8.0 - 08/03/2022

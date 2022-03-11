@@ -70,8 +70,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		DelayShutdownSeconds: 10,
 		PathPrefixStandalone: "/eval",
 
-		OPAModulesDirectory:       "/modules",
-		ReverseProxyFlushInterval: -1,
+		OPAModulesDirectory: "/modules",
 	}
 
 	t.Run(`returns correctly - with TargetServiceHost`, func(t *testing.T) {
@@ -87,34 +86,6 @@ func TestGetEnvOrDie(t *testing.T) {
 		expectedEnvs.TargetServiceHost = "http://localhost:3000"
 
 		require.Equal(t, expectedEnvs, actualEnvs, "Unexpected envs variables.")
-	})
-
-	t.Run(`returns correctly - with FLUSH INTERVAL`, func(t *testing.T) {
-		otherEnvs := []env{
-			{name: "TARGET_SERVICE_HOST", value: "abc"},
-			{name: "REVERSE_PROXY_FLUSH_INTERVAL", value: "25"},
-		}
-		envs := append(requiredEnvs, otherEnvs...)
-		unsetEnvs := setEnvs(envs)
-		defer unsetEnvs()
-
-		actualEnvs := GetEnvOrDie()
-
-		require.Equal(t, 25, actualEnvs.ReverseProxyFlushInterval, "Unexpected session duration seconds env variable.")
-	})
-
-	t.Run(`returns correctly - with FLUSH INTERVAL 0`, func(t *testing.T) {
-		otherEnvs := []env{
-			{name: "TARGET_SERVICE_HOST", value: "abc"},
-			{name: "REVERSE_PROXY_FLUSH_INTERVAL", value: "0"},
-		}
-		envs := append(requiredEnvs, otherEnvs...)
-		unsetEnvs := setEnvs(envs)
-		defer unsetEnvs()
-
-		actualEnvs := GetEnvOrDie()
-
-		require.Equal(t, 0, actualEnvs.ReverseProxyFlushInterval, "Unexpected session duration seconds env variable.")
 	})
 
 	t.Run(`returns correctly - with Standalone and BindingsCrudServiceURL`, func(t *testing.T) {
