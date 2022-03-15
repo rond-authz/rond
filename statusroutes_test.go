@@ -1,14 +1,20 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
+	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
+
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/v3/assert"
 )
 
 func TestStatusRoutes(testCase *testing.T) {
@@ -63,5 +69,93 @@ func TestStatusRoutes(testCase *testing.T) {
 		body, readBodyError := ioutil.ReadAll(rawBody)
 		require.NoError(t, readBodyError)
 		require.Equal(t, expectedResponse, string(body), "The response body should be the expected one")
+	})
+}
+
+func TestStatusRoutesIntegration(t *testing.T) {
+	log, _ := test.NewNullLogger()
+	opa := &OPAModuleConfig{
+		Name: "policies",
+		Content: `package policies
+test_policy { true }
+`,
+	}
+	oas := &OpenAPISpec{
+		Paths: OpenAPIPaths{
+			"/evalapi": PathVerbs{
+				"get": VerbConfig{
+					XPermission{
+						AllowPermission: "test_policy",
+					},
+				},
+			},
+		},
+	}
+
+	var mongoClient *mongoclient.MongoClient
+	evaluatorsMap, err := setupEvaluators(context.TODO(), mongoClient, oas, opa)
+	assert.NilError(t, err, "unexpected error")
+
+	t.Run("non standalone", func(t *testing.T) {
+		env := config.EnvironmentVariables{
+			Standalone:           false,
+			TargetServiceHost:    "my-service:4444",
+			PathPrefixStandalone: "/my-prefix",
+		}
+		router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+		assert.NilError(t, err, "unexpected error")
+
+		t.Run("/-/rbac-ready", func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/-/rbac-ready", nil)
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
+		t.Run("/-/rbac-healthz", func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/-/rbac-healthz", nil)
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
+		t.Run("/-/rbac-check-up", func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/-/rbac-check-up", nil)
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
+	})
+
+	t.Run("standalone", func(t *testing.T) {
+		env := config.EnvironmentVariables{
+			Standalone:           true,
+			TargetServiceHost:    "my-service:4444",
+			PathPrefixStandalone: "/my-prefix",
+		}
+		router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+		assert.NilError(t, err, "unexpected error")
+		t.Run("/-/rbac-ready", func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/-/rbac-ready", nil)
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
+		t.Run("/-/rbac-healthz", func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/-/rbac-healthz", nil)
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
+		t.Run("/-/rbac-check-up", func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/-/rbac-check-up", nil)
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
 	})
 }
