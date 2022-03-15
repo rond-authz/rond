@@ -11,7 +11,7 @@ require (
 	github.com/mia-platform/glogger/v2 v2.1.3
 	github.com/open-policy-agent/opa v0.38.1
 	github.com/sirupsen/logrus v1.8.1
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/uptrace/bunrouter v1.0.12
 	go.mongodb.org/mongo-driver v1.8.4
 	gopkg.in/h2non/gock.v1 v1.1.2
