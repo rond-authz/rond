@@ -131,10 +131,9 @@ func setupRouter(
 
 	router.Use(config.RequestMiddlewareEnvironments(env))
 
-	evalRouter := router
+	evalRouter := router.NewRoute().Subrouter()
 	if env.Standalone {
 		addStandaloneRoutes(router)
-		evalRouter = router.NewRoute().Subrouter()
 	}
 
 	evalRouter.Use(OPAMiddleware(opaModuleConfig, oas, &env, policiesEvaluators))
