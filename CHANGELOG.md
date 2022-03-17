@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Fixed
+
+- Prevent status routes to run into the OPA Middleware 
+
 ## 0.8.1 - 14/03/2022
 
 ### Update
