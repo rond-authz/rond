@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Update
 
-- glogger v2.1.3 that implements `http.Flusher` interface, useful to fix flushing behaviour in reverse proxy for streaming APIs
+- glogger v2.1.3 that implements `http.Flusher` interface, useful to fix flushing behavior in reverse proxy for streaming APIs
 
 ### Fixed
 
