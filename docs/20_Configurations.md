@@ -30,6 +30,7 @@ To setup correctly this service you need to follow this steps
 The policies must be written in the Rego language and they could use the input variable or our built-in functions.
 
 ### Rego input
+To write your policies rbac service automatically create an object call `input` with the following fields 
 ```
 {
     "request": {
@@ -44,18 +45,48 @@ The policies must be written in the Rego language and they could use the input v
         },
         "body": Object
     },
+    "response": {
+        "body": Object
+    }
     "user": {
         "properties": Object{
             // this object contains the user properties inserted by the authorization service in the request user properties platform header 
         },
         "groups": Array[String],
+        "bindings": Array[Binding],
+        "roles": Array[Role]
     },
     "clientType": String
 }
 ```
 
+The binding object is composed as follow:
+``` 
+{
+    "bindingId":    String,
+    "groups":       Array[String],
+    "subjects":     Array[String],
+    "permissions":  Array[String],
+    "roles":        Array[String],
+    "resource":     Object { 
+        "resourceType": String,
+        "resourceId":   String
+    },
+    "__STATE__:     String
+} 
+```
+
+While the role one is composed like
+``` 
+{
+    "roleId":       String,
+    "permissions":  Array[String],
+    "__STATE__:     String
+} 
+```
+
 :::caution
-The request body in the input object is only provided if the request method is either `POST`, `PUT` or `PATCH` and the request Content Type is `application/json`
+The request body in the input object is only provided if the request method is either `POST`, `PUT`, `DELETE`  or `PATCH` and the request Content Type is `application/json`
 :::
 
 :::caution

@@ -66,7 +66,7 @@ func TestCreateRegoInput(t *testing.T) {
 		})
 
 		t.Run("added on accepted methods", func(t *testing.T) {
-			acceptedMethods := []string{http.MethodPost, http.MethodPut, http.MethodPatch}
+			acceptedMethods := []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
 
 			for _, method := range acceptedMethods {
 				req := httptest.NewRequest(method, "/", bytes.NewReader(reqBodyBytes))

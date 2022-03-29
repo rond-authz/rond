@@ -58,26 +58,26 @@ type Input struct {
 	Request    InputRequest  `json:"request"`
 	Response   InputResponse `json:"response"`
 	User       InputUser     `json:"user"`
-	ClientType string        `json:"clientType"`
+	ClientType string        `json:"clientType,omitempty"`
 }
 type InputRequest struct {
 	Method     string            `json:"method"`
 	Path       string            `json:"path"`
-	Body       interface{}       `json:"body"`
-	Headers    http.Header       `json:"headers"`
-	Query      url.Values        `json:"query"`
-	PathParams map[string]string `json:"pathParams"`
+	Body       interface{}       `json:"body,omitempty"`
+	Headers    http.Header       `json:"headers,omitempty"`
+	Query      url.Values        `json:"query,omitempty"`
+	PathParams map[string]string `json:"pathParams,omitempty"`
 }
 
 type InputResponse struct {
-	Body interface{} `json:"body"`
+	Body interface{} `json:"body,omitempty"`
 }
 
 type InputUser struct {
-	Properties map[string]interface{} `json:"properties"`
-	Groups     []string               `json:"groups"`
-	Bindings   []types.Binding        `json:"bindings"`
-	Roles      []types.Role           `json:"roles"`
+	Properties map[string]interface{} `json:"properties,omitempty"`
+	Groups     []string               `json:"groups,omitempty"`
+	Bindings   []types.Binding        `json:"bindings,omitempty"`
+	Roles      []types.Role           `json:"roles,omitempty"`
 }
 
 func cleanWildcard(path string) string {

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Added
+
+- [MCRDMPE22-113](https://makeitapp.atlassian.net/MCRDMPE22-113): Added method delete to insert body request in rego input
+
 ## 0.8.2 - 21/03/2022
 
 ### Fixed
