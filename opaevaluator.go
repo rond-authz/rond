@@ -288,7 +288,7 @@ func createRegoQueryInput(req *http.Request, env config.EnvironmentVariables, us
 
 	shouldParseJSONBody := hasApplicationJSONContentType(req.Header) &&
 		req.ContentLength > 0 &&
-		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut)
+		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete)
 
 	if shouldParseJSONBody {
 		bodyBytes, err := ioutil.ReadAll(req.Body)
