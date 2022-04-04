@@ -136,11 +136,11 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type GrantRequestBody struct {
+	ResourceID  string   `json:"resourceId"`
 	Subjects    []string `json:"subjects"`
 	Groups      []string `json:"groups"`
 	Roles       []string `json:"roles"`
 	Permissions []string `json:"permissions"`
-	ResourceID  string   `json:"resourceId"`
 }
 type GrantResponseBody struct {
 	BindingID string `json:"bindingId"`

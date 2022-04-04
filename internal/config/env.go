@@ -37,13 +37,12 @@ type EnvironmentVariables struct {
 	UserIdHeader           string
 	ClientTypeHeader       string
 	BindingsCrudServiceURL string
-
 	MongoDBUrl             string
 	RolesCollectionName    string
 	BindingsCollectionName string
+	PathPrefixStandalone   string
 	DelayShutdownSeconds   int
 	Standalone             bool
-	PathPrefixStandalone   string
 }
 
 var EnvVariablesConfig = []configlib.EnvConfig{

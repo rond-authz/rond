@@ -25,10 +25,9 @@ import (
 
 type MongoClient struct {
 	client       *mongo.Client
+	bindings     *mongo.Collection
+	roles        *mongo.Collection
 	databaseName string
-
-	bindings *mongo.Collection
-	roles    *mongo.Collection
 }
 
 const STATE string = "__STATE__"
