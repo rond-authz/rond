@@ -36,9 +36,9 @@ func TestRoundTripErrors(t *testing.T) {
 			req.Context(),
 			logrus.NewEntry(logger),
 			req,
+			nil,
+			nil,
 			envs,
-			nil,
-			nil,
 		}
 
 		resp, err := transport.RoundTrip(req)

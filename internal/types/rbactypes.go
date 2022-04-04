@@ -19,13 +19,13 @@ type Resource struct {
 }
 
 type Binding struct {
+	Resource          Resource `bson:"resource" json:"resource"`
 	BindingID         string   `bson:"bindingId" json:"bindingId"`
+	CRUDDocumentState string   `bson:"__STATE__" json:"-"`
 	Groups            []string `bson:"groups" json:"groups,omitempty"`
 	Subjects          []string `bson:"subjects" json:"subjects,omitempty"`
 	Permissions       []string `bson:"permissions" json:"permissions,omitempty"`
 	Roles             []string `bson:"roles" json:"roles,omitempty"`
-	Resource          Resource `bson:"resource" json:"resource"`
-	CRUDDocumentState string   `bson:"__STATE__" json:"-"`
 }
 
 type BindingFilter struct {
@@ -43,8 +43,8 @@ type BindingCreateResponse struct {
 
 type Role struct {
 	RoleID            string   `bson:"roleId" json:"roleId"`
-	Permissions       []string `bson:"permissions" json:"permissions"`
 	CRUDDocumentState string   `bson:"__STATE__" json:"-"`
+	Permissions       []string `bson:"permissions" json:"permissions"`
 }
 
 // MongoClientContextKey is the context key that shall be used to save
@@ -62,6 +62,6 @@ type IMongoClient interface {
 
 type RequestError struct {
 	Error      string `json:"error"`
-	StatusCode int    `json:"statusCode"`
 	Message    string `json:"message"`
+	StatusCode int    `json:"statusCode"`
 }

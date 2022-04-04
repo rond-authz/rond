@@ -7,23 +7,21 @@ import (
 )
 
 type FindOneExpectation struct {
-	CollectionName string
 	Query          map[string]string
+	CollectionName string
 }
 
 type MongoClientMock struct {
-	UserBindings      []types.Binding
-	UserBindingsError error
-	UserRoles         []types.Role
-	UserRolesError    error
-
-	FindOneExpectation func(collectionName string, query interface{})
-	FindOneResult      interface{}
-	FindOneError       error
-
-	FindManyExpectation func(collectionName string, query interface{})
-	FindManyResult      []interface{}
+	FindOneError        error
+	UserBindingsError   error
+	UserRolesError      error
+	FindOneResult       interface{}
 	FindManyError       error
+	FindOneExpectation  func(collectionName string, query interface{})
+	FindManyExpectation func(collectionName string, query interface{})
+	UserRoles           []types.Role
+	UserBindings        []types.Binding
+	FindManyResult      []interface{}
 }
 
 func (mongoClient *MongoClientMock) Disconnect() {

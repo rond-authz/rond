@@ -7,8 +7,8 @@ import (
 )
 
 type MockEvaluator struct {
-	ResultSet   rego.ResultSet
 	ResultError error
+	ResultSet   rego.ResultSet
 }
 
 func (m *MockEvaluator) Eval(ctx context.Context, options ...rego.EvalOption) (rego.ResultSet, error) {

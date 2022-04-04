@@ -34,8 +34,8 @@ type ResourceFilter struct {
 }
 
 type RowFilterConfiguration struct {
-	Enabled   bool   `json:"enabled"`
 	HeaderKey string `json:"headerKey"`
+	Enabled   bool   `json:"enabled"`
 }
 
 type ResponseFilterConfiguration struct {
@@ -57,16 +57,16 @@ type OpenAPISpec struct {
 type Input struct {
 	Request    InputRequest  `json:"request"`
 	Response   InputResponse `json:"response"`
-	User       InputUser     `json:"user"`
 	ClientType string        `json:"clientType,omitempty"`
+	User       InputUser     `json:"user"`
 }
 type InputRequest struct {
-	Method     string            `json:"method"`
-	Path       string            `json:"path"`
 	Body       interface{}       `json:"body,omitempty"`
 	Headers    http.Header       `json:"headers,omitempty"`
 	Query      url.Values        `json:"query,omitempty"`
 	PathParams map[string]string `json:"pathParams,omitempty"`
+	Method     string            `json:"method"`
+	Path       string            `json:"path"`
 }
 
 type InputResponse struct {

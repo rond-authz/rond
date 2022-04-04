@@ -21,9 +21,9 @@ type OPATransport struct {
 	context                  context.Context
 	logger                   *logrus.Entry
 	request                  *http.Request
-	env                      config.EnvironmentVariables
 	permission               *XPermission
 	partialResultsEvaluators PartialResultsEvaluators
+	env                      config.EnvironmentVariables
 }
 
 func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {

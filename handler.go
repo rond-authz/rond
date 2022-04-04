@@ -158,9 +158,9 @@ func ReverseProxy(logger *logrus.Entry, env config.EnvironmentVariables, w http.
 		req.Context(),
 		logger,
 		req,
-		env,
 		permission,
 		partialResultsEvaluators,
+		env,
 	}
 	proxy.ServeHTTP(w, req)
 }
