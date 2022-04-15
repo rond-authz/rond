@@ -86,7 +86,7 @@ func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.
 
 	var evaluatorAllowPolicy *OPAEvaluator
 	if !permission.ResourceFilter.RowFilter.Enabled {
-		evaluatorAllowPolicy, err = partialResultsEvaluators.GetEvaluatorFromPolicy(requestContext, permission.AllowPermission, input)
+		evaluatorAllowPolicy, err = partialResultsEvaluators.GetEvaluatorFromPolicy(requestContext, permission.AllowPermission, input, env)
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("cannot find policy evaluator")
 			failResponseWithCode(w, http.StatusInternalServerError, "failed partial evaluator retrieval", GENERIC_BUSINESS_ERROR_MESSAGE)

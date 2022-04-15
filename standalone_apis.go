@@ -211,7 +211,7 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 		failResponseWithCode(
 			w,
 			http.StatusInternalServerError,
-			fmt.Sprintf("failed response body creation"),
+			"failed response body creation",
 			GENERIC_BUSINESS_ERROR_MESSAGE,
 		)
 	}

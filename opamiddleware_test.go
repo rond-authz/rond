@@ -292,6 +292,7 @@ very_very_composed_permission_with_eval { true }`,
 func TestGetHeaderFunction(t *testing.T) {
 	headerKeyMocked := "exampleKey"
 	headerValueMocked := "value"
+	env := config.EnvironmentVariables{}
 
 	opaModule := &OPAModuleConfig{
 		Name: "example.rego",
@@ -308,7 +309,7 @@ func TestGetHeaderFunction(t *testing.T) {
 		}
 		inputBytes, _ := json.Marshal(input)
 
-		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes)
+		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, env)
 		assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
 
 		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())
@@ -327,7 +328,7 @@ func TestGetHeaderFunction(t *testing.T) {
 		}
 		inputBytes, _ := json.Marshal(input)
 
-		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes)
+		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, env)
 		assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
 
 		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())

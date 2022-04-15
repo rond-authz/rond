@@ -76,7 +76,7 @@ func entrypoint(shutdown chan os.Signal) {
 
 	ctx := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoClient), logrus.NewEntry(log))
 
-	policiesEvaluators, err := setupEvaluators(ctx, mongoClient, oas, opaModuleConfig)
+	policiesEvaluators, err := setupEvaluators(ctx, mongoClient, oas, opaModuleConfig, env)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},
