@@ -22,7 +22,7 @@ To setup correctly this service you need to follow this steps
 | BINDINGS_COLLECTION_NAME | string | - | - | name of the bindings collection |
 | DELAY_SHUTDOWN_SECONDS | int | 10 (seconds) | - | the sidecar graceful shutdown |
 | STANDALONE | boolean | false | - | trigger variable of the standalone mode |
-| BINDINGS_CRUD_SERVICE_URL | string | - | If STANDALONE is `true` | base URL for crud service bindings collection|
+| BINDINGS_CRUD_SERVICE_URL | string | - | If STANDALONE is `true` | base URL for CRUD service bindings collection|
 | PATH_PREFIX_STANDALONE | string | "/eval" | - | path prefix added to the route exposed by the rbac service taken from the OpenAPI specification when in standalone mode |
 
 ## How to write a policy
