@@ -22,7 +22,7 @@ Supposing that user properties have the `myList` which holds a list of strings 
 
 ```
 my_iteration_policy {
-    aList := inoput.user.properties.myList
+    aList := input.user.properties.myList
     aList[_] == "item_to_find"
 }
 ```
@@ -33,8 +33,8 @@ You can iterate over multiple lists using the same index by defining a custom it
 
 ```
 my_iteration_policy {
-    aList := inoput.user.properties.myList
-    anotherList := inoput.user.properties.myList2
+    aList := input.user.properties.myList
+    anotherList := input.user.properties.myList2
     
     some i
     aList[i] == "item_to_find"
