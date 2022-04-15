@@ -7,7 +7,7 @@ include:
     ref: "master"
 
 default:
-  image: golang:1.18.0
+  image: golang:1.18.1
 
 variables:
   IMAGE_NAME: core/rbac-service
