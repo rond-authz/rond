@@ -203,7 +203,7 @@ var mockXPermission = &XPermission{AllowPermission: "todo"}
 
 func TestSetupRoutesIntegration(t *testing.T) {
 	oas := prepareOASFromFile(t, "./mocks/simplifiedMock.json")
-	mockPartialEvaluators, _ := setupEvaluators(context.Background(), nil, oas, mockOPAModule)
+	mockPartialEvaluators, _ := setupEvaluators(context.Background(), nil, oas, mockOPAModule, envs)
 	t.Run("invokes known API", func(t *testing.T) {
 		var invoked bool
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -284,7 +284,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			Content: `package policies
 		todo { false }`,
 		}
-		mockPartialEvaluators, _ := setupEvaluators(context.Background(), nil, oas, mockOPAModule)
+		mockPartialEvaluators, _ := setupEvaluators(context.Background(), nil, oas, mockOPAModule, envs)
 		router := mux.NewRouter()
 		setupRoutes(router, oas, envs)
 
@@ -315,7 +315,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		var mockOPAModule = &OPAModuleConfig{
 			Content: "FAILING POLICY!!!!",
 		}
-		mockPartialEvaluators, _ := setupEvaluators(context.Background(), nil, oas, mockOPAModule)
+		mockPartialEvaluators, _ := setupEvaluators(context.Background(), nil, oas, mockOPAModule, envs)
 
 		router := mux.NewRouter()
 		setupRoutes(router, oas, envs)

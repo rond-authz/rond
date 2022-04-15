@@ -287,6 +287,10 @@ func RetrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, env c
 
 			return types.User{}, fmt.Errorf("Error while retrieving user Roles: %s", err.Error())
 		}
+		logger.WithFields(logrus.Fields{
+			"foundBindingsLength": len(user.UserBindings),
+			"foundRolesLength":    len(user.UserRoles),
+		}).Trace("found bindings and roles")
 	}
 	return user, nil
 }

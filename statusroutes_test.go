@@ -93,7 +93,7 @@ test_policy { true }
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := setupEvaluators(context.TODO(), mongoClient, oas, opa)
+	evaluatorsMap, err := setupEvaluators(context.TODO(), mongoClient, oas, opa, envs)
 	assert.NilError(t, err, "unexpected error")
 
 	t.Run("non standalone", func(t *testing.T) {

@@ -72,7 +72,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	evaluator, err := t.partialResultsEvaluators.GetEvaluatorFromPolicy(t.context, t.permission.ResponseFilter.Policy, input)
+	evaluator, err := t.partialResultsEvaluators.GetEvaluatorFromPolicy(t.context, t.permission.ResponseFilter.Policy, input, t.env)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusInternalServerError)
 		return resp, nil
@@ -83,6 +83,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		t.responseWithError(resp, err, http.StatusForbidden)
 		return resp, nil
 	}
+
 	marshalledBody, err := json.Marshal(bodyToProxy)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusInternalServerError)

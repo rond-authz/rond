@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/mia-platform/glogger/v2"
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/topdown/print"
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -43,7 +46,7 @@ type PartialEvaluator struct {
 	PartialEvaluator *rego.PartialResult
 }
 
-func setupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *OpenAPISpec, opaModuleConfig *OPAModuleConfig) (PartialResultsEvaluators, error) {
+func setupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *OpenAPISpec, opaModuleConfig *OPAModuleConfig, env config.EnvironmentVariables) (PartialResultsEvaluators, error) {
 	policyEvaluators := PartialResultsEvaluators{}
 	for path, OASContent := range oas.Paths {
 		for verb, xPermission := range OASContent {
@@ -61,7 +64,7 @@ func setupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *O
 				glogger.Get(ctx).Infof("precomputing rego query for allow policy: %s", allowPolicy)
 
 				allowPolicyEvaluatorTime := time.Now()
-				allowPartialResultEvaluator, err := NewPartialResultEvaluator(ctx, allowPolicy, opaModuleConfig, mongoClient)
+				allowPartialResultEvaluator, err := NewPartialResultEvaluator(ctx, allowPolicy, opaModuleConfig, mongoClient, env)
 				if err != nil {
 					return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
 				}
@@ -77,7 +80,7 @@ func setupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *O
 					glogger.Get(ctx).Infof("precomputing rego query for response filtering policy: %s", responsePolicy)
 					responsePolicyEvaluatorTime := time.Now()
 
-					responsePartialResultEvaluator, err := NewPartialResultEvaluator(ctx, responsePolicy, opaModuleConfig, mongoClient)
+					responsePartialResultEvaluator, err := NewPartialResultEvaluator(ctx, responsePolicy, opaModuleConfig, mongoClient, env)
 					if err != nil {
 						return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
 					}
@@ -93,8 +96,41 @@ func setupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *O
 	return policyEvaluators, nil
 }
 
-func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte) (*OPAEvaluator, error) {
+func NewPrintHook(w io.Writer, policy string) print.Hook {
+	return printHook{
+		w:          w,
+		policyName: policy,
+	}
+}
 
+type printHook struct {
+	w          io.Writer
+	policyName string
+}
+
+type LogPrinter struct {
+	Level      int    `json:"level"`
+	Message    string `json:"msg"`
+	Time       int64  `json:"time"`
+	PolicyName string `json:"policyName"`
+}
+
+func (h printHook) Print(_ print.Context, message string) error {
+	structMessage := LogPrinter{
+		Level:      10,
+		Message:    message,
+		Time:       time.Now().UnixNano() / 1000,
+		PolicyName: h.policyName,
+	}
+	msg, err := json.Marshal(structMessage)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(h.w, msg)
+	return err
+}
+
+func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte, env config.EnvironmentVariables) (*OPAEvaluator, error) {
 	inputTerm, err := ast.ParseTerm(string(input))
 	if err != nil {
 		return nil, fmt.Errorf("failed input parse: %v", err)
@@ -108,6 +144,8 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 		rego.ParsedInput(inputTerm.Value),
 		rego.Unknowns(unknowns),
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
+		rego.EnablePrintStatements(env.LogLevel == config.TraceLogLevel),
+		rego.PrintHook(NewPrintHook(os.Stdout, policy)),
 		custom_builtins.GetHeaderFunction,
 		custom_builtins.MongoFindOne,
 		custom_builtins.MongoFindMany,
@@ -135,16 +173,16 @@ func createQueryEvaluator(ctx context.Context, logger *logrus.Entry, req *http.R
 	}).Trace("input object passed to the evaluator")
 
 	opaEvaluatorInstanceTime := time.Now()
-	evaluator, err := NewOPAEvaluator(ctx, policy, opaModuleConfig, input)
+	evaluator, err := NewOPAEvaluator(ctx, policy, opaModuleConfig, input, env)
 	if err != nil {
 		logger.WithError(err).Error("failed RBAC policy creation")
 		return nil, err
 	}
-	logger.Tracef("OPA evaluator istanciated in: %+v", time.Since(opaEvaluatorInstanceTime))
+	logger.Tracef("OPA evaluator instantiated in: %+v", time.Since(opaEvaluatorInstanceTime))
 	return evaluator, nil
 }
 
-func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, mongoClient types.IMongoClient) (*rego.PartialResult, error) {
+func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, mongoClient types.IMongoClient, env config.EnvironmentVariables) (*rego.PartialResult, error) {
 	sanitizedPolicy := strings.Replace(policy, ".", "_", -1)
 	queryString := fmt.Sprintf("data.policies.%s", sanitizedPolicy)
 
@@ -152,6 +190,8 @@ func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 		rego.Query(queryString),
 		rego.Module(opaModuleConfig.Name, opaModuleConfig.Content),
 		rego.Unknowns(unknowns),
+		rego.EnablePrintStatements(env.LogLevel == config.TraceLogLevel),
+		rego.PrintHook(NewPrintHook(os.Stdout, policy)),
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
 		custom_builtins.GetHeaderFunction,
 	}
@@ -164,7 +204,7 @@ func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 	return &results, err
 }
 
-func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx context.Context, policy string, input []byte) (*OPAEvaluator, error) {
+func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx context.Context, policy string, input []byte, env config.EnvironmentVariables) (*OPAEvaluator, error) {
 	if eval, ok := partialEvaluators[policy]; ok {
 		inputTerm, err := ast.ParseTerm(string(input))
 		if err != nil {
@@ -173,6 +213,8 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 
 		evaluator := eval.PartialEvaluator.Rego(
 			rego.ParsedInput(inputTerm.Value),
+			rego.EnablePrintStatements(env.LogLevel == config.TraceLogLevel),
+			rego.PrintHook(NewPrintHook(os.Stdout, policy)),
 		)
 
 		return &OPAEvaluator{

@@ -20,6 +20,8 @@ const (
 	StandaloneEnvKey             = "STANDALONE"
 	TargetServiceHostEnvKey      = "TARGET_SERVICE_HOST"
 	BindingsCrudServiceURL       = "BINDINGS_CRUD_SERVICE_URL"
+
+	TraceLogLevel = "trace"
 )
 
 // EnvironmentVariables struct with the mapping of desired

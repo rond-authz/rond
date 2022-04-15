@@ -72,7 +72,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		}))
 		defer server.Close()
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, mockOPAModule)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		serverURL, _ := url.Parse(server.URL)
@@ -101,7 +101,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		mockHeader := "CustomHeader"
 		mockHeaderValue := "mocked value"
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, mockOPAModule)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -136,7 +136,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		invoked := false
 		mockBodySting := "I am a body"
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, mockOPAModule)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -185,7 +185,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		todo { input.request.body.hello == "world" }`,
 		}
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, opaModuleConfig)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, opaModuleConfig, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			invoked = true
@@ -269,7 +269,7 @@ allow {
 
 		opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		serverURL, _ := url.Parse(server.URL)
@@ -349,7 +349,7 @@ allow {
 
 		opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 		ctx := createContext(t,
 			context.Background(),
@@ -406,7 +406,7 @@ allow {
 
 		opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 		ctx := createContext(t,
 			context.Background(),
@@ -462,7 +462,7 @@ allow {
 
 		opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 		ctx := createContext(t,
 			context.Background(),
@@ -539,7 +539,7 @@ allow {
 
 		opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 		ctx := createContext(t,
 			context.Background(),
@@ -605,7 +605,7 @@ func TestStandaloneMode(t *testing.T) {
 	}
 
 	t.Run("ok", func(t *testing.T) {
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, mockOPAModule)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 		ctx := createContext(t,
 			context.Background(),
@@ -654,7 +654,7 @@ allow {
 
 		body := strings.NewReader(mockBodySting)
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, mockOPAModule)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		ctx := createContext(t,
@@ -713,7 +713,7 @@ allow {
 		mockBodySting := "I am a body"
 
 		body := strings.NewReader(mockBodySting)
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, mockOPAModule)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		ctx := createContext(t,
@@ -774,7 +774,7 @@ allow {
 `
 
 		mockBodySting := "I am a body"
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, mockOPAModule)
+		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		body := strings.NewReader(mockBodySting)
@@ -879,7 +879,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					todo { count(input.request.headers["%s"]) != 0 }`, mockHeader),
 				}
 
-				partialEvaluators, err := setupEvaluators(context.Background(), nil, oas, opaModule)
+				partialEvaluators, err := setupEvaluators(context.Background(), nil, oas, opaModule, envs)
 				assert.Equal(t, err, nil, "Unexpected error")
 
 				ctx := createContext(t,
@@ -923,7 +923,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					todo { get_header("x-backdoor", input.request.headers) == "mocked value" }`,
 				}
 
-				partialEvaluators, err := setupEvaluators(context.Background(), nil, oas, opaModule)
+				partialEvaluators, err := setupEvaluators(context.Background(), nil, oas, opaModule, envs)
 				assert.Equal(t, err, nil, "Unexpected error")
 
 				ctx := createContext(t,
@@ -984,7 +984,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					input.clientType == "%s"
 				}`, mockedUserProperties["my"], mockedClientType),
 			}
-			partialEvaluators, err := setupEvaluators(context.Background(), nil, oas, opaModule)
+			partialEvaluators, err := setupEvaluators(context.Background(), nil, oas, opaModule, envs)
 			assert.Equal(t, err, nil, "Unexpected error")
 
 			ctx := createContext(t,
@@ -1068,7 +1068,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 			}
 
-			partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, opaModule)
+			partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, opaModule, envs)
 			assert.Equal(t, err, nil, "Unexpected error")
 
 			ctx := createContext(t,
@@ -1159,7 +1159,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoclientMock), logrus.NewEntry(log))
 
-			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule)
+			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule, envs)
 			assert.Equal(t, err, nil, "Unexpected error")
 
 			ctx := createContext(t,
@@ -1210,7 +1210,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoclientMock), logrus.NewEntry(log))
 
-			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule)
+			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule, envs)
 			assert.Equal(t, err, nil, "Unexpected error")
 
 			ctx := createContext(t,
@@ -1300,7 +1300,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoclientMock), logrus.NewEntry(log))
 
-			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule)
+			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule, envs)
 			assert.Equal(t, err, nil, "Unexpected error")
 
 			ctx := createContext(t,
@@ -1392,7 +1392,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
 			ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoclientMock), logrus.NewEntry(log))
 
-			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule)
+			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule, envs)
 			assert.Equal(t, err, nil, "Unexpected error")
 
 			serverURL, _ := url.Parse(server.URL)
@@ -1500,7 +1500,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoclientMock), logrus.NewEntry(log))
 
-			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule)
+			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule, envs)
 			assert.Equal(t, err, nil, "Unexpected error")
 
 			serverURL, _ := url.Parse(server.URL)
@@ -1559,7 +1559,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoclientMock), logrus.NewEntry(log))
 
-			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule)
+			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule, envs)
 			assert.Equal(t, err, nil, "Unexpected error")
 
 			ctx := createContext(t,
@@ -1624,7 +1624,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoclientMock), logrus.NewEntry(log))
 
-			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule)
+			mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, opaModule, envs)
 			assert.Equal(t, err, nil, "Unexpected error")
 
 			serverURL, _ := url.Parse(server.URL)
@@ -1714,7 +1714,7 @@ project.tenantId == "1234"
 
 		ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoMock), logrus.NewEntry(log))
 
-		mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, mockOPAModule)
+		mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoclientMock, oas, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		serverURL, _ := url.Parse(server.URL)
@@ -1760,7 +1760,7 @@ project.tenantId == "1234"
 
 		ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoMock), logrus.NewEntry(log))
 
-		mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoMock, oas, mockOPAModule)
+		mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoMock, oas, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		serverURL, _ := url.Parse(server.URL)
@@ -1806,7 +1806,7 @@ project.tenantId == "1234"
 
 		ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoMock), logrus.NewEntry(log))
 
-		mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoMock, oas, mockOPAModule)
+		mockPartialEvaluators, err := setupEvaluators(ctxForPartial, mongoMock, oas, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		serverURL, _ := url.Parse(server.URL)

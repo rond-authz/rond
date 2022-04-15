@@ -70,7 +70,7 @@ func TestProxyOASPath(t *testing.T) {
 
 		resp, err := http.DefaultClient.Get("http://localhost:3000/custom/documentation/json")
 
-		require.Equal(t, nil, err)
+		require.Equal(t, nil, err, "error calling docs")
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.True(t, gock.IsDone(), "the proxy does not blocks the request for documentations path.")
 
@@ -620,6 +620,7 @@ func TestEntrypoint(t *testing.T) {
 				JSON(map[string]string{"foo": "bar"})
 
 			req, err := http.NewRequest("GET", "http://localhost:3003/users/", nil)
+			require.NoError(t, err)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
 			req.Header.Set(ContentTypeHeaderKey, "application/json")
@@ -636,6 +637,7 @@ func TestEntrypoint(t *testing.T) {
 				Reply(200).
 				SetHeader("headerProxiedTest", "user1")
 			req, err := http.NewRequest("GET", "http://localhost:3003/users/", nil)
+			require.NoError(t, err)
 			client := &http.Client{}
 			resp, err := client.Do(req)
 			require.Equal(t, "user1", resp.Header.Get("headerProxiedTest"))
@@ -664,6 +666,7 @@ func TestEntrypoint(t *testing.T) {
 				JSON(map[string]string{"foo": "bar"})
 
 			req, err := http.NewRequest("GET", "http://localhost:3003/with-mongo-find-one/some-project", nil)
+			require.NoError(t, err)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
 			req.Header.Set(ContentTypeHeaderKey, "application/json")
@@ -699,6 +702,8 @@ func TestEntrypoint(t *testing.T) {
 				JSON(map[string]string{"foo": "bar"})
 
 			req, err := http.NewRequest("GET", "http://localhost:3003/with-mongo-find-many/some-project", nil)
+			require.NoError(t, err)
+
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
 			req.Header.Set(ContentTypeHeaderKey, "application/json")
@@ -785,6 +790,8 @@ func TestEntrypoint(t *testing.T) {
 			MatchHeader("acl_rows", `{"$or":[{"$and":[{"_id":{"$eq":"9876"}}]},{"$and":[{"_id":{"$eq":"12345"}}]},{"$and":[{"_id":{"$eq":"9876"}}]},{"$and":[{"_id":{"$eq":"12345"}}]}]}`).
 			Reply(200)
 		req, err := http.NewRequest("GET", "http://localhost:3034/users/", nil)
+		require.NoError(t, err)
+
 		req.Header.Set("miausergroups", "group1")
 		req.Header.Set("miauserid", "filter_test")
 		client1 := &http.Client{}
@@ -867,6 +874,8 @@ func TestEntrypoint(t *testing.T) {
 			Get("/users/").
 			Reply(200)
 		req, err := http.NewRequest("GET", "http://localhost:3036/users/", nil)
+		require.NoError(t, err)
+
 		client1 := &http.Client{}
 		resp, err := client1.Do(req)
 		require.Equal(t, nil, err)
@@ -957,6 +966,8 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 			Reply(200)
 
 		req, err := http.NewRequest("GET", "http://localhost:3041/users/", nil)
+		require.NoError(t, err)
+
 		client1 := &http.Client{}
 		resp, err := client1.Do(req)
 		resp.Body.Close()
@@ -1094,6 +1105,8 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 			Reply(200)
 
 		req, err := http.NewRequest("GET", "http://localhost:3051/api/backend/projects/testabc/", nil)
+		require.NoError(t, err)
+
 		client1 := &http.Client{}
 		resp, err := client1.Do(req)
 		resp.Body.Close()
@@ -1132,7 +1145,7 @@ test_policy { true }
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := setupEvaluators(context.TODO(), mongoClient, oas, opa)
+	evaluatorsMap, err := setupEvaluators(context.TODO(), mongoClient, oas, opa, env)
 	assert.NilError(t, err, "unexpected error")
 
 	router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
