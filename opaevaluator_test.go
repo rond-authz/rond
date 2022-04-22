@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -14,6 +15,7 @@ import (
 	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
 
 	"github.com/mia-platform/glogger/v2"
+	"github.com/open-policy-agent/opa/topdown/print"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
@@ -141,4 +143,15 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		assert.Assert(t, err == nil, "unexpected error creating evaluators")
 		assert.Equal(t, len(policyEvals), 4, "unexpected length")
 	})
+}
+
+func TestPrint(t *testing.T) {
+	var buf bytes.Buffer
+	h := NewPrintHook(&buf, "policy-name")
+
+	err := h.Print(print.Context{}, "the print message")
+	require.NoError(t, err)
+
+	var re = regexp.MustCompile(`"time":\d+`)
+	require.JSONEq(t, `{"level":10,"msg":"the print message","time":123,"policyName":"policy-name"}`, string(re.ReplaceAll(buf.Bytes(), []byte("\"time\":123"))))
 }
