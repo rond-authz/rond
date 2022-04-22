@@ -126,7 +126,7 @@ func (h printHook) Print(_ print.Context, message string) error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintln(h.w, msg)
+	_, err = fmt.Fprintln(h.w, string(msg))
 	return err
 }
 
