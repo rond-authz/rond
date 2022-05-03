@@ -23,10 +23,14 @@ const ALL_METHODS = "ALL"
 
 type XPermissionKey struct{}
 
+type PermissionOptions struct {
+	EnableResourcePermissionsMapOptimization bool `json:"enableResourcePermissionsMapOptimization"`
+}
 type XPermission struct {
 	AllowPermission string                      `json:"allow"`
 	ResponseFilter  ResponseFilterConfiguration `json:"responseFilter"`
 	ResourceFilter  ResourceFilter              `json:"resourceFilter"`
+	Options         PermissionOptions           `json:"options"`
 }
 
 type ResourceFilter struct {
@@ -73,11 +77,20 @@ type InputResponse struct {
 	Body interface{} `json:"body,omitempty"`
 }
 
+type PermissionOnResourceKey string
+
+type PermissionsOnResourceMap map[PermissionOnResourceKey]bool
+
+func buildPermissionOnResourceKey(permission string, resourceType string, resourceId string) PermissionOnResourceKey {
+	return PermissionOnResourceKey(fmt.Sprintf("%s:%s:%s", permission, resourceType, resourceId))
+}
+
 type InputUser struct {
-	Properties map[string]interface{} `json:"properties,omitempty"`
-	Groups     []string               `json:"groups,omitempty"`
-	Bindings   []types.Binding        `json:"bindings,omitempty"`
-	Roles      []types.Role           `json:"roles,omitempty"`
+	Properties             map[string]interface{}   `json:"properties,omitempty"`
+	Groups                 []string                 `json:"groups,omitempty"`
+	Bindings               []types.Binding          `json:"bindings,omitempty"`
+	Roles                  []types.Role             `json:"roles,omitempty"`
+	ResourcePermissionsMap PermissionsOnResourceMap `json:"resourcePermissionsMap,omitempty"`
 }
 
 func cleanWildcard(path string) string {
@@ -122,6 +135,7 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 				w.Header().Set("resourceFilter.rowFilter.enabled", strconv.FormatBool(scopedMethodContent.Permission.ResourceFilter.RowFilter.Enabled))
 				w.Header().Set("resourceFilter.rowFilter.headerKey", scopedMethodContent.Permission.ResourceFilter.RowFilter.HeaderKey)
 				w.Header().Set("responseFilter.policy", scopedMethodContent.Permission.ResponseFilter.Policy)
+				w.Header().Set("options.enableResourcePermissionsMapOptimization", strconv.FormatBool(scopedMethodContent.Permission.Options.EnableResourcePermissionsMapOptimization))
 			}
 
 			if scopedMethod != ALL_METHODS {
@@ -166,11 +180,18 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 	if err != nil {
 		return XPermission{}, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
 	}
+	enableResourcePermissionsMapOptimization, err := strconv.ParseBool(recorderResult.Header.Get("options.enableResourcePermissionsMapOptimization"))
+	if err != nil {
+		return XPermission{}, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
+	}
 	return XPermission{
 		AllowPermission: recorderResult.Header.Get("allow"),
 		ResponseFilter:  ResponseFilterConfiguration{Policy: recorderResult.Header.Get("responseFilter.policy")},
 		ResourceFilter: ResourceFilter{
 			RowFilter: RowFilterConfiguration{Enabled: rowFilterEnabled, HeaderKey: recorderResult.Header.Get("resourceFilter.rowFilter.headerKey")},
+		},
+		Options: PermissionOptions{
+			EnableResourcePermissionsMapOptimization: enableResourcePermissionsMapOptimization,
 		},
 	}, nil
 }

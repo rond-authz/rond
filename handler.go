@@ -77,7 +77,7 @@ func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.
 		return err
 	}
 
-	input, err := createRegoQueryInput(req, env, userInfo, nil)
+	input, err := createRegoQueryInput(req, env, permission.Options.EnableResourcePermissionsMapOptimization, userInfo, nil)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed rego query input creation")
 		failResponseWithCode(w, http.StatusInternalServerError, "RBAC input creation failed", GENERIC_BUSINESS_ERROR_MESSAGE)

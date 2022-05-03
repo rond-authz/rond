@@ -50,3 +50,9 @@ pkg: git.tools.mia-platform.eu/platform/core/rbac-service
 cpu: Intel(R) Core(TM) i5-1038NG7 CPU @ 2.00GHz
 BenchmarkEvaluateRequest-8            82          12741684 ns/op         3417740 B/op      85394 allocs/op
 ```
+
+
+```
+cpu: Intel(R) Core(TM) i7-10610U CPU @ 1.80GHz
+BenchmarkBuildOptimizedResourcePermissionsMap-8            19207             63155 ns/op        26222 B/op         575 allocs/op
+```

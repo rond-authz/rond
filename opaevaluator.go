@@ -292,7 +292,7 @@ func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission
 	return dataFromEvaluation, nil, nil
 }
 
-func createRegoQueryInput(req *http.Request, env config.EnvironmentVariables, user types.User, responseBody interface{}) ([]byte, error) {
+func createRegoQueryInput(req *http.Request, env config.EnvironmentVariables, enableResourcePermissionsMapOptimization bool, user types.User, responseBody interface{}) ([]byte, error) {
 	requestContext := req.Context()
 	logger := glogger.Get(requestContext)
 	opaInputCreationTime := time.Now()
@@ -308,6 +308,14 @@ func createRegoQueryInput(req *http.Request, env config.EnvironmentVariables, us
 		userGroup = strings.Split(userGroupsNotSplitted, ",")
 	}
 
+	var permissionsMap PermissionsOnResourceMap
+	if enableResourcePermissionsMapOptimization {
+		logger.Info("preparing optimized resourcePermissionMap for OPA evaluator")
+		opaPermissionsMapTime := time.Now()
+		permissionsMap = buildOptimizedResourcePermissionsMap(user)
+		logger.WithField("resourcePermissionMapCreationTime", fmt.Sprintf("%+v", time.Since(opaPermissionsMapTime))).Tracef("resource permission map creation")
+	}
+
 	input := Input{
 		ClientType: req.Header.Get(env.ClientTypeHeader),
 		Request: InputRequest{
@@ -321,10 +329,11 @@ func createRegoQueryInput(req *http.Request, env config.EnvironmentVariables, us
 			Body: responseBody,
 		},
 		User: InputUser{
-			Bindings:   user.UserBindings,
-			Roles:      user.UserRoles,
-			Properties: userProperties,
-			Groups:     userGroup,
+			Bindings:               user.UserBindings,
+			Roles:                  user.UserRoles,
+			Properties:             userProperties,
+			Groups:                 userGroup,
+			ResourcePermissionsMap: permissionsMap,
 		},
 	}
 
@@ -348,6 +357,36 @@ func createRegoQueryInput(req *http.Request, env config.EnvironmentVariables, us
 	}
 	logger.Tracef("OPA input rego creation in: %+v", time.Since(opaInputCreationTime))
 	return inputBytes, nil
+}
+
+func buildOptimizedResourcePermissionsMap(user types.User) PermissionsOnResourceMap {
+	permissionsOnResourceMap := make(PermissionsOnResourceMap, 0)
+	rolesMap := buildRolesMap(user.UserRoles)
+	for _, binding := range user.UserBindings {
+		for _, role := range binding.Roles {
+			rolePermissions, ok := rolesMap[role]
+			if !ok {
+				continue
+			}
+			for _, permission := range rolePermissions {
+				key := buildPermissionOnResourceKey(permission, binding.Resource.ResourceType, binding.Resource.ResourceID)
+				permissionsOnResourceMap[key] = true
+			}
+		}
+		for _, permission := range binding.Permissions {
+			key := buildPermissionOnResourceKey(permission, binding.Resource.ResourceType, binding.Resource.ResourceID)
+			permissionsOnResourceMap[key] = true
+		}
+	}
+	return permissionsOnResourceMap
+}
+
+func buildRolesMap(roles []types.Role) map[string][]string {
+	var rolesMap = make(map[string][]string, 0)
+	for _, role := range roles {
+		rolesMap[role.RoleID] = role.Permissions
+	}
+	return rolesMap
 }
 
 func WithPartialResultsEvaluators(requestContext context.Context, evaluators PartialResultsEvaluators) context.Context {

@@ -1,6 +1,6 @@
 module git.tools.mia-platform.eu/platform/core/rbac-service
 
-go 1.17
+go 1.18
 
 require (
 	github.com/davidebianchi/go-jsonclient v1.3.0
