@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Added
+
+[RJMR-209](https://makeitapp.atlassian.net/RJMR-209): if the option `permissionsOnResourceMapEnabled` is set at true in the XPermission inside the input provided to the opa evaluator will be present a new object `PermissionsOnResurceMap`containing set of key/value pairs in which the key is composed as `permissionId:resoruceType:resourceId` and the value is always set to `true`
+
 ## 1.0.1 - 22/04/2022
 
 ### Fixed
