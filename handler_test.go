@@ -1331,7 +1331,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r.Header.Set(userIdHeaderKey, "miauserid")
 
 			rbacHandler(w, r)
-			testutils.AssertResponseFullErrorMessages(t, w, http.StatusForbidden, "RBAC policy evaluation failed", "You do not have permissions to access this feature, contact the project administrator for more information.")
+			testutils.AssertResponseFullErrorMessages(t, w, http.StatusForbidden, "RBAC policy evaluation failed", NO_PERMISSIONS_ERROR_MESSAGE)
 			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
 		})
 

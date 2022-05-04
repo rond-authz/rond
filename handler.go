@@ -17,7 +17,7 @@ import (
 const URL_SCHEME = "http"
 const BASE_ROW_FILTER_HEADER_KEY = "acl_rows"
 const GENERIC_BUSINESS_ERROR_MESSAGE = "Internal server error, please try again later"
-const NO_PERMISSIONS_ERROR_MESSAGE = "You do not have permissions to access this feature, contact the project administrator for more information."
+const NO_PERMISSIONS_ERROR_MESSAGE = "You do not have permissions to access this feature, contact the administrator for more information."
 
 func ReverseProxyOrResponse(
 	logger *logrus.Entry,
@@ -110,7 +110,10 @@ func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.
 			return err
 		}
 
-		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("RBAC policy evaluation failed")
+		logger.WithField("error", logrus.Fields{
+			"policyEvaluated": permission.AllowPermission,
+			"message":         err.Error(),
+		}).Error("RBAC policy evaluation failed")
 		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed", NO_PERMISSIONS_ERROR_MESSAGE)
 		return err
 	}
