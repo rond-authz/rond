@@ -125,7 +125,7 @@ func setupRouter(
 	policiesEvaluators PartialResultsEvaluators,
 	mongoClient *mongoclient.MongoClient,
 ) (*mux.Router, error) {
-	router := mux.NewRouter()
+	router := mux.NewRouter().UseEncodedPath()
 	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
 	StatusRoutes(router, "rbac-service", env.ServiceVersion)
 
