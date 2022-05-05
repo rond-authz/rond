@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
-### Fixed
+### Added
+
+- policy name in evaluation log result
 
 ## 1.1.1 - 04/05/2022
+
+### Fixed
 
 - [JCE-175](https://makeitapp.atlassian.net/JCE-175): fixed unwanted behaviour to handle path paramenter with slash escaped character `%2F`
 
