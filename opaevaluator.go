@@ -36,6 +36,7 @@ var unknowns = []string{"data.resources"}
 
 type OPAEvaluator struct {
 	PolicyEvaluator Evaluator
+	PolicyName      string
 	Context         context.Context
 }
 type PartialResultsEvaluatorConfigKey struct{}
@@ -153,6 +154,7 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 
 	return &OPAEvaluator{
 		PolicyEvaluator: query,
+		PolicyName:      policy,
 		Context:         ctx,
 	}, nil
 }
@@ -253,10 +255,13 @@ func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, erro
 	if err != nil {
 		return nil, fmt.Errorf("policy Evaluation has failed when evaluating the query: %s", err.Error())
 	}
-	logger.Tracef("OPA evaluation in: %+v", time.Since(opaEvaluationTime))
+	logger.WithFields(logrus.Fields{
+		"policyName": evaluator.PolicyName,
+	}).Tracef("OPA evaluation in: %+v", time.Since(opaEvaluationTime))
 
 	if results.Allowed() {
 		logger.WithFields(logrus.Fields{
+			"policyName":    evaluator.PolicyName,
 			"allowed":       results.Allowed(),
 			"resultsLength": len(results),
 		}).Tracef("policy results")
@@ -276,7 +281,9 @@ func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, erro
 			}
 		}
 	}
-	logger.Error("policy resulted in not allowed")
+	logger.WithFields(logrus.Fields{
+		"policyName": evaluator.PolicyName,
+	}).Error("policy resulted in not allowed")
 	return nil, fmt.Errorf("RBAC policy evaluation failed, user is not allowed")
 }
 
