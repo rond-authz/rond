@@ -63,7 +63,7 @@ To write your policies rbac service automatically create an object call `input` 
 
 :::info
 Some policies, especially the one that needs to perform time consuming tasks on the response body may take a while to be processed. Since iterating over user bindings, roles and permissions may be time consuming you can use the `resourcePermissionsMap` to verify user permissions in constant time. 
-The `resourcePermissionsMap` is a map containing a set of key/value pairs in which the key is composed as `permissionId:resoruceType:resourceId` and the value is always set to `true.
+The `resourcePermissionsMap` is a map containing a set of key/value pairs in which the key is composed as `permissionId:resourceType:resourceId` and the value is always set to `true.
 
 Please be careful: since creating the map still requires some computations to be performend over the user bindings; you may not perceive any optimization benefit from using the feature if the Rego policy is already fast. Enable the feature only when necessary to avoid useless computations to be performed.
 :::
