@@ -75,8 +75,8 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 	evaluator, err := t.partialResultsEvaluators.GetEvaluatorFromPolicy(t.context, t.permission.ResponseFilter.Policy, input, t.env)
 	if err != nil {
 		t.logger.WithField("error", logrus.Fields{
-			"policyEvaluated": t.permission.ResponseFilter.Policy,
-			"message":         err.Error(),
+			"policyName": t.permission.ResponseFilter.Policy,
+			"message":    err.Error(),
 		}).Error("RBAC policy evaluation on response failed")
 		t.responseWithError(resp, err, http.StatusInternalServerError)
 		return resp, nil

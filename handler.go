@@ -111,8 +111,8 @@ func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.
 		}
 
 		logger.WithField("error", logrus.Fields{
-			"policyEvaluated": permission.AllowPermission,
-			"message":         err.Error(),
+			"policyName": permission.AllowPermission,
+			"message":    err.Error(),
 		}).Error("RBAC policy evaluation failed")
 		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed", NO_PERMISSIONS_ERROR_MESSAGE)
 		return err
