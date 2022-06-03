@@ -43,6 +43,7 @@ func GetRandomName(n uint) string {
 	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	b := make([]rune, n)
 	for i := range b {
+		//#nosec G404 -- Used only for test purposes, no need for cryptographically secure random number.
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
@@ -56,6 +57,7 @@ func GetAndDisposeTestClientsAndCollections(t *testing.T) (*mongo.Client, string
 	client := GetMongoClient(t)
 	db, rolesCollection, bindingsCollection := GetDBAndCollections(t, client)
 
+	//#nosec G104 -- Ignored errors
 	t.Cleanup(func() {
 		// This sleep has been added to avoid mongo race condition
 		time.Sleep(100 * time.Millisecond)
@@ -116,6 +118,7 @@ func AssertResponseFullErrorMessages(t *testing.T, resp *httptest.ResponseRecord
 	}
 }
 
+//#nosec G104 -- Ignored errors
 func PopulateDBForTesting(
 	t *testing.T,
 	ctx context.Context,
