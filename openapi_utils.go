@@ -231,6 +231,7 @@ func fetchOpenAPI(url string) (*OpenAPISpec, error) {
 }
 
 func loadOASFile(APIPermissionsFilePath string) (*OpenAPISpec, error) {
+	//#nosec G304 -- This is an expected behaviour
 	fileContentByte, err := ioutil.ReadFile(APIPermissionsFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrFileLoadFailed, err.Error())
