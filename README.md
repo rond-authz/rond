@@ -5,7 +5,7 @@
 [![Build Status][github-actions-svg]][github-actions]
 [![Coverage Status][coverall-svg]][coverall-io]
 [![Go Report Card][go-report-card-badge]][go-report-card]
-<!-- [![Go Sec][security-badge-svg]][security-badge] -->
+[![Go Sec][security-badge-svg]][security-badge]
 
 [![Mia-Platform][mia-platform-badge]][mia-platform]
 
