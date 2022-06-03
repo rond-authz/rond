@@ -38,7 +38,8 @@ type MongoClientMock struct {
 	FindManyResult      []interface{}
 }
 
-func (mongoClient *MongoClientMock) Disconnect() {
+func (mongoClient *MongoClientMock) Disconnect() error {
+	return nil
 }
 
 func (mongoClient *MongoClientMock) RetrieveRoles(ctx context.Context) ([]types.Role, error) {

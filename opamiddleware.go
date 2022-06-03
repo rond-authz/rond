@@ -100,7 +100,11 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 
 func loadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 	var regoModulePath string
+	//#nosec G104 -- Produces a false positive
 	filepath.Walk(rootDirectory, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if regoModulePath != "" {
 			return nil
 		}
