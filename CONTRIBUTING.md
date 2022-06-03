@@ -24,6 +24,51 @@ Before starting to implement a new feature, open the relative issue for starting
 relevant and expose alternative solutions or potential pitfall that you can encounter. Fill all the information required
 by the template.
 
+### Local development
+
+#### Testing
+
+To test the application run:
+
+```go
+go test -v
+```
+
+Please note that tests require a running mongo instance on port 27017, using the following command to start on should be enough:
+
+```sh
+docker run -d --rm --name mongo -p 27017:27017 mongo
+```
+
+
+#### Benchmark
+
+Performances are a critical factor for this application, before submitting a new PR make 
+sure you run benchmarks and verify that results are not affected by tour changes
+
+To run benchmark use:
+
+```sh
+go test ./... -bench=. -run=Bench  -benchmem
+```
+
+### Bench results
+
+03/02/2022
+
+```
+goos: darwin
+goarch: amd64
+pkg: rond
+cpu: Intel(R) Core(TM) i5-1038NG7 CPU @ 2.00GHz
+BenchmarkEvaluateRequest-8            82          12741684 ns/op         3417740 B/op      85394 allocs/op
+```
+
+```
+cpu: Intel(R) Core(TM) i7-10610U CPU @ 1.80GHz
+BenchmarkBuildOptimizedResourcePermissionsMap-8            19207             63155 ns/op        26222 B/op         575 allocs/op
+```
+
 ## Fork
 
 If you want to fork our project, you could make it and keep in sync with our template.

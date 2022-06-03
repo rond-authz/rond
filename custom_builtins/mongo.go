@@ -1,7 +1,7 @@
 package custom_builtins
 
 import (
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
+	"github.com/rond-authz/rond/internal/mongoclient"
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"

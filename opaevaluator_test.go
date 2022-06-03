@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
+	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/types"
 
 	"github.com/mia-platform/glogger/v2"
 	"github.com/open-policy-agent/opa/topdown/print"

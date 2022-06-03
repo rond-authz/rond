@@ -10,9 +10,9 @@ import (
 	"sort"
 	"testing"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mocks"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
+	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
 	"gotest.tools/v3/assert"

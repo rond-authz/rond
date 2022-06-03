@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
+	"github.com/rond-authz/rond/types"
 )
 
 const ContentTypeHeaderKey = "content-type"

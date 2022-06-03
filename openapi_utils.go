@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
+	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/types"
 
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bunrouter"

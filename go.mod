@@ -1,4 +1,4 @@
-module git.tools.mia-platform.eu/platform/core/rbac-service
+module github.com/rond-authz/rond
 
 go 1.18
 

@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/opatranslator"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
+	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/opatranslator"
+	"github.com/rond-authz/rond/types"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/custom_builtins"
+	"github.com/rond-authz/rond/custom_builtins"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"

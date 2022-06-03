@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/types"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
 	"gotest.tools/v3/assert"

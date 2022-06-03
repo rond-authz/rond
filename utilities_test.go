@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
+	"github.com/rond-authz/rond/types"
 
 	"gotest.tools/v3/assert"
 )

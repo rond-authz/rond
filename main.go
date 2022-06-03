@@ -13,9 +13,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/helpers"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
+	"github.com/rond-authz/rond/helpers"
+	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/mongoclient"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"

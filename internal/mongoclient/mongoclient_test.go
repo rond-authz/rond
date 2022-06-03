@@ -9,9 +9,9 @@ import (
 	"reflect"
 	"testing"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/testutils"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
+	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/testutils"
+	"github.com/rond-authz/rond/types"
 
 	"github.com/sirupsen/logrus/hooks/test"
 	"gotest.tools/v3/assert"

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
+	"github.com/rond-authz/rond/internal/config"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"

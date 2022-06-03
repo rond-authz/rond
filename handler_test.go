@@ -14,12 +14,12 @@ import (
 
 	"testing"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/custom_builtins"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mocks"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/testutils"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
+	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/internal/testutils"
+	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"

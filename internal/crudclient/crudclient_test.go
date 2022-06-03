@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"testing"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/helpers"
+	"github.com/rond-authz/rond/helpers"
 	"github.com/stretchr/testify/require"
 )
 

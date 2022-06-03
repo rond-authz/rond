@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
+	"github.com/rond-authz/rond/internal/config"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/v3/assert"
 )

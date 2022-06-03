@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"strings"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/helpers"
 	"github.com/davidebianchi/go-jsonclient"
+	"github.com/rond-authz/rond/helpers"
 )
 
 // CRUD struct.

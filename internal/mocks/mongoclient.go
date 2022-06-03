@@ -3,7 +3,7 @@ package mocks
 import (
 	"context"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
+	"github.com/rond-authz/rond/types"
 )
 
 type FindOneExpectation struct {

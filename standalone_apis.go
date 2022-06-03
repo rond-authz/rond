@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/crudclient"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/utils"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/types"
+	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/crudclient"
+	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/types"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"

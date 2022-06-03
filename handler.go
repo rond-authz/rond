@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"net/http/httputil"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/opatranslator"
+	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/internal/opatranslator"
 
 	"github.com/mia-platform/glogger/v2"
 	"github.com/sirupsen/logrus"

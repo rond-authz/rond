@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/mongoclient"
+	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/mongoclient"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus/hooks/test"

@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/config"
-	"git.tools.mia-platform.eu/platform/core/rbac-service/internal/utils"
+	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/utils"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
