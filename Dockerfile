@@ -27,10 +27,8 @@ FROM scratch
 
 ARG COMMIT_SHA=<not-specified>
 
-LABEL maintainer="team-james@mia-platform.eu" \
-  name="rbac-service" \
-  description="" \
-  eu.mia-platform.url="https://www.mia-platform.eu" \
+LABEL maintainer="rond@rond-authz.io" \
+  name="rond" \
   vcs.sha="$COMMIT_SHA"
 
 ENV SERVICE_VERSION="1.2.0"
