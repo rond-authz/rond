@@ -19,6 +19,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/mia-platform/glogger/v2"
+	"github.com/sirupsen/logrus"
 )
 
 // StatusResponse type.
@@ -50,16 +52,25 @@ var statusRoutes = []string{"/-/rbac-healthz", "/-/rbac-ready", "/-/rbac-check-u
 func StatusRoutes(r *mux.Router, serviceName, serviceVersion string) {
 	r.HandleFunc("/-/rbac-healthz", func(w http.ResponseWriter, req *http.Request) {
 		_, body := handleStatusRoutes(w, serviceName, serviceVersion)
-		w.Write(body)
+		if _, err := w.Write(body); err != nil {
+			logger := glogger.Get(req.Context())
+			logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
+		}
 	})
 
 	r.HandleFunc("/-/rbac-ready", func(w http.ResponseWriter, req *http.Request) {
 		_, body := handleStatusRoutes(w, serviceName, serviceVersion)
-		w.Write(body)
+		if _, err := w.Write(body); err != nil {
+			logger := glogger.Get(req.Context())
+			logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
+		}
 	})
 
 	r.HandleFunc("/-/rbac-check-up", func(w http.ResponseWriter, req *http.Request) {
 		_, body := handleStatusRoutes(w, serviceName, serviceVersion)
-		w.Write(body)
+		if _, err := w.Write(body); err != nil {
+			logger := glogger.Get(req.Context())
+			logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
+		}
 	})
 }

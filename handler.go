@@ -44,7 +44,9 @@ func ReverseProxyOrResponse(
 	if env.Standalone {
 		w.Header().Set(BASE_ROW_FILTER_HEADER_KEY, req.Header.Get(BASE_ROW_FILTER_HEADER_KEY))
 		w.WriteHeader(http.StatusOK)
-		w.Write(nil)
+		if _, err := w.Write(nil); err != nil {
+			logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
+		}
 		return
 	}
 	ReverseProxy(logger, env, w, req, permission, partialResultsEvaluators)
@@ -120,7 +122,10 @@ func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.
 		if errors.Is(err, opatranslator.ErrEmptyQuery) && hasApplicationJSONContentType(req.Header) {
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set(ContentTypeHeaderKey, JSONContentTypeHeader)
-			w.Write([]byte("[]"))
+			if _, err := w.Write([]byte("[]")); err != nil {
+				logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
+				return err
+			}
 			return err
 		}
 

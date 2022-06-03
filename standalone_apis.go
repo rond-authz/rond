@@ -141,12 +141,15 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed response body")
 		failResponseWithCode(
 			w,
+			logger,
 			http.StatusInternalServerError,
 			fmt.Sprintf("failed response body creation. removed bindings: %d, modified bindings: %d", deleteCrudResponse, patchCrudResponse),
 			GENERIC_BUSINESS_ERROR_MESSAGE,
 		)
 	}
-	w.Write(responseBytes)
+	if _, err := w.Write(responseBytes); err != nil {
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
+	}
 }
 
 type GrantRequestBody struct {
@@ -229,7 +232,9 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 			GENERIC_BUSINESS_ERROR_MESSAGE,
 		)
 	}
-	w.Write(responseBytes)
+	if _, err := w.Write(responseBytes); err != nil {
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
+	}
 }
 
 func buildQuery(resourceType string, resourceIDs []string, subjects []string, groups []string) ([]byte, error) {
