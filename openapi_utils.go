@@ -230,12 +230,20 @@ func fetchOpenAPI(url string) (*OpenAPISpec, error) {
 	return &oas, nil
 }
 
-func loadOASFile(APIPermissionsFilePath string) (*OpenAPISpec, error) {
-	fileContentByte, err := ioutil.ReadFile(APIPermissionsFilePath)
+func readFile(path string) ([]byte, error) {
+	//#nosec G304 -- This is an expected behaviour
+	fileContentByte, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrFileLoadFailed, err.Error())
 	}
+	return fileContentByte, nil
+}
 
+func loadOASFile(APIPermissionsFilePath string) (*OpenAPISpec, error) {
+	fileContentByte, err := readFile(APIPermissionsFilePath)
+	if err != nil {
+		return nil, err
+	}
 	var oas OpenAPISpec
 	if err := json.Unmarshal(fileContentByte, &oas); err != nil {
 		return nil, fmt.Errorf("%w: unmarshal error: %s", ErrFileLoadFailed, err.Error())

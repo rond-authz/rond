@@ -146,7 +146,9 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 			GENERIC_BUSINESS_ERROR_MESSAGE,
 		)
 	}
-	w.Write(responseBytes)
+	if _, err := w.Write(responseBytes); err != nil {
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
+	}
 }
 
 type GrantRequestBody struct {
@@ -229,7 +231,9 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 			GENERIC_BUSINESS_ERROR_MESSAGE,
 		)
 	}
-	w.Write(responseBytes)
+	if _, err := w.Write(responseBytes); err != nil {
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
+	}
 }
 
 func buildQuery(resourceType string, resourceIDs []string, subjects []string, groups []string) ([]byte, error) {

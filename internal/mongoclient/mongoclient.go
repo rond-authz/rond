@@ -77,10 +77,11 @@ func GetMongoClientFromContext(ctx context.Context) (types.IMongoClient, error) 
 	return collections, nil
 }
 
-func (mongoClient *MongoClient) Disconnect() {
+func (mongoClient *MongoClient) Disconnect() error {
 	if mongoClient != nil {
-		mongoClient.client.Disconnect(context.Background())
+		return mongoClient.client.Disconnect(context.Background())
 	}
+	return nil
 }
 
 func NewMongoClient(env config.EnvironmentVariables, logger *logrus.Logger) (*MongoClient, error) {

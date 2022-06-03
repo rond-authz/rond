@@ -45,6 +45,7 @@ func failResponseWithCode(w http.ResponseWriter, statusCode int, technicalError,
 	}
 
 	w.Header().Set(ContentTypeHeaderKey, JSONContentTypeHeader)
+	//#nosec G104 -- Intended to avoid disruptive code changes
 	w.Write(content)
 }
 

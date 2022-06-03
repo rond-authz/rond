@@ -64,7 +64,7 @@ type Role struct {
 // MongoClientContextKey is the context key that shall be used to save
 // mongo Collection reference in request contexts.
 type IMongoClient interface {
-	Disconnect()
+	Disconnect() error
 
 	RetrieveUserBindings(ctx context.Context, user *User) ([]Binding, error)
 	RetrieveRoles(ctx context.Context) ([]Role, error)

@@ -153,6 +153,7 @@ func setupRouter(
 
 	setupRoutes(evalRouter, oas, env)
 
+	//#nosec G104 -- Produces a false positive
 	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		path, _ := route.GetPathTemplate()
 		log.Tracef("Registered path: %s", path)

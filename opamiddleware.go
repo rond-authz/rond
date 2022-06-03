@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -101,7 +100,11 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 
 func loadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 	var regoModulePath string
+	//#nosec G104 -- Produces a false positive
 	filepath.Walk(rootDirectory, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 		if regoModulePath != "" {
 			return nil
 		}
@@ -115,9 +118,9 @@ func loadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 	if regoModulePath == "" {
 		return nil, fmt.Errorf("no rego module found in directory")
 	}
-	fileContent, err := ioutil.ReadFile(regoModulePath)
+	fileContent, err := readFile(regoModulePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed rego file read")
+		return nil, fmt.Errorf("failed rego file read: %s", err.Error())
 	}
 
 	return &OPAModuleConfig{
