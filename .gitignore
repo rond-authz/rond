@@ -3,4 +3,5 @@
 .vscode
 *.env
 *.log*
-rbac-service
+rond
+coverage.out

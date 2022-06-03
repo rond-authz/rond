@@ -23,8 +23,6 @@ jobs:
         run: go get -v -t -d ./...
       - name: Run tests
         run: make test
-      - name: Vet and Build
-        run: make
       - name: Send the coverage output
         uses: shogo82148/actions-goveralls@v1
         with:
