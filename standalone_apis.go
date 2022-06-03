@@ -141,7 +141,6 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed response body")
 		failResponseWithCode(
 			w,
-			logger,
 			http.StatusInternalServerError,
 			fmt.Sprintf("failed response body creation. removed bindings: %d, modified bindings: %d", deleteCrudResponse, patchCrudResponse),
 			GENERIC_BUSINESS_ERROR_MESSAGE,
