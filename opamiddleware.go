@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -115,9 +114,9 @@ func loadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 	if regoModulePath == "" {
 		return nil, fmt.Errorf("no rego module found in directory")
 	}
-	fileContent, err := ioutil.ReadFile(regoModulePath)
+	fileContent, err := readFile(regoModulePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed rego file read")
+		return nil, fmt.Errorf("failed rego file read: %s", err.Error())
 	}
 
 	return &OPAModuleConfig{
