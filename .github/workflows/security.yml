@@ -12,4 +12,4 @@ jobs:
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
         with:
-          args: ./... -exclude-dir=internal/testutils
+          args: -exclude-dir=internal/testutils ./...
