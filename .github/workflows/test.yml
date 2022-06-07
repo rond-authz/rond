@@ -43,7 +43,7 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: |
-            ghcr.io/rondauthz/rond
+            ghcr.io/rond-authz/rond
             docker.io/rondauthz/rond
           tags: |
             type=ref,event=branch
