@@ -27,3 +27,67 @@ jobs:
         uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: coverage.out
+
+  build:
+    name: Build docker image
+    needs: tests
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
+      - name: Configure docker metadata
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ghcr.io/rondauthz/rond
+            docker.io/rondauthz/rond
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+          labels: |
+            org.opencontainers.image.documentation=https://rond-authz.io
+            org.opencontainers.image.vendor=rond authz
+            
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Docker Login to ghcr.io
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.BOT_DOCKER_USERNAME }}
+          password: ${{ secrets.BOT_DOCKER_TOKEN }}
+          
+      - name: Prepare build cache
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+            
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          build-args: |
+            BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+
