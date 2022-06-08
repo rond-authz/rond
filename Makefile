@@ -10,11 +10,6 @@ endif
 
 all: test
 
-.PHONY: local-start
-local-start: clean mongo-start
-	set -a && source local.env && go run authentication-service
-	$(MAKE) clean
-
 .PHONY: mongo-start
 mongo-start:
 	docker run --rm --name mongo -p 27017:27017 -d mongo
