@@ -1,6 +1,6 @@
 <div align="center">
 
-# rond
+# rönd
 
 [![Build Status][github-actions-svg]][github-actions]
 [![Coverage Status][coverall-svg]][coverall-io]
