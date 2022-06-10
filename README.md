@@ -14,10 +14,10 @@
 
 # Rönd
 
+Rönd is a ligthweight container that allows you to distribute security policy enforcing throughout your application.
 </div>
 
-Rönd is a ligthweight container that allows you to distribute security policy enforcing throughout your application.
-
+Rönd is based on [OpenPolicy Agent](https://www.openpolicyagent.org) and allows you to define
 
 
 [github-actions]: https://github.com/rond-authz/rond/actions/workflows/test.yml
