@@ -61,13 +61,8 @@ func (c *OPAClient) ProcessQuery(pq *rego.PartialQueries) (bson.M, error) {
 				return nil, nil
 			}
 			stringifiedOperator := expr.Operator().String()
-			if isEqualityOperator(stringifiedOperator) {
-				HandleEquals(pipeline, processedTerm[1], value)
-			} else if isRangeOperator(expr.Operator().String()) {
-				HandleRangeOperation(stringifiedOperator, pipeline, processedTerm[1], value)
-			} else if expr.Operator().String() == "neq" {
-				HandleNotEquals(pipeline, processedTerm[1], value)
-			} else {
+			operationHandled := HandleOperations(stringifiedOperator, pipeline, processedTerm[1], value)
+			if !operationHandled {
 				return nil, fmt.Errorf("invalid expression: operator not supported: %v", expr.Operator().String())
 			}
 		}
@@ -113,12 +108,4 @@ func processTerm(query string) []string {
 
 func removeOpenBrace(input string) string {
 	return strings.Split(input, "[")[0]
-}
-
-func isEqualityOperator(op string) bool {
-	return op == "eq" || op == "equal"
-}
-
-func isRangeOperator(op string) bool {
-	return op == "lt" || op == "gt" || op == "lte" || op == "gte"
 }
