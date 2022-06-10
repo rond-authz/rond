@@ -136,7 +136,7 @@ func setupRouter(
 ) (*mux.Router, error) {
 	router := mux.NewRouter().UseEncodedPath()
 	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
-	StatusRoutes(router, "rbac-service", env.ServiceVersion)
+	StatusRoutes(router, "rönd", env.ServiceVersion)
 
 	router.Use(config.RequestMiddlewareEnvironments(env))
 
