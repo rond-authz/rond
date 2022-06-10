@@ -57,3 +57,16 @@ func HandleGreaterThanEquals(pipeline *[]bson.M, fieldName string, fieldValue in
 	filter := bson.M{fieldName: bson.M{"$gte": fieldValue}}
 	*pipeline = append(*pipeline, filter)
 }
+
+var rangeOperatorStrategies = map[string]func(pipeline *[]bson.M, fieldName string, fieldValue interface{}){
+	"lt":  HandleLessThan,
+	"gt":  HandleGreaterThan,
+	"lte": HandleLessThanEquals,
+	"gte": HandleGreaterThanEquals,
+}
+
+func HandleRangeOperation(operation string, pipeline *[]bson.M, fieldName string, fieldValue interface{}) {
+	if strategy, ok := rangeOperatorStrategies[operation]; ok {
+		strategy(pipeline, fieldName, fieldValue)
+	}
+}

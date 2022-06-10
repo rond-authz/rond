@@ -60,18 +60,11 @@ func (c *OPAClient) ProcessQuery(pq *rego.PartialQueries) (bson.M, error) {
 			if processedTerm == nil {
 				return nil, nil
 			}
-			if isEqualityOperator(expr.Operator().String()) {
+			stringifiedOperator := expr.Operator().String()
+			if isEqualityOperator(stringifiedOperator) {
 				HandleEquals(pipeline, processedTerm[1], value)
 			} else if isRangeOperator(expr.Operator().String()) {
-				if expr.Operator().String() == "lt" {
-					HandleLessThan(pipeline, processedTerm[1], value)
-				} else if expr.Operator().String() == "gt" {
-					HandleGreaterThan(pipeline, processedTerm[1], value)
-				} else if expr.Operator().String() == "lte" {
-					HandleLessThanEquals(pipeline, processedTerm[1], value)
-				} else if expr.Operator().String() == "gte" {
-					HandleGreaterThanEquals(pipeline, processedTerm[1], value)
-				}
+				HandleRangeOperation(stringifiedOperator, pipeline, processedTerm[1], value)
 			} else if expr.Operator().String() == "neq" {
 				HandleNotEquals(pipeline, processedTerm[1], value)
 			} else {
