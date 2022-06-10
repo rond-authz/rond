@@ -60,21 +60,9 @@ func (c *OPAClient) ProcessQuery(pq *rego.PartialQueries) (bson.M, error) {
 			if processedTerm == nil {
 				return nil, nil
 			}
-			if isEqualityOperator(expr.Operator().String()) {
-				HandleEquals(pipeline, processedTerm[1], value)
-			} else if isRangeOperator(expr.Operator().String()) {
-				if expr.Operator().String() == "lt" {
-					HandleLessThan(pipeline, processedTerm[1], value)
-				} else if expr.Operator().String() == "gt" {
-					HandleGreaterThan(pipeline, processedTerm[1], value)
-				} else if expr.Operator().String() == "lte" {
-					HandleLessThanEquals(pipeline, processedTerm[1], value)
-				} else if expr.Operator().String() == "gte" {
-					HandleGreaterThanEquals(pipeline, processedTerm[1], value)
-				}
-			} else if expr.Operator().String() == "neq" {
-				HandleNotEquals(pipeline, processedTerm[1], value)
-			} else {
+			stringifiedOperator := expr.Operator().String()
+			operationHandled := HandleOperations(stringifiedOperator, pipeline, processedTerm[1], value)
+			if !operationHandled {
 				return nil, fmt.Errorf("invalid expression: operator not supported: %v", expr.Operator().String())
 			}
 		}
@@ -120,12 +108,4 @@ func processTerm(query string) []string {
 
 func removeOpenBrace(input string) string {
 	return strings.Split(input, "[")[0]
-}
-
-func isEqualityOperator(op string) bool {
-	return op == "eq" || op == "equal"
-}
-
-func isRangeOperator(op string) bool {
-	return op == "lt" || op == "gt" || op == "lte" || op == "gte"
 }

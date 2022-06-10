@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Changed
+
+- Refactor opa_translator strategies
+
 ## 1.2.0 - 09/05/2022
 
 ### Added
