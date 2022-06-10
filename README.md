@@ -16,7 +16,7 @@
 
 </div>
 
-Rönd is a ligthweight container that allows you to distribute security policy enforcing throughout your application.
+Rönd is a lightweight container that allows you to distribute security policy enforcing throughout your application.
 
 
 

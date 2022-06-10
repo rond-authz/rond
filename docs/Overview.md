@@ -13,12 +13,12 @@ To define which APIs are exposed by your service Rönd accepts an OpenAPI 3 spec
 
 For further details on how to configure it, check out the configuration page.
 
->  Rönd can also be used in standalone mode, in this scenario services must explicity contact it to perform authorization rule evaluation. More on this in the configuration page.
+>  Rönd can also be used in standalone mode, in this scenario services must explicit contact it to perform authorization rule evaluation. More on this in the configuration page.
 
 
 ## Rönd and RBAC
 
-In addition to simple request-based authorization rules, Rönd provides the means for implementing a full fledged RBAC solution; it uses MongoDB to store Roles and Bindings and allows you to write policies on user roles permissions and bindings.
+In addition to simple request-based authorization rules, Rönd provides the means for implementing a full-fledged RBAC solution; it uses MongoDB to store Roles and Bindings and allows you to write policies on user roles permissions and bindings.
 
 ## Rönd capabilities
 

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## 1.2.0 - 09/05/2022
 
-### Added
+### Added
 
 - policy name in evaluation log result
 
@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
-- [JCE-175](https://makeitapp.atlassian.net/JCE-175): fixed unwanted behavior to handle path paramenter with slash escaped character `%2F`
+- [JCE-175](https://makeitapp.atlassian.net/JCE-175): fixed unwanted behavior to handle path parameter with slash escaped character `%2F`
 
 ## 1.1.0 - 03/05/2022
 
@@ -57,7 +57,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
-- [JMRBA-100](https://makeitapp.atlassian.net/JMRBA-100): set reverse proxy flush interval to -1 to fix issues with streaming APIs passing through the container
+- [JMRBA-100](https://makeitapp.atlassian.net/JMRBA-100): set reverse proxy flush interval to -1 to fix issues with streaming APIs passing through the container
 - Fixed fallback path registration
 
 ## 0.8.0 - 08/03/2022
@@ -116,11 +116,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - [JAF-182](https://makeitapp.atlassian.net/browse/JAF-182): Implemented column filtering on response body base on policy evaluation
 - refactor: User struct now contains userBindings and Roles
-- If no userId header is provided now mongo is not called in order to retrive user bindings and roles.
+- If no userId header is provided now mongo is not called in order to retrieve user bindings and roles.
 
 ### Added
 
-- [JAF-205](https://makeitapp.atlassian.net/browse/JAF-205): Added `pathParameter` to rego input request.
+- [JAF-205](https://makeitapp.atlassian.net/browse/JAF-205): Added `pathParameter` to Rego input request.
 - [JAF-205](https://makeitapp.atlassian.net/browse/JAF-205): routes sorting during registration to prevent pathParams retrieval error
 - [JAF-233](https://makeitapp.atlassian.net/browse/JAF-233): better business errors for policies evaluation
 - [JAF-215](https://makeitapp.atlassian.net/browse/JAF-215): support body serialization in Rego input for specific content type and methods
@@ -142,7 +142,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### BREAKING
 
-- [JAF-152](https://makeitapp.atlassian.net/browse/JAF-152): bindings and roles are now given as input to the OPA evaluator. The old check on user permission is no more performed and the entire ownership is given to rego
+- [JAF-152](https://makeitapp.atlassian.net/browse/JAF-152): bindings and roles are now given as input to the OPA evaluator. The old check on user permission is no more performed and the entire ownership is given to Rego
 
 ### Updated
 
@@ -153,16 +153,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 
 - [JAF-89](https://makeitapp.atlassian.net/browse/JAF-89): Convert API path with variables according the gorilla mux requirements
-- [JAF-103](https://makeitapp.atlassian.net/browse/JAF-103): Support dot character as divider in the x-permission string, replaced as underscore for rego policy query
+- [JAF-103](https://makeitapp.atlassian.net/browse/JAF-103): Support dot character as divider in the x-permission string, replaced as underscore for Rego policy query
 - [JAF-116](https://makeitapp.atlassian.net/browse/JAF-116): ignoring healthiness routes when defining proxied routes
 
 ### Added
 
 - [JAF-100](https://makeitapp.atlassian.net/browse/JAF-100): Added the check on user permission before evaluating the query
-- [JAF-98](https://makeitapp.atlassian.net/browse/JAF-98): Added the user infos in the input rego
+- [JAF-98](https://makeitapp.atlassian.net/browse/JAF-98): Added the user infos in the input Rego
 - [JAF-99](https://makeitapp.atlassian.net/browse/JAF-99): mongodb integrated to load roles and bindings collections
-- [JAF-45](https://makeitapp.atlassian.net/browse/JAF-45): Created get_header custom built-in rego function
-- [JAF-46](https://makeitapp.atlassian.net/browse/JAF-46): Added support for the target service documentation API, with a evaluation skip if is set targetServiceOASPath env
+- [JAF-45](https://makeitapp.atlassian.net/browse/JAF-45): Created get_header custom built-in Rego function
+- [JAF-46](https://makeitapp.atlassian.net/browse/JAF-46): Added support for the target service documentation API, with an evaluation skip if is set targetServiceOASPath env
 - [JAF-39](https://makeitapp.atlassian.net/browse/JAF-39): Support API permission specification from file
 - [JAF-27](https://makeitapp.atlassian.net/browse/JAF-27): OPA integration with single module loading and handler validation
 - [JAF-23](https://makeitapp.atlassian.net/browse/JAF-23): rbac service initial configuration from openApi specifications
