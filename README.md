@@ -1,7 +1,10 @@
+
+
 <div align="center">
 
-# Rönd
+  <img alt="Rönd Logo" src="https://user-images.githubusercontent.com/7142570/173044709-c788b29a-7eb4-442d-8392-6404d6251c4c.png" width="300" />
 
+  
 [![Build Status][github-actions-svg]][github-actions]
 [![Coverage Status][coverall-svg]][coverall-io]
 [![Go Report Card][go-report-card-badge]][go-report-card]
@@ -9,8 +12,11 @@
 
 [![Mia-Platform][mia-platform-badge]][mia-platform]
 
+# Rönd
+
 </div>
 
+Rönd is a ligthweight container that allows you to distribute security policy enforcing throughout your application.
 
 
 
