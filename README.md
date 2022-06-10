@@ -28,5 +28,5 @@ Rönd is a ligthweight container that allows you to distribute security policy e
 [security-badge]: https://github.com/rond-authz/rond/actions/workflows/security.yml
 [go-report-card-badge]: https://goreportcard.com/badge/github.com/rond-authz/rond
 [go-report-card]: https://goreportcard.com/report/github.com/rond-authz/rond
-[mia-platform-badge]: https://img.shields.io/badge/Supported%20by-Mia--Platform-green?style=for-the-badge&link=https://mia-platform.eu/&color=DE0D92&labelColor=214147
+[mia-platform-badge]: https://img.shields.io/badge/Supported%20by-Mia--Platform-green?style=for-the-badge&link=https://mia-platform.eu/&color=3d86f4&labelColor=214147
 [mia-platform]: https://mia-platform.eu/?utm_source=referral&utm_medium=github&utm_campaign=rond
