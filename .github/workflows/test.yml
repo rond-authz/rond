@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         go_version: [1.18]
-        os: [ubuntu-22.04, ubuntu-20.04, windows-latest, macos-12, macos-11]
+        os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v2
       - name: Use golang ${{ matrix.go_version }}
