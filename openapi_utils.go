@@ -134,6 +134,18 @@ func (rMap RoutesMap) contains(path string, method string) bool {
 	return hasRoute
 }
 
+func createOasHandler(scopedMethodContent VerbConfig) func(http.ResponseWriter, *http.Request) {
+	permission := scopedMethodContent.Permission
+	return func(w http.ResponseWriter, r *http.Request) {
+		header := w.Header()
+		header.Set("allow", permission.AllowPermission)
+		header.Set("resourceFilter.rowFilter.enabled", strconv.FormatBool(permission.ResourceFilter.RowFilter.Enabled))
+		header.Set("resourceFilter.rowFilter.headerKey", permission.ResourceFilter.RowFilter.HeaderKey)
+		header.Set("responseFilter.policy", permission.ResponseFilter.Policy)
+		header.Set("options.enableResourcePermissionsMapOptimization", strconv.FormatBool(permission.Options.EnableResourcePermissionsMapOptimization))
+	}
+}
+
 func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 	OASRouter := bunrouter.New().Compat()
 	routeMap := oas.createRoutesMap()
@@ -142,15 +154,8 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 		OASPathCleaned := convertPathVariablesToColons(cleanWildcard(OASPath))
 		for method, methodContent := range OASContent {
 			scopedMethod := strings.ToUpper(method)
-			scopedMethodContent := methodContent
 
-			handler := func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("allow", scopedMethodContent.Permission.AllowPermission)
-				w.Header().Set("resourceFilter.rowFilter.enabled", strconv.FormatBool(scopedMethodContent.Permission.ResourceFilter.RowFilter.Enabled))
-				w.Header().Set("resourceFilter.rowFilter.headerKey", scopedMethodContent.Permission.ResourceFilter.RowFilter.HeaderKey)
-				w.Header().Set("responseFilter.policy", scopedMethodContent.Permission.ResponseFilter.Policy)
-				w.Header().Set("options.enableResourcePermissionsMapOptimization", strconv.FormatBool(scopedMethodContent.Permission.Options.EnableResourcePermissionsMapOptimization))
-			}
+			handler := createOasHandler(methodContent)
 
 			if scopedMethod != ALL_METHODS {
 				OASRouter.Handle(scopedMethod, OASPathCleaned, handler)
