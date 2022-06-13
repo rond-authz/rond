@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Refactored handle status routes
 - Refactored openapi_utils
+- Refactored opaevaluator
+
 
 ## 1.2.1 - 13-06-2022
 
