@@ -146,6 +146,8 @@ func createOasHandler(scopedMethodContent VerbConfig) func(http.ResponseWriter, 
 	}
 }
 
+var oasSupportedHttpMethods []string = []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
+
 func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 	OASRouter := bunrouter.New().Compat()
 	routeMap := oas.createRoutesMap()
@@ -162,20 +164,10 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 				continue
 			}
 
-			if !routeMap.contains(OASPath, http.MethodGet) {
-				OASRouter.GET(OASPathCleaned, handler)
-			}
-			if !routeMap.contains(OASPath, http.MethodPost) {
-				OASRouter.POST(OASPathCleaned, handler)
-			}
-			if !routeMap.contains(OASPath, http.MethodPut) {
-				OASRouter.PUT(OASPathCleaned, handler)
-			}
-			if !routeMap.contains(OASPath, http.MethodPatch) {
-				OASRouter.PATCH(OASPathCleaned, handler)
-			}
-			if !routeMap.contains(OASPath, http.MethodDelete) {
-				OASRouter.DELETE(OASPathCleaned, handler)
+			for _, method := range oasSupportedHttpMethods {
+				if !routeMap.contains(OASPath, method) {
+					OASRouter.Handle(method, OASPathCleaned, handler)
+				}
 			}
 		}
 	}
