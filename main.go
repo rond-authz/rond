@@ -43,42 +43,33 @@ func entrypoint(shutdown chan os.Signal) {
 
 	// Init logger instance.
 	log, err := glogger.InitHelper(glogger.InitOptions{Level: env.LogLevel})
+	failLogger := failLogger{log, env}
 	if err != nil {
 		panic(err.Error())
 	}
 
 	if _, err := os.Stat(env.OPAModulesDirectory); err != nil {
-		log.WithFields(logrus.Fields{
-			"error":        logrus.Fields{"message": err.Error()},
-			"opaDirectory": env.OPAModulesDirectory,
-		}).Errorf("load OPA modules failed")
+		failLogger.opaModulesLoad(err)
 		return
 	}
 
 	opaModuleConfig, err := loadRegoModule(env.OPAModulesDirectory)
 	if err != nil {
-		log.WithFields(logrus.Fields{
-			"error":        logrus.Fields{"message": err.Error()},
-			"opaDirectory": env.OPAModulesDirectory,
-		}).Errorf("failed rego file read")
+		failLogger.regoFileRead(err)
 		return
 	}
 	log.WithField("opaModuleFileName", opaModuleConfig.Name).Trace("rego module successfully loaded")
 
 	oas, err := loadOAS(log, env)
 	if err != nil {
-		log.WithFields(logrus.Fields{
-			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("failed to load oas")
+		failLogger.loadOas(err)
 		return
 	}
 	log.WithField("oasAPIPermissionsFilePath", env.APIPermissionsFilePath).Trace("OAS successfully loaded")
 
 	mongoClient, err := mongoclient.NewMongoClient(env, log)
 	if err != nil {
-		log.WithFields(logrus.Fields{
-			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("error during init of mongo collection")
+		failLogger.mongoInit(err)
 		return
 	}
 	log.Trace("MongoDB client set up completed")
@@ -87,9 +78,7 @@ func entrypoint(shutdown chan os.Signal) {
 
 	policiesEvaluators, err := setupEvaluators(ctx, mongoClient, oas, opaModuleConfig, env)
 	if err != nil {
-		log.WithFields(logrus.Fields{
-			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("failed to create evaluators")
+		failLogger.createEvaluators(err)
 		return
 	}
 	log.WithField("policiesLength", len(policiesEvaluators)).Trace("policies evaluators partial results computed")
@@ -100,9 +89,7 @@ func entrypoint(shutdown chan os.Signal) {
 		defer mongoClient.Disconnect()
 	}
 	if err != nil {
-		log.WithFields(logrus.Fields{
-			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("failed router setup")
+		failLogger.routerSetup(err)
 		return
 	}
 	log.Trace("router setup completed")

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Refactored openapi_utils
 - Refactored opaevaluator
 - Refactored opa_transport
+- Refactored main
 
 ## 1.2.1 - 13-06-2022
 
