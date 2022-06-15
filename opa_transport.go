@@ -40,14 +40,17 @@ type OPATransport struct {
 	env                      config.EnvironmentVariables
 }
 
+func is2XX(statusCode int) bool {
+	return statusCode >= http.StatusOK && statusCode < http.StatusMultipleChoices
+}
+
 func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	resp, err = t.RoundTripper.RoundTrip(req)
 	if err != nil {
 		return nil, err
 	}
 
-	if resp.StatusCode < http.StatusOK || // < 200
-		resp.StatusCode >= http.StatusMultipleChoices { // >= 300
+	if !is2XX(resp.StatusCode) {
 		return resp, nil
 	}
 

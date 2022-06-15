@@ -61,6 +61,20 @@ type PartialEvaluator struct {
 	PartialEvaluator *rego.PartialResult
 }
 
+func createPartialEvaluator(policy string, ctx context.Context, mongoClient types.IMongoClient, oas *OpenAPISpec, opaModuleConfig *OPAModuleConfig, env config.EnvironmentVariables) (*PartialEvaluator, error) {
+	glogger.Get(ctx).Infof("precomputing rego query for allow policy: %s", policy)
+
+	policyEvaluatorTime := time.Now()
+	partialResultEvaluator, err := NewPartialResultEvaluator(ctx, policy, opaModuleConfig, mongoClient, env)
+	if err == nil {
+		glogger.Get(ctx).Infof("computed rego query for policy: %s in %s", policy, time.Since(policyEvaluatorTime))
+		return &PartialEvaluator{
+			PartialEvaluator: partialResultEvaluator,
+		}, nil
+	}
+	return nil, err
+}
+
 func setupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *OpenAPISpec, opaModuleConfig *OPAModuleConfig, env config.EnvironmentVariables) (PartialResultsEvaluators, error) {
 	policyEvaluators := PartialResultsEvaluators{}
 	for path, OASContent := range oas.Paths {
@@ -76,34 +90,24 @@ func setupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *O
 			}
 
 			if _, ok := policyEvaluators[allowPolicy]; !ok {
-				glogger.Get(ctx).Infof("precomputing rego query for allow policy: %s", allowPolicy)
+				evaluator, err := createPartialEvaluator(allowPolicy, ctx, mongoClient, oas, opaModuleConfig, env)
 
-				allowPolicyEvaluatorTime := time.Now()
-				allowPartialResultEvaluator, err := NewPartialResultEvaluator(ctx, allowPolicy, opaModuleConfig, mongoClient, env)
 				if err != nil {
 					return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
 				}
-				glogger.Get(ctx).Infof("computed rego query for allow policy: %s in %s", allowPolicy, time.Since(allowPolicyEvaluatorTime))
 
-				policyEvaluators[allowPolicy] = PartialEvaluator{
-					PartialEvaluator: allowPartialResultEvaluator,
-				}
+				policyEvaluators[allowPolicy] = *evaluator
 			}
 
 			if responsePolicy != "" {
 				if _, ok := policyEvaluators[responsePolicy]; !ok {
-					glogger.Get(ctx).Infof("precomputing rego query for response filtering policy: %s", responsePolicy)
-					responsePolicyEvaluatorTime := time.Now()
+					evaluator, err := createPartialEvaluator(responsePolicy, ctx, mongoClient, oas, opaModuleConfig, env)
 
-					responsePartialResultEvaluator, err := NewPartialResultEvaluator(ctx, responsePolicy, opaModuleConfig, mongoClient, env)
 					if err != nil {
 						return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
 					}
-					glogger.Get(ctx).Tracef("computed rego query for response filtering policy: %s in %s", responsePolicy, time.Since(responsePolicyEvaluatorTime))
 
-					policyEvaluators[responsePolicy] = PartialEvaluator{
-						PartialEvaluator: responsePartialResultEvaluator,
-					}
+					policyEvaluators[responsePolicy] = *evaluator
 				}
 			}
 		}

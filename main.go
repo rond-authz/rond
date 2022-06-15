@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
@@ -108,8 +109,9 @@ func entrypoint(shutdown chan os.Signal) {
 	log.Trace("router setup completed")
 
 	srv := &http.Server{
-		Addr:    fmt.Sprintf("0.0.0.0:%s", env.HTTPPort),
-		Handler: router,
+		Addr:              fmt.Sprintf("0.0.0.0:%s", env.HTTPPort),
+		Handler:           router,
+		ReadHeaderTimeout: time.Second,
 	}
 
 	go func() {

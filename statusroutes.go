@@ -48,29 +48,22 @@ func handleStatusRoutes(w http.ResponseWriter, serviceName, serviceVersion strin
 
 var statusRoutes = []string{"/-/rbac-healthz", "/-/rbac-ready", "/-/rbac-check-up"}
 
+func handleStatusEndpoint(serviceName, serviceVersion string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		_, body := handleStatusRoutes(w, serviceName, serviceVersion)
+		if _, err := w.Write(body); err != nil {
+			logger := glogger.Get(req.Context())
+			logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
+		}
+	}
+}
+
 // StatusRoutes add status routes to router.
 func StatusRoutes(r *mux.Router, serviceName, serviceVersion string) {
-	r.HandleFunc("/-/rbac-healthz", func(w http.ResponseWriter, req *http.Request) {
-		_, body := handleStatusRoutes(w, serviceName, serviceVersion)
-		if _, err := w.Write(body); err != nil {
-			logger := glogger.Get(req.Context())
-			logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
-		}
-	})
+	statusEndpointHandler := handleStatusEndpoint(serviceName, serviceVersion)
+	r.HandleFunc("/-/rbac-healthz", statusEndpointHandler)
 
-	r.HandleFunc("/-/rbac-ready", func(w http.ResponseWriter, req *http.Request) {
-		_, body := handleStatusRoutes(w, serviceName, serviceVersion)
-		if _, err := w.Write(body); err != nil {
-			logger := glogger.Get(req.Context())
-			logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
-		}
-	})
+	r.HandleFunc("/-/rbac-ready", statusEndpointHandler)
 
-	r.HandleFunc("/-/rbac-check-up", func(w http.ResponseWriter, req *http.Request) {
-		_, body := handleStatusRoutes(w, serviceName, serviceVersion)
-		if _, err := w.Write(body); err != nil {
-			logger := glogger.Get(req.Context())
-			logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
-		}
-	})
+	r.HandleFunc("/-/rbac-check-up", statusEndpointHandler)
 }
