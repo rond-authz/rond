@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Refactored opaevaluator
 - Refactored opa_transport
 - Refactored main
+- Set `ReadHeaderTimeout` to 1s to mitigate potential Slowloris attacks
 
 ## 1.2.1 - 13-06-2022
 
