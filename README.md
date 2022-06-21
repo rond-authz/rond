@@ -15,7 +15,7 @@
 
 # Rönd
 
-Rönd is a ligthweight container that distributes security policy enforcing throughout your application.
+Rönd is a lightweight container that distributes security policy enforcing throughout your application.
 </div>
 
 Rönd is based on [OpenPolicy Agent](https://www.openpolicyagent.org) and allows you to define security policies to be executed during API invocations. Rönd runs in your Kubernetes cluster as a sidecar container of your Pods.
