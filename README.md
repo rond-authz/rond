@@ -21,6 +21,10 @@ Rönd is a lightweight container that distributes security policy enforcing thro
 Rönd is based on [OpenPolicy Agent](https://www.openpolicyagent.org) and allows you to define security policies to be executed during API invocations. Rönd runs in your Kubernetes cluster as a sidecar container of your Pods.
 Rönd intercepts the API traffic, applies your policies and, based on the policy result, forwards the request to your application service or rejects the API invocation.
 
+## Why Rönd?
+
+Find out more [here][why-rond].
+
 ## Features
 
 Rönd supports three policy types:
@@ -44,3 +48,4 @@ Rönd natively allows you to build an RBAC solution based on Roles and Bindings 
 [go-report-card]: https://goreportcard.com/report/github.com/rond-authz/rond
 [mia-platform-badge]: https://img.shields.io/badge/Supported%20by-Mia--Platform-green?style=for-the-badge&link=https://mia-platform.eu/&color=3d86f4&labelColor=214147
 [mia-platform]: https://mia-platform.eu/?utm_source=referral&utm_medium=github&utm_campaign=rond
+[why-rond]: https://github.com/rond-authz#why-r%C3%B6nd
