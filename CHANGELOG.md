@@ -32,13 +32,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
-- [JCE-175](https://makeitapp.atlassian.net/JCE-175): fixed unwanted behavior to handle path parameter with slash escaped character `%2F`
+- fixed unwanted behavior to handle path parameter with slash escaped character `%2F`
 
 ## 1.1.0 - 03/05/2022
 
 ### Added
 
-- [RJMR-209](https://makeitapp.atlassian.net/RJMR-209): if the option `permissionsOnResourceMapEnabled` is set at true in the XPermission inside the input provided to the opa evaluator will be present a new object `PermissionsOnResourceMap`containing set of key/value pairs in which the key is composed as `permissionId:resourceType:resourceId` and the value is always set to `true`
+- if the option `permissionsOnResourceMapEnabled` is set at true in the XPermission inside the input provided to the opa evaluator will be present a new object `PermissionsOnResourceMap`containing set of key/value pairs in which the key is composed as `permissionId:resourceType:resourceId` and the value is always set to `true`
 
 ## 1.0.1 - 22/04/2022
 
@@ -56,7 +56,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
-- [MCRDMPE22-113](https://makeitapp.atlassian.net/MCRDMPE22-113): Added method delete to insert body request in rego input
+- Added method delete to insert body request in rego input
 
 ## 0.8.2 - 21/03/2022
 
@@ -72,31 +72,31 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
-- [JMRBA-100](https://makeitapp.atlassian.net/JMRBA-100): set reverse proxy flush interval to -1 to fix issues with streaming APIs passing through the container
+- set reverse proxy flush interval to -1 to fix issues with streaming APIs passing through the container
 - Fixed fallback path registration
 
 ## 0.8.0 - 08/03/2022
 
 ### Added
 
- - [JAP-1](https://makeitapp.atlassian.net/browse/JAP-2): Added `/grant/bindings/resource/{resourceType}` api to handle the grant of a user role on a single resource
- - [JAP-2](https://makeitapp.atlassian.net/browse/JAP-2): Added `/revoke/bindings/resource/{resourceType}` api to handle the revoke of a user role on a set resources
+ - Added `/grant/bindings/resource/{resourceType}` api to handle the grant of a user role on a single resource
+ - Added `/revoke/bindings/resource/{resourceType}` api to handle the revoke of a user role on a set resources
 
 ## 0.7.0 - 02/03/2022
 
 ### Fixed
 
- - [JAF-310](https://makeitapp.atlassian.net/browse/JAF-310): prevent response policy evaluation if API invocation has a status code outside the [200,299] range
+ - prevent response policy evaluation if API invocation has a status code outside the [200,299] range
 
 ### Added
 
-- [RJMR-177](https://makeitapp.atlassian.net/browse/RJMR-177): RBAC now supports standalone mode. The new mode can be set up with the use of `STANDALONE` and `PATH_PREFIX_STANDALONE` environment variables
+- RBAC now supports standalone mode. The new mode can be set up with the use of `STANDALONE` and `PATH_PREFIX_STANDALONE` environment variables
 
 ## 0.6.0 - 17/02/2022
 
 ### Changed
 
-- [JAF-278](https://makeitapp.atlassian.net/browse/JAF-278): optimized query evaluation with precomputed evaluators
+- optimized query evaluation with precomputed evaluators
 
 ### Fixed
 
@@ -113,13 +113,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
-- [JAF-231](https://makeitapp.atlassian.net/browse/JAF-231): added support for `find_one` builtin in Rego policies
+- added support for `find_one` builtin in Rego policies
 
 ## 0.3.1 - 31/01/2022
 
 ### Changed
 
-- [JAF-235](https://makeitapp.atlassian.net/browse/JAF-235): when the filter row query is empty and content-type is application json, the rbac handler return empty array
+- when the filter row query is empty and content-type is application json, the rbac handler return empty array
 
 ### Fixed
 
@@ -129,17 +129,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-- [JAF-182](https://makeitapp.atlassian.net/browse/JAF-182): Implemented column filtering on response body base on policy evaluation
+- Implemented column filtering on response body base on policy evaluation
 - refactor: User struct now contains userBindings and Roles
 - If no userId header is provided now mongo is not called in order to retrieve user bindings and roles.
 
 ### Added
 
-- [JAF-205](https://makeitapp.atlassian.net/browse/JAF-205): Added `pathParameter` to Rego input request.
-- [JAF-205](https://makeitapp.atlassian.net/browse/JAF-205): routes sorting during registration to prevent pathParams retrieval error
-- [JAF-233](https://makeitapp.atlassian.net/browse/JAF-233): better business errors for policies evaluation
-- [JAF-215](https://makeitapp.atlassian.net/browse/JAF-215): support body serialization in Rego input for specific content type and methods
-- [JAF-226](https://makeitapp.atlassian.net/browse/JAF-226): Removed limitation to dashed routes
+- Added `pathParameter` to Rego input request.
+- routes sorting during registration to prevent pathParams retrieval error
+- better business errors for policies evaluation
+- support body serialization in Rego input for specific content type and methods
+- Removed limitation to dashed routes
 
 ## 0.2.0 - 14/01/2022
 
@@ -149,15 +149,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
-- [JAF-126](https://makeitapp.atlassian.net/browse/JAF-126): Added resource field in binding struct.
-- [JAF-156](https://makeitapp.atlassian.net/browse/JAF-156): support the method all in the manual routes oas file
-- [JAF-135](https://makeitapp.atlassian.net/browse/JAF-135): rbac service now support row filtering query for mongo forwarded in a custom header to the requested service
-- [JAF-145](https://makeitapp.atlassian.net/browse/JAF-145): handle path prefix for manual route
-- [JAF-133](https://makeitapp.atlassian.net/browse/JAF-133): documentation route handled correctly
+- Added resource field in binding struct.
+- support the method all in the manual routes oas file
+- rbac service now support row filtering query for mongo forwarded in a custom header to the requested service
+- handle path prefix for manual route
+- documentation route handled correctly
 
 ### BREAKING
 
-- [JAF-152](https://makeitapp.atlassian.net/browse/JAF-152): bindings and roles are now given as input to the OPA evaluator. The old check on user permission is no more performed and the entire ownership is given to Rego
+- bindings and roles are now given as input to the OPA evaluator. The old check on user permission is no more performed and the entire ownership is given to Rego
 
 ### Updated
 
@@ -167,17 +167,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-- [JAF-89](https://makeitapp.atlassian.net/browse/JAF-89): Convert API path with variables according the gorilla mux requirements
-- [JAF-103](https://makeitapp.atlassian.net/browse/JAF-103): Support dot character as divider in the x-permission string, replaced as underscore for Rego policy query
-- [JAF-116](https://makeitapp.atlassian.net/browse/JAF-116): ignoring healthiness routes when defining proxied routes
+- Convert API path with variables according the gorilla mux requirements
+- Support dot character as divider in the x-permission string, replaced as underscore for Rego policy query
+- ignoring healthiness routes when defining proxied routes
 
 ### Added
 
-- [JAF-100](https://makeitapp.atlassian.net/browse/JAF-100): Added the check on user permission before evaluating the query
-- [JAF-98](https://makeitapp.atlassian.net/browse/JAF-98): Added the user infos in the input Rego
-- [JAF-99](https://makeitapp.atlassian.net/browse/JAF-99): mongodb integrated to load roles and bindings collections
-- [JAF-45](https://makeitapp.atlassian.net/browse/JAF-45): Created get_header custom built-in Rego function
-- [JAF-46](https://makeitapp.atlassian.net/browse/JAF-46): Added support for the target service documentation API, with an evaluation skip if is set targetServiceOASPath env
-- [JAF-39](https://makeitapp.atlassian.net/browse/JAF-39): Support API permission specification from file
-- [JAF-27](https://makeitapp.atlassian.net/browse/JAF-27): OPA integration with single module loading and handler validation
-- [JAF-23](https://makeitapp.atlassian.net/browse/JAF-23): rbac service initial configuration from openApi specifications
+- Added the check on user permission before evaluating the query
+- Added the user infos in the input Rego
+- mongodb integrated to load roles and bindings collections
+- Created get_header custom built-in Rego function
+- Added support for the target service documentation API, with an evaluation skip if is set targetServiceOASPath env
+- Support API permission specification from file
+- OPA integration with single module loading and handler validation
+- rbac service initial configuration from openApi specifications
