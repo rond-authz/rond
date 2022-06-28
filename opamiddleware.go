@@ -60,7 +60,9 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 
 			permission, err := openAPISpec.FindPermission(OASrouter, path, r.Method)
 			if r.Method == http.MethodGet && r.URL.Path == envs.TargetServiceOASPath && permission.AllowPermission == "" {
-				glogger.Get(r.Context()).WithError(err).Info("Proxying call to OAS Path even with no permission")
+				glogger.Get(r.Context()).WithField("error", logrus.Fields{
+					"message": err.Error(),
+				}).Info("Proxying call to OAS Path even with no permission")
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -68,9 +70,9 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 			if err != nil || permission.AllowPermission == "" {
 				errorMessage := "User is not allowed to request the API"
 				fields := logrus.Fields{
-					"originalRequestPath": r.URL.Path,
-					"method":              r.Method,
-					"allowPermission":     permission.AllowPermission,
+					"originalRequestPath": utils.SanitizeString(r.URL.Path),
+					"method":              utils.SanitizeString(r.Method),
+					"allowPermission":     utils.SanitizeString(permission.AllowPermission),
 				}
 				technicalError := ""
 				if err != nil {

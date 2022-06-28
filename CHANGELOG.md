@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 
 - [code-scanning#7](https://github.com/rond-authz/rond/security/code-scanning/7): removed clear text information from logs
+- [code-scanning#5](https://github.com/rond-authz/rond/security/code-scanning/5), [code-scanning#6](https://github.com/rond-authz/rond/security/code-scanning/6): sanitized grant standalone API input data in debug log
+- [code-scanning#4](https://github.com/rond-authz/rond/security/code-scanning/4): removed unsanitized log from revoke standalone api
+- [code-scanning#3](https://github.com/rond-authz/rond/security/code-scanning/3): sanitized input for log in OPA Middleware
+- [code-scanning#2](https://github.com/rond-authz/rond/security/code-scanning/2): sanitized input for error log in OpenAPI Utils
 
 ## 1.2.2 - 15-06-2022
 

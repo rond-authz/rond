@@ -14,7 +14,11 @@
 
 package utils
 
-import "github.com/elliotchance/pie/pie"
+import (
+	"strings"
+
+	"github.com/elliotchance/pie/pie"
+)
 
 func Contains(s []string, e string) bool {
 	for _, a := range s {
@@ -37,4 +41,10 @@ func FilterList(list []string, valuesToFilter []string) []string {
 		return !Contains(valuesToFilter, listItem)
 	})
 	return newList
+}
+
+func SanitizeString(input string) string {
+	sanitized := strings.Replace(input, "\n", "", -1)
+	sanitized = strings.Replace(sanitized, "\r", "", -1)
+	return sanitized
 }
