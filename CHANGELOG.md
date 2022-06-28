@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Added
+
+- support for `HEAD` HTTP method when specifying method keyword `ALL`
+
 ### Fixed
 
 - [code-scanning#7](https://github.com/rond-authz/rond/security/code-scanning/7): removed clear text information from logs
