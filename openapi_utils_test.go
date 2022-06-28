@@ -50,6 +50,11 @@ func TestFetchOpenAPI(t *testing.T) {
 						AllowPermission: "todo",
 					},
 				},
+				"head": VerbConfig{
+					Permission: XPermission{
+						AllowPermission: "todo",
+					},
+				},
 				"post": VerbConfig{
 					Permission: XPermission{
 						AllowPermission: "notexistingpermission",
@@ -225,6 +230,11 @@ func TestLoadOAS(t *testing.T) {
 						AllowPermission: "todo",
 					},
 				},
+				"head": VerbConfig{
+					Permission: XPermission{
+						AllowPermission: "todo",
+					},
+				},
 				"post": VerbConfig{
 					Permission: XPermission{
 						AllowPermission: "notexistingpermission",
@@ -353,6 +363,10 @@ func TestFindPermission(t *testing.T) {
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "DELETE")
+		assert.Equal(t, XPermission{AllowPermission: "permission_for_all"}, found)
+		assert.Equal(t, err, nil)
+
+		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "HEAD")
 		assert.Equal(t, XPermission{AllowPermission: "permission_for_all"}, found)
 		assert.Equal(t, err, nil)
 
