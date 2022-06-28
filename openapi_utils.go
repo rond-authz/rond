@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/sirupsen/logrus"
@@ -190,7 +191,7 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 	OASRouter.ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
-		return XPermission{}, fmt.Errorf("not found oas permission: %s %s", method, path)
+		return XPermission{}, fmt.Errorf("not found oas permission: %s %s", utils.SanitizeString(method), utils.SanitizeString(path))
 	}
 
 	recorderResult := recorder.Result()

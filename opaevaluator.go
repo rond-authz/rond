@@ -188,10 +188,6 @@ func createQueryEvaluator(ctx context.Context, logger *logrus.Entry, req *http.R
 		"policyName": policy,
 	}).Info("Policy to be evaluated")
 
-	logger.WithFields(logrus.Fields{
-		"input": string(input),
-	}).Trace("input object passed to the evaluator")
-
 	opaEvaluatorInstanceTime := time.Now()
 	evaluator, err := NewOPAEvaluator(ctx, policy, opaModuleConfig, input, env)
 	if err != nil {

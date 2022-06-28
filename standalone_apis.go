@@ -56,7 +56,6 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 		failResponseWithCode(w, http.StatusInternalServerError, err.Error(), GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
-	logger.WithField("request", reqBody).Debug("revoke request body")
 
 	if len(reqBody.ResourceIDs) == 0 {
 		failResponseWithCode(w, http.StatusBadRequest, "empty resources list", GENERIC_BUSINESS_ERROR_MESSAGE)
@@ -175,7 +174,6 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 		failResponseWithCode(w, http.StatusInternalServerError, err.Error(), GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
-	logger.WithField("request", reqBody).Debug("grant request body")
 
 	if reqBody.ResourceID == "" {
 		failResponseWithCode(w, http.StatusBadRequest, "missing resource id", GENERIC_BUSINESS_ERROR_MESSAGE)
@@ -213,10 +211,10 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logger.WithFields(logrus.Fields{
-		"createdBindingObjectId": bindingIDCreated.ObjectID,
-		"createdBindingId":       bindingToCreate.BindingID,
-		"resourceId":             reqBody.ResourceID,
-		"resourceType":           resourceType,
+		"createdBindingObjectId": utils.SanitizeString(bindingIDCreated.ObjectID),
+		"createdBindingId":       utils.SanitizeString(bindingToCreate.BindingID),
+		"resourceId":             utils.SanitizeString(reqBody.ResourceID),
+		"resourceType":           utils.SanitizeString(resourceType),
 	}).Debug("created bindings")
 
 	response := GrantResponseBody{BindingID: bindingToCreate.BindingID}
