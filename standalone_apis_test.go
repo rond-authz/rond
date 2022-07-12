@@ -50,7 +50,7 @@ func TestRevokeHandler(t *testing.T) {
 			ResourceIDs: []string{"mike"},
 		})
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody))
-		assert.NilError(t, err, "unexpcted error")
+		assert.NilError(t, err, "unexpected error")
 		w := httptest.NewRecorder()
 
 		revokeHandler(w, req)
@@ -525,7 +525,7 @@ func TestGrantHandler(t *testing.T) {
 			ResourceID: "my-resource",
 		})
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody))
-		assert.NilError(t, err, "unexpcted error")
+		assert.NilError(t, err, "unexpected error")
 		w := httptest.NewRecorder()
 
 		grantHandler(w, req)

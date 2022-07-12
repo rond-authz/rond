@@ -247,13 +247,11 @@ func buildQuery(resourceType string, resourceIDs []string, subjects []string, gr
 	if len(subjects) > 0 {
 		subjectQuery := map[string]interface{}{"subjects": map[string]interface{}{"$in": subjects}}
 		tempQuery := queryPartForSubjectOrGroups["$or"].([]map[string]interface{})
-		fmt.Println("tempQuery: ", tempQuery)
 		queryPartForSubjectOrGroups["$or"] = append(tempQuery, subjectQuery)
 	}
 	if len(groups) > 0 {
 		groupsQuery := map[string]interface{}{"groups": map[string]interface{}{"$in": groups}}
 		tempQuery := queryPartForSubjectOrGroups["$or"].([]map[string]interface{})
-		fmt.Println("tempQuery 2: ", tempQuery)
 		queryPartForSubjectOrGroups["$or"] = append(tempQuery, groupsQuery)
 	}
 
