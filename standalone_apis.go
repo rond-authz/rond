@@ -58,7 +58,6 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resourceType := mux.Vars(r)["resourceType"]
-
 	if resourceType != "" && len(reqBody.ResourceIDs) == 0 {
 		failResponseWithCode(w, http.StatusBadRequest, "empty resources list", GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
@@ -177,7 +176,6 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resourceType := mux.Vars(r)["resourceType"]
-
 	if resourceType != "" && reqBody.ResourceID == "" {
 		failResponseWithCode(w, http.StatusBadRequest, "missing resource id", GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
@@ -256,8 +254,7 @@ func buildQuery(resourceType string, resourceIDs []string, subjects []string, gr
 	}
 
 	if resourceType == "" {
-		query := queryPartForSubjectOrGroups
-		return json.Marshal(query)
+		return json.Marshal(queryPartForSubjectOrGroups)
 	}
 
 	query := map[string]interface{}{

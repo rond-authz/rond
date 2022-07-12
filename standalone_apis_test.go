@@ -541,15 +541,9 @@ func TestGrantHandler(t *testing.T) {
 			Roles:       []string{"d"},
 		})
 
-		req := requestWithParams(
-			t,
-			ctx,
-			http.MethodPost,
-			"/",
-			bytes.NewBuffer(reqBody),
-			map[string]string{
-				"resourceType": "my-resource",
-			})
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
+			"resourceType": "my-resource",
+		})
 
 		w := httptest.NewRecorder()
 
