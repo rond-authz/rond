@@ -190,7 +190,7 @@ func PopulateDBForTesting(
 			Roles:             []string{"role3", "role4"},
 			Groups:            []string{"group1"},
 			Permissions:       []string{"console.project.view"},
-			Resource:          types.Resource{ResourceType: "custom", ResourceID: "9876"},
+			Resource:          &types.Resource{ResourceType: "custom", ResourceID: "9876"},
 			CRUDDocumentState: "PUBLIC",
 		},
 
@@ -200,7 +200,7 @@ func PopulateDBForTesting(
 			Roles:             []string{"role3", "role4"},
 			Groups:            []string{"group1"},
 			Permissions:       []string{"console.project.view"},
-			Resource:          types.Resource{ResourceType: "custom", ResourceID: "12345"},
+			Resource:          &types.Resource{ResourceType: "custom", ResourceID: "12345"},
 			CRUDDocumentState: "PUBLIC",
 		},
 

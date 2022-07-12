@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [code-scanning#4](https://github.com/rond-authz/rond/security/code-scanning/4): removed unsanitized log from revoke standalone api
 - [code-scanning#3](https://github.com/rond-authz/rond/security/code-scanning/3): sanitized input for log in OPA Middleware
 - [code-scanning#2](https://github.com/rond-authz/rond/security/code-scanning/2): sanitized input for error log in OpenAPI Utils
+- removed required resource parameter from Grant and Revoke API routes
 
 ## 1.2.2 - 15-06-2022
 

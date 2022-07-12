@@ -1968,7 +1968,7 @@ var testmongoMock = &mocks.MongoClientMock{
 			Roles:       []string{"admin"},
 			Groups:      []string{"area_rocket"},
 			Permissions: []string{"permission4"},
-			Resource: types.Resource{
+			Resource: &types.Resource{
 				ResourceType: "project",
 				ResourceID:   "project123",
 			},
@@ -2002,7 +2002,7 @@ var testmongoMock = &mocks.MongoClientMock{
 			Roles:             []string{"role3", "role4"},
 			Groups:            []string{"group1"},
 			Permissions:       []string{"console.project.view"},
-			Resource:          types.Resource{ResourceType: "custom", ResourceID: "9876"},
+			Resource:          &types.Resource{ResourceType: "custom", ResourceID: "9876"},
 			CRUDDocumentState: "PUBLIC",
 		},
 		{
@@ -2011,7 +2011,7 @@ var testmongoMock = &mocks.MongoClientMock{
 			Roles:             []string{"role3", "role4"},
 			Groups:            []string{"group1"},
 			Permissions:       []string{"console.project.view"},
-			Resource:          types.Resource{ResourceType: "custom", ResourceID: "12345"},
+			Resource:          &types.Resource{ResourceType: "custom", ResourceID: "12345"},
 			CRUDDocumentState: "PUBLIC",
 		},
 		{
