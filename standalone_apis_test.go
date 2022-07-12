@@ -43,20 +43,6 @@ func TestRevokeHandler(t *testing.T) {
 		nil,
 	)
 
-	t.Run("400 on resourceIds", func(t *testing.T) {
-		reqBody := setupRevokeRequestBody(t, RevokeRequestBody{
-			Subjects: []string{"piero"},
-			Groups:   []string{"litfiba"},
-		})
-
-		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), nil)
-		w := httptest.NewRecorder()
-
-		revokeHandler(w, req)
-
-		assert.Equal(t, w.Result().StatusCode, http.StatusBadRequest)
-	})
-
 	t.Run("400 on missing subjects and groups", func(t *testing.T) {
 		reqBody := setupRevokeRequestBody(t, RevokeRequestBody{
 			Subjects:    []string{},
@@ -65,6 +51,22 @@ func TestRevokeHandler(t *testing.T) {
 		})
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody))
 		assert.NilError(t, err, "unexpcted error")
+		w := httptest.NewRecorder()
+
+		revokeHandler(w, req)
+
+		assert.Equal(t, w.Result().StatusCode, http.StatusBadRequest)
+	})
+
+	t.Run("400 on missing resourceIds from body if resourceType request param is present", func(t *testing.T) {
+		reqBody := setupRevokeRequestBody(t, RevokeRequestBody{
+			Subjects: []string{"piero"},
+			Groups:   []string{"litfiba"},
+		})
+
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
+			"resourceType": "project",
+		})
 		w := httptest.NewRecorder()
 
 		revokeHandler(w, req)
@@ -103,7 +105,7 @@ func TestRevokeHandler(t *testing.T) {
 			{
 				BindingID: "bindingToDelete",
 				Subjects:  []string{"piero"},
-				Resource: types.Resource{
+				Resource: &types.Resource{
 					ResourceType: "project",
 					ResourceID:   "mike",
 				},
@@ -142,7 +144,7 @@ func TestRevokeHandler(t *testing.T) {
 			{
 				BindingID: "bindingToDelete",
 				Subjects:  []string{"piero", "ghigo"},
-				Resource: types.Resource{
+				Resource: &types.Resource{
 					ResourceType: "project",
 					ResourceID:   "mike",
 				},
@@ -189,7 +191,7 @@ func TestRevokeHandler(t *testing.T) {
 			{
 				BindingID: "bindingToDelete",
 				Subjects:  []string{"piero"},
-				Resource: types.Resource{
+				Resource: &types.Resource{
 					ResourceType: "project",
 					ResourceID:   "mike",
 				},
@@ -231,14 +233,14 @@ func TestRevokeHandler(t *testing.T) {
 		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
 	})
 
-	t.Run("performs correct delete query only on subject", func(t *testing.T) {
+	t.Run("performs correct delete query only on group", func(t *testing.T) {
 		defer gock.Flush()
 
 		bindingsFromCrud := []types.Binding{
 			{
 				BindingID: "bindingToDelete",
 				Groups:    []string{"litfiba"},
-				Resource: types.Resource{
+				Resource: &types.Resource{
 					ResourceType: "project",
 					ResourceID:   "mike",
 				},
@@ -287,7 +289,7 @@ func TestRevokeHandler(t *testing.T) {
 			{
 				BindingID: "litfiba",
 				Subjects:  []string{"piero", "ghigo"},
-				Resource: types.Resource{
+				Resource: &types.Resource{
 					ResourceType: "project",
 					ResourceID:   "mike",
 				},
@@ -350,7 +352,7 @@ func TestRevokeHandler(t *testing.T) {
 				BindingID: "oasis",
 				Subjects:  []string{"liam", "noel"},
 				Groups:    []string{"brutte_band"},
-				Resource: types.Resource{
+				Resource: &types.Resource{
 					ResourceType: "project",
 					ResourceID:   "mike",
 				},
@@ -359,7 +361,7 @@ func TestRevokeHandler(t *testing.T) {
 				BindingID: "litfiba",
 				Subjects:  []string{"piero", "ghigo"},
 				Groups:    []string{"brutte_band"},
-				Resource: types.Resource{
+				Resource: &types.Resource{
 					ResourceType: "project",
 					ResourceID:   "mike",
 				},
@@ -429,6 +431,83 @@ func TestRevokeHandler(t *testing.T) {
 		err := json.NewDecoder(w.Body).Decode(&revokeResponse)
 		assert.NilError(t, err)
 	})
+
+	t.Run("performs correct delete and patch APIs without resourceType request param", func(t *testing.T) {
+		defer gock.Flush()
+
+		bindingsFromCrud := []types.Binding{
+			{
+				BindingID: "oasis",
+				Subjects:  []string{"liam", "noel"},
+				Groups:    []string{"brutte_band"},
+			},
+			{
+				BindingID: "litfiba",
+				Subjects:  []string{"piero", "ghigo"},
+				Groups:    []string{"brutte_band"},
+			},
+		}
+		gock.DisableNetworking()
+		gock.New("http://crud-service").
+			Get("/bindings/").
+			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
+				mongoQueryString := req.URL.Query().Get("_q")
+				match := mongoQueryString == `{"$or":[{"subjects":{"$in":["piero","liam","noel"]}},{"groups":{"$in":["brutte_band"]}}]}`
+				return match, nil
+			}).
+			Reply(http.StatusOK).
+			JSON(bindingsFromCrud)
+
+		gock.New("http://crud-service").
+			Delete("/bindings/").
+			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
+				mongoQuery := req.URL.Query().Get("_q")
+				match := mongoQuery == `{"bindingId":{"$in":["oasis"]}}`
+				return match, nil
+			}).
+			Reply(http.StatusOK).
+			BodyString("1")
+
+		gock.New("http://crud-service").
+			Patch("/bindings/").
+			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
+				var body []PatchItem
+
+				err := json.NewDecoder(req.Body).Decode(&body)
+				assert.NilError(t, err, "unxpected error parsing body in matcher")
+
+				require.Equal(t, []PatchItem{
+					{
+						Filter: types.BindingFilter{BindingID: "litfiba"},
+						Update: UpdateCommand{
+							SetCommand: types.BindingUpdate{
+								Subjects: []string{"ghigo"},
+								Groups:   []string{},
+							},
+						},
+					},
+				}, body)
+				return true, nil
+			}).
+			Reply(http.StatusOK).
+			BodyString("1")
+
+		reqBody := setupRevokeRequestBody(t, RevokeRequestBody{
+			Subjects: []string{"piero", "liam", "noel"},
+			Groups:   []string{"brutte_band"},
+		})
+
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), nil)
+		w := httptest.NewRecorder()
+
+		revokeHandler(w, req)
+
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+
+		revokeResponse := RevokeResponseBody{}
+		err := json.NewDecoder(w.Body).Decode(&revokeResponse)
+		assert.NilError(t, err)
+	})
 }
 
 func TestGrantHandler(t *testing.T) {
@@ -441,12 +520,9 @@ func TestGrantHandler(t *testing.T) {
 		nil,
 	)
 
-	t.Run("400 on missing resourceId from body", func(t *testing.T) {
+	t.Run("400 on missing body fields", func(t *testing.T) {
 		reqBody := setupGrantRequestBody(t, GrantRequestBody{
-			Subjects:    []string{"a"},
-			Groups:      []string{"b"},
-			Permissions: []string{"c"},
-			Roles:       []string{"d"},
+			ResourceID: "my-resource",
 		})
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody))
 		assert.NilError(t, err, "unexpcted error")
@@ -457,12 +533,24 @@ func TestGrantHandler(t *testing.T) {
 		assert.Equal(t, w.Result().StatusCode, http.StatusBadRequest)
 	})
 
-	t.Run("400 on missing body fields", func(t *testing.T) {
+	t.Run("400 on missing resourceId from body if resourceType request param is present", func(t *testing.T) {
 		reqBody := setupGrantRequestBody(t, GrantRequestBody{
-			ResourceID: "my-resource",
+			Subjects:    []string{"a"},
+			Groups:      []string{"b"},
+			Permissions: []string{"c"},
+			Roles:       []string{"d"},
 		})
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody))
-		assert.NilError(t, err, "unexpcted error")
+
+		req := requestWithParams(
+			t,
+			ctx,
+			http.MethodPost,
+			"/",
+			bytes.NewBuffer(reqBody),
+			map[string]string{
+				"resourceType": "my-resource",
+			})
+
 		w := httptest.NewRecorder()
 
 		grantHandler(w, req)
@@ -503,7 +591,7 @@ func TestGrantHandler(t *testing.T) {
 					Groups:    []string{"test-group"},
 					Roles:     []string{"editor"},
 					Subjects:  []string{"piero"},
-					Resource: types.Resource{
+					Resource: &types.Resource{
 						ResourceType: "my-resource",
 						ResourceID:   "projectID",
 					},
@@ -516,6 +604,59 @@ func TestGrantHandler(t *testing.T) {
 		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
 			"resourceType": "my-resource",
 		})
+		w := httptest.NewRecorder()
+
+		grantHandler(w, req)
+
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+
+		var response GrantResponseBody
+		err := json.NewDecoder(w.Body).Decode(&response)
+		assert.NilError(t, err, "unexpected error")
+
+		_, err = uuid.Parse(response.BindingID)
+		assert.NilError(t, err, "unxpected error")
+	})
+
+	t.Run("performs correct API invocation insert bindings only on subject without resourceType request param", func(t *testing.T) {
+		defer gock.Flush()
+
+		reqBody := setupGrantRequestBody(t, GrantRequestBody{
+			Subjects: []string{"piero"},
+			Roles:    []string{"editor"},
+			Groups:   []string{"test-group"},
+		})
+
+		gock.DisableNetworking()
+		gock.New("http://crud-service").
+			Post("/bindings/").
+			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
+				var body types.Binding
+				bodyBytes, err := ioutil.ReadAll(req.Body)
+				require.Nil(t, err, "unxpected error reading body in matcher")
+
+				containsNull := strings.Contains(string(bodyBytes), `"permissions":null`)
+				require.False(t, containsNull, "unexpected null found")
+
+				err = json.Unmarshal(bodyBytes, &body)
+				require.Nil(t, err, "unxpected error parsing body in matcher")
+
+				_, err = uuid.Parse(body.BindingID)
+				require.Nil(t, err, "unexpected error")
+
+				body.BindingID = "REDACTED"
+				require.Equal(t, types.Binding{
+					BindingID: "REDACTED",
+					Groups:    []string{"test-group"},
+					Roles:     []string{"editor"},
+					Subjects:  []string{"piero"},
+				}, body)
+				return true, nil
+			}).
+			Reply(http.StatusOK).
+			JSON(map[string]interface{}{"_id": "newObjectId"})
+
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), nil)
 		w := httptest.NewRecorder()
 
 		grantHandler(w, req)
@@ -557,7 +698,7 @@ func TestGrantHandler(t *testing.T) {
 					Groups:    []string{"test-group"},
 					Roles:     []string{"editor"},
 					Subjects:  []string{"piero"},
-					Resource: types.Resource{
+					Resource: &types.Resource{
 						ResourceType: "my-resource",
 						ResourceID:   "projectID",
 					},
@@ -696,11 +837,18 @@ func setupBodyBytes(t *testing.T, body interface{}) []byte {
 	return bodyBytes
 }
 
-func requestWithParams(t *testing.T, ctx context.Context, method string, path string, body *bytes.Buffer, params map[string]string) *http.Request {
+func requestWithParams(
+	t *testing.T,
+	ctx context.Context,
+	method string,
+	path string,
+	body *bytes.Buffer,
+	params map[string]string,
+) *http.Request {
 	t.Helper()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/revoke/bindings/resource/project", body)
-	assert.NilError(t, err, "unexpcted error creating request with context and params")
+	req, err := http.NewRequestWithContext(ctx, method, path, body)
+	assert.NilError(t, err, "unexpected error creating request with context and params")
 
 	if params != nil {
 		req = mux.SetURLVars(req, params)

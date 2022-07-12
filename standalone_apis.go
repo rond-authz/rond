@@ -57,7 +57,9 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(reqBody.ResourceIDs) == 0 {
+	resourceType := mux.Vars(r)["resourceType"]
+
+	if resourceType != "" && len(reqBody.ResourceIDs) == 0 {
 		failResponseWithCode(w, http.StatusBadRequest, "empty resources list", GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
@@ -75,7 +77,6 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resourceType := mux.Vars(r)["resourceType"]
 	query, err := buildQuery(resourceType, reqBody.ResourceIDs, reqBody.Subjects, reqBody.Groups)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed find query crud setup")
@@ -175,7 +176,9 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if reqBody.ResourceID == "" {
+	resourceType := mux.Vars(r)["resourceType"]
+
+	if resourceType != "" && reqBody.ResourceID == "" {
 		failResponseWithCode(w, http.StatusBadRequest, "missing resource id", GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
@@ -192,16 +195,18 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resourceType := mux.Vars(r)["resourceType"]
 	bindingToCreate := types.Binding{
 		BindingID: uuid.New().String(),
 		Groups:    reqBody.Groups,
 		Roles:     reqBody.Roles,
 		Subjects:  reqBody.Subjects,
-		Resource: types.Resource{
+	}
+
+	if resourceType != "" {
+		bindingToCreate.Resource = &types.Resource{
 			ResourceType: resourceType,
 			ResourceID:   reqBody.ResourceID,
-		},
+		}
 	}
 
 	var bindingIDCreated types.BindingCreateResponse
@@ -242,12 +247,19 @@ func buildQuery(resourceType string, resourceIDs []string, subjects []string, gr
 	if len(subjects) > 0 {
 		subjectQuery := map[string]interface{}{"subjects": map[string]interface{}{"$in": subjects}}
 		tempQuery := queryPartForSubjectOrGroups["$or"].([]map[string]interface{})
+		fmt.Println("tempQuery: ", tempQuery)
 		queryPartForSubjectOrGroups["$or"] = append(tempQuery, subjectQuery)
 	}
 	if len(groups) > 0 {
 		groupsQuery := map[string]interface{}{"groups": map[string]interface{}{"$in": groups}}
 		tempQuery := queryPartForSubjectOrGroups["$or"].([]map[string]interface{})
+		fmt.Println("tempQuery 2: ", tempQuery)
 		queryPartForSubjectOrGroups["$or"] = append(tempQuery, groupsQuery)
+	}
+
+	if resourceType == "" {
+		query := queryPartForSubjectOrGroups
+		return json.Marshal(query)
 	}
 
 	query := map[string]interface{}{

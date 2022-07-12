@@ -33,13 +33,13 @@ type Resource struct {
 }
 
 type Binding struct {
-	Resource          Resource `bson:"resource" json:"resource"`
-	BindingID         string   `bson:"bindingId" json:"bindingId"`
-	CRUDDocumentState string   `bson:"__STATE__" json:"-"`
-	Groups            []string `bson:"groups" json:"groups,omitempty"`
-	Subjects          []string `bson:"subjects" json:"subjects,omitempty"`
-	Permissions       []string `bson:"permissions" json:"permissions,omitempty"`
-	Roles             []string `bson:"roles" json:"roles,omitempty"`
+	Resource          *Resource `bson:"resource" json:"resource,omitempty"`
+	BindingID         string    `bson:"bindingId" json:"bindingId"`
+	CRUDDocumentState string    `bson:"__STATE__" json:"-"`
+	Groups            []string  `bson:"groups" json:"groups,omitempty"`
+	Subjects          []string  `bson:"subjects" json:"subjects,omitempty"`
+	Permissions       []string  `bson:"permissions" json:"permissions,omitempty"`
+	Roles             []string  `bson:"roles" json:"roles,omitempty"`
 }
 
 type BindingFilter struct {

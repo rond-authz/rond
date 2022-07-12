@@ -193,7 +193,7 @@ func TestBuildOptimizedResourcePermissionsMap(t *testing.T) {
 		},
 		UserBindings: []types.Binding{
 			{
-				Resource: types.Resource{
+				Resource: &types.Resource{
 					ResourceType: "type1",
 					ResourceID:   "resource1",
 				},
@@ -201,14 +201,14 @@ func TestBuildOptimizedResourcePermissionsMap(t *testing.T) {
 				Permissions: []string{"permissionNotInRole1"},
 			},
 			{
-				Resource: types.Resource{
+				Resource: &types.Resource{
 					ResourceType: "type2",
 					ResourceID:   "resource2",
 				},
 				Roles: []string{"role2"},
 			},
 			{
-				Resource: types.Resource{
+				Resource: &types.Resource{
 					ResourceType: "type3",
 					ResourceID:   "resource3",
 				},
@@ -247,7 +247,7 @@ func BenchmarkBuildOptimizedResourcePermissionsMap(b *testing.B) {
 	var bindings []types.Binding
 	for i := 0; i < 100; i++ {
 		binding := types.Binding{
-			Resource: types.Resource{
+			Resource: &types.Resource{
 				ResourceType: fmt.Sprintf("type%d", i),
 				ResourceID:   fmt.Sprintf("resource%d", i),
 			},
