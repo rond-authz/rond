@@ -42,11 +42,11 @@ import (
 )
 
 func TestProxyOASPath(t *testing.T) {
-	defer gock.DisableNetworkingFilters()
 	t.Run("200 - without oas documentation api defined", func(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
@@ -91,6 +91,7 @@ func TestProxyOASPath(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
@@ -133,6 +134,7 @@ func TestProxyOASPath(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
@@ -188,6 +190,8 @@ func TestEntrypoint(t *testing.T) {
 	t.Run("opens server on port 3000", func(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
 			return r.URL.Path != "/documentation/json"
@@ -220,6 +224,7 @@ func TestEntrypoint(t *testing.T) {
 
 	t.Run("GracefulShutdown works properly", func(t *testing.T) {
 		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
 		gock.New("http://localhost:3001").
 			Get("/documentation/json").
 			Reply(200).
@@ -255,6 +260,8 @@ func TestEntrypoint(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
 			if r.URL.Path == "/documentation/json" {
@@ -315,6 +322,8 @@ func TestEntrypoint(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
 			if r.URL.Path == "/documentation/json" {
@@ -363,6 +372,8 @@ func TestEntrypoint(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
 			if r.URL.Path == "/documentation/json" {
@@ -410,6 +421,7 @@ func TestEntrypoint(t *testing.T) {
 
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
 
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
@@ -454,6 +466,7 @@ func TestEntrypoint(t *testing.T) {
 
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
 
 		path := "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%252Fcms-backend%252FcmsProperties.json"
 		decodedPath, _ := url.PathUnescape(path)
@@ -501,6 +514,7 @@ func TestEntrypoint(t *testing.T) {
 
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
 
 		path := "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%252Fcms-backend%252FcmsProperties.json"
 		decodedPath, _ := url.PathUnescape(path)
@@ -549,6 +563,7 @@ func TestEntrypoint(t *testing.T) {
 
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
 
 		path := "/api/backend/projects/5df2260277baff0011fde823/branches/team-%2Fjames/files/config-extension%252Fcms-backend%252FcmsProperties.json"
 		decodedPath, _ := url.PathUnescape(path)
@@ -595,6 +610,8 @@ func TestEntrypoint(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
 			if r.URL.Path == "/documentation/json" {
@@ -781,6 +798,8 @@ func TestEntrypoint(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
 			if r.URL.Path == "/documentation/json" {
@@ -866,6 +885,8 @@ func TestEntrypoint(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
 		gock.EnableNetworking()
 		gock.NetworkingFilter(func(r *http.Request) bool {
 			if r.URL.Path == "/documentation/json" {
@@ -951,6 +972,7 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 
 	defer gock.Off()
 	defer gock.DisableNetworkingFilters()
+	defer gock.DisableNetworking()
 	gock.EnableNetworking()
 	gock.NetworkingFilter(func(r *http.Request) bool {
 		if r.URL.Path == "/documentation/json" {
@@ -1096,6 +1118,7 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 
 	defer gock.Off()
 	defer gock.DisableNetworkingFilters()
+	defer gock.DisableNetworking()
 	gock.EnableNetworking()
 	gock.NetworkingFilter(func(r *http.Request) bool {
 		if r.URL.Path == "/documentation/json" {
