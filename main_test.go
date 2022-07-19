@@ -121,7 +121,6 @@ func TestProxyOASPath(t *testing.T) {
 		}()
 		time.Sleep(1 * time.Second)
 
-		fmt.Printf("Mannaggia al clero %v", gock.GetAll())
 		resp, err := http.DefaultClient.Get("http://localhost:3007/documentation/json")
 
 		require.Equal(t, nil, err)
@@ -164,7 +163,6 @@ func TestProxyOASPath(t *testing.T) {
 		}()
 		time.Sleep(1 * time.Second)
 
-		fmt.Printf("Mannaggia al clero %v", gock.GetAll())
 		resp, _ := http.DefaultClient.Get("http://localhost:3009/documentation/json")
 		require.Equal(t, http.StatusForbidden, resp.StatusCode)
 		require.False(t, gock.IsDone(), "the proxy allows the request.")
