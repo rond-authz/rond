@@ -171,7 +171,6 @@ func TestProxyOASPath(t *testing.T) {
 
 // FIXME: This function needs to be performed as last in order to make other tests working
 func TestEntrypoint(t *testing.T) {
-	defer gock.DisableNetworkingFilters()
 	t.Run("fails for invalid module path, no module found", func(t *testing.T) {
 		unsetEnvs := setEnvs([]env{
 			{name: "HTTP_PORT", value: "3000"},
