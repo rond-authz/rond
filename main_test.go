@@ -170,7 +170,7 @@ func TestEntrypoint(t *testing.T) {
 		unsetEnvs := setEnvs([]env{
 			{name: "HTTP_PORT", value: "3000"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
-			{name: "TARGET_SERVICE_HOST", value: "/documentation/json"},
+			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/empty-dir"},
 		})
 		shutdown := make(chan os.Signal, 1)
