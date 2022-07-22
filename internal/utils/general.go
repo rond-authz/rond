@@ -20,9 +20,7 @@ import (
 	"github.com/samber/lo"
 )
 
-func Contains(s []string, e string) bool {
-	return lo.Contains(s, e)
-}
+var Contains = lo.Contains[string]
 
 func FilterList(list []string, valuesToFilter []string) []string {
 	differenceValues, _ := lo.Difference(list, valuesToFilter)
