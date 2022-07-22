@@ -21,8 +21,13 @@ import (
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
 )
+
+func extractQueryPipeline(query Queries, _ int) bson.M {
+	return query.Pipeline
+}
 
 var ErrEmptyQuery = errors.New("empty query")
 
@@ -74,10 +79,7 @@ func (c *OPAClient) ProcessQuery(pq *rego.PartialQueries) (bson.M, error) {
 		return nil, fmt.Errorf("%w: RBAC policy evaluation and query generation failed", ErrEmptyQuery)
 	}
 
-	var mongoQueries []bson.M
-	for _, q := range queries {
-		mongoQueries = append(mongoQueries, q.Pipeline)
-	}
+	mongoQueries := lo.Map(queries, extractQueryPipeline)
 
 	finalQuery := bson.M{"$or": mongoQueries}
 
@@ -86,10 +88,8 @@ func (c *OPAClient) ProcessQuery(pq *rego.PartialQueries) (bson.M, error) {
 
 func processTerm(query string) []string {
 	splitQ := strings.Split(query, ".")
-	var result []string
-	for _, term := range splitQ {
-		result = append(result, removeOpenBrace(term))
-	}
+	result := lo.Map(splitQ, removeOpenBrace)
+
 	if result == nil {
 		return nil
 	}
@@ -106,6 +106,6 @@ func processTerm(query string) []string {
 	return []string{indexName, fieldName}
 }
 
-func removeOpenBrace(input string) string {
+func removeOpenBrace(input string, _ int) string {
 	return strings.Split(input, "[")[0]
 }
