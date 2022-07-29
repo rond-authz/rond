@@ -24,10 +24,8 @@ import (
 // MockUpsertWithQueryParameters mocks upsert to a collection.
 func getHeadersMap(headers http.Header) map[string]string {
 	requestHeadersMap := map[string]string{}
-	if len(headers) != 0 {
-		for name, values := range headers {
-			requestHeadersMap[name] = values[0]
-		}
+	for name, values := range headers {
+		requestHeadersMap[name] = values[0]
 	}
 	return requestHeadersMap
 }

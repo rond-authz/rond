@@ -33,14 +33,14 @@ func SetHeadersToProxy(ctx context.Context, headers http.Header) {
 	}
 }
 
-func AddHeadersToProxyMiddleware(logger *logrus.Logger, headerToAdd []string) mux.MiddlewareFunc {
+func AddHeadersToProxyMiddleware(logger *logrus.Logger, headerNamesToAdd []string) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			headersToProxy := http.Header{}
-			for _, h := range headerToAdd {
-				hValue := r.Header.Get(h)
-				if len(hValue) > 0 {
-					headersToProxy.Set(h, hValue)
+			for _, headerNameToAdd := range headerNamesToAdd {
+				headerValue := r.Header.Get(headerNameToAdd)
+				if len(headerValue) > 0 {
+					headersToProxy.Set(headerNameToAdd, headerValue)
 				}
 			}
 			ctx := AddHeadersToProxyToContext(r.Context(), headersToProxy)

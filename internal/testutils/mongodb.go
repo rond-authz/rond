@@ -22,10 +22,12 @@ import (
 	"math/rand"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/rond-authz/rond/types"
+	"github.com/samber/lo"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -34,19 +36,15 @@ import (
 )
 
 const LocalhostMongoDB = "localhost:27017"
+const nameDictionary = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func GetRandomName(n uint) string {
-	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	b := make([]rune, n)
-	for i := range b {
-		//#nosec G404 -- Used only for test purposes, no need for cryptographically secure random number.
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
+func GetRandomName(n int) string {
+	samples := lo.Samples(strings.Split(nameDictionary, ""), n)
+	return strings.Join(samples, "")
 }
 
 // GetAndDisposeTestCollection returns a collection from a random database.
