@@ -24,9 +24,10 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/types"
-
+	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"gotest.tools/v3/assert"
 )
@@ -448,5 +449,119 @@ func TestMongoFindMany(t *testing.T) {
 		})
 		assert.ErrorContains(t, err, "unknown top level operator")
 		assert.Equal(t, len(result), 0)
+	})
+}
+
+func TestRolesIDSFromBindings(t *testing.T) {
+	result := RolesIDsFromBindings([]types.Binding{
+		{Roles: []string{"a", "b"}},
+		{Roles: []string{"a", "b"}},
+		{Roles: []string{"c", "d"}},
+		{Roles: []string{"e"}},
+	})
+
+	assert.DeepEqual(t, result, []string{"a", "b", "c", "d", "e"})
+}
+
+func TestRetrieveUserBindingsAndRoles(t *testing.T) {
+	logger, _ := test.NewNullLogger()
+	env := config.EnvironmentVariables{
+		UserGroupsHeader: "thegroupsheader",
+		UserIdHeader:     "theuserheader",
+	}
+
+	t.Run("fails if MongoClient is in context but of the wrong type", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req = req.WithContext(context.WithValue(req.Context(), types.MongoClientContextKey{}, "test"))
+
+		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logger), req, env)
+		assert.Error(t, err, "Unexpected error retrieving MongoDB Client from request context")
+	})
+
+	t.Run("extract user from request without querying MongoDB", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("thegroupsheader", "group1,group2")
+		req.Header.Set("theuserheader", "userId")
+
+		user, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logger), req, env)
+		assert.NilError(t, err)
+		assert.DeepEqual(t, user, types.User{
+			UserID:     "userId",
+			UserGroups: []string{"group1", "group2"},
+		})
+	})
+
+	t.Run("extract user with no id in headers does not perform queries", func(t *testing.T) {
+		mock := mocks.MongoClientMock{
+			UserBindingsError: fmt.Errorf("some error"),
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req = req.WithContext(WithMongoClient(req.Context(), mock))
+
+		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, env)
+		assert.NilError(t, err)
+	})
+
+	t.Run("extract user but retrieve bindings fails", func(t *testing.T) {
+		mock := mocks.MongoClientMock{
+			UserBindingsError: fmt.Errorf("some error"),
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req = req.WithContext(WithMongoClient(req.Context(), mock))
+		req.Header.Set("thegroupsheader", "group1,group2")
+		req.Header.Set("theuserheader", "userId")
+
+		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, env)
+		assert.Error(t, err, "Error while retrieving user bindings: some error")
+	})
+
+	t.Run("extract user bindings but retrieve roles by role id fails", func(t *testing.T) {
+		mock := mocks.MongoClientMock{
+			UserBindings: []types.Binding{
+				{Roles: []string{"r1", "r2"}},
+			},
+			UserRolesError: fmt.Errorf("some error 2"),
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req = req.WithContext(WithMongoClient(req.Context(), mock))
+		req.Header.Set("thegroupsheader", "group1,group2")
+		req.Header.Set("theuserheader", "userId")
+
+		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, env)
+		assert.Error(t, err, "Error while retrieving user Roles: some error 2")
+	})
+
+	t.Run("extract user bindings and roles", func(t *testing.T) {
+		mock := mocks.MongoClientMock{
+			UserBindings: []types.Binding{
+				{Roles: []string{"r1", "r2"}},
+				{Roles: []string{"r3"}},
+			},
+			UserRoles: []types.Role{
+				{RoleID: "r1", Permissions: []string{"p1", "p2"}},
+				{RoleID: "r2", Permissions: []string{"p3", "p4"}},
+				{RoleID: "r3", Permissions: []string{"p5"}},
+			},
+		}
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req = req.WithContext(WithMongoClient(req.Context(), mock))
+		req.Header.Set("thegroupsheader", "group1,group2")
+		req.Header.Set("theuserheader", "userId")
+
+		user, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, env)
+		assert.NilError(t, err)
+		assert.DeepEqual(t, user, types.User{
+			UserID:     "userId",
+			UserGroups: []string{"group1", "group2"},
+			UserBindings: []types.Binding{
+				{Roles: []string{"r1", "r2"}},
+				{Roles: []string{"r3"}},
+			},
+			UserRoles: []types.Role{
+				{RoleID: "r1", Permissions: []string{"p1", "p2"}},
+				{RoleID: "r2", Permissions: []string{"p3", "p4"}},
+				{RoleID: "r3", Permissions: []string{"p5"}},
+			},
+		})
 	})
 }

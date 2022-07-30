@@ -38,29 +38,29 @@ type MongoClientMock struct {
 	FindManyResult      []interface{}
 }
 
-func (mongoClient *MongoClientMock) Disconnect() error {
+func (mongoClient MongoClientMock) Disconnect() error {
 	return nil
 }
 
-func (mongoClient *MongoClientMock) RetrieveRoles(ctx context.Context) ([]types.Role, error) {
+func (mongoClient MongoClientMock) RetrieveRoles(ctx context.Context) ([]types.Role, error) {
 	return nil, nil
 }
 
-func (mongoClient *MongoClientMock) RetrieveUserBindings(ctx context.Context, user *types.User) ([]types.Binding, error) {
+func (mongoClient MongoClientMock) RetrieveUserBindings(ctx context.Context, user *types.User) ([]types.Binding, error) {
 	if mongoClient.UserBindings != nil {
 		return mongoClient.UserBindings, nil
 	}
 	return nil, mongoClient.UserBindingsError
 }
 
-func (mongoClient *MongoClientMock) RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]types.Role, error) {
+func (mongoClient MongoClientMock) RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]types.Role, error) {
 	if mongoClient.UserRoles != nil {
 		return mongoClient.UserRoles, nil
 	}
 	return nil, mongoClient.UserRolesError
 }
 
-func (mongoClient *MongoClientMock) FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error) {
+func (mongoClient MongoClientMock) FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error) {
 	mongoClient.FindOneExpectation(collectionName, query)
 	if mongoClient.FindOneError != nil {
 		return nil, mongoClient.FindOneError
@@ -69,7 +69,7 @@ func (mongoClient *MongoClientMock) FindOne(ctx context.Context, collectionName 
 	return mongoClient.FindOneResult, nil
 }
 
-func (mongoClient *MongoClientMock) FindMany(ctx context.Context, collectionName string, query map[string]interface{}) ([]interface{}, error) {
+func (mongoClient MongoClientMock) FindMany(ctx context.Context, collectionName string, query map[string]interface{}) ([]interface{}, error) {
 	mongoClient.FindManyExpectation(collectionName, query)
 	if mongoClient.FindManyError != nil {
 		return nil, mongoClient.FindManyError

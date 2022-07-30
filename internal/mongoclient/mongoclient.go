@@ -23,12 +23,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
+	"github.com/mia-platform/glogger/v2"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/types"
-
-	"github.com/gorilla/mux"
-	"github.com/mia-platform/glogger/v2"
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -66,10 +65,10 @@ func WithMongoClient(ctx context.Context, mongoClient types.IMongoClient) contex
 // provided context.
 func GetMongoClientFromContext(ctx context.Context) (types.IMongoClient, error) {
 	collectionInterface := ctx.Value(types.MongoClientContextKey{})
-
 	if collectionInterface == nil {
 		return nil, nil
 	}
+
 	collections, ok := collectionInterface.(types.IMongoClient)
 	if !ok {
 		return nil, fmt.Errorf("no MongoDB collection found in context")
