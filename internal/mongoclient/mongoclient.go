@@ -286,10 +286,8 @@ func RetrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, env c
 
 	user.UserGroups = strings.Split(req.Header.Get(env.UserGroupsHeader), ",")
 	user.UserID = req.Header.Get(env.UserIdHeader)
-	fmt.Printf("DDDDD %+\n", mongoClient)
 
 	if mongoClient != nil && user.UserID != "" {
-		fmt.Println("ASDASDASDASD")
 		user.UserBindings, err = mongoClient.RetrieveUserBindings(requestContext, &user)
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user bindings")
