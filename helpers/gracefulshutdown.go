@@ -17,7 +17,6 @@ package helpers
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -36,13 +35,9 @@ func GracefulShutdown(srv ClosableHTTPServer, interruptChan chan os.Signal, logg
 
 	time.Sleep(time.Duration(delayShutdownSeconds) * time.Second)
 	if err := srv.Shutdown(context.Background()); err != nil {
-		fmt.Printf("HEHEHEHEHEHEHEHHEHE\n")
 		logger.WithError(err).Error("Error during shutdown, forcing close.")
 		if err := srv.Close(); err != nil {
-			fmt.Printf("CLOCLCOLCOCOCOLCOCOLCO\n")
 			logger.WithError(err).Error("Error during server close.")
 		}
-
 	}
-	fmt.Printf("DONODNODNODNODNOND\n")
 }
