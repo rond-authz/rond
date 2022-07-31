@@ -17,23 +17,32 @@ package helpers
 
 import (
 	"context"
-	"net/http"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/sirupsen/logrus"
 )
 
+type ClosableHTTPServer interface {
+	Shutdown(context.Context) error
+	Close() error
+}
+
 // GracefulShutdown waits on notified signal to shutdown until all connections are closed.
-func GracefulShutdown(srv *http.Server, interruptChan chan os.Signal, logger *logrus.Logger, delayShutdownSeconds int) {
+func GracefulShutdown(srv ClosableHTTPServer, interruptChan chan os.Signal, logger *logrus.Logger, delayShutdownSeconds int) {
 	// Block until we receive our signal.
 	<-interruptChan
 
 	time.Sleep(time.Duration(delayShutdownSeconds) * time.Second)
 	if err := srv.Shutdown(context.Background()); err != nil {
+		fmt.Printf("HEHEHEHEHEHEHEHHEHE\n")
 		logger.WithError(err).Error("Error during shutdown, forcing close.")
 		if err := srv.Close(); err != nil {
+			fmt.Printf("CLOCLCOLCOCOCOLCOCOLCO\n")
 			logger.WithError(err).Error("Error during server close.")
 		}
+
 	}
+	fmt.Printf("DONODNODNODNODNOND\n")
 }
