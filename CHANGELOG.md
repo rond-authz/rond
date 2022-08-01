@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Unreleased
 
+### Updated
+
+ - OPA v0.43.0
+
 ### Added
 
 - github.com/samber/lo dependency
