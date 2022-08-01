@@ -39,6 +39,8 @@ Rönd natively allows you to build an RBAC solution based on Roles and Bindings 
 
 ## Local development
 
+For local development you need to have Go installed locally, checkout the [go.mod](./go.mod#L3) file to know the currently used language version.
+
 ### Run tests
 
 ```sh
