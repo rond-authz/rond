@@ -540,7 +540,7 @@ func TestEntrypoint(t *testing.T) {
 		})
 
 		unsetEnvs := setEnvs([]env{
-			{name: "HTTP_PORT", value: "5555"},
+			{name: "HTTP_PORT", value: "5556"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
@@ -560,13 +560,14 @@ func TestEntrypoint(t *testing.T) {
 			Post(decodedPath).
 			Reply(200)
 
-		resp, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5555%s", path), "application/json", nil)
+		resp, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5556%s", path), "application/json", nil)
 		require.Equal(t, nil, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code.")
 		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
 	})
 
 	t.Run("api permissions file path with nested routes with pathParams access with escaped value", func(t *testing.T) {
+		fmt.Printf("====== TEST STARTS NOW ====== ====== ====== ====== ====== ====== ====== ")
 		gock.Flush()
 		shutdown := make(chan os.Signal, 1)
 
@@ -589,11 +590,11 @@ func TestEntrypoint(t *testing.T) {
 		})
 
 		unsetEnvs := setEnvs([]env{
-			{name: "HTTP_PORT", value: "5555"},
+			{name: "HTTP_PORT", value: "5557"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
-			{name: "LOG_LEVEL", value: "fatal"},
+			{name: "LOG_LEVEL", value: "trace"},
 		})
 
 		go func() {
@@ -609,7 +610,7 @@ func TestEntrypoint(t *testing.T) {
 			Post(decodedPath).
 			Reply(200)
 
-		resp, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5555%s", path), "application/json", nil)
+		resp, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5557%s", path), "application/json", nil)
 		require.Equal(t, nil, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code.")
 		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
