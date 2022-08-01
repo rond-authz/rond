@@ -24,9 +24,12 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/mia-platform/glogger/v2"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/types"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/gorilla/mux"
 	"gotest.tools/v3/assert"
@@ -205,6 +208,9 @@ func createContext(
 	}
 	partialContext = context.WithValue(partialContext, PartialResultsEvaluatorConfigKey{}, partialResultEvaluators)
 
+	log, _ := test.NewNullLogger()
+	partialContext = glogger.WithLogger(partialContext, logrus.NewEntry(log))
+
 	return partialContext
 }
 
@@ -217,7 +223,11 @@ var mockXPermission = &XPermission{AllowPermission: "todo"}
 
 func TestSetupRoutesIntegration(t *testing.T) {
 	oas := prepareOASFromFile(t, "./mocks/simplifiedMock.json")
-	mockPartialEvaluators, _ := setupEvaluators(context.Background(), nil, oas, mockOPAModule, envs)
+
+	log, _ := test.NewNullLogger()
+	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
+
+	mockPartialEvaluators, _ := setupEvaluators(ctx, nil, oas, mockOPAModule, envs)
 	t.Run("invokes known API", func(t *testing.T) {
 		var invoked bool
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -298,12 +308,12 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			Content: `package policies
 		todo { false }`,
 		}
-		mockPartialEvaluators, _ := setupEvaluators(context.Background(), nil, oas, mockOPAModule, envs)
+		mockPartialEvaluators, _ := setupEvaluators(ctx, nil, oas, mockOPAModule, envs)
 		router := mux.NewRouter()
 		setupRoutes(router, oas, envs)
 
 		ctx := createContext(t,
-			context.Background(),
+			ctx,
 			config.EnvironmentVariables{LogLevel: "silent", TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			nil,
 			mockXPermission,
@@ -329,7 +339,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		var mockOPAModule = &OPAModuleConfig{
 			Content: "FAILING POLICY!!!!",
 		}
-		mockPartialEvaluators, _ := setupEvaluators(context.Background(), nil, oas, mockOPAModule, envs)
+		mockPartialEvaluators, _ := setupEvaluators(ctx, nil, oas, mockOPAModule, envs)
 
 		router := mux.NewRouter()
 		setupRoutes(router, oas, envs)

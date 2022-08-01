@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/types"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/v3/assert"
 )
@@ -52,7 +53,13 @@ todo { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/not-existing-path", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusNotFound, "Unexpected status code.")
+			assert.DeepEqual(t, getJSONResponseBody[types.RequestError](t, w), &types.RequestError{
+				Message:    "The request doesn't match any known API",
+				Error:      "not found oas definition: GET /not-existing-path",
+				StatusCode: http.StatusNotFound,
+			})
+			assert.Equal(t, w.Result().Header.Get(ContentTypeHeaderKey), JSONContentTypeHeader, "Unexpected content type.")
 		})
 
 		t.Run(`missing method`, func(t *testing.T) {
@@ -64,7 +71,13 @@ todo { true }`,
 			r := httptest.NewRequest(http.MethodDelete, "http://example.com/users/", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusNotFound, "Unexpected status code.")
+			assert.DeepEqual(t, getJSONResponseBody[types.RequestError](t, w), &types.RequestError{
+				Message:    "The request doesn't match any known API",
+				Error:      "not found oas definition: DELETE /users/",
+				StatusCode: http.StatusNotFound,
+			})
+			assert.Equal(t, w.Result().Header.Get(ContentTypeHeaderKey), JSONContentTypeHeader, "Unexpected content type.")
 		})
 
 		t.Run(`missing permission`, func(t *testing.T) {
@@ -76,7 +89,7 @@ todo { true }`,
 			r := httptest.NewRequest(http.MethodPost, "http://example.com/no-permission", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusForbidden, "Unexpected status code.")
 		})
 	})
 
@@ -104,7 +117,7 @@ foobar { true }`,
 			r := httptest.NewRequest(http.MethodPost, "http://example.com/documentation/json", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		})
 
 		t.Run(`ok - path is missing on oas and request is equal to serviceTargetOASPath`, func(t *testing.T) {
@@ -124,7 +137,7 @@ foobar { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/documentation/json", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		})
 
 		t.Run(`ok - path is NOT known on oas but is proxied anyway`, func(t *testing.T) {
@@ -144,7 +157,7 @@ foobar { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/documentation/custom/json", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		})
 	})
 
@@ -172,7 +185,7 @@ todo { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/users/", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		})
 
 		t.Run(`rego package contains expected permission`, func(t *testing.T) {
@@ -194,7 +207,7 @@ foobar { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/users/", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		})
 
 		t.Run(`rego package contains composed permission`, func(t *testing.T) {
@@ -216,7 +229,7 @@ very_very_composed_permission { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/composed/permission/", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		})
 
 		t.Run("injects correct permission", func(t *testing.T) {
@@ -243,7 +256,7 @@ very_very_composed_permission_with_eval { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/eval/composed/permission/", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		})
 	})
 }
@@ -277,7 +290,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 		r := httptest.NewRequest(http.MethodGet, "http://example.com/eval/composed/permission/", nil)
 		builtHandler.ServeHTTP(w, r)
 
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 	})
 
 	t.Run("injects correct path removing only one prefix", func(t *testing.T) {
@@ -299,7 +312,7 @@ very_very_composed_permission_with_eval { true }`,
 		r := httptest.NewRequest(http.MethodGet, "http://example.com/eval/eval/composed/permission/", nil)
 		builtHandler.ServeHTTP(w, r)
 
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 	})
 }
 
@@ -370,4 +383,22 @@ func TestGetOPAModuleConfig(t *testing.T) {
 		require.True(t, err == nil, "Unexpected error.")
 		require.True(t, opaEval != nil, "OPA Module config not found.")
 	})
+}
+
+func getResponseBody(t *testing.T, w *httptest.ResponseRecorder) []byte {
+	t.Helper()
+
+	responseBody, err := ioutil.ReadAll(w.Result().Body)
+	require.NoError(t, err)
+
+	return responseBody
+}
+
+func getJSONResponseBody[T any](t *testing.T, w *httptest.ResponseRecorder) *T {
+	responseBody := getResponseBody(t, w)
+	out := new(T)
+	if err := json.Unmarshal(responseBody, out); err != nil {
+		require.Error(t, err, "fails to unmarshal")
+	}
+	return out
 }

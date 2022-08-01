@@ -43,7 +43,7 @@ func TestRequestMiddlewareEnvironments(t *testing.T) {
 		r := httptest.NewRequest(http.MethodGet, "/", nil)
 		builtHandler.ServeHTTP(w, r)
 
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 	})
 }
 

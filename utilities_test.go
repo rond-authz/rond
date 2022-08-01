@@ -71,9 +71,9 @@ func TestFailResponseWithCode(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	failResponseWithCode(w, http.StatusInternalServerError, "The Error", "The Message")
-	assert.Equal(t, w.Code, http.StatusInternalServerError)
+	assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
 
-	assert.Equal(t, w.Header().Get(ContentTypeHeaderKey), "application/json")
+	assert.Equal(t, w.Result().Header.Get(ContentTypeHeaderKey), JSONContentTypeHeader)
 
 	bodyBytes, err := ioutil.ReadAll(w.Body)
 	assert.NilError(t, err)

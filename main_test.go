@@ -27,11 +27,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mia-platform/glogger/v2"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/types"
 
+	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -67,6 +69,7 @@ func TestProxyOASPath(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/custom/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		go func() {
@@ -83,7 +86,6 @@ func TestProxyOASPath(t *testing.T) {
 		require.Equal(t, nil, err, "error calling docs")
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.True(t, gock.IsDone(), "the proxy does not blocks the request for documentations path.")
-
 	})
 
 	t.Run("200 - with oas documentation api defined", func(t *testing.T) {
@@ -111,6 +113,7 @@ func TestProxyOASPath(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3006"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 		go func() {
 			entrypoint(shutdown)
@@ -153,6 +156,7 @@ func TestProxyOASPath(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3008"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 		go func() {
 			entrypoint(shutdown)
@@ -177,6 +181,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/empty-dir"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 		shutdown := make(chan os.Signal, 1)
 
@@ -204,6 +209,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		go func() {
@@ -234,6 +240,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "DELAY_SHUTDOWN_SECONDS", value: "3"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 		shutdown := make(chan os.Signal, 1)
 		done := make(chan bool, 1)
@@ -281,6 +288,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		go func() {
@@ -340,7 +348,7 @@ func TestEntrypoint(t *testing.T) {
 
 		unsetEnvs := setEnvs([]env{
 			{name: "HTTP_PORT", value: "3026"},
-			{name: "LOG_LEVEL", value: "trace"},
+			{name: "LOG_LEVEL", value: "fatal"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
@@ -393,6 +401,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3004"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		go func() {
@@ -437,6 +446,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "localhost:4000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/nestedPathsConfig.json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		go func() {
@@ -485,6 +495,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		go func() {
@@ -530,10 +541,10 @@ func TestEntrypoint(t *testing.T) {
 
 		unsetEnvs := setEnvs([]env{
 			{name: "HTTP_PORT", value: "5555"},
-			{name: "LOG_LEVEL", value: "trace"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		go func() {
@@ -579,10 +590,10 @@ func TestEntrypoint(t *testing.T) {
 
 		unsetEnvs := setEnvs([]env{
 			{name: "HTTP_PORT", value: "5555"},
-			{name: "LOG_LEVEL", value: "trace"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		go func() {
@@ -648,6 +659,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
@@ -819,6 +831,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3033"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 		mongoHost := os.Getenv("MONGO_HOST_CI")
 		if mongoHost == "" {
@@ -832,6 +845,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
@@ -906,6 +920,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3035"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 		mongoHost := os.Getenv("MONGO_HOST_CI")
 		if mongoHost == "" {
@@ -919,6 +934,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
@@ -965,7 +981,6 @@ func TestEntrypoint(t *testing.T) {
 }
 
 func TestEntrypointWithResponseFiltering(t *testing.T) {
-
 	shutdown := make(chan os.Signal, 1)
 
 	defer gock.Off()
@@ -998,6 +1013,7 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 		{name: "TARGET_SERVICE_HOST", value: "localhost:3040"},
 		{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 		{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+		{name: "LOG_LEVEL", value: "fatal"},
 	})
 	mongoHost := os.Getenv("MONGO_HOST_CI")
 	if mongoHost == "" {
@@ -1011,6 +1027,7 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 		{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 		{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 		{name: "ROLES_COLLECTION_NAME", value: "roles"},
+		{name: "LOG_LEVEL", value: "fatal"},
 	})
 
 	clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
@@ -1138,6 +1155,7 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 		{name: "TARGET_SERVICE_HOST", value: "localhost:3050"},
 		{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 		{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+		{name: "LOG_LEVEL", value: "fatal"},
 	})
 	mongoHost := os.Getenv("MONGO_HOST_CI")
 	if mongoHost == "" {
@@ -1151,6 +1169,7 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 		{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 		{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 		{name: "ROLES_COLLECTION_NAME", value: "roles"},
+		{name: "LOG_LEVEL", value: "fatal"},
 	})
 
 	clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
@@ -1208,6 +1227,8 @@ func TestSetupRouterStandaloneMode(t *testing.T) {
 	defer gock.Flush()
 
 	log, _ := test.NewNullLogger()
+	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
+
 	env := config.EnvironmentVariables{
 		Standalone:           true,
 		TargetServiceHost:    "my-service:4444",
@@ -1232,7 +1253,7 @@ test_policy { true }
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := setupEvaluators(context.TODO(), mongoClient, oas, opa, env)
+	evaluatorsMap, err := setupEvaluators(ctx, mongoClient, oas, opa, env)
 	assert.NilError(t, err, "unexpected error")
 
 	router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)

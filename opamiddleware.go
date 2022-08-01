@@ -71,6 +71,7 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 
 			if err != nil || permission.AllowPermission == "" {
 				errorMessage := "User is not allowed to request the API"
+				statusCode := http.StatusForbidden
 				fields := logrus.Fields{
 					"originalRequestPath": utils.SanitizeString(r.URL.Path),
 					"method":              utils.SanitizeString(r.Method),
@@ -82,8 +83,11 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 					fields["error"] = logrus.Fields{"message": err.Error()}
 					errorMessage = "The request doesn't match any known API"
 				}
+				if errors.Is(err, ErrNotFoundOASDefinition) {
+					statusCode = http.StatusNotFound
+				}
 				glogger.Get(r.Context()).WithFields(fields).Errorf(errorMessage)
-				failResponseWithCode(w, http.StatusForbidden, technicalError, errorMessage)
+				failResponseWithCode(w, statusCode, technicalError, errorMessage)
 				return
 			}
 

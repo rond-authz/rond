@@ -280,15 +280,15 @@ func TestFindPermission(t *testing.T) {
 
 		found, err := oas.FindPermission(OASRouter, "/not/existing/route", "GET")
 		assert.Equal(t, XPermission{}, found)
-		assert.Equal(t, err.Error(), "not found oas permission: GET /not/existing/route")
+		assert.Equal(t, err.Error(), fmt.Sprintf("%s: GET /not/existing/route", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/no/method", "PUT")
 		assert.Equal(t, XPermission{}, found)
-		assert.Equal(t, err.Error(), "not found oas permission: PUT /no/method")
+		assert.Equal(t, err.Error(), fmt.Sprintf("%s: PUT /no/method", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/use/method/that/not/existing/put", "PUT")
 		assert.Equal(t, XPermission{}, found)
-		assert.Equal(t, err.Error(), "not found oas permission: PUT /use/method/that/not/existing/put")
+		assert.Equal(t, err.Error(), fmt.Sprintf("%s: PUT /use/method/that/not/existing/put", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/foo/bar/barId", "GET")
 		assert.Equal(t, XPermission{
@@ -340,7 +340,7 @@ func TestFindPermission(t *testing.T) {
 
 		found, err = oas.FindPermission(OASRouter, "/test/all", "GET")
 		assert.Equal(t, XPermission{}, found)
-		assert.Equal(t, err.Error(), "not found oas permission: GET /test/all")
+		assert.Equal(t, err.Error(), fmt.Sprintf("%s: GET /test/all", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/", "GET")
 		assert.Equal(t, XPermission{AllowPermission: "permission_for_get"}, found)

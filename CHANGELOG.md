@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - github.com/elliotchance/pie dependency
 
+### Fixed
+
+- improved tests to use w.Result() to assert the correct response
+- fix response `Content-Type` when an error occurs
+
 ## 1.3.1 - 21-07-2022
 
 ### Fixed
