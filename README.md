@@ -37,6 +37,21 @@ Rönd supports three policy types:
 
 Rönd natively allows you to build an RBAC solution based on Roles and Bindings saved in MongoDB.
 
+## Local development
+
+For local development you need to have Go installed locally, checkout the [go.mod](./go.mod#L3) file to know the currently used language version.
+
+### Run tests
+
+```sh
+make test
+```
+
+Please note that in order to run tests you need Docker to be installed, since tests need a local instance of MongoDB to be up and running `make tests` takes care of it by creating a new `mongo` container.
+
+### Contributing
+
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for further details about the process for submitting pull requests.
 
 [github-actions]: https://github.com/rond-authz/rond/actions/workflows/test.yml
 [github-actions-svg]: https://github.com/rond-authz/rond/actions/workflows/test.yml/badge.svg
