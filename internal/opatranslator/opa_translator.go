@@ -88,12 +88,9 @@ func (c *OPAClient) ProcessQuery(pq *rego.PartialQueries) (bson.M, error) {
 
 func processTerm(query string) []string {
 	splitQ := strings.Split(query, ".")
-	result := lo.Map(splitQ, removeOpenBrace)
 
-	if result == nil {
-		return nil
-	}
-	if queryIsEmpty := len(result) < minimumResultLength; queryIsEmpty {
+	result := lo.Map(splitQ, removeOpenBrace)
+	if result == nil || len(result) < minimumResultLength {
 		return nil
 	}
 
