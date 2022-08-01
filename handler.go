@@ -120,8 +120,8 @@ func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.
 	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(logger, permission)
 	if err != nil {
 		if errors.Is(err, opatranslator.ErrEmptyQuery) && hasApplicationJSONContentType(req.Header) {
-			w.WriteHeader(http.StatusOK)
 			w.Header().Set(ContentTypeHeaderKey, JSONContentTypeHeader)
+			w.WriteHeader(http.StatusOK)
 			if _, err := w.Write([]byte("[]")); err != nil {
 				logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
 				return err

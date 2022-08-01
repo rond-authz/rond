@@ -22,10 +22,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/mia-platform/glogger/v2"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
 
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/v3/assert"
@@ -88,6 +90,8 @@ func TestStatusRoutes(testCase *testing.T) {
 
 func TestStatusRoutesIntegration(t *testing.T) {
 	log, _ := test.NewNullLogger()
+	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
+
 	opa := &OPAModuleConfig{
 		Name: "policies",
 		Content: `package policies
@@ -107,7 +111,7 @@ test_policy { true }
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := setupEvaluators(context.TODO(), mongoClient, oas, opa, envs)
+	evaluatorsMap, err := setupEvaluators(ctx, mongoClient, oas, opa, envs)
 	assert.NilError(t, err, "unexpected error")
 
 	t.Run("non standalone", func(t *testing.T) {

@@ -34,6 +34,7 @@ func failResponse(w http.ResponseWriter, technicalError, businessError string) {
 }
 
 func failResponseWithCode(w http.ResponseWriter, statusCode int, technicalError, businessError string) {
+	w.Header().Set(ContentTypeHeaderKey, JSONContentTypeHeader)
 	w.WriteHeader(statusCode)
 	content, err := json.Marshal(types.RequestError{
 		StatusCode: statusCode,
@@ -44,7 +45,6 @@ func failResponseWithCode(w http.ResponseWriter, statusCode int, technicalError,
 		return
 	}
 
-	w.Header().Set(ContentTypeHeaderKey, JSONContentTypeHeader)
 	//#nosec G104 -- Intended to avoid disruptive code changes
 	w.Write(content)
 }

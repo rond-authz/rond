@@ -54,7 +54,7 @@ func TestMongoCollectionInjectorMiddleware(t *testing.T) {
 
 		builtMiddleware.ServeHTTP(w, r)
 
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code")
 		assert.Assert(t, invoked, "Next middleware not invoked")
 	})
 }

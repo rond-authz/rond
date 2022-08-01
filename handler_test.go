@@ -75,6 +75,9 @@ func TestDirectProxyHandler(t *testing.T) {
 		},
 	}
 
+	log, _ := test.NewNullLogger()
+	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
+
 	t.Run("opens backend server and sends it request using proxy", func(t *testing.T) {
 		invoked := false
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -86,12 +89,12 @@ func TestDirectProxyHandler(t *testing.T) {
 		}))
 		defer server.Close()
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, mockOPAModule, envs)
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oas, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
-			context.Background(),
+			ctx,
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			mockXPermission,
@@ -107,7 +110,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		rbacHandler(w, r)
 
 		assert.Assert(t, invoked, "Handler was not invoked.")
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 	})
 
 	t.Run("sends request with custom headers", func(t *testing.T) {
@@ -115,7 +118,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		mockHeader := "CustomHeader"
 		mockHeaderValue := "mocked value"
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, mockOPAModule, envs)
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oas, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -143,14 +146,14 @@ func TestDirectProxyHandler(t *testing.T) {
 		rbacHandler(w, r)
 
 		assert.Assert(t, invoked, "Handler was not invoked.")
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 	})
 
 	t.Run("sends request with body", func(t *testing.T) {
 		invoked := false
 		mockBodySting := "I am a body"
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, mockOPAModule, envs)
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oas, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -168,7 +171,7 @@ func TestDirectProxyHandler(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 		ctx := createContext(t,
-			context.Background(),
+			ctx,
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
 			mockXPermission,
@@ -184,7 +187,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		rbacHandler(w, r)
 
 		assert.Assert(t, invoked, "Handler was not invoked.")
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		buf, err := ioutil.ReadAll(w.Body)
 		assert.Equal(t, err, nil, "Unexpected error to read body response")
 		assert.Equal(t, string(buf), "Mocked Backend Body Example", "Unexpected body response")
@@ -199,7 +202,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		todo { input.request.body.hello == "world" }`,
 		}
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, opaModuleConfig, envs)
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oas, opaModuleConfig, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			invoked = true
@@ -232,7 +235,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		rbacHandler(w, r)
 
 		assert.Assert(t, invoked, "Handler was not invoked.")
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		buf, err := ioutil.ReadAll(w.Body)
 		assert.Equal(t, err, nil, "Unexpected error to read body response")
 		assert.Equal(t, string(buf), "Mocked Backend Body Example", "Unexpected body response")
@@ -283,7 +286,7 @@ allow {
 
 		opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig, envs)
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oasWithFilter, opaModuleConfig, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		serverURL, _ := url.Parse(server.URL)
@@ -314,7 +317,7 @@ allow {
 		rbacHandler(w, r)
 
 		assert.Assert(t, invoked, "Handler was not invoked.")
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		buf, err := ioutil.ReadAll(w.Body)
 		assert.Equal(t, err, nil, "Unexpected error to read body response")
 		assert.Equal(t, string(buf), "Mocked Backend Body Example", "Unexpected body response")
@@ -363,7 +366,7 @@ allow {
 
 		opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig, envs)
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oasWithFilter, opaModuleConfig, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 		ctx := createContext(t,
 			context.Background(),
@@ -392,7 +395,7 @@ allow {
 		rbacHandler(w, r)
 
 		assert.Assert(t, invoked, "Handler was not invoked.")
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		buf, err := ioutil.ReadAll(w.Body)
 		assert.Equal(t, err, nil, "Unexpected error to read body response")
 		assert.Equal(t, string(buf), "Mocked Backend Body Example", "Unexpected body response")
@@ -420,7 +423,7 @@ allow {
 
 		opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig, envs)
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oasWithFilter, opaModuleConfig, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 		ctx := createContext(t,
 			context.Background(),
@@ -446,8 +449,8 @@ allow {
 
 		rbacHandler(w, r)
 
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
-		assert.Equal(t, w.Header().Get(ContentTypeHeaderKey), JSONContentTypeHeader, "Unexpected content type header")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Result().Header.Get(ContentTypeHeaderKey), JSONContentTypeHeader, "Unexpected content type.")
 		buf, err := ioutil.ReadAll(w.Body)
 		assert.Equal(t, err, nil, "Unexpected error to read body response")
 		assert.Equal(t, string(buf), "[]", "Unexpected body response")
@@ -476,7 +479,7 @@ allow {
 
 		opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig, envs)
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oasWithFilter, opaModuleConfig, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 		ctx := createContext(t,
 			context.Background(),
@@ -503,7 +506,7 @@ allow {
 		rbacHandler(w, r)
 
 		assert.Assert(t, !invoked, "Handler was not invoked.")
-		assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusForbidden, "Unexpected status code.")
 	})
 
 	t.Run("filter query return not allow", func(t *testing.T) {
@@ -553,7 +556,7 @@ allow {
 
 		opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, opaModuleConfig, envs)
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oasWithFilter, opaModuleConfig, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 		ctx := createContext(t,
 			context.Background(),
@@ -582,7 +585,8 @@ allow {
 		rbacHandler(w, r)
 
 		assert.Assert(t, !invoked, "Handler was not invoked.")
-		assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusForbidden, "Unexpected status code.")
+		assert.Equal(t, w.Result().Header.Get(ContentTypeHeaderKey), JSONContentTypeHeader, "Unexpected content type.")
 	})
 }
 
@@ -618,8 +622,11 @@ func TestStandaloneMode(t *testing.T) {
 		},
 	}
 
+	log, _ := test.NewNullLogger()
+	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
+
 	t.Run("ok", func(t *testing.T) {
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, mockOPAModule, envs)
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oas, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 		ctx := createContext(t,
 			context.Background(),
@@ -668,7 +675,7 @@ allow {
 
 		body := strings.NewReader(mockBodySting)
 
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, mockOPAModule, envs)
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oasWithFilter, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		ctx := createContext(t,
@@ -698,7 +705,7 @@ allow {
 
 		rbacHandler(w, r)
 
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		filterQuery := r.Header.Get("rowfilterquery")
 		expectedQuery := `{"$or":[{"$and":[{"manager":{"$eq":"manager_test"}}]},{"$and":[{"salary":{"$gt":0}}]}]}`
 		assert.Equal(t, expectedQuery, filterQuery)
@@ -727,7 +734,7 @@ allow {
 		mockBodySting := "I am a body"
 
 		body := strings.NewReader(mockBodySting)
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, mockOPAModule, envs)
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oasWithFilter, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		ctx := createContext(t,
@@ -757,7 +764,7 @@ allow {
 
 		rbacHandler(w, r)
 
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		filterQuery := r.Header.Get("rowfilterquery")
 		expectedQuery := ``
 		assert.Equal(t, expectedQuery, filterQuery)
@@ -788,7 +795,7 @@ allow {
 `
 
 		mockBodySting := "I am a body"
-		partialEvaluators, err := setupEvaluators(context.Background(), nil, &oasWithFilter, mockOPAModule, envs)
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oasWithFilter, mockOPAModule, envs)
 		assert.Equal(t, err, nil, "Unexpected error")
 
 		body := strings.NewReader(mockBodySting)
@@ -820,7 +827,7 @@ allow {
 
 		rbacHandler(w, r)
 
-		assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusForbidden, "Unexpected status code.")
 	})
 }
 
@@ -866,6 +873,9 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 		},
 	}
 
+	log, _ := test.NewNullLogger()
+	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
+
 	// TODO: this tests verifies policy execution based on request header evaluation, it is
 	// useful as a documentation because right now headers are provided as-is from the
 	// http.Header type which transforms any header key in `Camel-Case`, meaning a policy
@@ -893,7 +903,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					todo { count(input.request.headers["%s"]) != 0 }`, mockHeader),
 				}
 
-				partialEvaluators, err := setupEvaluators(context.Background(), nil, oas, opaModule, envs)
+				partialEvaluators, err := setupEvaluators(ctx, nil, oas, opaModule, envs)
 				assert.Equal(t, err, nil, "Unexpected error")
 
 				ctx := createContext(t,
@@ -914,7 +924,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 					rbacHandler(w, r)
 					assert.Assert(t, invoked, "Handler was not invoked.")
-					assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+					assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 				})
 
 				t.Run("request does not have the required header", func(t *testing.T) {
@@ -925,7 +935,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 					rbacHandler(w, r)
 					assert.Assert(t, !invoked, "The policy did not block the request as expected")
-					assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+					assert.Equal(t, w.Result().StatusCode, http.StatusForbidden, "Unexpected status code.")
 				})
 			})
 
@@ -937,7 +947,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					todo { get_header("x-backdoor", input.request.headers) == "mocked value" }`,
 				}
 
-				partialEvaluators, err := setupEvaluators(context.Background(), nil, oas, opaModule, envs)
+				partialEvaluators, err := setupEvaluators(ctx, nil, oas, opaModule, envs)
 				assert.Equal(t, err, nil, "Unexpected error")
 
 				ctx := createContext(t,
@@ -958,7 +968,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 					rbacHandler(w, r)
 					assert.Assert(t, invoked, "Handler was not invoked.")
-					assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+					assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 				})
 
 				t.Run("request does not have the required header", func(t *testing.T) {
@@ -969,7 +979,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 					rbacHandler(w, r)
 					assert.Assert(t, !invoked, "The policy did not block the request as expected")
-					assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+					assert.Equal(t, w.Result().StatusCode, http.StatusForbidden, "Unexpected status code.")
 				})
 			})
 		})
@@ -998,7 +1008,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					input.clientType == "%s"
 				}`, mockedUserProperties["my"], mockedClientType),
 			}
-			partialEvaluators, err := setupEvaluators(context.Background(), nil, oas, opaModule, envs)
+			partialEvaluators, err := setupEvaluators(ctx, nil, oas, opaModule, envs)
 			assert.Equal(t, err, nil, "Unexpected error")
 
 			ctx := createContext(t,
@@ -1026,7 +1036,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 				rbacHandler(w, r)
 				assert.Assert(t, invoked, "Handler was not invoked.")
-				assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+				assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 			})
 
 			t.Run("request does not have the required header", func(t *testing.T) {
@@ -1037,7 +1047,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 				rbacHandler(w, r)
 				assert.Assert(t, !invoked, "The policy did not block the request as expected")
-				assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+				assert.Equal(t, w.Result().StatusCode, http.StatusForbidden, "Unexpected status code.")
 			})
 		})
 
@@ -1082,7 +1092,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 			}
 
-			partialEvaluators, err := setupEvaluators(context.Background(), nil, &oas, opaModule, envs)
+			partialEvaluators, err := setupEvaluators(ctx, nil, &oas, opaModule, envs)
 			assert.Equal(t, err, nil, "Unexpected error")
 
 			ctx := createContext(t,
@@ -1103,7 +1113,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 				rbacHandler(w, r)
 				assert.Assert(t, invoked, "Handler was not invoked.")
-				assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+				assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 			})
 		})
 	})
@@ -1205,7 +1215,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			rbacHandler(w, r)
 			testutils.AssertResponseError(t, w, http.StatusInternalServerError, "")
 			assert.Assert(t, !invoked, "Handler was not invoked.")
-			assert.Equal(t, w.Code, http.StatusInternalServerError, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError, "Unexpected status code.")
 		})
 
 		t.Run("return 500 if some errors occurs while querying mongoDB", func(t *testing.T) {
@@ -1256,7 +1266,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			rbacHandler(w, r)
 			testutils.AssertResponseFullErrorMessages(t, w, http.StatusInternalServerError, "user bindings retrieval failed", GENERIC_BUSINESS_ERROR_MESSAGE)
 			assert.Assert(t, !invoked, "Handler was not invoked.")
-			assert.Equal(t, w.Code, http.StatusInternalServerError, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError, "Unexpected status code.")
 		})
 
 		t.Run("return 403 if user bindings and roles retrieval is ok but user has not the required permission", func(t *testing.T) {
@@ -1346,7 +1356,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			rbacHandler(w, r)
 			testutils.AssertResponseFullErrorMessages(t, w, http.StatusForbidden, "RBAC policy evaluation failed", NO_PERMISSIONS_ERROR_MESSAGE)
-			assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusForbidden, "Unexpected status code.")
 		})
 
 		t.Run("return 200", func(t *testing.T) {
@@ -1439,7 +1449,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r.Header.Set(userIdHeaderKey, "miauserid")
 			rbacHandler(w, r)
 			assert.Assert(t, invoked, "Handler was not invoked.")
-			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		})
 
 		t.Run("return 200 with policy on bindings and roles", func(t *testing.T) {
@@ -1546,7 +1556,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r.Header.Set(userIdHeaderKey, "miauserid")
 			rbacHandler(w, r)
 			assert.Assert(t, invoked, "Handler was not invoked.")
-			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		})
 
 		t.Run("return 200 without user header", func(t *testing.T) {
@@ -1601,7 +1611,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r.Header.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
 			rbacHandler(w, r)
-			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		})
 
 		t.Run("return 200 with policy on pathParams", func(t *testing.T) {
@@ -1674,7 +1684,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r.Header.Set(userIdHeaderKey, "miauserid")
 			rbacHandler(w, r)
 			assert.Assert(t, invoked, "Handler was not invoked.")
-			assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		})
 	})
 }
@@ -1749,7 +1759,7 @@ project.tenantId == "1234"
 		rbacHandler(w, r)
 
 		assert.Assert(t, invoked, "Handler was not invoked.")
-		assert.Equal(t, w.Code, http.StatusOK, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 	})
 
 	t.Run("blocks for mongo error", func(t *testing.T) {
@@ -1795,7 +1805,7 @@ project.tenantId == "1234"
 		rbacHandler(w, r)
 
 		assert.Assert(t, !invoked, "Handler was invoked.")
-		assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusForbidden, "Unexpected status code.")
 	})
 
 	t.Run("blocks for mongo not found", func(t *testing.T) {
@@ -1841,7 +1851,7 @@ project.tenantId == "1234"
 		rbacHandler(w, r)
 
 		assert.Assert(t, !invoked, "Handler was invoked.")
-		assert.Equal(t, w.Code, http.StatusForbidden, "Unexpected status code.")
+		assert.Equal(t, w.Result().StatusCode, http.StatusForbidden, "Unexpected status code.")
 	})
 }
 
@@ -1878,7 +1888,8 @@ column_policy{
 
 	r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
 	assert.Equal(t, err, nil, "Unexpected error")
-	logger := glogger.Get(r.Context())
+	log, _ := test.NewNullLogger()
+	logger := logrus.NewEntry(log)
 
 	input := Input{Request: InputRequest{}, Response: InputResponse{}}
 	inputBytes, _ := json.Marshal(input)

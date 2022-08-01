@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -35,6 +36,8 @@ import (
 )
 
 const ALL_METHODS = "ALL"
+
+var ErrNotFoundOASDefinition = errors.New("not found oas definition")
 
 type XPermissionKey struct{}
 
@@ -191,7 +194,7 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 	OASRouter.ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
-		return XPermission{}, fmt.Errorf("not found oas permission: %s %s", utils.SanitizeString(method), utils.SanitizeString(path))
+		return XPermission{}, fmt.Errorf("%w: %s %s", ErrNotFoundOASDefinition, utils.SanitizeString(method), utils.SanitizeString(path))
 	}
 
 	recorderResult := recorder.Result()

@@ -125,6 +125,8 @@ func TestCreateRegoInput(t *testing.T) {
 func TestCreatePolicyEvaluators(t *testing.T) {
 	t.Run("with simplified mock", func(t *testing.T) {
 		log, _ := test.NewNullLogger()
+		ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
+
 		envs := config.EnvironmentVariables{
 			APIPermissionsFilePath: "./mocks/simplifiedMock.json",
 			OPAModulesDirectory:    "./mocks/rego-policies",
@@ -135,7 +137,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		opaModuleConfig, err := loadRegoModule(envs.OPAModulesDirectory)
 		assert.Assert(t, err == nil, "unexpected error")
 
-		policyEvals, err := setupEvaluators(context.Background(), nil, openApiSpec, opaModuleConfig, envs)
+		policyEvals, err := setupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, envs)
 		assert.Assert(t, err == nil, "unexpected error creating evaluators")
 		assert.Equal(t, len(policyEvals), 4, "unexpected length")
 	})
