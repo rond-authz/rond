@@ -22,6 +22,34 @@ type Queries struct {
 	Pipeline bson.M
 }
 
+const (
+	LtOp    = "lt"
+	LteOp   = "lte"
+	GtOp    = "gt"
+	GteOp   = "gte"
+	EqOp    = "eq"
+	EqualOp = "equal"
+	NeqOp   = "neq"
+)
+
+var rangeOperatorStrategies = map[string]func(pipeline *[]bson.M, fieldName string, fieldValue interface{}){
+	LtOp:    HandleLessThan,
+	GtOp:    HandleGreaterThan,
+	LteOp:   HandleLessThanEquals,
+	GteOp:   HandleGreaterThanEquals,
+	EqOp:    HandleEquals,
+	EqualOp: HandleEquals,
+	NeqOp:   HandleNotEquals,
+}
+
+func HandleOperations(operation string, pipeline *[]bson.M, fieldName string, fieldValue interface{}) bool {
+	strategy, ok := rangeOperatorStrategies[operation]
+	if ok {
+		strategy(pipeline, fieldName, fieldValue)
+	}
+	return ok
+}
+
 // Parse the == into equivalent mongo query.
 func HandleEquals(pipeline *[]bson.M, fieldName string, fieldValue interface{}) {
 	filter := bson.M{fieldName: bson.M{"$eq": fieldValue}}
@@ -56,22 +84,4 @@ func HandleLessThanEquals(pipeline *[]bson.M, fieldName string, fieldValue inter
 func HandleGreaterThanEquals(pipeline *[]bson.M, fieldName string, fieldValue interface{}) {
 	filter := bson.M{fieldName: bson.M{"$gte": fieldValue}}
 	*pipeline = append(*pipeline, filter)
-}
-
-var rangeOperatorStrategies = map[string]func(pipeline *[]bson.M, fieldName string, fieldValue interface{}){
-	"lt":    HandleLessThan,
-	"gt":    HandleGreaterThan,
-	"lte":   HandleLessThanEquals,
-	"gte":   HandleGreaterThanEquals,
-	"eq":    HandleEquals,
-	"equal": HandleEquals,
-	"neq":   HandleNotEquals,
-}
-
-func HandleOperations(operation string, pipeline *[]bson.M, fieldName string, fieldValue interface{}) bool {
-	strategy, ok := rangeOperatorStrategies[operation]
-	if ok {
-		strategy(pipeline, fieldName, fieldValue)
-	}
-	return ok
 }
