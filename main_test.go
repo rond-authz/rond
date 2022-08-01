@@ -566,7 +566,7 @@ func TestEntrypoint(t *testing.T) {
 		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
 	})
 
-	t.Run("api permissions file path with nested routes with pathParams access with escapde value", func(t *testing.T) {
+	t.Run("api permissions file path with nested routes with pathParams access with escaped value", func(t *testing.T) {
 		gock.Flush()
 		shutdown := make(chan os.Signal, 1)
 
