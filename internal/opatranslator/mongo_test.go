@@ -15,6 +15,7 @@
 package opatranslator
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -94,4 +95,69 @@ func TestMongoTranslatorFunctions(t *testing.T) {
 		expected := []bson.M{{"IWasAlreadyThere": 1}, {"test": bson.M{"$gte": 1}}}
 		require.Equal(t, expected, query)
 	})
+}
+
+func TestHandleOperations(t *testing.T) {
+	testCases := []struct {
+		operation  string
+		fieldName  string
+		fieldValue interface{}
+		result     []bson.M
+	}{
+		{
+			operation:  LtOp,
+			fieldName:  "answer",
+			fieldValue: 43,
+			result:     []bson.M{{"answer": bson.M{"$lt": 43}}},
+		},
+		{
+			operation:  LteOp,
+			fieldName:  "answer",
+			fieldValue: 42,
+			result:     []bson.M{{"answer": bson.M{"$lte": 42}}},
+		},
+		{
+			operation:  GtOp,
+			fieldName:  "answer",
+			fieldValue: 41,
+			result:     []bson.M{{"answer": bson.M{"$gt": 41}}},
+		},
+		{
+			operation:  GteOp,
+			fieldName:  "answer",
+			fieldValue: 42,
+			result:     []bson.M{{"answer": bson.M{"$gte": 42}}},
+		},
+		{
+			operation:  EqOp,
+			fieldName:  "answer",
+			fieldValue: 42,
+			result:     []bson.M{{"answer": bson.M{"$eq": 42}}},
+		},
+		{
+			operation:  EqualOp,
+			fieldName:  "answer",
+			fieldValue: 42,
+			result:     []bson.M{{"answer": bson.M{"$eq": 42}}},
+		},
+		{
+			operation:  NeqOp,
+			fieldName:  "answer",
+			fieldValue: 1,
+			result:     []bson.M{{"answer": bson.M{"$ne": 1}}},
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(
+			fmt.Sprintf(
+				`case #%d: op %s <%s,%+v> => %+v`, i+1, testCase.operation, testCase.fieldName, testCase.fieldValue, testCase.result,
+			),
+			func(t *testing.T) {
+				query := []bson.M{}
+				HandleOperations(testCase.operation, &query, testCase.fieldName, testCase.fieldValue)
+				require.Equal(t, testCase.result, query)
+			},
+		)
+	}
 }
