@@ -17,14 +17,46 @@ package opatranslator
 import (
 	"testing"
 
+	"github.com/open-policy-agent/opa/ast"
+	"github.com/open-policy-agent/opa/rego"
 	"github.com/stretchr/testify/require"
 )
 
-func TestOPATranslator(t *testing.T) {
-	t.Run("testing processTerm", func(t *testing.T) {
+func TestProcessTerm(t *testing.T) {
+	t.Run("simple query", func(t *testing.T) {
 		query := "data.resources[_].manager"
 		actual := processTerm(query)
 		expected := []string{"resources", "manager"}
 		require.Equal(t, expected, actual)
+	})
+
+	t.Run("empty query fields", func(t *testing.T) {
+		query := "data.resources[_]"
+		actual := processTerm(query)
+		require.Nil(t, actual)
+	})
+
+	t.Run("empty query", func(t *testing.T) {
+		query := ""
+		actual := processTerm(query)
+		require.Nil(t, actual)
+	})
+}
+
+func TestProcessQuery(t *testing.T) {
+	c := OPAClient{}
+
+	t.Run("ignore non callable expressions", func(t *testing.T) {
+		expr := &ast.Expr{}
+
+		pq := &rego.PartialQueries{
+			Queries: []ast.Body{
+				{expr},
+			},
+		}
+
+		res, err := c.ProcessQuery(pq)
+		require.Nil(t, err)
+		require.Equal(t, 1, len(res))
 	})
 }
