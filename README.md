@@ -37,6 +37,12 @@ Rönd supports three policy types:
 
 Rönd natively allows you to build an RBAC solution based on Roles and Bindings saved in MongoDB.
 
+## Who is using Rönd
+
+Here is a list of awesome people using Rönd, if you're using it but do not appear in this list feel free to open a PR!
+
+ * [Mia-Platform](https://mia-platform.eu)
+
 ## Local development
 
 For local development you need to have Go installed locally, checkout the [go.mod](./go.mod#L3) file to know the currently used language version.
