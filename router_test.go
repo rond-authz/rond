@@ -208,6 +208,9 @@ func createContext(
 	}
 	partialContext = context.WithValue(partialContext, PartialResultsEvaluatorConfigKey{}, partialResultEvaluators)
 
+	log, _ := test.NewNullLogger()
+	partialContext = glogger.WithLogger(partialContext, logrus.NewEntry(log))
+
 	return partialContext
 }
 
