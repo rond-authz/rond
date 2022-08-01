@@ -567,6 +567,7 @@ func TestEntrypoint(t *testing.T) {
 	})
 
 	t.Run("api permissions file path with nested routes with pathParams access with escaped value", func(t *testing.T) {
+		fmt.Printf("====== TEST STARTS NOW ====== ====== ====== ====== ====== ====== ====== ")
 		gock.Flush()
 		shutdown := make(chan os.Signal, 1)
 
@@ -593,7 +594,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
-			{name: "LOG_LEVEL", value: "fatal"},
+			{name: "LOG_LEVEL", value: "trace"},
 		})
 
 		go func() {
