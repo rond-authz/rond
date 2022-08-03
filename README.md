@@ -11,6 +11,8 @@
 [![Go Report Card][go-report-card-badge]][go-report-card]
 [![Go Sec][security-badge-svg]][security-badge]
 
+[![Docs][docs-badge]][docs]
+
 [![Mia-Platform][mia-platform-badge]][mia-platform]
 
 # Rönd
@@ -63,4 +65,6 @@ Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for further details about the p
 [go-report-card]: https://goreportcard.com/report/github.com/rond-authz/rond
 [mia-platform-badge]: https://img.shields.io/badge/Supported%20by-Mia--Platform-green?style=for-the-badge&link=https://mia-platform.eu/&color=3d86f4&labelColor=214147
 [mia-platform]: https://mia-platform.eu/?utm_source=referral&utm_medium=github&utm_campaign=rond
+[docs-badge]: https://img.shields.io/badge/-Read%20the%20Docs-green?style=for-the-badge&color=3d86f4&labelColor=214147
+[docs]: https://rond-authz.io/?utm_source=referral&utm_medium=github&utm_campaign=rond
 [why-rond]: https://github.com/rond-authz#why-r%C3%B6nd
