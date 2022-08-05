@@ -162,7 +162,9 @@ func setupRouter(
 		if err != nil {
 			return nil, err
 		}
-		addStandaloneRoutes(swaggerRouter)
+		if err := addStandaloneRoutes(swaggerRouter); err != nil {
+			return nil, err
+		}
 
 		if err = swaggerRouter.GenerateAndExposeSwagger(); err != nil {
 			return nil, err

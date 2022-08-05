@@ -84,11 +84,20 @@ var grantDefinitions = swagger.Definitions{
 	},
 }
 
-func addStandaloneRoutes(router *swagger.Router) {
-	router.AddRoute(http.MethodPost, "/revoke/bindings/resource/{resourceType}", revokeHandler, revokeDefinitions)
-	router.AddRoute(http.MethodPost, "/grant/bindings/resource/{resourceType}", grantHandler, grantDefinitions)
-	router.AddRoute(http.MethodPost, "/revoke/bindings", revokeHandler, revokeDefinitions)
-	router.AddRoute(http.MethodPost, "/grant/bindings", grantHandler, grantDefinitions)
+func addStandaloneRoutes(router *swagger.Router) error {
+	if _, err := router.AddRoute(http.MethodPost, "/revoke/bindings/resource/{resourceType}", revokeHandler, revokeDefinitions); err != nil {
+		return err
+	}
+	if _, err := router.AddRoute(http.MethodPost, "/grant/bindings/resource/{resourceType}", grantHandler, grantDefinitions); err != nil {
+		return err
+	}
+	if _, err := router.AddRoute(http.MethodPost, "/revoke/bindings", revokeHandler, revokeDefinitions); err != nil {
+		return err
+	}
+	if _, err := router.AddRoute(http.MethodPost, "/grant/bindings", grantHandler, grantDefinitions); err != nil {
+		return err
+	}
+	return nil
 }
 
 func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVariables) {
