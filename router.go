@@ -22,17 +22,82 @@ import (
 	"sort"
 	"strings"
 
+	swagger "github.com/davidebianchi/gswagger"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
 )
 
-func addStandaloneRoutes(router *mux.Router) {
-	router.HandleFunc("/revoke/bindings/resource/{resourceType}", revokeHandler).Methods(http.MethodPost)
-	router.HandleFunc("/grant/bindings/resource/{resourceType}", grantHandler).Methods(http.MethodPost)
-	router.HandleFunc("/revoke/bindings", revokeHandler).Methods(http.MethodPost)
-	router.HandleFunc("/grant/bindings", grantHandler).Methods(http.MethodPost)
+var revokeDefinitions = swagger.Definitions{
+	RequestBody: &swagger.ContentValue{
+		Content: swagger.Content{
+			"application/json": {
+				Value: RevokeRequestBody{},
+			},
+		},
+	},
+	Responses: map[int]swagger.ContentValue{
+		http.StatusOK: {
+			Content: swagger.Content{
+				"application/json": {Value: RevokeResponseBody{}},
+			},
+		},
+		http.StatusInternalServerError: {
+			Content: swagger.Content{
+				"application/json": {Value: types.RequestError{}},
+			},
+		},
+		http.StatusBadRequest: {
+			Content: swagger.Content{
+				"application/json": {Value: types.RequestError{}},
+			},
+		},
+	},
+}
+
+var grantDefinitions = swagger.Definitions{
+	RequestBody: &swagger.ContentValue{
+		Content: swagger.Content{
+			"application/json": {
+				Value: GrantRequestBody{},
+			},
+		},
+	},
+	Responses: map[int]swagger.ContentValue{
+		http.StatusOK: {
+			Content: swagger.Content{
+				"application/json": {Value: GrantResponseBody{}},
+			},
+		},
+		http.StatusInternalServerError: {
+			Content: swagger.Content{
+				"application/json": {Value: types.RequestError{}},
+			},
+		},
+		http.StatusBadRequest: {
+			Content: swagger.Content{
+				"application/json": {Value: types.RequestError{}},
+			},
+		},
+	},
+}
+
+func addStandaloneRoutes(router *swagger.Router) error {
+	if _, err := router.AddRoute(http.MethodPost, "/revoke/bindings/resource/{resourceType}", revokeHandler, revokeDefinitions); err != nil {
+		return err
+	}
+	if _, err := router.AddRoute(http.MethodPost, "/grant/bindings/resource/{resourceType}", grantHandler, grantDefinitions); err != nil {
+		return err
+	}
+	if _, err := router.AddRoute(http.MethodPost, "/revoke/bindings", revokeHandler, revokeDefinitions); err != nil {
+		return err
+	}
+	if _, err := router.AddRoute(http.MethodPost, "/grant/bindings", grantHandler, grantDefinitions); err != nil {
+		return err
+	}
+	return nil
 }
 
 func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVariables) {

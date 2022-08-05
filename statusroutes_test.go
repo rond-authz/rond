@@ -151,6 +151,7 @@ test_policy { true }
 			Standalone:           true,
 			TargetServiceHost:    "my-service:4444",
 			PathPrefixStandalone: "/my-prefix",
+			ServiceVersion:       "latest",
 		}
 		router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
 		assert.NilError(t, err, "unexpected error")

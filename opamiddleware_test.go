@@ -395,6 +395,8 @@ func getResponseBody(t *testing.T, w *httptest.ResponseRecorder) []byte {
 }
 
 func getJSONResponseBody[T any](t *testing.T, w *httptest.ResponseRecorder) *T {
+	t.Helper()
+
 	responseBody := getResponseBody(t, w)
 	out := new(T)
 	if err := json.Unmarshal(responseBody, out); err != nil {

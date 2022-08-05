@@ -68,8 +68,9 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		DefaultValue: "8080",
 	},
 	{
-		Key:      "SERVICE_VERSION",
-		Variable: "ServiceVersion",
+		Key:          "SERVICE_VERSION",
+		Variable:     "ServiceVersion",
+		DefaultValue: "latest",
 	},
 	{
 		Key:      TargetServiceHostEnvKey,

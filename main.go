@@ -23,6 +23,9 @@ import (
 	"syscall"
 	"time"
 
+	swagger "github.com/davidebianchi/gswagger"
+	"github.com/davidebianchi/gswagger/apirouter"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
@@ -138,13 +141,34 @@ func setupRouter(
 ) (*mux.Router, error) {
 	router := mux.NewRouter().UseEncodedPath()
 	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
-	StatusRoutes(router, "rönd", env.ServiceVersion)
+	serviceName := "rönd"
+	StatusRoutes(router, serviceName, env.ServiceVersion)
 
 	router.Use(config.RequestMiddlewareEnvironments(env))
 
 	evalRouter := router.NewRoute().Subrouter()
 	if env.Standalone {
-		addStandaloneRoutes(router)
+		swaggerRouter, err := swagger.NewRouter(apirouter.NewGorillaMuxRouter(router), swagger.Options{
+			Context: context.Background(),
+			Openapi: &openapi3.T{
+				Info: &openapi3.Info{
+					Title:   serviceName,
+					Version: env.ServiceVersion,
+				},
+			},
+			JSONDocumentationPath: "/openapi/json",
+			YAMLDocumentationPath: "/openapi/yaml",
+		})
+		if err != nil {
+			return nil, err
+		}
+		if err := addStandaloneRoutes(swaggerRouter); err != nil {
+			return nil, err
+		}
+
+		if err = swaggerRouter.GenerateAndExposeSwagger(); err != nil {
+			return nil, err
+		}
 	}
 
 	evalRouter.Use(OPAMiddleware(opaModuleConfig, oas, &env, policiesEvaluators))
