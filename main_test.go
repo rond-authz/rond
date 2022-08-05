@@ -567,7 +567,6 @@ func TestEntrypoint(t *testing.T) {
 	})
 
 	t.Run("api permissions file path with nested routes with pathParams access with escaped value", func(t *testing.T) {
-		fmt.Printf("====== TEST STARTS NOW ====== ====== ====== ====== ====== ====== ====== ")
 		gock.Flush()
 		shutdown := make(chan os.Signal, 1)
 
@@ -594,7 +593,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
-			{name: "LOG_LEVEL", value: "trace"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		go func() {
@@ -1234,6 +1233,7 @@ func TestSetupRouterStandaloneMode(t *testing.T) {
 		Standalone:           true,
 		TargetServiceHost:    "my-service:4444",
 		PathPrefixStandalone: "/my-prefix",
+		ServiceVersion:       "my-version",
 	}
 	opa := &OPAModuleConfig{
 		Name: "policies",
@@ -1296,5 +1296,27 @@ test_policy { true }
 		assert.NilError(t, err, "unexpected error")
 		assert.Equal(t, requestError.Message, "Internal server error, please try again later")
 		assert.Equal(t, requestError.Error, "EOF")
+	})
+
+	t.Run("API documentation is correctly exposed - json", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/openapi/json", nil)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+		responseBody := getResponseBody(t, w)
+		assert.Assert(t, string(responseBody) != "")
+	})
+
+	t.Run("API documentation is correctly exposed - yaml", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/openapi/yaml", nil)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+		responseBody := getResponseBody(t, w)
+		assert.Assert(t, string(responseBody) != "")
 	})
 }

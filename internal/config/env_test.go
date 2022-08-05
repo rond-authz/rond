@@ -78,6 +78,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		ClientTypeHeader:     "Client-Type",
 		DelayShutdownSeconds: 10,
 		PathPrefixStandalone: "/eval",
+		ServiceVersion:       "latest",
 
 		OPAModulesDirectory: "/modules",
 	}

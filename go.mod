@@ -4,6 +4,8 @@ go 1.18
 
 require (
 	github.com/davidebianchi/go-jsonclient v1.3.0
+	github.com/davidebianchi/gswagger v0.5.0
+	github.com/getkin/kin-openapi v0.98.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/mia-platform/configlib v1.0.0
@@ -24,14 +26,21 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/go-openapi/jsonpointer v0.19.5 // indirect
+	github.com/go-openapi/swag v0.21.1 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/h2non/parth v0.0.0-20190131123155-b4df798d6542 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/iancoleman/orderedmap v0.2.0 // indirect
+	github.com/invopop/jsonschema v0.6.0 // indirect
+	github.com/invopop/yaml v0.2.0 // indirect
+	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/knadh/koanf v0.6.0 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
