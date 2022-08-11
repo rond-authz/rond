@@ -31,7 +31,7 @@ LABEL maintainer="rond@rond-authz.io" \
   name="rond" \
   vcs.sha="$COMMIT_SHA"
 
-ENV SERVICE_VERSION="1.3.2"
+ENV SERVICE_VERSION="1.4.0"
 
 # Import the user and group files from the builder.
 COPY --from=builder /etc/passwd /etc/passwd
