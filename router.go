@@ -112,8 +112,15 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVar
 	// NOTE: The following sort is required by mux router because it expects
 	// routes to be registered in the proper order
 	paths := make([]string, 0)
-	for path := range oas.Paths {
+	methods := make(map[string][]string, 0)
+	for path, pathMethods := range oas.Paths {
 		paths = append(paths, path)
+		for method := range pathMethods {
+			if methods[path] == nil {
+				methods[path] = []string{}
+			}
+			methods[path] = append(methods[path], method)
+		}
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(paths)))
 
@@ -127,14 +134,14 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVar
 		}
 		if strings.Contains(pathToRegister, "*") {
 			pathWithoutAsterisk := strings.ReplaceAll(pathToRegister, "*", "")
-			router.PathPrefix(convertPathVariablesToBrackets(pathWithoutAsterisk)).HandlerFunc(rbacHandler)
+			router.PathPrefix(convertPathVariablesToBrackets(pathWithoutAsterisk)).HandlerFunc(rbacHandler).Methods(methods[path]...)
 			continue
 		}
 		if path == env.TargetServiceOASPath && documentationPermission == "" {
-			router.HandleFunc(convertPathVariablesToBrackets(pathToRegister), alwaysProxyHandler)
+			router.HandleFunc(convertPathVariablesToBrackets(pathToRegister), alwaysProxyHandler).Methods(http.MethodGet)
 			continue
 		}
-		router.HandleFunc(convertPathVariablesToBrackets(pathToRegister), rbacHandler)
+		router.HandleFunc(convertPathVariablesToBrackets(pathToRegister), rbacHandler).Methods(methods[path]...)
 	}
 	if documentationPathInOAS == nil {
 		router.HandleFunc(convertPathVariablesToBrackets(env.TargetServiceOASPath), alwaysProxyHandler)

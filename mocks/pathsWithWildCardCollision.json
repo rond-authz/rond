@@ -1,0 +1,19 @@
+{
+    "paths": {
+        "/foo/*": {
+            "all": {
+                "x-permission": {
+                    "allow": "testingPathParamsAbsence"
+                }
+            }
+        },
+        "/foo/:params": {
+            "patch": {
+                "x-permission": {
+                    "allow": "testingPathParamsAbsence"
+                }
+            }
+        }
+      
+    }
+}
