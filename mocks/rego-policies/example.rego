@@ -58,3 +58,7 @@ filter_req {
 	filter := data.resources[_]
 	filter.key == 42
 }
+
+testingPathParamsAbsence {
+	object.get(input, ["request", "pathParams"], false) == false
+}
