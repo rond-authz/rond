@@ -1164,7 +1164,6 @@ func testCorrectRouting(oasFilePath string, t *testing.T) {
 	mongoHost := os.Getenv("MONGO_HOST_CI")
 	if mongoHost == "" {
 		mongoHost = testutils.LocalhostMongoDB
-		// t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
 	}
 	randomizedDBNamePart := testutils.GetRandomName(10)
 	mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
