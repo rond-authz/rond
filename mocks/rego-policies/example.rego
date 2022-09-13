@@ -60,6 +60,5 @@ filter_req {
 }
 
 testingPathParamsAbsence {
-	print(input)
 	object.get(input, ["request", "pathParams"], false) == false
 }
