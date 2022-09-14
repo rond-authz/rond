@@ -21,7 +21,7 @@
             },
             "post": {
                 "x-permission": {
-                    "allow": "allow_create_project"
+                    "allow": "allow_create_restaurants"
                 }
             },
             "delete": {
@@ -56,21 +56,21 @@
             },
             "patch": {
                 "x-permission": {
-                    "allow": "allow_edit_project"
+                    "allow": "allow_edit_restaurants"
                 }
             }
         },
         "/api/restaurants/state": {
             "post": {
                 "x-permission": {
-                    "allow": "allow_bulk_edit_project"
+                    "allow": "allow_bulk_edit_restaurants"
                 }
             }
         },
         "/api/restaurants/:id/state": {
             "post": {
                 "x-permission": {
-                    "allow": "allow_edit_project"
+                    "allow": "allow_edit_restaurants"
                 }
             }
         }
