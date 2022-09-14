@@ -1,0 +1,78 @@
+{
+    "paths": {
+        "/*": {
+            "all": {
+                "x-permission": {
+                    "allow": "allow_all"
+                }
+            }
+        },
+        "/api/restaurants/": {
+            "get": {
+                "x-permission": {
+                    "allow": "filter_restaurants",
+                    "resourceFilter": {
+                        "rowFilter": {
+                            "enabled": true,
+                            "headerKey": ""
+                        }
+                    }
+                }
+            },
+            "post": {
+                "x-permission": {
+                    "allow": "allow_create_project"
+                }
+            },
+            "delete": {
+                "x-permission": {
+                    "allow": "allow_delete_restaurants"
+                }
+            }
+        },
+        "/api/restaurants/count": {
+            "get": {
+                "x-permission": {
+                    "allow": "filter_restaurants",
+                    "resourceFilter": {
+                        "rowFilter": {
+                            "enabled": true,
+                            "headerKey": ""
+                        }
+                    }
+                }
+            }
+        },
+        "/api/restaurants/:id": {
+            "all": {
+                "x-permission": {
+                    "allow": "allow_view"
+                }
+            },
+            "delete": {
+                "x-permission": {
+                    "allow": "allow_delete_restaurants"
+                }
+            },
+            "patch": {
+                "x-permission": {
+                    "allow": "allow_edit_project"
+                }
+            }
+        },
+        "/api/restaurants/state": {
+            "post": {
+                "x-permission": {
+                    "allow": "allow_bulk_edit_project"
+                }
+            }
+        },
+        "/api/restaurants/:id/state": {
+            "post": {
+                "x-permission": {
+                    "allow": "allow_edit_project"
+                }
+            }
+        }
+    }
+}

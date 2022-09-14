@@ -58,3 +58,24 @@ filter_req {
 	filter := data.resources[_]
 	filter.key == 42
 }
+
+testingPathParamsAbsence {
+	print(input)
+	object.get(input, ["request", "method"], false) == "GET"
+	object.get(input, ["request", "pathParams"], false) == false
+} {
+	print(input)
+	object.get(input, ["request", "method"], false) == "PATCH"
+	object.get(input, ["request", "pathParams"], false) != false
+} {
+	print(input)
+	object.get(input, ["request", "method"], false) == "GET"
+	object.get(input, ["request", "path"], false) == "/api/projects/1234"
+	object.get(input, ["request", "pathParams"], false) != false
+}
+
+
+allow_view {
+    id :=  object.get(input,["request","pathParams", "id"], false)
+    id
+}
