@@ -58,7 +58,6 @@ func TestCreateRegoInput(t *testing.T) {
 	enableResourcePermissionsMapOptimization := false
 
 	t.Run("headers", func(t *testing.T) {
-
 		t.Run("allow empty userproperties header", func(t *testing.T) {
 			env := config.EnvironmentVariables{
 				UserPropertiesHeader: "userproperties",
