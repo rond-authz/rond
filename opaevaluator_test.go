@@ -57,6 +57,30 @@ func TestCreateRegoInput(t *testing.T) {
 	user := types.User{}
 	enableResourcePermissionsMapOptimization := false
 
+	t.Run("headers", func(t *testing.T) {
+		t.Run("allow empty userproperties header", func(t *testing.T) {
+			env := config.EnvironmentVariables{
+				UserPropertiesHeader: "userproperties",
+			}
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set("userproperties", "")
+
+			_, err := createRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
+			require.Nil(t, err, "Unexpected error")
+		})
+
+		t.Run("fail on invalid userproperties header value", func(t *testing.T) {
+			env := config.EnvironmentVariables{
+				UserPropertiesHeader: "userproperties",
+			}
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set("userproperties", "1")
+
+			_, err := createRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
+			require.Error(t, err)
+		})
+	})
+
 	t.Run("body integration", func(t *testing.T) {
 		expectedRequestBody := []byte(`{"Key":42}`)
 		reqBody := struct{ Key int }{
