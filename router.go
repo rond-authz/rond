@@ -112,14 +112,20 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVar
 	// NOTE: The following sort is required by mux router because it expects
 	// routes to be registered in the proper order
 	paths := make([]string, 0)
-	methods := make(map[string][]string, len(oas.Paths))
+	methods := make(map[string][]string, 0)
+
 	for path, pathMethods := range oas.Paths {
 		paths = append(paths, path)
 		for method := range pathMethods {
-			if methods[path] == nil {
-				methods[path] = make([]string, len(pathMethods))
+			if method == AllHTTPMethod {
+				methods[path] = OasSupportedHTTPMethods
+				continue
 			}
-			methods[path] = append(methods[path], method)
+			if methods[path] == nil {
+				methods[path] = []string{}
+			}
+
+			methods[path] = append(methods[path], strings.ToUpper(method))
 		}
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(paths)))

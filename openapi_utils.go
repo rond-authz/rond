@@ -35,7 +35,16 @@ import (
 	"github.com/uptrace/bunrouter"
 )
 
-const ALL_METHODS = "ALL"
+var AllHTTPMethod = "all"
+
+var OasSupportedHTTPMethods = []string{
+	http.MethodGet,
+	http.MethodPost,
+	http.MethodPut,
+	http.MethodPatch,
+	http.MethodDelete,
+	http.MethodHead,
+}
 
 var ErrNotFoundOASDefinition = errors.New("not found oas definition")
 
@@ -150,15 +159,6 @@ func createOasHandler(scopedMethodContent VerbConfig) func(http.ResponseWriter, 
 	}
 }
 
-var oasSupportedHTTPMethods = []string{
-	http.MethodGet,
-	http.MethodPost,
-	http.MethodPut,
-	http.MethodPatch,
-	http.MethodDelete,
-	http.MethodHead,
-}
-
 func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 	OASRouter := bunrouter.New().Compat()
 	routeMap := oas.createRoutesMap()
@@ -170,12 +170,12 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 
 			handler := createOasHandler(methodContent)
 
-			if scopedMethod != ALL_METHODS {
+			if scopedMethod != strings.ToUpper(AllHTTPMethod) {
 				OASRouter.Handle(scopedMethod, OASPathCleaned, handler)
 				continue
 			}
 
-			for _, method := range oasSupportedHTTPMethods {
+			for _, method := range OasSupportedHTTPMethods {
 				if !routeMap.contains(OASPath, method) {
 					OASRouter.Handle(method, OASPathCleaned, handler)
 				}
