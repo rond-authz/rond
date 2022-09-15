@@ -62,7 +62,10 @@ filter_req {
 testingPathParamsAbsence {
 	object.get(input, ["request", "method"], false) == "GET"
 	object.get(input, ["request", "pathParams"], false) == false
-} 
+} {	
+	object.get(input, ["request", "method"], false) == "PATCH"
+	object.get(input, ["request", "pathParams"], false) != false
+}
 
 
 allow_view {

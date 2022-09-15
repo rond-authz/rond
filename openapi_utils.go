@@ -170,7 +170,7 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 
 			handler := createOasHandler(methodContent)
 
-			if scopedMethod != AllHTTPMethod {
+			if scopedMethod != strings.ToUpper(AllHTTPMethod) {
 				OASRouter.Handle(scopedMethod, OASPathCleaned, handler)
 				continue
 			}
