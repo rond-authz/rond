@@ -116,7 +116,7 @@ func AssertResponseFullErrorMessages(t *testing.T, resp *httptest.ResponseRecord
 	}
 }
 
-// #nosec G104 -- Ignored errors
+//#nosec G104 -- Ignored errors
 func PopulateDBForTesting(
 	t *testing.T,
 	ctx context.Context,
