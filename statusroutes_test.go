@@ -17,7 +17,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -50,7 +50,7 @@ func TestStatusRoutes(testCase *testing.T) {
 		require.Equal(t, http.StatusOK, statusCode, "The response statusCode should be 200")
 
 		rawBody := responseRecorder.Result().Body
-		body, readBodyError := ioutil.ReadAll(rawBody)
+		body, readBodyError := io.ReadAll(rawBody)
 		require.NoError(t, readBodyError)
 		require.Equal(t, expectedResponse, string(body), "The response body should be the expected one")
 	})
@@ -66,7 +66,7 @@ func TestStatusRoutes(testCase *testing.T) {
 		require.Equal(t, http.StatusOK, statusCode, "The response statusCode should be 200")
 
 		rawBody := responseRecorder.Result().Body
-		body, readBodyError := ioutil.ReadAll(rawBody)
+		body, readBodyError := io.ReadAll(rawBody)
 		require.NoError(t, readBodyError)
 		require.Equal(t, expectedResponse, string(body), "The response body should be the expected one")
 	})
@@ -82,7 +82,7 @@ func TestStatusRoutes(testCase *testing.T) {
 		require.Equal(t, http.StatusOK, statusCode, "The response statusCode should be 200")
 
 		rawBody := responseRecorder.Result().Body
-		body, readBodyError := ioutil.ReadAll(rawBody)
+		body, readBodyError := io.ReadAll(rawBody)
 		require.NoError(t, readBodyError)
 		require.Equal(t, expectedResponse, string(body), "The response body should be the expected one")
 	})

@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -567,7 +567,7 @@ func TestGrantHandler(t *testing.T) {
 			Post("/bindings/").
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
 				var body types.Binding
-				bodyBytes, err := ioutil.ReadAll(req.Body)
+				bodyBytes, err := io.ReadAll(req.Body)
 				require.Nil(t, err, "unxpected error reading body in matcher")
 
 				containsNull := strings.Contains(string(bodyBytes), `"permissions":null`)
@@ -626,7 +626,7 @@ func TestGrantHandler(t *testing.T) {
 			Post("/bindings/").
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
 				var body types.Binding
-				bodyBytes, err := ioutil.ReadAll(req.Body)
+				bodyBytes, err := io.ReadAll(req.Body)
 				require.Nil(t, err, "unxpected error reading body in matcher")
 
 				containsNull := strings.Contains(string(bodyBytes), `"permissions":null`)

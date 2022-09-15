@@ -17,10 +17,10 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"sort"
 	"testing"
 
@@ -444,7 +444,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 func prepareOASFromFile(t *testing.T, filePath string) *OpenAPISpec {
 	t.Helper()
 
-	fileContent, err := ioutil.ReadFile(filePath)
+	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err.Error())
 	}

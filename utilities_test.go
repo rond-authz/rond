@@ -16,7 +16,7 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -75,7 +75,7 @@ func TestFailResponseWithCode(t *testing.T) {
 
 	assert.Equal(t, w.Result().Header.Get(ContentTypeHeaderKey), JSONContentTypeHeader)
 
-	bodyBytes, err := ioutil.ReadAll(w.Body)
+	bodyBytes, err := io.ReadAll(w.Body)
 	assert.NilError(t, err)
 
 	var response types.RequestError

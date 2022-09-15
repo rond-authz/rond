@@ -19,7 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -55,7 +55,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func overwriteResponseWithStatusCode(originalResponse *http.Response, newBody []
 }
 
 func overwriteResponse(originalResponse *http.Response, newBody []byte) {
-	body := ioutil.NopCloser(bytes.NewReader(newBody))
+	body := io.NopCloser(bytes.NewReader(newBody))
 	originalResponse.Body = body
 	originalResponse.ContentLength = int64(len(newBody))
 	originalResponse.Header.Set("Content-Length", strconv.Itoa(len(newBody)))

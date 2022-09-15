@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -1432,7 +1432,7 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 		req, _ := http.NewRequest("GET", "http://localhost:3041/filters/", nil)
 		client1 := &http.Client{}
 		resp, _ := client1.Do(req)
-		respBody, _ := ioutil.ReadAll(resp.Body)
+		respBody, _ := io.ReadAll(resp.Body)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.Equal(t, `{"FT_1":true}`, string(respBody))
 	})
@@ -1449,7 +1449,7 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 		req, _ := http.NewRequest("GET", "http://localhost:3041/body-edit-with-request-filter/", nil)
 		client1 := &http.Client{}
 		resp, _ := client1.Do(req)
-		respBody, _ := ioutil.ReadAll(resp.Body)
+		respBody, _ := io.ReadAll(resp.Body)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.Equal(t, `{"FT_1":true}`, string(respBody))
 	})
@@ -1470,92 +1470,6 @@ func setEnvs(envsToSet []env) func() {
 			os.Unsetenv(env.name)
 		}
 	}
-}
-
-func testCorrectRouting(oasFilePath string, t *testing.T) {
-	shutdown := make(chan os.Signal, 1)
-
-	defer gock.Off()
-	defer gock.DisableNetworkingFilters()
-	defer gock.DisableNetworking()
-	gock.EnableNetworking()
-	gock.NetworkingFilter(func(r *http.Request) bool {
-		if r.URL.Path == "/documentation/json" {
-			return false
-		}
-		if r.URL.Path == "/foo/count" && r.URL.Host == "localhost:3038" {
-			return false
-		}
-		return true
-	})
-
-	gock.New("http://localhost:3038").
-		Get("/documentation/json").
-		Reply(200).
-		File(oasFilePath)
-
-	unsetBaseEnvs := setEnvs([]env{
-		{name: "HTTP_PORT", value: "3039"},
-		{name: "TARGET_SERVICE_HOST", value: "localhost:3038"},
-		{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
-		{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
-	})
-	mongoHost := os.Getenv("MONGO_HOST_CI")
-	if mongoHost == "" {
-		mongoHost = testutils.LocalhostMongoDB
-	}
-	randomizedDBNamePart := testutils.GetRandomName(10)
-	mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
-
-	unsetOtherEnvs := setEnvs([]env{
-		{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
-		{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
-		{name: "ROLES_COLLECTION_NAME", value: "roles"},
-		{name: "LOG_LEVEL", value: "trace"},
-	})
-
-	clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
-	client, err := mongo.Connect(context.Background(), clientOpts)
-	if err != nil {
-		fmt.Printf("error connecting to MongoDB: %s", err.Error())
-	}
-
-	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancelFn()
-	if err = client.Ping(ctx, readpref.Primary()); err != nil {
-		fmt.Printf("error verifying MongoDB connection: %s", err.Error())
-	}
-	defer client.Disconnect(ctx)
-
-	testutils.PopulateDBForTesting(
-		t,
-		ctx,
-		client.Database(mongoDBName).Collection("roles"),
-		client.Database(mongoDBName).Collection("bindings"),
-	)
-
-	go func() {
-		entrypoint(shutdown)
-	}()
-	defer func() {
-		unsetBaseEnvs()
-		unsetOtherEnvs()
-		shutdown <- syscall.SIGTERM
-	}()
-	time.Sleep(1 * time.Second)
-	gock.Flush()
-	gock.New("http://localhost:3038/foo/count").
-		Get("/foo/count").
-		Reply(200)
-	req, err := http.NewRequest("GET", "http://localhost:3039/foo/count", nil)
-	require.NoError(t, err)
-
-	req.Header.Set("miausergroups", "group1")
-	req.Header.Set("miauserid", "filter_test")
-	client1 := &http.Client{}
-	resp, err := client1.Do(req)
-	require.Equal(t, nil, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func TestIntegrationWithOASParamsInBrackets(t *testing.T) {

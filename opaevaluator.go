@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -363,14 +362,14 @@ func createRegoQueryInput(req *http.Request, env config.EnvironmentVariables, en
 		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete)
 
 	if shouldParseJSONBody {
-		bodyBytes, err := ioutil.ReadAll(req.Body)
+		bodyBytes, err := io.ReadAll(req.Body)
 		if err != nil {
 			return nil, fmt.Errorf("failed request body parse: %s", err.Error())
 		}
 		if err := json.Unmarshal(bodyBytes, &input.Request.Body); err != nil {
 			return nil, fmt.Errorf("failed request body deserialization: %s", err.Error())
 		}
-		req.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
 	inputBytes, err := json.Marshal(input)
 	if err != nil {

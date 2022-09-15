@@ -19,10 +19,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -229,7 +230,7 @@ func fetchOpenAPI(url string) (*OpenAPISpec, error) {
 		return nil, fmt.Errorf("%w: invalid status code %d", ErrRequestFailed, resp.StatusCode)
 	}
 
-	bodyBytes, _ := ioutil.ReadAll(resp.Body)
+	bodyBytes, _ := io.ReadAll(resp.Body)
 
 	var oas OpenAPISpec
 	if err := json.Unmarshal(bodyBytes, &oas); err != nil {
@@ -240,7 +241,7 @@ func fetchOpenAPI(url string) (*OpenAPISpec, error) {
 
 func readFile(path string) ([]byte, error) {
 	//#nosec G304 -- This is an expected behaviour
-	fileContentByte, err := ioutil.ReadFile(path)
+	fileContentByte, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrFileLoadFailed, err.Error())
 	}
