@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -159,7 +159,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			invoked = true
 			defer r.Body.Close()
-			buf, err := ioutil.ReadAll(r.Body)
+			buf, err := io.ReadAll(r.Body)
 			assert.Equal(t, err, nil, "Mocked backend: Unexpected error")
 			assert.Equal(t, string(buf), mockBodySting, "Mocked backend: Unexpected Body received")
 			w.WriteHeader(http.StatusOK)
@@ -188,7 +188,7 @@ func TestDirectProxyHandler(t *testing.T) {
 
 		assert.Assert(t, invoked, "Handler was not invoked.")
 		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
-		buf, err := ioutil.ReadAll(w.Body)
+		buf, err := io.ReadAll(w.Body)
 		assert.Equal(t, err, nil, "Unexpected error to read body response")
 		assert.Equal(t, string(buf), "Mocked Backend Body Example", "Unexpected body response")
 	})
@@ -207,7 +207,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			invoked = true
 			defer r.Body.Close()
-			buf, err := ioutil.ReadAll(r.Body)
+			buf, err := io.ReadAll(r.Body)
 			assert.Equal(t, err, nil, "Mocked backend: Unexpected error")
 			assert.Equal(t, string(buf), mockBodySting, "Mocked backend: Unexpected Body received")
 			w.WriteHeader(http.StatusOK)
@@ -236,7 +236,7 @@ func TestDirectProxyHandler(t *testing.T) {
 
 		assert.Assert(t, invoked, "Handler was not invoked.")
 		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
-		buf, err := ioutil.ReadAll(w.Body)
+		buf, err := io.ReadAll(w.Body)
 		assert.Equal(t, err, nil, "Unexpected error to read body response")
 		assert.Equal(t, string(buf), "Mocked Backend Body Example", "Unexpected body response")
 	})
@@ -271,7 +271,7 @@ allow {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			invoked = true
 			defer r.Body.Close()
-			buf, err := ioutil.ReadAll(r.Body)
+			buf, err := io.ReadAll(r.Body)
 			assert.Equal(t, err, nil, "Mocked backend: Unexpected error")
 			assert.Equal(t, string(buf), mockBodySting, "Mocked backend: Unexpected Body received")
 			filterQuery := r.Header.Get("rowfilterquery")
@@ -318,7 +318,7 @@ allow {
 
 		assert.Assert(t, invoked, "Handler was not invoked.")
 		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
-		buf, err := ioutil.ReadAll(w.Body)
+		buf, err := io.ReadAll(w.Body)
 		assert.Equal(t, err, nil, "Unexpected error to read body response")
 		assert.Equal(t, string(buf), "Mocked Backend Body Example", "Unexpected body response")
 	})
@@ -349,7 +349,7 @@ allow {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			invoked = true
 			defer r.Body.Close()
-			buf, err := ioutil.ReadAll(r.Body)
+			buf, err := io.ReadAll(r.Body)
 			assert.Equal(t, err, nil, "Mocked backend: Unexpected error")
 			assert.Equal(t, string(buf), mockBodySting, "Mocked backend: Unexpected Body received")
 			filterQuery := r.Header.Get("rowfilterquery")
@@ -396,7 +396,7 @@ allow {
 
 		assert.Assert(t, invoked, "Handler was not invoked.")
 		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
-		buf, err := ioutil.ReadAll(w.Body)
+		buf, err := io.ReadAll(w.Body)
 		assert.Equal(t, err, nil, "Unexpected error to read body response")
 		assert.Equal(t, string(buf), "Mocked Backend Body Example", "Unexpected body response")
 	})
@@ -451,7 +451,7 @@ allow {
 
 		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 		assert.Equal(t, w.Result().Header.Get(ContentTypeHeaderKey), JSONContentTypeHeader, "Unexpected content type.")
-		buf, err := ioutil.ReadAll(w.Body)
+		buf, err := io.ReadAll(w.Body)
 		assert.Equal(t, err, nil, "Unexpected error to read body response")
 		assert.Equal(t, string(buf), "[]", "Unexpected body response")
 	})
@@ -539,7 +539,7 @@ allow {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			invoked = true
 			defer r.Body.Close()
-			buf, err := ioutil.ReadAll(r.Body)
+			buf, err := io.ReadAll(r.Body)
 			assert.Equal(t, err, nil, "Mocked backend: Unexpected error")
 			assert.Equal(t, string(buf), mockBodySting, "Mocked backend: Unexpected Body received")
 			filterQuery := r.Header.Get("rowfilterquery")

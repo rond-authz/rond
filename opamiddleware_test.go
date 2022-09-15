@@ -17,9 +17,10 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/rond-authz/rond/internal/config"
@@ -40,7 +41,7 @@ func TestOPAMiddleware(t *testing.T) {
 todo { true }`,
 		}
 		var openAPISpec *OpenAPISpec
-		openAPISpecContent, _ := ioutil.ReadFile("./mocks/simplifiedMock.json")
+		openAPISpecContent, _ := os.ReadFile("./mocks/simplifiedMock.json")
 		_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
 		middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
 
@@ -102,7 +103,7 @@ foobar { true }`,
 
 		t.Run(`ok - path is known on oas with no permission declared`, func(t *testing.T) {
 			var openAPISpec *OpenAPISpec
-			openAPISpecContent, err := ioutil.ReadFile("./mocks/documentationPathMock.json")
+			openAPISpecContent, err := os.ReadFile("./mocks/documentationPathMock.json")
 			assert.NilError(t, err)
 			_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
 			var envs = config.EnvironmentVariables{
@@ -122,7 +123,7 @@ foobar { true }`,
 
 		t.Run(`ok - path is missing on oas and request is equal to serviceTargetOASPath`, func(t *testing.T) {
 			var openAPISpec *OpenAPISpec
-			openAPISpecContent, err := ioutil.ReadFile("./mocks/simplifiedMock.json")
+			openAPISpecContent, err := os.ReadFile("./mocks/simplifiedMock.json")
 			assert.NilError(t, err)
 			_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
 			var envs = config.EnvironmentVariables{
@@ -142,7 +143,7 @@ foobar { true }`,
 
 		t.Run(`ok - path is NOT known on oas but is proxied anyway`, func(t *testing.T) {
 			var openAPISpec *OpenAPISpec
-			openAPISpecContent, err := ioutil.ReadFile("./mocks/simplifiedMock.json")
+			openAPISpecContent, err := os.ReadFile("./mocks/simplifiedMock.json")
 			assert.NilError(t, err)
 			_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
 			var envs = config.EnvironmentVariables{
@@ -163,7 +164,7 @@ foobar { true }`,
 
 	t.Run(`injects opa instance with correct query`, func(t *testing.T) {
 		var openAPISpec *OpenAPISpec
-		openAPISpecContent, _ := ioutil.ReadFile("./mocks/simplifiedMock.json")
+		openAPISpecContent, _ := os.ReadFile("./mocks/simplifiedMock.json")
 		_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
 
 		t.Run(`rego package doesn't contain expected permission`, func(t *testing.T) {
@@ -263,7 +264,7 @@ very_very_composed_permission_with_eval { true }`,
 
 func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 	var openAPISpec *OpenAPISpec
-	openAPISpecContent, _ := ioutil.ReadFile("./mocks/simplifiedMock.json")
+	openAPISpecContent, _ := os.ReadFile("./mocks/simplifiedMock.json")
 	_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
 
 	envs := config.EnvironmentVariables{
@@ -388,7 +389,7 @@ func TestGetOPAModuleConfig(t *testing.T) {
 func getResponseBody(t *testing.T, w *httptest.ResponseRecorder) []byte {
 	t.Helper()
 
-	responseBody, err := ioutil.ReadAll(w.Result().Body)
+	responseBody, err := io.ReadAll(w.Result().Body)
 	require.NoError(t, err)
 
 	return responseBody

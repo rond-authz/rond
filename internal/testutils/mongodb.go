@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http/httptest"
 	"os"
@@ -98,7 +98,7 @@ func AssertResponseError(t *testing.T, resp *httptest.ResponseRecorder, statusCo
 
 func AssertResponseFullErrorMessages(t *testing.T, resp *httptest.ResponseRecorder, statusCode int, technicalErrMsg, businessErrMsg string) {
 	t.Helper()
-	respBodyBuff, err := ioutil.ReadAll(resp.Body)
+	respBodyBuff, err := io.ReadAll(resp.Body)
 	assert.Equal(t, err, nil, "Unexpected error in the response body")
 
 	var respBody types.RequestError
@@ -116,7 +116,7 @@ func AssertResponseFullErrorMessages(t *testing.T, resp *httptest.ResponseRecord
 	}
 }
 
-//#nosec G104 -- Ignored errors
+// #nosec G104 -- Ignored errors
 func PopulateDBForTesting(
 	t *testing.T,
 	ctx context.Context,

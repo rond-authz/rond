@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -68,7 +67,7 @@ func TestRoundTripErrors(t *testing.T) {
 		assert.NilError(t, err, "unexpected error")
 		assert.Equal(t, resp.StatusCode, http.StatusExpectationFailed, "unexpected status code")
 
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		assert.NilError(t, err, "unexpected error")
 
 		actualResponseBody := make(map[string]interface{})
@@ -111,7 +110,7 @@ func TestOPATransportResponseWithError(t *testing.T) {
 		transport.responseWithError(resp, fmt.Errorf("some error"), http.StatusInternalServerError)
 		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		require.Nil(t, err)
 		expectedBytes, err := json.Marshal(types.RequestError{
 			StatusCode: http.StatusInternalServerError,
@@ -133,7 +132,7 @@ func TestOPATransportResponseWithError(t *testing.T) {
 		transport.responseWithError(resp, fmt.Errorf("some error"), http.StatusForbidden)
 		require.Equal(t, http.StatusForbidden, resp.StatusCode)
 
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		require.Nil(t, err)
 		expectedBytes, err := json.Marshal(types.RequestError{
 			StatusCode: http.StatusForbidden,
@@ -174,7 +173,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 	t.Run("returns resp on non-2xx response", func(t *testing.T) {
 		resp := &http.Response{
 			StatusCode:    http.StatusInternalServerError,
-			Body:          ioutil.NopCloser(bytes.NewReader([]byte("original response"))),
+			Body:          io.NopCloser(bytes.NewReader([]byte("original response"))),
 			ContentLength: 0,
 			Header:        http.Header{},
 		}
@@ -190,7 +189,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 
 		updatedResp, err := transport.RoundTrip(req)
 		require.Nil(t, err)
-		bodyBytes, err := ioutil.ReadAll(updatedResp.Body)
+		bodyBytes, err := io.ReadAll(updatedResp.Body)
 		require.Nil(t, err)
 		require.Equal(t, "original response", string(bodyBytes))
 	})
@@ -251,7 +250,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 				ReadError: io.EOF,
 			},
 			ContentLength: 0,
-			Header:        http.Header{"some": []string{"content"}},
+			Header:        http.Header{http.CanonicalHeaderKey("some"): []string{"content"}},
 		}
 		transport := &OPATransport{
 			&MockRoundTrip{Response: resp},
@@ -265,13 +264,13 @@ func TestOPATransportRoundTrip(t *testing.T) {
 
 		resp, err := transport.RoundTrip(req)
 		require.Nil(t, err)
-		require.Equal(t, []string{"content"}, resp.Header["some"])
+		require.Equal(t, []string{"content"}, resp.Header[http.CanonicalHeaderKey("some")])
 	})
 
 	t.Run("failure on non-json response content-type", func(t *testing.T) {
 		resp := &http.Response{
 			StatusCode:    http.StatusOK,
-			Body:          ioutil.NopCloser(bytes.NewReader([]byte("original response"))),
+			Body:          io.NopCloser(bytes.NewReader([]byte("original response"))),
 			ContentLength: 0,
 			Header:        http.Header{"Content-Type": []string{"text/plain"}},
 		}
@@ -288,7 +287,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 		resp, err := transport.RoundTrip(req)
 		require.Nil(t, err)
 		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		require.Nil(t, err)
 		require.True(t, strings.Contains(string(bodyBytes), "content-type is not application/json"))
 	})
@@ -296,7 +295,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 	t.Run("failure on non-json response even with json content-type", func(t *testing.T) {
 		resp := &http.Response{
 			StatusCode:    http.StatusOK,
-			Body:          ioutil.NopCloser(bytes.NewReader([]byte("original response"))),
+			Body:          io.NopCloser(bytes.NewReader([]byte("original response"))),
 			ContentLength: 0,
 			Header:        http.Header{"Content-Type": []string{"application/json"}},
 		}
@@ -324,7 +323,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 		req.Header.Set("useridheader", "userid")
 		resp := &http.Response{
 			StatusCode:    http.StatusOK,
-			Body:          ioutil.NopCloser(bytes.NewReader([]byte(`{"hey":"there"}`))),
+			Body:          io.NopCloser(bytes.NewReader([]byte(`{"hey":"there"}`))),
 			ContentLength: 0,
 			Header:        http.Header{"Content-Type": []string{"application/json"}},
 		}
@@ -340,7 +339,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 		resp, err := transport.RoundTrip(req)
 		require.Nil(t, err)
 		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		require.Nil(t, err)
 		require.True(t, strings.Contains(string(bodyBytes), "Error while retrieving user bindings"))
 	})
@@ -352,7 +351,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 		req.Header.Set("userpropertiesheader", "{}{}{}{{")
 		resp := &http.Response{
 			StatusCode:    http.StatusOK,
-			Body:          ioutil.NopCloser(bytes.NewReader([]byte(`{"hey":"there"}`))),
+			Body:          io.NopCloser(bytes.NewReader([]byte(`{"hey":"there"}`))),
 			ContentLength: 0,
 			Header:        http.Header{"Content-Type": []string{"application/json"}},
 		}
@@ -372,7 +371,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 		resp, err := transport.RoundTrip(req)
 		require.Nil(t, err)
 		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		require.Nil(t, err)
 		require.True(t, strings.Contains(string(bodyBytes), "user properties header is not valid"))
 	})
