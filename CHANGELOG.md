@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
-- migrated from `ioUtils` package to `os` and `io` packages 
+- migrated from `io/ioutil` package to `os` and `io` packages 
 - [#65](https://github.com/rond-authz/rond/issues/65): router now match specific verbs
 
 ## 1.4.0 - 11-08-2022
