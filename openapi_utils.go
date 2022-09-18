@@ -261,8 +261,9 @@ func loadOASFile(APIPermissionsFilePath string) (*OpenAPISpec, error) {
 	return &oas, nil
 }
 
-func loadOAS(log *logrus.Logger, env config.EnvironmentVariables) (*OpenAPISpec, error) {
+func loadOASFromFileOrNetwork(log *logrus.Logger, env config.EnvironmentVariables) (*OpenAPISpec, error) {
 	if env.APIPermissionsFilePath != "" {
+		log.WithField("oasFilePath", env.APIPermissionsFilePath).Debug("Attempt to load OAS from file")
 		oas, err := loadOASFile(env.APIPermissionsFilePath)
 		if err != nil {
 			log.WithFields(logrus.Fields{
@@ -275,6 +276,7 @@ func loadOAS(log *logrus.Logger, env config.EnvironmentVariables) (*OpenAPISpec,
 	}
 
 	if env.TargetServiceOASPath != "" {
+		log.WithField("oasApiPath", env.TargetServiceOASPath).Debug("Attempt to load OAS from target service")
 		var oas *OpenAPISpec
 		documentationURL := fmt.Sprintf("%s://%s%s", HTTPScheme, env.TargetServiceHost, env.TargetServiceOASPath)
 		for {
@@ -283,10 +285,8 @@ func loadOAS(log *logrus.Logger, env config.EnvironmentVariables) (*OpenAPISpec,
 				log.WithFields(logrus.Fields{
 					"targetServiceHost": env.TargetServiceHost,
 					"targetOASPath":     env.TargetServiceOASPath,
-					"error": logrus.Fields{
-						"message": err.Error(),
-					},
-				}).Warn("failed OAS fetch")
+					"error":             logrus.Fields{"message": err.Error()},
+				}).Warn("failed OAS fetch, retry in 1s")
 				time.Sleep(1 * time.Second)
 				continue
 			}
