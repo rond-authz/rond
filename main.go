@@ -69,25 +69,32 @@ func entrypoint(shutdown chan os.Signal) {
 	}
 	log.WithField("opaModuleFileName", opaModuleConfig.Name).Trace("rego module successfully loaded")
 
-	oas, err := loadOAS(log, env)
+	oas, err := loadOASFromFileOrNetwork(log, env)
 	if err != nil {
 		log.WithFields(logrus.Fields{
-			"error": logrus.Fields{"message": err.Error()},
+			"error":       logrus.Fields{"message": err.Error()},
+			"oasFilePath": env.APIPermissionsFilePath,
+			"oasApiPath":  env.TargetServiceOASPath,
 		}).Errorf("failed to load oas")
 		return
 	}
-	log.WithField("oasAPIPermissionsFilePath", env.APIPermissionsFilePath).Trace("OAS successfully loaded")
+	log.WithFields(logrus.Fields{
+		"oasFilePath": env.APIPermissionsFilePath,
+		"oasApiPath":  env.TargetServiceOASPath,
+	}).Trace("OAS successfully loaded")
 
 	mongoClient, err := mongoclient.NewMongoClient(env, log)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("error during init of mongo collection")
+		}).Errorf("MongoDB setup failed")
 		return
 	}
-	log.Trace("MongoDB client set up completed")
 
-	ctx := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoClient), logrus.NewEntry(log))
+	ctx := glogger.WithLogger(
+		mongoclient.WithMongoClient(context.Background(), mongoClient),
+		logrus.NewEntry(log),
+	)
 
 	policiesEvaluators, err := setupEvaluators(ctx, mongoClient, oas, opaModuleConfig, env)
 	if err != nil {
@@ -96,7 +103,7 @@ func entrypoint(shutdown chan os.Signal) {
 		}).Errorf("failed to create evaluators")
 		return
 	}
-	log.WithField("policiesLength", len(policiesEvaluators)).Trace("policies evaluators partial results computed")
+	log.WithField("policiesLength", len(policiesEvaluators)).Debug("policies evaluators partial results computed")
 
 	// Routing
 	router, err := setupRouter(log, env, opaModuleConfig, oas, policiesEvaluators, mongoClient)

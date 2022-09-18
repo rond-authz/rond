@@ -154,6 +154,8 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVar
 	}
 	// FIXME: All the routes don't inserted above are anyway handled by rbacHandler.
 	//        Maybe the code above can be cleaned.
+	// NOTE: this fallback route should be removed in v2, check out
+	// 			 issue [14](https://github.com/rond-authz/rond/issues/14) for further details.
 	fallbackRoute := "/"
 	if env.Standalone {
 		fallbackRoute = fmt.Sprintf("%s/", path.Join(env.PathPrefixStandalone, fallbackRoute))

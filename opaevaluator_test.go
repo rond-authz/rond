@@ -155,7 +155,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 			APIPermissionsFilePath: "./mocks/simplifiedMock.json",
 			OPAModulesDirectory:    "./mocks/rego-policies",
 		}
-		openApiSpec, err := loadOAS(log, envs)
+		openApiSpec, err := loadOASFromFileOrNetwork(log, envs)
 		assert.Assert(t, err == nil, "unexpected error")
 
 		opaModuleConfig, err := loadRegoModule(envs.OPAModulesDirectory)
@@ -174,7 +174,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 			APIPermissionsFilePath: "./mocks/pathsConfigAllInclusive.json",
 			OPAModulesDirectory:    "./mocks/rego-policies",
 		}
-		openApiSpec, err := loadOAS(log, envs)
+		openApiSpec, err := loadOASFromFileOrNetwork(log, envs)
 		assert.Assert(t, err == nil, "unexpected error")
 
 		opaModuleConfig, err := loadRegoModule(envs.OPAModulesDirectory)

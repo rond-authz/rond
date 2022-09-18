@@ -179,7 +179,7 @@ func TestLoadOAS(t *testing.T) {
 			TargetServiceOASPath:   "/documentation/json",
 			APIPermissionsFilePath: "./mocks/pathsConfig.json",
 		}
-		openApiSpec, err := loadOAS(log, envs)
+		openApiSpec, err := loadOASFromFileOrNetwork(log, envs)
 		assert.Assert(t, err == nil, "unexpected error")
 		assert.Assert(t, openApiSpec != nil, "unexpected nil result")
 		assert.DeepEqual(t, openApiSpec.Paths, OpenAPIPaths{
@@ -219,7 +219,7 @@ func TestLoadOAS(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		openApiSpec, err := loadOAS(log, envs)
+		openApiSpec, err := loadOASFromFileOrNetwork(log, envs)
 		assert.Assert(t, gock.IsDone(), "Mock has not been invoked")
 		assert.Assert(t, err == nil, "unexpected error")
 		assert.Assert(t, openApiSpec != nil, "unexpected nil result")
@@ -266,7 +266,7 @@ func TestLoadOAS(t *testing.T) {
 		envs := config.EnvironmentVariables{
 			TargetServiceHost: "localhost:3000",
 		}
-		_, err := loadOAS(log, envs)
+		_, err := loadOASFromFileOrNetwork(log, envs)
 
 		t.Logf("Expected error occurred: %s", err.Error())
 		assert.Assert(t, err != nil, fmt.Errorf("missing environment variables one of %s or %s is required", config.TargetServiceOASPathEnvKey, config.APIPermissionsFilePathEnvKey))

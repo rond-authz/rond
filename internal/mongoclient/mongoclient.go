@@ -83,10 +83,15 @@ func (mongoClient *MongoClient) Disconnect() error {
 	return nil
 }
 
+// NewMongoClient tries to setup a new MongoClient instance.
+// The function returns a `nil` client if the environment variable `MongoDBUrl` is not specified.
 func NewMongoClient(env config.EnvironmentVariables, logger *logrus.Logger) (*MongoClient, error) {
 	if env.MongoDBUrl == "" {
+		logger.Info("No MongoDB configuration provided, skipping setup")
 		return nil, nil
 	}
+
+	logger.Trace("Start MongoDB client set up")
 	if env.RolesCollectionName == "" || env.BindingsCollectionName == "" {
 		return nil, fmt.Errorf(
 			`MongoDB url is not empty, required variables might be missing: BindingsCollectionName: "%s",  RolesCollectionName: "%s"`,
@@ -118,6 +123,8 @@ func NewMongoClient(env config.EnvironmentVariables, logger *logrus.Logger) (*Mo
 		roles:        client.Database(parsedConnectionString.Database).Collection(env.RolesCollectionName),
 		bindings:     client.Database(parsedConnectionString.Database).Collection(env.BindingsCollectionName),
 	}
+
+	logger.Info("MongoDB client set up completed")
 	return &mongoClient, nil
 }
 
