@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/davidebianchi/go-jsonclient v1.3.0
 	github.com/davidebianchi/gswagger v0.5.0
-	github.com/getkin/kin-openapi v0.102.0
+	github.com/getkin/kin-openapi v0.103.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/mia-platform/configlib v1.0.0
