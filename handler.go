@@ -15,14 +15,19 @@
 package main
 
 import (
+	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"net/http"
 	"net/http/httputil"
+	"os"
 
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
+	"github.com/rond-authz/rond/types"
 
 	"github.com/mia-platform/glogger/v2"
 	"github.com/sirupsen/logrus"
@@ -85,6 +90,18 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.ResponseWriter, partialResultsEvaluators PartialResultsEvaluators, permission *XPermission) error {
 	requestContext := req.Context()
 	logger := glogger.Get(requestContext)
+
+	private_bytes, err := os.ReadFile("./private.pem")
+	if err != nil {
+		panic(err)
+	}
+	private_block, _ := pem.Decode(private_bytes)
+	privateKey, err := x509.ParsePKCS1PrivateKey(private_block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+	requestContext = context.WithValue(requestContext, types.PrivateRSAKey{}, privateKey)
+
 
 	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(logger, req, env)
 	if err != nil {

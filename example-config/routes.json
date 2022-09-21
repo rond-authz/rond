@@ -1,0 +1,19 @@
+
+{
+    "paths": {
+        "/get": {
+            "get": {
+                "x-permission": {
+                    "allow": "verify_authorization"
+                }
+            }
+        },
+        "/status/200": {
+            "get": {
+                "x-permission": {
+                    "allow": "allow_all"
+                }
+            }
+        }
+    }
+}

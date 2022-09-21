@@ -165,6 +165,8 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 		rego.EnablePrintStatements(env.LogLevel == config.TraceLogLevel),
 		rego.PrintHook(NewPrintHook(os.Stdout, policy)),
 		custom_builtins.GetHeaderFunction,
+		custom_builtins.ParseJWEFunction,
+		custom_builtins.IsLoggedFunction,
 		custom_builtins.MongoFindOne,
 		custom_builtins.MongoFindMany,
 	)
@@ -209,6 +211,8 @@ func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 		rego.PrintHook(NewPrintHook(os.Stdout, policy)),
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
 		custom_builtins.GetHeaderFunction,
+		custom_builtins.ParseJWEFunction,
+		custom_builtins.IsLoggedFunction,
 	}
 	if mongoClient != nil {
 		options = append(options, custom_builtins.MongoFindOne, custom_builtins.MongoFindMany)

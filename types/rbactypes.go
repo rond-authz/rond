@@ -26,6 +26,7 @@ type User struct {
 }
 
 type MongoClientContextKey struct{}
+type PrivateRSAKey struct{}
 
 type Resource struct {
 	ResourceType string `bson:"resourceType" json:"resourceType,omitempty"`

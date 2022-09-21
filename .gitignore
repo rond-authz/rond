@@ -5,3 +5,4 @@
 *.log*
 rond
 coverage.out
+*.pem

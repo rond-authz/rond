@@ -42,13 +42,21 @@ var GetHeaderFunction = rego.Function2(
 	},
 	func(_ rego.BuiltinContext, a, b *ast.Term) (*ast.Term, error) {
 		var headerKey string
-		var headers http.Header
 		if err := ast.As(a.Value, &headerKey); err != nil {
 			return nil, err
 		}
-		if err := ast.As(b.Value, &headers); err != nil {
+		header, err := getHeader(b, headerKey)
+		if err != nil {
 			return nil, err
 		}
-		return ast.StringTerm(headers.Get(headerKey)), nil
+		return ast.StringTerm(header), nil
 	},
 )
+
+func getHeader(astHeaders *ast.Term, headerKey string) (string, error) {
+	var headers http.Header
+	if err := ast.As(astHeaders.Value, &headers); err != nil {
+		return "", err
+	}
+	return headers.Get(headerKey), nil
+}

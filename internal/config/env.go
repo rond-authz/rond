@@ -60,7 +60,7 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 	{
 		Key:          "LOG_LEVEL",
 		Variable:     "LogLevel",
-		DefaultValue: "info",
+		DefaultValue: "trace",
 	},
 	{
 		Key:          "HTTP_PORT",
