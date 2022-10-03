@@ -25,7 +25,7 @@ clean:
 
 .PHONY: version
 version:
-	sed -i.bck "s|## Unreleased|## ${VERSION} - ${NOW_DATE}|g" "CHANGELOG.md"
+	sed -i.bck "s|## Unreleased|## Unreleased\n\n## ${VERSION} - ${NOW_DATE}|g" "CHANGELOG.md"
 	sed -i.bck "s|SERVICE_VERSION=\"[0-9]*.[0-9]*.[0-9]*.*\"|SERVICE_VERSION=\"${VERSION}\"|" "Dockerfile"
 	rm -fr "CHANGELOG.md.bck" "Dockerfile.bck"
 	git add "CHANGELOG.md" "Dockerfile"
