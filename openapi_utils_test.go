@@ -46,25 +46,25 @@ func TestFetchOpenAPI(t *testing.T) {
 		assert.DeepEqual(t, openApiSpec.Paths, OpenAPIPaths{
 			"/users/": PathVerbs{
 				"get": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "todo",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "todo"},
 					},
 				},
 				"head": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "todo",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "todo"},
 					},
 				},
 				"post": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "notexistingpermission",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "notexistingpermission"},
 					},
 				},
 			},
 			"/composed/permission/": PathVerbs{
 				"get": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "very.very.composed.permission",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission"},
 					},
 				},
 			},
@@ -74,8 +74,8 @@ func TestFetchOpenAPI(t *testing.T) {
 			},
 			"/eval/composed/permission/": PathVerbs{
 				"get": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "very.very.composed.permission.with.eval",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission.with.eval"},
 					},
 				},
 			},
@@ -140,19 +140,19 @@ func TestLoadOASFile(t *testing.T) {
 		assert.DeepEqual(t, openAPIFile.Paths, OpenAPIPaths{
 			"/users-from-static-file/": PathVerbs{
 				"get": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "foobar",
-						ResourceFilter: ResourceFilter{
-							RowFilter: RowFilterConfiguration{
-								HeaderKey: "customHeaderKey",
-								Enabled:   true,
-							},
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{
+							PolicyName:    "foobar",
+							GenerateQuery: true,
+							QueryOptions:  QueryOptions{HeaderName: "customHeaderKey"},
 						},
 					},
 				},
 				"post": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "notexistingpermission",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{
+							PolicyName: "notexistingpermission",
+						},
 					},
 				},
 			},
@@ -185,19 +185,19 @@ func TestLoadOAS(t *testing.T) {
 		assert.DeepEqual(t, openApiSpec.Paths, OpenAPIPaths{
 			"/users-from-static-file/": PathVerbs{
 				"get": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "foobar",
-						ResourceFilter: ResourceFilter{
-							RowFilter: RowFilterConfiguration{
-								HeaderKey: "customHeaderKey",
-								Enabled:   true,
-							},
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{
+							PolicyName:    "foobar",
+							GenerateQuery: true,
+							QueryOptions:  QueryOptions{HeaderName: "customHeaderKey"},
 						},
 					},
 				},
 				"post": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "notexistingpermission",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{
+							PolicyName: "notexistingpermission",
+						},
 					},
 				},
 			},
@@ -226,25 +226,25 @@ func TestLoadOAS(t *testing.T) {
 		assert.DeepEqual(t, openApiSpec.Paths, OpenAPIPaths{
 			"/users/": PathVerbs{
 				"get": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "todo",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "todo"},
 					},
 				},
 				"head": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "todo",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "todo"},
 					},
 				},
 				"post": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "notexistingpermission",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "notexistingpermission"},
 					},
 				},
 			},
 			"/composed/permission/": PathVerbs{
 				"get": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "very.very.composed.permission",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission"},
 					},
 				},
 			},
@@ -254,8 +254,8 @@ func TestLoadOAS(t *testing.T) {
 			},
 			"/eval/composed/permission/": PathVerbs{
 				"get": VerbConfig{
-					Permission: XPermission{
-						AllowPermission: "very.very.composed.permission.with.eval",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission.with.eval"},
 					},
 				},
 			},
@@ -279,103 +279,107 @@ func TestFindPermission(t *testing.T) {
 		OASRouter := oas.PrepareOASRouter()
 
 		found, err := oas.FindPermission(OASRouter, "/not/existing/route", "GET")
-		assert.Equal(t, XPermission{}, found)
+		assert.Equal(t, RondConfig{}, found)
 		assert.Equal(t, err.Error(), fmt.Sprintf("%s: GET /not/existing/route", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/no/method", "PUT")
-		assert.Equal(t, XPermission{}, found)
+		assert.Equal(t, RondConfig{}, found)
 		assert.Equal(t, err.Error(), fmt.Sprintf("%s: PUT /no/method", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/use/method/that/not/existing/put", "PUT")
-		assert.Equal(t, XPermission{}, found)
+		assert.Equal(t, RondConfig{}, found)
 		assert.Equal(t, err.Error(), fmt.Sprintf("%s: PUT /use/method/that/not/existing/put", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/foo/bar/barId", "GET")
-		assert.Equal(t, XPermission{
-			AllowPermission: "foo_bar_params",
-			ResourceFilter: ResourceFilter{
-				RowFilter: RowFilterConfiguration{
-					HeaderKey: "customHeaderKey",
-					Enabled:   true,
-				}}},
-			found)
+		assert.Equal(t, RondConfig{
+			RequestFlow: RequestFlow{
+				PolicyName:    "foo_bar_params",
+				GenerateQuery: true,
+				QueryOptions: QueryOptions{
+					HeaderName: "customHeaderKey",
+				},
+			},
+		}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/foo/bar/barId/another-params-not-configured", "GET")
-		assert.Equal(t, XPermission{
-			AllowPermission: "foo_bar",
-			ResourceFilter: ResourceFilter{
-				RowFilter: RowFilterConfiguration{
-					HeaderKey: "customHeaderKey",
-					Enabled:   true,
-				}}},
-			found)
+		assert.Equal(t, RondConfig{
+			RequestFlow: RequestFlow{
+				PolicyName:    "foo_bar",
+				GenerateQuery: true,
+				QueryOptions: QueryOptions{
+					HeaderName: "customHeaderKey",
+				},
+			},
+		}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/foo/bar/nested/case/really/nested", "GET")
-		assert.Equal(t, XPermission{AllowPermission: "foo_bar_nested_case"}, found)
+		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "foo_bar_nested_case"}}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/foo/bar/nested", "GET")
-		assert.Equal(t, XPermission{
-			AllowPermission: "foo_bar_nested",
-			ResourceFilter: ResourceFilter{
-				RowFilter: RowFilterConfiguration{
-					HeaderKey: "customHeaderKey",
-					Enabled:   true,
-				}}},
-			found)
+		assert.Equal(t, RondConfig{
+			RequestFlow: RequestFlow{
+				PolicyName:    "foo_bar_nested",
+				GenerateQuery: true,
+				QueryOptions: QueryOptions{
+					HeaderName: "customHeaderKey",
+				},
+			},
+		}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/foo/simble", "PATCH")
-		assert.Equal(t, XPermission{
-			AllowPermission: "foo",
-			ResourceFilter: ResourceFilter{
-				RowFilter: RowFilterConfiguration{
-					HeaderKey: "customHeaderKey",
-					Enabled:   true,
-				}}},
-			found)
+		assert.Equal(t, RondConfig{
+			RequestFlow: RequestFlow{
+				PolicyName:    "foo",
+				GenerateQuery: true,
+				QueryOptions: QueryOptions{
+					HeaderName: "customHeaderKey",
+				},
+			},
+		}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all", "GET")
-		assert.Equal(t, XPermission{}, found)
+		assert.Equal(t, RondConfig{}, found)
 		assert.Equal(t, err.Error(), fmt.Sprintf("%s: GET /test/all", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/", "GET")
-		assert.Equal(t, XPermission{AllowPermission: "permission_for_get"}, found)
+		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "GET")
-		assert.Equal(t, XPermission{AllowPermission: "permission_for_get"}, found)
+		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "POST")
-		assert.Equal(t, XPermission{AllowPermission: "permission_for_post"}, found)
+		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_post"}}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "PUT")
-		assert.Equal(t, XPermission{AllowPermission: "permission_for_all"}, found)
+		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "PATCH")
-		assert.Equal(t, XPermission{AllowPermission: "permission_for_all"}, found)
+		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "DELETE")
-		assert.Equal(t, XPermission{AllowPermission: "permission_for_all"}, found)
+		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "HEAD")
-		assert.Equal(t, XPermission{AllowPermission: "permission_for_all"}, found)
+		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/projects/", "POST")
-		assert.Equal(t, XPermission{AllowPermission: "project_all"}, found)
+		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_all"}}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/projects/", "GET")
-		assert.Equal(t, XPermission{AllowPermission: "project_get"}, found)
+		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_get"}}, found)
 		assert.Equal(t, err, nil)
 	})
 
@@ -384,11 +388,11 @@ func TestFindPermission(t *testing.T) {
 		OASRouter := oas.PrepareOASRouter()
 
 		found, err := oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%252Fcms-backend%252FcmsProperties.json", "POST")
-		assert.Equal(t, XPermission{AllowPermission: "allow_commit"}, found)
+		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "allow_commit"}}, found)
 		assert.Equal(t, err, nil)
 
 		found, err = oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%2Fcms-backend%2FcmsProperties.json", "POST")
-		assert.Equal(t, XPermission{AllowPermission: "allow_commit"}, found)
+		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "allow_commit"}}, found)
 		assert.Equal(t, err, nil)
 	})
 }
@@ -402,7 +406,7 @@ func TestGetXPermission(t *testing.T) {
 	})
 
 	t.Run(`GetXPermission returns OPAEvaluator from context`, func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), XPermissionKey{}, &XPermission{AllowPermission: "foo"})
+		ctx := context.WithValue(context.Background(), XPermissionKey{}, &RondConfig{RequestFlow: RequestFlow{PolicyName: "foo"}})
 		permission, err := GetXPermission(ctx)
 		require.True(t, err == nil, "Unexpected error.")
 		require.True(t, permission != nil, "XPermission not found.")
@@ -423,4 +427,260 @@ func TestGetPolicyEvaluators(t *testing.T) {
 		require.True(t, err == nil, "Unexpected error.")
 		require.True(t, opaEval != nil, "OPA Module config not found.")
 	})
+}
+
+func TestAdaptOASSpec(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    *OpenAPISpec
+		expected *OpenAPISpec
+	}{
+		{
+			name: "single path",
+			input: &OpenAPISpec{
+				Paths: OpenAPIPaths{
+					"/path-with-old-perm": PathVerbs{
+						"get": VerbConfig{
+							PermissionV1: &XPermission{
+								AllowPermission: "allow_req",
+								ResourceFilter: ResourceFilter{
+									RowFilter: RowFilterConfiguration{
+										Enabled:   true,
+										HeaderKey: "header",
+									},
+								},
+								ResponseFilter: ResponseFilterConfiguration{
+									Policy: "allow_res",
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &OpenAPISpec{
+				Paths: OpenAPIPaths{
+					"/path-with-old-perm": PathVerbs{
+						"get": VerbConfig{
+							PermissionV1: nil,
+							PermissionV2: &RondConfig{
+								RequestFlow: RequestFlow{
+									PolicyName:    "allow_req",
+									GenerateQuery: true,
+									QueryOptions: QueryOptions{
+										HeaderName: "header",
+									},
+								},
+								ResponseFlow: ResponseFlow{
+									PolicyName: "allow_res",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple paths",
+			input: &OpenAPISpec{
+				Paths: OpenAPIPaths{
+					"/path-with-old-perm": PathVerbs{
+						"get": VerbConfig{
+							PermissionV1: &XPermission{
+								AllowPermission: "allow_req",
+								ResourceFilter: ResourceFilter{
+									RowFilter: RowFilterConfiguration{
+										Enabled:   true,
+										HeaderKey: "header",
+									},
+								},
+								ResponseFilter: ResponseFilterConfiguration{
+									Policy: "allow_res",
+								},
+							},
+						},
+						"post": VerbConfig{
+							PermissionV1: &XPermission{
+								AllowPermission: "allow_req_post",
+								ResourceFilter: ResourceFilter{
+									RowFilter: RowFilterConfiguration{
+										Enabled: false,
+									},
+								},
+								ResponseFilter: ResponseFilterConfiguration{
+									Policy: "allow_res_post",
+								},
+							},
+						},
+					},
+					"/path-with-old-perm-2": PathVerbs{
+						"patch": VerbConfig{
+							PermissionV1: &XPermission{
+								AllowPermission: "allow_req_patch",
+							},
+						},
+					},
+				},
+			},
+			expected: &OpenAPISpec{
+				Paths: OpenAPIPaths{
+					"/path-with-old-perm": PathVerbs{
+						"get": VerbConfig{
+							PermissionV1: nil,
+							PermissionV2: &RondConfig{
+								RequestFlow: RequestFlow{
+									PolicyName:    "allow_req",
+									GenerateQuery: true,
+									QueryOptions: QueryOptions{
+										HeaderName: "header",
+									},
+								},
+								ResponseFlow: ResponseFlow{
+									PolicyName: "allow_res",
+								},
+							},
+						},
+						"post": VerbConfig{
+							PermissionV1: nil,
+							PermissionV2: &RondConfig{
+								RequestFlow: RequestFlow{
+									PolicyName:    "allow_req_post",
+									GenerateQuery: false,
+									QueryOptions: QueryOptions{
+										HeaderName: "",
+									},
+								},
+								ResponseFlow: ResponseFlow{
+									PolicyName: "allow_res_post",
+								},
+							},
+						},
+					},
+					"/path-with-old-perm-2": PathVerbs{
+						"patch": VerbConfig{
+							PermissionV1: nil,
+							PermissionV2: &RondConfig{
+								RequestFlow: RequestFlow{
+									PolicyName: "allow_req_patch",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "hybrid configuration preserves new one",
+			input: &OpenAPISpec{
+				Paths: OpenAPIPaths{
+					"/path-with-old-perm": PathVerbs{
+						"get": VerbConfig{
+							PermissionV1: &XPermission{
+								AllowPermission: "allow_req",
+								ResourceFilter: ResourceFilter{
+									RowFilter: RowFilterConfiguration{
+										Enabled:   true,
+										HeaderKey: "header",
+									},
+								},
+								ResponseFilter: ResponseFilterConfiguration{
+									Policy: "allow_res",
+								},
+							},
+						},
+						"post": VerbConfig{
+							PermissionV1: &XPermission{
+								AllowPermission: "allow_req_post_OLD_CONF",
+								ResourceFilter: ResourceFilter{
+									RowFilter: RowFilterConfiguration{
+										Enabled: false,
+									},
+								},
+								ResponseFilter: ResponseFilterConfiguration{
+									Policy: "allow_res_post_OLD_CONF",
+								},
+							},
+							PermissionV2: &RondConfig{
+								RequestFlow: RequestFlow{
+									PolicyName:    "allow_req_post",
+									GenerateQuery: false,
+									QueryOptions: QueryOptions{
+										HeaderName: "",
+									},
+								},
+								ResponseFlow: ResponseFlow{
+									PolicyName: "allow_res_post",
+								},
+							},
+						},
+					},
+					"/path-with-old-perm-2": PathVerbs{
+						"patch": VerbConfig{
+							PermissionV1: &XPermission{
+								AllowPermission: "allow_req_patch",
+							},
+						},
+					},
+				},
+			},
+			expected: &OpenAPISpec{
+				Paths: OpenAPIPaths{
+					"/path-with-old-perm": PathVerbs{
+						"get": VerbConfig{
+							PermissionV1: nil,
+							PermissionV2: &RondConfig{
+								RequestFlow: RequestFlow{
+									PolicyName:    "allow_req",
+									GenerateQuery: true,
+									QueryOptions: QueryOptions{
+										HeaderName: "header",
+									},
+								},
+								ResponseFlow: ResponseFlow{
+									PolicyName: "allow_res",
+								},
+							},
+						},
+						"post": VerbConfig{
+							PermissionV1: nil,
+							PermissionV2: &RondConfig{
+								RequestFlow: RequestFlow{
+									PolicyName:    "allow_req_post",
+									GenerateQuery: false,
+									QueryOptions: QueryOptions{
+										HeaderName: "",
+									},
+								},
+								ResponseFlow: ResponseFlow{
+									PolicyName: "allow_res_post",
+								},
+							},
+						},
+					},
+					"/path-with-old-perm-2": PathVerbs{
+						"patch": VerbConfig{
+							PermissionV1: nil,
+							PermissionV2: &RondConfig{
+								RequestFlow: RequestFlow{
+									PolicyName: "allow_req_patch",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			adaptOASSpec(testCase.input)
+			assert.DeepEqual(t, testCase.input, testCase.expected)
+
+			for path, pathConfig := range testCase.input.Paths {
+				for verb, verbConfig := range pathConfig {
+					assert.Assert(t, verbConfig.PermissionV1 == nil, "Unexpected non-nil conf for %s %s", verb, path)
+				}
+			}
+		})
+	}
 }

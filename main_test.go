@@ -1589,8 +1589,8 @@ test_policy { true }
 		Paths: OpenAPIPaths{
 			"/evalapi": PathVerbs{
 				"get": VerbConfig{
-					XPermission{
-						AllowPermission: "test_policy",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "test_policy"},
 					},
 				},
 			},

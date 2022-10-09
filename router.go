@@ -104,8 +104,8 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVar
 	var documentationPermission string
 	documentationPathInOAS := oas.Paths[env.TargetServiceOASPath]
 	if documentationPathInOAS != nil {
-		if getVerb, ok := documentationPathInOAS[strings.ToLower(http.MethodGet)]; ok {
-			documentationPermission = getVerb.Permission.AllowPermission
+		if getVerb, ok := documentationPathInOAS[strings.ToLower(http.MethodGet)]; ok && getVerb.PermissionV2 != nil {
+			documentationPermission = getVerb.PermissionV2.RequestFlow.PolicyName
 		}
 	}
 

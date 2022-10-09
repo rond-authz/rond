@@ -54,13 +54,8 @@ type XPermissionKey struct{}
 type PermissionOptions struct {
 	EnableResourcePermissionsMapOptimization bool `json:"enableResourcePermissionsMapOptimization"`
 }
-type XPermission struct {
-	AllowPermission string                      `json:"allow"`
-	ResponseFilter  ResponseFilterConfiguration `json:"responseFilter"`
-	ResourceFilter  ResourceFilter              `json:"resourceFilter"`
-	Options         PermissionOptions           `json:"options"`
-}
 
+// Config v1 //
 type ResourceFilter struct {
 	RowFilter RowFilterConfiguration `json:"rowFilter"`
 }
@@ -74,8 +69,41 @@ type ResponseFilterConfiguration struct {
 	Policy string `json:"policy"`
 }
 
+type XPermission struct {
+	AllowPermission string                      `json:"allow"`
+	ResponseFilter  ResponseFilterConfiguration `json:"responseFilter"`
+	ResourceFilter  ResourceFilter              `json:"resourceFilter"`
+	Options         PermissionOptions           `json:"options"`
+}
+
+// END Config v1 //
+
+// Config v2 //
+type QueryOptions struct {
+	HeaderName string `json:"headerName"`
+}
+
+type RequestFlow struct {
+	PolicyName    string       `json:"policyName"`
+	GenerateQuery bool         `json:"generateQuery"`
+	QueryOptions  QueryOptions `json:"queryOptions"`
+}
+
+type ResponseFlow struct {
+	PolicyName string `json:"policyName"`
+}
+
+type RondConfig struct {
+	RequestFlow  RequestFlow       `json:"requestFlow"`
+	ResponseFlow ResponseFlow      `json:"responseFlow"`
+	Options      PermissionOptions `json:"options"`
+}
+
+// END Config v2 //
+
 type VerbConfig struct {
-	Permission XPermission `json:"x-permission"`
+	PermissionV1 *XPermission `json:"x-permission"`
+	PermissionV2 *RondConfig  `json:"x-rond-config"`
 }
 
 type PathVerbs map[string]VerbConfig
@@ -149,13 +177,13 @@ func (rMap RoutesMap) contains(path string, method string) bool {
 }
 
 func createOasHandler(scopedMethodContent VerbConfig) func(http.ResponseWriter, *http.Request) {
-	permission := scopedMethodContent.Permission
+	permission := scopedMethodContent.PermissionV2
 	return func(w http.ResponseWriter, r *http.Request) {
 		header := w.Header()
-		header.Set("allow", permission.AllowPermission)
-		header.Set("resourceFilter.rowFilter.enabled", strconv.FormatBool(permission.ResourceFilter.RowFilter.Enabled))
-		header.Set("resourceFilter.rowFilter.headerKey", permission.ResourceFilter.RowFilter.HeaderKey)
-		header.Set("responseFilter.policy", permission.ResponseFilter.Policy)
+		header.Set("allow", permission.RequestFlow.PolicyName)
+		header.Set("resourceFilter.rowFilter.enabled", strconv.FormatBool(permission.RequestFlow.GenerateQuery))
+		header.Set("resourceFilter.rowFilter.headerKey", permission.RequestFlow.QueryOptions.HeaderName)
+		header.Set("responseFilter.policy", permission.ResponseFlow.PolicyName)
 		header.Set("options.enableResourcePermissionsMapOptimization", strconv.FormatBool(permission.Options.EnableResourcePermissionsMapOptimization))
 	}
 }
@@ -188,35 +216,87 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 }
 
 // FIXME: This is not a logic method of OAS, but could be a method of OASRouter
-func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path string, method string) (XPermission, error) {
+func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path string, method string) (RondConfig, error) {
 	recorder := httptest.NewRecorder()
 	responseReader := strings.NewReader("request-permissions")
 	request, _ := http.NewRequest(method, path, responseReader)
 	OASRouter.ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
-		return XPermission{}, fmt.Errorf("%w: %s %s", ErrNotFoundOASDefinition, utils.SanitizeString(method), utils.SanitizeString(path))
+		return RondConfig{}, fmt.Errorf("%w: %s %s", ErrNotFoundOASDefinition, utils.SanitizeString(method), utils.SanitizeString(path))
 	}
 
 	recorderResult := recorder.Result()
 	rowFilterEnabled, err := strconv.ParseBool(recorderResult.Header.Get("resourceFilter.rowFilter.enabled"))
 	if err != nil {
-		return XPermission{}, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
+		return RondConfig{}, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
 	}
 	enableResourcePermissionsMapOptimization, err := strconv.ParseBool(recorderResult.Header.Get("options.enableResourcePermissionsMapOptimization"))
 	if err != nil {
-		return XPermission{}, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
+		return RondConfig{}, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
 	}
-	return XPermission{
-		AllowPermission: recorderResult.Header.Get("allow"),
-		ResponseFilter:  ResponseFilterConfiguration{Policy: recorderResult.Header.Get("responseFilter.policy")},
-		ResourceFilter: ResourceFilter{
-			RowFilter: RowFilterConfiguration{Enabled: rowFilterEnabled, HeaderKey: recorderResult.Header.Get("resourceFilter.rowFilter.headerKey")},
+	return RondConfig{
+		RequestFlow: RequestFlow{
+			PolicyName:    recorderResult.Header.Get("allow"),
+			GenerateQuery: rowFilterEnabled,
+			QueryOptions: QueryOptions{
+				HeaderName: recorderResult.Header.Get("resourceFilter.rowFilter.headerKey"),
+			},
+		},
+		ResponseFlow: ResponseFlow{
+			PolicyName: recorderResult.Header.Get("responseFilter.policy"),
 		},
 		Options: PermissionOptions{
 			EnableResourcePermissionsMapOptimization: enableResourcePermissionsMapOptimization,
 		},
 	}, nil
+}
+
+func newRondConfigFromPermissionV1(old *XPermission) *RondConfig {
+	return &RondConfig{
+		RequestFlow: RequestFlow{
+			PolicyName:    old.AllowPermission,
+			GenerateQuery: old.ResourceFilter.RowFilter.Enabled,
+			QueryOptions: QueryOptions{
+				HeaderName: old.ResourceFilter.RowFilter.HeaderKey,
+			},
+		},
+		ResponseFlow: ResponseFlow{
+			PolicyName: old.ResponseFilter.Policy,
+		},
+	}
+}
+
+// adaptOASSpec transforms input OpenAPISpec transforming x-permission based configuration
+// to the x-rond-config based one.
+// If a configurations presents both x-permission and x-rond-config for a specific verb the
+// provided x-rond-config will be considered as the adapter will skip the verb.
+func adaptOASSpec(spec *OpenAPISpec) {
+	for path, _ := range spec.Paths {
+		pathConfig := spec.Paths[path]
+		for verb, _ := range pathConfig {
+			verbConfig := pathConfig[verb]
+			if verbConfig.PermissionV1 != nil {
+				if verbConfig.PermissionV2 == nil {
+					verbConfig.PermissionV2 = newRondConfigFromPermissionV1(verbConfig.PermissionV1)
+				}
+				verbConfig.PermissionV1 = nil
+			}
+			pathConfig[verb] = verbConfig
+		}
+		spec.Paths[path] = pathConfig
+	}
+}
+
+func deserializeSpec(spec []byte, errorWrapper error) (*OpenAPISpec, error) {
+	var oas OpenAPISpec
+	if err := json.Unmarshal(spec, &oas); err != nil {
+		return nil, fmt.Errorf("%w: unmarshal error: %s", errorWrapper, err.Error())
+	}
+
+	adaptOASSpec(&oas)
+
+	return &oas, nil
 }
 
 func fetchOpenAPI(url string) (*OpenAPISpec, error) {
@@ -231,12 +311,7 @@ func fetchOpenAPI(url string) (*OpenAPISpec, error) {
 	}
 
 	bodyBytes, _ := io.ReadAll(resp.Body)
-
-	var oas OpenAPISpec
-	if err := json.Unmarshal(bodyBytes, &oas); err != nil {
-		return nil, fmt.Errorf("%w: unmarshal error: %s", ErrRequestFailed, err.Error())
-	}
-	return &oas, nil
+	return deserializeSpec(bodyBytes, ErrRequestFailed)
 }
 
 func readFile(path string) ([]byte, error) {
@@ -253,12 +328,7 @@ func loadOASFile(APIPermissionsFilePath string) (*OpenAPISpec, error) {
 	if err != nil {
 		return nil, err
 	}
-	var oas OpenAPISpec
-	if err := json.Unmarshal(fileContentByte, &oas); err != nil {
-		return nil, fmt.Errorf("%w: unmarshal error: %s", ErrFileLoadFailed, err.Error())
-	}
-
-	return &oas, nil
+	return deserializeSpec(fileContentByte, ErrFileLoadFailed)
 }
 
 func loadOASFromFileOrNetwork(log *logrus.Logger, env config.EnvironmentVariables) (*OpenAPISpec, error) {
@@ -299,13 +369,13 @@ func loadOASFromFileOrNetwork(log *logrus.Logger, env config.EnvironmentVariable
 	return nil, fmt.Errorf("missing environment variables one of %s or %s is required", config.TargetServiceOASPathEnvKey, config.APIPermissionsFilePathEnvKey)
 }
 
-func WithXPermission(requestContext context.Context, permission *XPermission) context.Context {
+func WithXPermission(requestContext context.Context, permission *RondConfig) context.Context {
 	return context.WithValue(requestContext, XPermissionKey{}, permission)
 }
 
 // GetXPermission can be used by a request handler to get XPermission instance from its context.
-func GetXPermission(requestContext context.Context) (*XPermission, error) {
-	permission, ok := requestContext.Value(XPermissionKey{}).(*XPermission)
+func GetXPermission(requestContext context.Context) (*RondConfig, error) {
+	permission, ok := requestContext.Value(XPermissionKey{}).(*RondConfig)
 	if !ok {
 		return nil, fmt.Errorf("no permission configuration found in request context")
 	}

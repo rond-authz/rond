@@ -360,10 +360,8 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			req.Context(),
 			logrus.NewEntry(logger),
 			req,
-			&XPermission{
-				ResponseFilter: ResponseFilterConfiguration{
-					Policy: "my_policy",
-				},
+			&RondConfig{
+				ResponseFlow: ResponseFlow{PolicyName: "my_policy"},
 			},
 			PartialResultsEvaluators{"my_policy": {}},
 			envs,
