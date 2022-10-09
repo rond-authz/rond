@@ -87,7 +87,7 @@ func setupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *O
 
 			glogger.Get(ctx).Infof("precomputing rego queries for API: %s %s. Allow policy: %s. Response policy: %s.", verb, path, allowPolicy, responsePolicy)
 			if allowPolicy == "" {
-				// allow policy is required, if missing assume the API has no valid x-rond-configuration configuration.
+				// allow policy is required, if missing assume the API has no valid x-rond configuration.
 				continue
 			}
 

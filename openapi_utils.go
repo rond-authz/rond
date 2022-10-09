@@ -103,7 +103,7 @@ type RondConfig struct {
 
 type VerbConfig struct {
 	PermissionV1 *XPermission `json:"x-permission"`
-	PermissionV2 *RondConfig  `json:"x-rond-config"`
+	PermissionV2 *RondConfig  `json:"x-rond"`
 }
 
 type PathVerbs map[string]VerbConfig
@@ -268,9 +268,9 @@ func newRondConfigFromPermissionV1(old *XPermission) *RondConfig {
 }
 
 // adaptOASSpec transforms input OpenAPISpec transforming x-permission based configuration
-// to the x-rond-config based one.
-// If a configurations presents both x-permission and x-rond-config for a specific verb the
-// provided x-rond-config will be considered as the adapter will skip the verb.
+// to the x-rond based one.
+// If a configurations presents both x-permission and x-rond for a specific verb the
+// provided x-rond will be considered as the adapter will skip the verb.
 func adaptOASSpec(spec *OpenAPISpec) {
 	for path, _ := range spec.Paths {
 		pathConfig := spec.Paths[path]
