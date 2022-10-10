@@ -17,7 +17,7 @@ require (
 	github.com/uptrace/bunrouter v1.0.19
 	go.mongodb.org/mongo-driver v1.10.3
 	gopkg.in/h2non/gock.v1 v1.1.2
-	gotest.tools/v3 v3.3.0
+	gotest.tools/v3 v3.4.0
 )
 
 require (
