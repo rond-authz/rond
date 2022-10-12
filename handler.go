@@ -17,6 +17,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 
@@ -77,8 +78,10 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := EvaluateRequest(req, env, w, partialResultEvaluators, permission); err != nil {
+		fmt.Printf("EVALUATE REQUEST RETURNED ERROR %+v\n", err)
 		return
 	}
+	fmt.Printf("EVALUATE REQUEST DID NOT RETURN ERROR\n")
 	ReverseProxyOrResponse(logger, env, w, req, permission, partialResultEvaluators)
 }
 

@@ -893,6 +893,97 @@ func TestEntrypoint(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
+	t.Run("200 - integration passed with x-rond configuration in oas", func(t *testing.T) {
+		shutdown := make(chan os.Signal, 1)
+
+		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
+		gock.EnableNetworking()
+		gock.NetworkingFilter(func(r *http.Request) bool {
+			if r.URL.Path == "/documentation/json" {
+				return false
+			}
+			if r.URL.Path == "/users/" && r.URL.Host == "localhost:5033" {
+				return false
+			}
+			return true
+		})
+
+		gock.New("http://localhost:5033").
+			Get("/documentation/json").
+			Reply(200).
+			File("./mocks/rondOasConfig.json")
+
+		mongoHost := os.Getenv("MONGO_HOST_CI")
+		if mongoHost == "" {
+			mongoHost = testutils.LocalhostMongoDB
+		}
+		randomizedDBNamePart := testutils.GetRandomName(10)
+		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
+
+		unsetEnvs := setEnvs([]env{
+			{name: "HTTP_PORT", value: "5034"},
+			{name: "LOG_LEVEL", value: "fatal"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:5033"},
+			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
+			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
+			{name: "ROLES_COLLECTION_NAME", value: "roles"},
+			{name: "LOG_LEVEL", value: "trace"},
+		})
+
+		clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
+		client, err := mongo.Connect(context.Background(), clientOpts)
+		if err != nil {
+			fmt.Printf("error connecting to MongoDB: %s", err.Error())
+		}
+
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+		if err = client.Ping(ctx, readpref.Primary()); err != nil {
+			fmt.Printf("error verifying MongoDB connection: %s", err.Error())
+		}
+		defer client.Disconnect(ctx)
+
+		testutils.PopulateDBForTesting(
+			t,
+			ctx,
+			client.Database(mongoDBName).Collection("roles"),
+			client.Database(mongoDBName).Collection("bindings"),
+		)
+
+		go func() {
+			entrypoint(shutdown)
+		}()
+		defer func() {
+			unsetEnvs()
+			shutdown <- syscall.SIGTERM
+		}()
+		time.Sleep(1 * time.Second)
+		gock.Flush()
+		gock.New("http://localhost:5033/users/").
+			Get("/users/").
+			// MatchHeader("x-query-header", `{"$or":[{"$and":[{"_id":{"$eq":"9876"}}]},{"$and":[{"_id":{"$eq":"12345"}}]},{"$and":[{"_id":{"$eq":"9876"}}]},{"$and":[{"_id":{"$eq":"12345"}}]}]}`).
+			Reply(200)
+		req, err := http.NewRequest("GET", "http://localhost:5034/users/", nil)
+		require.NoError(t, err)
+
+		req.Header.Set("miausergroups", "group1")
+		req.Header.Set("miauserid", "filter_test")
+		client1 := &http.Client{}
+		resp, err := client1.Do(req)
+		require.Equal(t, nil, err)
+
+		bodyBytes, err := io.ReadAll(resp.Body)
+		require.Equal(t, nil, err)
+		fmt.Printf("AAAAA %s\n", string(bodyBytes))
+
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	})
+
 	t.Run("403 - integration not passed with query generation and without user authenticated", func(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 
