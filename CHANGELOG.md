@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Fixed
+
+- policy name missing from logs
+
 ## 1.4.2 - 03-10-2022
 
 ### Updated
