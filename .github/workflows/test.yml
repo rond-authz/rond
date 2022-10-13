@@ -45,13 +45,11 @@ jobs:
         with:
           path: ./cache
           key: ${{ runner.os }}-benchmark
-      - name: asd
-        run: ls -al .;ls -al ./cache
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: 'go'
-          output-file-path: output.txt
+          output-file-path: ./output.txt
           external-data-json-path: ./cache/benchmark-data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
