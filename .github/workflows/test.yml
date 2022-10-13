@@ -53,7 +53,7 @@ jobs:
           external-data-json-path: ./cache/benchmark-data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
-          alert-comment-cc-users: 'benchmarkbot'
+          alert-comment-cc-users: '@benchmarkbot'
 
   build:
     name: Build docker image
