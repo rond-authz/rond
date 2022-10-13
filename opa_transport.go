@@ -32,7 +32,7 @@ import (
 
 type OPATransport struct {
 	http.RoundTripper
-	// FIXME: this overlabps with the req.Context used during RoundTrip.
+	// FIXME: this overlaps with the req.Context used during RoundTrip.
 	context                  context.Context
 	logger                   *logrus.Entry
 	request                  *http.Request

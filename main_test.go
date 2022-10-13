@@ -965,8 +965,9 @@ func TestEntrypoint(t *testing.T) {
 		gock.Flush()
 		gock.New("http://localhost:5033/users/").
 			Get("/users/").
-			// MatchHeader("x-query-header", `{"$or":[{"$and":[{"_id":{"$eq":"9876"}}]},{"$and":[{"_id":{"$eq":"12345"}}]},{"$and":[{"_id":{"$eq":"9876"}}]},{"$and":[{"_id":{"$eq":"12345"}}]}]}`).
-			Reply(200)
+			MatchHeader("x-query-header", `{"$or":[{"$and":[{"name":{"$eq":"jane"}}]}]}`).
+			Reply(200).
+			JSON(map[string]interface{}{"originalMsg": "this is the original"})
 		req, err := http.NewRequest("GET", "http://localhost:5034/users/", nil)
 		require.NoError(t, err)
 
@@ -978,10 +979,9 @@ func TestEntrypoint(t *testing.T) {
 
 		bodyBytes, err := io.ReadAll(resp.Body)
 		require.Equal(t, nil, err)
-		fmt.Printf("AAAAA %s\n", string(bodyBytes))
 
+		require.Equal(t, `{"msg":"hey there"}`, string(bodyBytes))
 		require.Equal(t, http.StatusOK, resp.StatusCode)
-
 	})
 
 	t.Run("403 - integration not passed with query generation and without user authenticated", func(t *testing.T) {

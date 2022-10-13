@@ -290,7 +290,6 @@ func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, erro
 	// - Bindings: object
 	// e.g. [{Expressions:[[map["element": true]]] Bindings:map[]}]
 	// Since we are ALWAYS querying ONE specifc policy the result length could not be greater than 1
-	fmt.Printf("RESULTS %+v %+v\n", results, evaluator)
 	if len(results) == 1 {
 		if exprs := results[0].Expressions; len(exprs) == 1 {
 			if value, ok := exprs[0].Value.([]interface{}); ok && value != nil && len(value) != 0 {
