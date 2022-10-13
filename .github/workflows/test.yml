@@ -29,7 +29,7 @@ jobs:
           path-to-profile: coverage.out
 
   bench:
-    name: Test with go version ${{ matrix.go_version }} on OS ${{matrix.os}} 
+    name: Bench with go version ${{ matrix.go_version }} on OS ${{matrix.os}} 
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -37,7 +37,9 @@ jobs:
         os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v3+
+        with:
+          go-version: ${{ matrix.go_version }}
       - name: Run benchmark
         run: go test -bench=. -run=Bench | tee output.txt
       - name: asd
