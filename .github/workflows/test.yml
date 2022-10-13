@@ -53,8 +53,7 @@ jobs:
           tool: 'go'
           output-file-path: ./output.txt
           external-data-json-path: ./cache/benchmark-data.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          comment-on-alert: true
+          comment-on-alert: false
           fail-on-alert: true
 
   build:
