@@ -1,3 +1,5 @@
+> ⚠ This file is deprecated. Releases after 1.4.3 use GitHub built-in releases to track changes ⚠
+
 # CHANGELOG
 
 All notable changes to this project will be documented in this file.
@@ -6,6 +8,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+
+## 1.4.3 - 12-10-2022
+
+### Fixed
+
+- policy name missing from logs
 
 ## 1.4.2 - 03-10-2022
 

@@ -5,19 +5,19 @@ go 1.18
 require (
 	github.com/davidebianchi/go-jsonclient v1.3.0
 	github.com/davidebianchi/gswagger v0.5.1
-	github.com/getkin/kin-openapi v0.103.0
+	github.com/getkin/kin-openapi v0.104.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/mia-platform/configlib v1.0.0
 	github.com/mia-platform/glogger/v2 v2.1.3
-	github.com/open-policy-agent/opa v0.44.0
-	github.com/samber/lo v1.30.0
+	github.com/open-policy-agent/opa v0.45.0
+	github.com/samber/lo v1.32.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0
 	github.com/uptrace/bunrouter v1.0.19
 	go.mongodb.org/mongo-driver v1.10.3
 	gopkg.in/h2non/gock.v1 v1.1.2
-	gotest.tools/v3 v3.3.0
+	gotest.tools/v3 v3.4.0
 )
 
 require (
@@ -44,6 +44,7 @@ require (
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
+	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/montanaflynn/stats v0.6.6 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect

@@ -236,6 +236,7 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 		)
 
 		return &OPAEvaluator{
+			PolicyName:      policy,
 			PolicyEvaluator: evaluator,
 			Context:         ctx,
 		}, nil
