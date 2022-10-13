@@ -1,3 +1,5 @@
+> ⚠ This file is deprecated. Releases after 1.4.3 use GitHub built-in releases to track changes ⚠
+
 # CHANGELOG
 
 All notable changes to this project will be documented in this file.
