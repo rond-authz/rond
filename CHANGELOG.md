@@ -1,4 +1,4 @@
-> ⚠ This file is deprecated. Releases after 3.0.0 use GitHub's built-in releases to track changes ⚠
+> ⚠ This file is deprecated. Releases after 1.4.3 use GitHub built-in releases to track changes ⚠
 
 # CHANGELOG
 
