@@ -33,7 +33,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go_version: [1.18]
+        go_version: [1.19]
         os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v3
