@@ -42,15 +42,11 @@ jobs:
           go-version: ${{ matrix.go_version }}
       - name: Run benchmark
         run: go test -bench=. -run=Bench | tee output.txt
-      - name: asd
-        run: cat output.txt
       - name: Download previous benchmark data
         uses: actions/cache@v3
         with:
           path: ./cache
           key: ${{ runner.os }}-benchmark
-      - name: asd
-        run: pwd
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
@@ -59,7 +55,8 @@ jobs:
           external-data-json-path: ./cache/benchmark-data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
-          alert-comment-cc-users: '@benchmarkbot'
+          fail-on-alert: true
+          alert-comment-cc-users: '@rond-authz/devteam'
 
   build:
     name: Build docker image
