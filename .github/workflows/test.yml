@@ -50,7 +50,6 @@ jobs:
         with:
           tool: 'go'
           output-file-path: output.txt
-          #external-data-json-path: ./cache/output.txt #benchmark-data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-on-alert: true
           alert-comment-cc-users: '@benchmarkbot'
