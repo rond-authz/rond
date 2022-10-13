@@ -272,9 +272,9 @@ func newRondConfigFromPermissionV1(old *XPermission) *RondConfig {
 // If a configurations presents both x-permission and x-rond for a specific verb the
 // provided x-rond will be considered as the adapter will skip the verb.
 func adaptOASSpec(spec *OpenAPISpec) {
-	for path, _ := range spec.Paths {
+	for path := range spec.Paths {
 		pathConfig := spec.Paths[path]
-		for verb, _ := range pathConfig {
+		for verb := range pathConfig {
 			verbConfig := pathConfig[verb]
 			if verbConfig.PermissionV1 != nil {
 				if verbConfig.PermissionV2 == nil {
