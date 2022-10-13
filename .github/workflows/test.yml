@@ -45,6 +45,8 @@ jobs:
         with:
           path: ./cache
           key: ${{ runner.os }}-benchmark
+      - name: asd
+        run: pwd
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
