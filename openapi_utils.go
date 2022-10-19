@@ -252,17 +252,17 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 	}, nil
 }
 
-func newRondConfigFromPermissionV1(old *XPermission) *RondConfig {
+func newRondConfigFromPermissionV1(v1Permission *XPermission) *RondConfig {
 	return &RondConfig{
 		RequestFlow: RequestFlow{
-			PolicyName:    old.AllowPermission,
-			GenerateQuery: old.ResourceFilter.RowFilter.Enabled,
+			PolicyName:    v1Permission.AllowPermission,
+			GenerateQuery: v1Permission.ResourceFilter.RowFilter.Enabled,
 			QueryOptions: QueryOptions{
-				HeaderName: old.ResourceFilter.RowFilter.HeaderKey,
+				HeaderName: v1Permission.ResourceFilter.RowFilter.HeaderKey,
 			},
 		},
 		ResponseFlow: ResponseFlow{
-			PolicyName: old.ResponseFilter.Policy,
+			PolicyName: v1Permission.ResponseFilter.Policy,
 		},
 	}
 }
