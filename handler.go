@@ -38,7 +38,7 @@ func ReverseProxyOrResponse(
 	env config.EnvironmentVariables,
 	w http.ResponseWriter,
 	req *http.Request,
-	permission *XPermission,
+	permission *RondConfig,
 	partialResultsEvaluators PartialResultsEvaluators,
 ) {
 	if env.Standalone {
@@ -82,7 +82,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	ReverseProxyOrResponse(logger, env, w, req, permission, partialResultEvaluators)
 }
 
-func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.ResponseWriter, partialResultsEvaluators PartialResultsEvaluators, permission *XPermission) error {
+func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.ResponseWriter, partialResultsEvaluators PartialResultsEvaluators, permission *RondConfig) error {
 	requestContext := req.Context()
 	logger := glogger.Get(requestContext)
 
@@ -101,15 +101,15 @@ func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.
 	}
 
 	var evaluatorAllowPolicy *OPAEvaluator
-	if !permission.ResourceFilter.RowFilter.Enabled {
-		evaluatorAllowPolicy, err = partialResultsEvaluators.GetEvaluatorFromPolicy(requestContext, permission.AllowPermission, input, env)
+	if !permission.RequestFlow.GenerateQuery {
+		evaluatorAllowPolicy, err = partialResultsEvaluators.GetEvaluatorFromPolicy(requestContext, permission.RequestFlow.PolicyName, input, env)
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("cannot find policy evaluator")
 			failResponseWithCode(w, http.StatusInternalServerError, "failed partial evaluator retrieval", GENERIC_BUSINESS_ERROR_MESSAGE)
 			return err
 		}
 	} else {
-		evaluatorAllowPolicy, err = createQueryEvaluator(requestContext, logger, req, env, permission.AllowPermission, input, nil)
+		evaluatorAllowPolicy, err = createQueryEvaluator(requestContext, logger, req, env, permission.RequestFlow.PolicyName, input, nil)
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("cannot create evaluator")
 			failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluator creation failed", NO_PERMISSIONS_ERROR_MESSAGE)
@@ -130,7 +130,7 @@ func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.
 		}
 
 		logger.WithField("error", logrus.Fields{
-			"policyName": permission.AllowPermission,
+			"policyName": permission.RequestFlow.PolicyName,
 			"message":    err.Error(),
 		}).Error("RBAC policy evaluation failed")
 		failResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed", NO_PERMISSIONS_ERROR_MESSAGE)
@@ -147,8 +147,8 @@ func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.
 	}
 
 	queryHeaderKey := BASE_ROW_FILTER_HEADER_KEY
-	if permission.ResourceFilter.RowFilter.HeaderKey != "" {
-		queryHeaderKey = permission.ResourceFilter.RowFilter.HeaderKey
+	if permission.RequestFlow.QueryOptions.HeaderName != "" {
+		queryHeaderKey = permission.RequestFlow.QueryOptions.HeaderName
 	}
 	if query != nil {
 		req.Header.Set(queryHeaderKey, string(queryToProxy))
@@ -156,7 +156,7 @@ func EvaluateRequest(req *http.Request, env config.EnvironmentVariables, w http.
 	return nil
 }
 
-func ReverseProxy(logger *logrus.Entry, env config.EnvironmentVariables, w http.ResponseWriter, req *http.Request, permission *XPermission, partialResultsEvaluators PartialResultsEvaluators) {
+func ReverseProxy(logger *logrus.Entry, env config.EnvironmentVariables, w http.ResponseWriter, req *http.Request, permission *RondConfig, partialResultsEvaluators PartialResultsEvaluators) {
 	targetHostFromEnv := env.TargetServiceHost
 	proxy := httputil.ReverseProxy{
 		FlushInterval: -1,
@@ -171,7 +171,7 @@ func ReverseProxy(logger *logrus.Entry, env config.EnvironmentVariables, w http.
 	}
 
 	// Check on nil is performed to proxy the oas documentation path
-	if permission == nil || permission.ResponseFilter.Policy == "" {
+	if permission == nil || permission.ResponseFlow.PolicyName == "" {
 		proxy.ServeHTTP(w, req)
 		return
 	}

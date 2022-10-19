@@ -32,11 +32,11 @@ import (
 
 type OPATransport struct {
 	http.RoundTripper
-	// FIXME: this overlabps with the req.Context used during RoundTrip.
+	// FIXME: this overlaps with the req.Context used during RoundTrip.
 	context                  context.Context
 	logger                   *logrus.Entry
 	request                  *http.Request
-	permission               *XPermission
+	permission               *RondConfig
 	partialResultsEvaluators PartialResultsEvaluators
 	env                      config.EnvironmentVariables
 }
@@ -90,10 +90,10 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	evaluator, err := t.partialResultsEvaluators.GetEvaluatorFromPolicy(t.context, t.permission.ResponseFilter.Policy, input, t.env)
+	evaluator, err := t.partialResultsEvaluators.GetEvaluatorFromPolicy(t.context, t.permission.ResponseFlow.PolicyName, input, t.env)
 	if err != nil {
 		t.logger.WithField("error", logrus.Fields{
-			"policyName": t.permission.ResponseFilter.Policy,
+			"policyName": t.permission.ResponseFlow.PolicyName,
 			"message":    err.Error(),
 		}).Error("RBAC policy evaluation on response failed")
 		t.responseWithError(resp, err, http.StatusInternalServerError)

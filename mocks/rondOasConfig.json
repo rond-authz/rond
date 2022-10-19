@@ -1,0 +1,38 @@
+{
+  "paths": {
+    "/users/": {
+      "get": {
+        "x-rond": {
+          "requestFlow": {
+            "policyName": "generate_filter",
+            "generateQuery": true,
+            "queryOptions": {
+              "headerName": "x-query-header"
+            }
+          },
+          "responseFlow": {
+            "policyName": "responsepolicy"
+          }
+        }
+      }
+    },
+    "/composed/permission/": {
+      "get": {
+        "x-rond": {
+          "requestFlow": {"policyName": "very.very.composed.permission"}
+        }
+      }
+    },
+    "/eval/composed/permission/": {
+      "get": {
+        "x-permission": {
+          "requestFlow": {"policyName": "very.very.composed.permission.with.eval"}
+        }
+      }
+    },
+    "/no-permission": {
+      "post": {},
+      "get": {}
+    }
+  }
+}

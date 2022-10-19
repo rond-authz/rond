@@ -77,14 +77,17 @@ func createPartialEvaluator(policy string, ctx context.Context, mongoClient type
 func setupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *OpenAPISpec, opaModuleConfig *OPAModuleConfig, env config.EnvironmentVariables) (PartialResultsEvaluators, error) {
 	policyEvaluators := PartialResultsEvaluators{}
 	for path, OASContent := range oas.Paths {
-		for verb, xPermission := range OASContent {
+		for verb, verbConfig := range OASContent {
+			if verbConfig.PermissionV2 == nil {
+				continue
+			}
 
-			allowPolicy := xPermission.Permission.AllowPermission
-			responsePolicy := xPermission.Permission.ResponseFilter.Policy
+			allowPolicy := verbConfig.PermissionV2.RequestFlow.PolicyName
+			responsePolicy := verbConfig.PermissionV2.ResponseFlow.PolicyName
 
 			glogger.Get(ctx).Infof("precomputing rego queries for API: %s %s. Allow policy: %s. Response policy: %s.", verb, path, allowPolicy, responsePolicy)
 			if allowPolicy == "" {
-				// allow policy is required, if missing assume the API has no x-permission configuration.
+				// allow policy is required, if missing assume the API has no valid x-rond configuration.
 				continue
 			}
 
@@ -287,7 +290,6 @@ func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, erro
 	// - Bindings: object
 	// e.g. [{Expressions:[[map["element": true]]] Bindings:map[]}]
 	// Since we are ALWAYS querying ONE specifc policy the result length could not be greater than 1
-
 	if len(results) == 1 {
 		if exprs := results[0].Expressions; len(exprs) == 1 {
 			if value, ok := exprs[0].Value.([]interface{}); ok && value != nil && len(value) != 0 {
@@ -301,8 +303,8 @@ func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, erro
 	return nil, fmt.Errorf("RBAC policy evaluation failed, user is not allowed")
 }
 
-func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission *XPermission) (interface{}, primitive.M, error) {
-	if permission.ResourceFilter.RowFilter.Enabled {
+func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission *RondConfig) (interface{}, primitive.M, error) {
+	if permission.RequestFlow.GenerateQuery {
 		query, err := evaluator.partiallyEvaluate(logger)
 		return nil, query, err
 	}

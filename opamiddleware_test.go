@@ -102,10 +102,8 @@ foobar { true }`,
 		}
 
 		t.Run(`ok - path is known on oas with no permission declared`, func(t *testing.T) {
-			var openAPISpec *OpenAPISpec
-			openAPISpecContent, err := os.ReadFile("./mocks/documentationPathMock.json")
+			openAPISpec, err := loadOASFile("./mocks/documentationPathMock.json")
 			assert.NilError(t, err)
-			_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
 			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/json",
 			}
@@ -122,10 +120,8 @@ foobar { true }`,
 		})
 
 		t.Run(`ok - path is missing on oas and request is equal to serviceTargetOASPath`, func(t *testing.T) {
-			var openAPISpec *OpenAPISpec
-			openAPISpecContent, err := os.ReadFile("./mocks/simplifiedMock.json")
+			openAPISpec, err := loadOASFile("./mocks/simplifiedMock.json")
 			assert.NilError(t, err)
-			_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
 			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/json",
 			}
@@ -142,10 +138,8 @@ foobar { true }`,
 		})
 
 		t.Run(`ok - path is NOT known on oas but is proxied anyway`, func(t *testing.T) {
-			var openAPISpec *OpenAPISpec
-			openAPISpecContent, err := os.ReadFile("./mocks/simplifiedMock.json")
+			openAPISpec, err := loadOASFile("./mocks/simplifiedMock.json")
 			assert.NilError(t, err)
-			_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
 			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/custom/json",
 			}
@@ -163,9 +157,8 @@ foobar { true }`,
 	})
 
 	t.Run(`injects opa instance with correct query`, func(t *testing.T) {
-		var openAPISpec *OpenAPISpec
-		openAPISpecContent, _ := os.ReadFile("./mocks/simplifiedMock.json")
-		_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
+		openAPISpec, err := loadOASFile("./mocks/simplifiedMock.json")
+		assert.NilError(t, err)
 
 		t.Run(`rego package doesn't contain expected permission`, func(t *testing.T) {
 			opaModule := &OPAModuleConfig{
@@ -178,7 +171,7 @@ todo { true }`,
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, permission, &XPermission{AllowPermission: "todo"})
+				require.Equal(t, permission, &RondConfig{RequestFlow: RequestFlow{PolicyName: "todo"}})
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -200,7 +193,7 @@ foobar { true }`,
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, permission, &XPermission{AllowPermission: "todo"})
+				require.Equal(t, &RondConfig{RequestFlow: RequestFlow{PolicyName: "todo"}}, permission)
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -222,7 +215,7 @@ very_very_composed_permission { true }`,
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, &XPermission{AllowPermission: "very.very.composed.permission"}, permission)
+				require.Equal(t, &RondConfig{RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission"}}, permission)
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -249,7 +242,7 @@ very_very_composed_permission_with_eval { true }`,
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, &XPermission{AllowPermission: "very.very.composed.permission.with.eval"}, permission)
+				require.Equal(t, &RondConfig{RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, permission)
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -263,9 +256,8 @@ very_very_composed_permission_with_eval { true }`,
 }
 
 func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
-	var openAPISpec *OpenAPISpec
-	openAPISpecContent, _ := os.ReadFile("./mocks/simplifiedMock.json")
-	_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
+	openAPISpec, err := loadOASFile("./mocks/simplifiedMock.json")
+	require.Nil(t, err)
 
 	envs := config.EnvironmentVariables{
 		Standalone:           true,
@@ -283,7 +275,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			permission, err := GetXPermission(r.Context())
 			require.True(t, err == nil, "Unexpected error")
-			require.Equal(t, &XPermission{AllowPermission: "very.very.composed.permission"}, permission)
+			require.Equal(t, &RondConfig{RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission"}}, permission)
 			w.WriteHeader(http.StatusOK)
 		}))
 
@@ -305,7 +297,7 @@ very_very_composed_permission_with_eval { true }`,
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			permission, err := GetXPermission(r.Context())
 			require.True(t, err == nil, "Unexpected error")
-			require.Equal(t, &XPermission{AllowPermission: "very.very.composed.permission.with.eval"}, permission)
+			require.Equal(t, &RondConfig{RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, permission)
 			w.WriteHeader(http.StatusOK)
 		}))
 

@@ -16,11 +16,9 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"sort"
 	"testing"
 
@@ -193,7 +191,7 @@ func createContext(
 	originalCtx context.Context,
 	env config.EnvironmentVariables,
 	mongoClient *mocks.MongoClientMock,
-	permission *XPermission,
+	permission *RondConfig,
 	opaModuleConfig *OPAModuleConfig,
 	partialResultEvaluators PartialResultsEvaluators,
 ) context.Context {
@@ -219,7 +217,17 @@ var mockOPAModule = &OPAModuleConfig{
 	Content: `package policies
 todo { true }`,
 }
-var mockXPermission = &XPermission{AllowPermission: "todo"}
+var mockXPermission = &RondConfig{RequestFlow: RequestFlow{PolicyName: "todo"}}
+
+var mockRondConfigWithQueryGen = &RondConfig{
+	RequestFlow: RequestFlow{
+		PolicyName:    "allow",
+		GenerateQuery: true,
+		QueryOptions: QueryOptions{
+			HeaderName: "rowfilterquery",
+		},
+	},
+}
 
 func TestSetupRoutesIntegration(t *testing.T) {
 	oas := prepareOASFromFile(t, "./mocks/simplifiedMock.json")
@@ -444,14 +452,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 func prepareOASFromFile(t *testing.T, filePath string) *OpenAPISpec {
 	t.Helper()
 
-	fileContent, err := os.ReadFile(filePath)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
-
-	var oas OpenAPISpec
-	if err := json.Unmarshal(fileContent, &oas); err != nil {
-		t.Fatalf("Unexpected error: %s", err.Error())
-	}
-	return &oas
+	oas, err := loadOASFile(filePath)
+	assert.NilError(t, err)
+	return oas
 }

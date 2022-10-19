@@ -59,7 +59,7 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 			}
 
 			permission, err := openAPISpec.FindPermission(OASrouter, path, r.Method)
-			if r.Method == http.MethodGet && r.URL.Path == envs.TargetServiceOASPath && permission.AllowPermission == "" {
+			if r.Method == http.MethodGet && r.URL.Path == envs.TargetServiceOASPath && permission.RequestFlow.PolicyName == "" {
 				fields := logrus.Fields{}
 				if err != nil {
 					fields["error"] = logrus.Fields{"message": err.Error()}
@@ -69,13 +69,13 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 				return
 			}
 
-			if err != nil || permission.AllowPermission == "" {
+			if err != nil || permission.RequestFlow.PolicyName == "" {
 				errorMessage := "User is not allowed to request the API"
 				statusCode := http.StatusForbidden
 				fields := logrus.Fields{
 					"originalRequestPath": utils.SanitizeString(r.URL.Path),
 					"method":              utils.SanitizeString(r.Method),
-					"allowPermission":     utils.SanitizeString(permission.AllowPermission),
+					"allowPermission":     utils.SanitizeString(permission.RequestFlow.PolicyName),
 				}
 				technicalError := ""
 				if err != nil {

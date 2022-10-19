@@ -8,6 +8,17 @@ todo = true
 
 foo_bar = true
 
+generate_filter {
+	print(input)
+	true
+	query := data.resources[_]
+	query.name == "jane"
+}
+
+responsepolicy [response] {
+	response := {"msg": "hey there"}
+}
+
 allow_commit {
 	input.request.pathParams.projectId == "5df2260277baff0011fde823"
 }

@@ -49,8 +49,8 @@ func TestDirectProxyHandler(t *testing.T) {
 		Paths: OpenAPIPaths{
 			"/api": PathVerbs{
 				"get": VerbConfig{
-					XPermission{
-						AllowPermission: "todo",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "todo"},
 					},
 				},
 			},
@@ -61,12 +61,12 @@ func TestDirectProxyHandler(t *testing.T) {
 		Paths: OpenAPIPaths{
 			"/api": PathVerbs{
 				"get": VerbConfig{
-					XPermission{
-						AllowPermission: "allow",
-						ResourceFilter: ResourceFilter{
-							RowFilter: RowFilterConfiguration{
-								HeaderKey: "rowfilterquery",
-								Enabled:   true,
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{
+							PolicyName:    "allow",
+							GenerateQuery: true,
+							QueryOptions: QueryOptions{
+								HeaderName: "rowfilterquery",
 							},
 						},
 					},
@@ -222,7 +222,7 @@ func TestDirectProxyHandler(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
-			&XPermission{AllowPermission: "todo"},
+			&RondConfig{RequestFlow: RequestFlow{PolicyName: "todo"}},
 			opaModuleConfig,
 			partialEvaluators,
 		)
@@ -294,15 +294,7 @@ allow {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
-			&XPermission{
-				AllowPermission: "allow",
-				ResourceFilter: ResourceFilter{
-					RowFilter: RowFilterConfiguration{
-						HeaderKey: "rowfilterquery",
-						Enabled:   true,
-					},
-				},
-			},
+			mockRondConfigWithQueryGen,
 			opaModuleConfig,
 			partialEvaluators,
 		)
@@ -372,15 +364,7 @@ allow {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
-			&XPermission{
-				AllowPermission: "allow",
-				ResourceFilter: ResourceFilter{
-					RowFilter: RowFilterConfiguration{
-						HeaderKey: "rowfilterquery",
-						Enabled:   true,
-					},
-				},
-			},
+			mockRondConfigWithQueryGen,
 			opaModuleConfig,
 			partialEvaluators,
 		)
@@ -429,15 +413,7 @@ allow {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
-			&XPermission{
-				AllowPermission: "allow",
-				ResourceFilter: ResourceFilter{
-					RowFilter: RowFilterConfiguration{
-						HeaderKey: "rowfilterquery",
-						Enabled:   true,
-					},
-				},
-			},
+			mockRondConfigWithQueryGen,
 			opaModuleConfig,
 			partialEvaluators,
 		)
@@ -485,15 +461,7 @@ allow {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
-			&XPermission{
-				AllowPermission: "allow",
-				ResourceFilter: ResourceFilter{
-					RowFilter: RowFilterConfiguration{
-						HeaderKey: "rowfilterquery",
-						Enabled:   true,
-					},
-				},
-			},
+			mockRondConfigWithQueryGen,
 			opaModuleConfig,
 			partialEvaluators,
 		)
@@ -562,15 +530,7 @@ allow {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			nil,
-			&XPermission{
-				AllowPermission: "allow",
-				ResourceFilter: ResourceFilter{
-					RowFilter: RowFilterConfiguration{
-						HeaderKey: "rowfilterquery",
-						Enabled:   true,
-					},
-				},
-			},
+			mockRondConfigWithQueryGen,
 			opaModuleConfig,
 			partialEvaluators,
 		)
@@ -596,8 +556,8 @@ func TestStandaloneMode(t *testing.T) {
 		Paths: OpenAPIPaths{
 			"/api": PathVerbs{
 				"get": VerbConfig{
-					XPermission{
-						AllowPermission: "todo",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "todo"},
 					},
 				},
 			},
@@ -608,12 +568,12 @@ func TestStandaloneMode(t *testing.T) {
 		Paths: OpenAPIPaths{
 			"/api": PathVerbs{
 				"get": VerbConfig{
-					XPermission{
-						AllowPermission: "allow",
-						ResourceFilter: ResourceFilter{
-							RowFilter: RowFilterConfiguration{
-								HeaderKey: "rowfilterquery",
-								Enabled:   true,
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{
+							PolicyName:    "allow",
+							GenerateQuery: true,
+							QueryOptions: QueryOptions{
+								HeaderName: "rowfilterquery",
 							},
 						},
 					},
@@ -682,16 +642,7 @@ allow {
 			context.Background(),
 			env,
 			nil,
-			&XPermission{
-				AllowPermission: "allow",
-				ResourceFilter: ResourceFilter{
-					RowFilter: RowFilterConfiguration{
-						HeaderKey: "rowfilterquery",
-						Enabled:   true,
-					},
-				},
-			},
-
+			mockRondConfigWithQueryGen,
 			&OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
 			partialEvaluators,
 		)
@@ -741,16 +692,7 @@ allow {
 			context.Background(),
 			env,
 			nil,
-			&XPermission{
-				AllowPermission: "allow",
-				ResourceFilter: ResourceFilter{
-					RowFilter: RowFilterConfiguration{
-						HeaderKey: "rowfilterquery",
-						Enabled:   true,
-					},
-				},
-			},
-
+			mockRondConfigWithQueryGen,
 			&OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
 			partialEvaluators,
 		)
@@ -804,16 +746,7 @@ allow {
 			context.Background(),
 			env,
 			nil,
-			&XPermission{
-				AllowPermission: "allow",
-				ResourceFilter: ResourceFilter{
-					RowFilter: RowFilterConfiguration{
-						HeaderKey: "rowfilterquery",
-						Enabled:   true,
-					},
-				},
-			},
-
+			mockRondConfigWithQueryGen,
 			&OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
 			partialEvaluators,
 		)
@@ -865,8 +798,8 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 		Paths: OpenAPIPaths{
 			"/api": PathVerbs{
 				"get": VerbConfig{
-					XPermission{
-						AllowPermission: "todo",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "todo"},
 					},
 				},
 			},
@@ -881,7 +814,6 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 	// http.Header type which transforms any header key in `Camel-Case`, meaning a policy
 	// **must** express headers in this fashion. This may subject to change before v1 release.
 	t.Run("TestPolicyEvaluation", func(t *testing.T) {
-
 		t.Run("policy on request header works correctly", func(t *testing.T) {
 			invoked := false
 			mockHeader := "X-Backdoor"
@@ -910,7 +842,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					context.Background(),
 					config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 					nil,
-					&XPermission{AllowPermission: "todo"},
+					&RondConfig{RequestFlow: RequestFlow{PolicyName: "todo"}},
 					opaModule,
 					partialEvaluators,
 				)
@@ -1084,8 +1016,8 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				Paths: OpenAPIPaths{
 					"/api": PathVerbs{
 						"get": VerbConfig{
-							XPermission{
-								AllowPermission: "todo",
+							PermissionV2: &RondConfig{
+								RequestFlow: RequestFlow{PolicyName: "todo"},
 							},
 						},
 					},
@@ -1099,7 +1031,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				context.Background(),
 				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 				nil,
-				&XPermission{AllowPermission: "todo"},
+				&RondConfig{RequestFlow: RequestFlow{PolicyName: "todo"}},
 				opaModule,
 				partialEvaluators,
 			)
@@ -1699,13 +1631,13 @@ project := find_one("projects", {"projectId": "1234"})
 project.tenantId == "1234"
 }`,
 	}
-	var mockXPermission = &XPermission{AllowPermission: "todo"}
+	var mockXPermission = &RondConfig{RequestFlow: RequestFlow{PolicyName: "todo"}}
 	oas := &OpenAPISpec{
 		Paths: OpenAPIPaths{
 			"/api": PathVerbs{
 				"get": VerbConfig{
-					XPermission{
-						AllowPermission: "todo",
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "todo"},
 					},
 				},
 			},
@@ -1875,11 +1807,9 @@ column_policy{
 		context.Background(),
 		config.EnvironmentVariables{TargetServiceHost: "test"},
 		nil,
-		&XPermission{
-			AllowPermission: "allow",
-			ResponseFilter: ResponseFilterConfiguration{
-				Policy: "column_policy",
-			},
+		&RondConfig{
+			RequestFlow:  RequestFlow{PolicyName: "allow"},
+			ResponseFlow: ResponseFlow{PolicyName: "column_policy"},
 		},
 
 		&OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
@@ -1910,9 +1840,9 @@ column_policy{
 func BenchmarkEvaluateRequest(b *testing.B) {
 	moduleConfig, err := loadRegoModule("./mocks/bench-policies")
 	assert.NilError(b, err, "Unexpected error")
-	permission := &XPermission{AllowPermission: "allow_view_project"}
+	permission := &RondConfig{RequestFlow: RequestFlow{PolicyName: "allow_view_project"}}
 
-	queryString := fmt.Sprintf("data.policies.%s", permission.AllowPermission)
+	queryString := fmt.Sprintf("data.policies.%s", permission.RequestFlow.PolicyName)
 	query := rego.New(
 		rego.Query(queryString),
 		rego.Module(moduleConfig.Name, moduleConfig.Content),
@@ -1929,7 +1859,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	}
 
 	partialEvaluators := PartialResultsEvaluators{
-		permission.AllowPermission: PartialEvaluator{PartialEvaluator: &pr},
+		permission.RequestFlow.PolicyName: PartialEvaluator{PartialEvaluator: &pr},
 	}
 
 	envs := config.EnvironmentVariables{
