@@ -44,6 +44,7 @@ Rönd natively allows you to build an RBAC solution based on Roles and Bindings 
 Here is a list of awesome people using Rönd, if you're using it but do not appear in this list feel free to open a PR!
 
  * [Mia-Platform](https://mia-platform.eu)
+ * [Mia-Care](https://mia-care.io/)
 
 ## Local development
 
