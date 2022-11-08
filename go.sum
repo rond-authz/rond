@@ -96,8 +96,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davidebianchi/go-jsonclient v1.3.0 h1:6579uXOHEDcClHK8b3j/xWbQV4Khpn7aMcH7tOmRjwY=
 github.com/davidebianchi/go-jsonclient v1.3.0/go.mod h1:lIOd35jxGfGENA/M0s1klHJgagIDj2KM1O6A/V5vpPI=
-github.com/davidebianchi/gswagger v0.5.1 h1:c4I53BW1NTKyHTGuJP+lv1YFM1Vkdds8COwilCjHOkw=
-github.com/davidebianchi/gswagger v0.5.1/go.mod h1:bKAe1mcPRhDgsHFRM/24sqgYUssWQIKtFTqU/ziF4HE=
+github.com/davidebianchi/gswagger v0.6.0 h1:Zou7ty5n9+pNm0oLZT9QGtc/HNk7RITJ3sGj/2mYioY=
+github.com/davidebianchi/gswagger v0.6.0/go.mod h1:bKAe1mcPRhDgsHFRM/24sqgYUssWQIKtFTqU/ziF4HE=
 github.com/dgraph-io/badger/v3 v3.2103.3 h1:s63J1pisDhKpzWslXFe+ChuthuZptpwTE6qEKoczPb4=
 github.com/dgraph-io/ristretto v0.1.1 h1:6CWw5tJNgpegArSHpNHJKldNeq03FQCwYvfMVWajOK8=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
