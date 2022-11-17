@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/davidebianchi/go-jsonclient v1.3.0
-	github.com/davidebianchi/gswagger v0.6.0
+	github.com/davidebianchi/gswagger v0.6.1
 	github.com/getkin/kin-openapi v0.108.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
@@ -34,13 +34,13 @@ require (
 	github.com/h2non/parth v0.0.0-20190131123155-b4df798d6542 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect
-	github.com/invopop/jsonschema v0.6.0 // indirect
 	github.com/invopop/yaml v0.2.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/knadh/koanf v1.4.3 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/mia-platform/jsonschema v0.1.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
