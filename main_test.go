@@ -1674,6 +1674,11 @@ func TestSetupRouterStandaloneMode(t *testing.T) {
 		Name: "policies",
 		Content: `package policies
 test_policy { true }
+
+filter_policy {
+	query := data.resources[_]
+	query.answer = 42
+}
 `,
 	}
 	oas := &OpenAPISpec{
@@ -1682,6 +1687,13 @@ test_policy { true }
 				"get": VerbConfig{
 					PermissionV2: &RondConfig{
 						RequestFlow: RequestFlow{PolicyName: "test_policy"},
+					},
+				},
+			},
+			"/evalfilter": PathVerbs{
+				"get": VerbConfig{
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "filter_policy", GenerateQuery: true, QueryOptions: QueryOptions{HeaderName: "my-query"}},
 					},
 				},
 			},
@@ -1701,6 +1713,16 @@ test_policy { true }
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+	})
+
+	t.Run("eval with request filter generation", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/my-prefix/evalfilter", nil)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		queryHeader := w.Header().Get("my-query")
+		assert.Equal(t, queryHeader, `{"$or":[{"$and":[{"answer":{"$eq":42}}]}]}`)
 	})
 
 	t.Run("revoke API", func(t *testing.T) {
