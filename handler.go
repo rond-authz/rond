@@ -42,7 +42,14 @@ func ReverseProxyOrResponse(
 	partialResultsEvaluators PartialResultsEvaluators,
 ) {
 	if env.Standalone {
-		w.Header().Set(BASE_ROW_FILTER_HEADER_KEY, req.Header.Get(BASE_ROW_FILTER_HEADER_KEY))
+		if permission.RequestFlow.GenerateQuery {
+			queryHeaderKey := BASE_ROW_FILTER_HEADER_KEY
+			if permission.RequestFlow.QueryOptions.HeaderName != "" {
+				queryHeaderKey = permission.RequestFlow.QueryOptions.HeaderName
+			}
+			securityQuery := req.Header.Get(queryHeaderKey)
+			w.Header().Set(queryHeaderKey, securityQuery)
+		}
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write(nil); err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
