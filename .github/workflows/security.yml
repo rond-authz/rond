@@ -15,3 +15,4 @@ jobs:
           args: ./...
       - name: Jetstack Paranoia
         uses: jetstack/paranoia@v0.2.1
+        config: ./github/workflows/paranoia.yml
