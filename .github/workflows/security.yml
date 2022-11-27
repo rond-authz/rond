@@ -16,4 +16,4 @@ jobs:
       - name: Jetstack Paranoia
         uses: jetstack/paranoia@v0.2.1
         with:
-          config: ./github/workflows/.paranoia.yml
+          config: .paranoia.yml
