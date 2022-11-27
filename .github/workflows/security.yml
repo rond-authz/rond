@@ -13,7 +13,15 @@ jobs:
         uses: securego/gosec@master
         with:
           args: ./...
+      - name: "Build container"
+        run: |
+          docker build -t rond-security-check .
+      - name: "Save container to tar"
+        run: |
+          docker save rond-security-check > $CONTAINER_TAR
       - name: Jetstack Paranoia
         uses: jetstack/paranoia@v0.2.1
         with:
           config: .paranoia.yml
+          action: validate
+          target_tar: file://${{ env.CONTAINER_TAR }}
