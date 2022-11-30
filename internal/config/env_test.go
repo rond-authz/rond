@@ -81,6 +81,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		ServiceVersion:       "latest",
 
 		OPAModulesDirectory: "/modules",
+		AdditionalHeadersToProxy: "miauserid",
 	}
 
 	t.Run(`returns correctly - with TargetServiceHost`, func(t *testing.T) {
@@ -173,4 +174,49 @@ func setEnvs(envsToSet []env) func() {
 			os.Unsetenv(env.name)
 		}
 	}
+}
+
+func TestGetAdditionalHeadersToProxy(t *testing.T) {
+	t.Run("without additional header to proxy use default extra headers", func(t *testing.T) {
+		env := EnvironmentVariables{}
+		headersToProxy := env.GetAdditionalHeadersToProxy()
+
+		require.Equal(t, extraHeadersKeys, headersToProxy)
+	})
+
+	t.Run("with empty additional header to proxy use default extra headers", func(t *testing.T) {
+		env := EnvironmentVariables{
+			AdditionalHeadersToProxy: "",
+		}
+		headersToProxy := env.GetAdditionalHeadersToProxy()
+
+		require.Equal(t, extraHeadersKeys, headersToProxy)
+	})
+
+	t.Run("with additional header to proxy add default headers to custom headers", func(t *testing.T) {
+		env := EnvironmentVariables{
+			AdditionalHeadersToProxy: "head1,head2",
+		}
+		headersToProxy := env.GetAdditionalHeadersToProxy()
+
+		require.Equal(t, []string{"head1", "head2", "x-request-id", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-host"}, headersToProxy)
+	})
+
+	t.Run("remove duplicated headers in custom and default", func(t *testing.T) {
+		env := EnvironmentVariables{
+			AdditionalHeadersToProxy: "head1,head2,x-forwarded-for",
+		}
+		headersToProxy := env.GetAdditionalHeadersToProxy()
+
+		require.Equal(t, []string{"head1", "head2", "x-forwarded-for", "x-request-id", "x-forwarded-proto", "x-forwarded-host"}, headersToProxy)
+	})
+
+	t.Run("all extra headers duplicated", func(t *testing.T) {
+		env := EnvironmentVariables{
+			AdditionalHeadersToProxy: "head1,head2,x-forwarded-for,x-request-id,x-forwarded-proto,x-forwarded-host",
+		}
+		headersToProxy := env.GetAdditionalHeadersToProxy()
+
+		require.Equal(t, []string{"head1", "head2", "x-forwarded-for", "x-request-id", "x-forwarded-proto", "x-forwarded-host"}, headersToProxy)
+	})
 }
