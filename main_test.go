@@ -1762,9 +1762,9 @@ filter_policy {
 		reqBody := GrantRequestBody{
 			ResourceID:  "my-company",
 			Subjects:    []string{"subj"},
-			Groups:      []string{"subj"},
-			Roles:       []string{"subj"},
-			Permissions: []string{"subj"},
+			Groups:      []string{"group1"},
+			Roles:       []string{"role1"},
+			Permissions: []string{"permission1"},
 		}
 		reqBodyBytes, err := json.Marshal(reqBody)
 		require.Nil(t, err, "Unexpected error")
