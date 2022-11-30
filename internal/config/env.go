@@ -37,24 +37,24 @@ const (
 // EnvironmentVariables struct with the mapping of desired
 // environment variables.
 type EnvironmentVariables struct {
-	LogLevel               string
-	HTTPPort               string
-	ServiceVersion         string
-	TargetServiceHost      string
-	TargetServiceOASPath   string
-	OPAModulesDirectory    string
-	APIPermissionsFilePath string
-	UserPropertiesHeader   string
-	UserGroupsHeader       string
-	UserIdHeader           string
-	ClientTypeHeader       string
-	BindingsCrudServiceURL string
-	MongoDBUrl             string
-	RolesCollectionName    string
-	BindingsCollectionName string
-	PathPrefixStandalone   string
-	DelayShutdownSeconds   int
-	Standalone             bool
+	LogLevel                 string
+	HTTPPort                 string
+	ServiceVersion           string
+	TargetServiceHost        string
+	TargetServiceOASPath     string
+	OPAModulesDirectory      string
+	APIPermissionsFilePath   string
+	UserPropertiesHeader     string
+	UserGroupsHeader         string
+	UserIdHeader             string
+	ClientTypeHeader         string
+	BindingsCrudServiceURL   string
+	MongoDBUrl               string
+	RolesCollectionName      string
+	BindingsCollectionName   string
+	PathPrefixStandalone     string
+	DelayShutdownSeconds     int
+	Standalone               bool
 	AdditionalHeadersToProxy string
 }
 

@@ -80,7 +80,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		PathPrefixStandalone: "/eval",
 		ServiceVersion:       "latest",
 
-		OPAModulesDirectory: "/modules",
+		OPAModulesDirectory:      "/modules",
 		AdditionalHeadersToProxy: "miauserid",
 	}
 

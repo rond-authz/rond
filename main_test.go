@@ -1666,11 +1666,11 @@ func TestSetupRouterStandaloneMode(t *testing.T) {
 	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
 	env := config.EnvironmentVariables{
-		Standalone:           true,
-		TargetServiceHost:    "my-service:4444",
-		PathPrefixStandalone: "/my-prefix",
-		ServiceVersion:       "my-version",
-		BindingsCrudServiceURL: "http://crud:3030",
+		Standalone:               true,
+		TargetServiceHost:        "my-service:4444",
+		PathPrefixStandalone:     "/my-prefix",
+		ServiceVersion:           "my-version",
+		BindingsCrudServiceURL:   "http://crud:3030",
 		AdditionalHeadersToProxy: "miauserid",
 	}
 	opa := &OPAModuleConfig{
@@ -1760,11 +1760,11 @@ filter_policy {
 
 	t.Run("grant API with headers to proxy", func(t *testing.T) {
 		reqBody := GrantRequestBody{
-			ResourceID: "my-company", 
-			Subjects: []string {"subj"},
-			Groups: []string {"subj"},
-			Roles: []string {"subj"},
-			Permissions: []string {"subj"},
+			ResourceID:  "my-company",
+			Subjects:    []string{"subj"},
+			Groups:      []string{"subj"},
+			Roles:       []string{"subj"},
+			Permissions: []string{"subj"},
 		}
 		reqBodyBytes, err := json.Marshal(reqBody)
 		require.Nil(t, err, "Unexpected error")
@@ -1781,7 +1781,7 @@ filter_policy {
 		req.Header.Set("miauserid", "my user id to proxy")
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Result().StatusCode)	
+		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("API documentation is correctly exposed - json", func(t *testing.T) {
