@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/configlib"
@@ -36,24 +37,25 @@ const (
 // EnvironmentVariables struct with the mapping of desired
 // environment variables.
 type EnvironmentVariables struct {
-	LogLevel               string
-	HTTPPort               string
-	ServiceVersion         string
-	TargetServiceHost      string
-	TargetServiceOASPath   string
-	OPAModulesDirectory    string
-	APIPermissionsFilePath string
-	UserPropertiesHeader   string
-	UserGroupsHeader       string
-	UserIdHeader           string
-	ClientTypeHeader       string
-	BindingsCrudServiceURL string
-	MongoDBUrl             string
-	RolesCollectionName    string
-	BindingsCollectionName string
-	PathPrefixStandalone   string
-	DelayShutdownSeconds   int
-	Standalone             bool
+	LogLevel                 string
+	HTTPPort                 string
+	ServiceVersion           string
+	TargetServiceHost        string
+	TargetServiceOASPath     string
+	OPAModulesDirectory      string
+	APIPermissionsFilePath   string
+	UserPropertiesHeader     string
+	UserGroupsHeader         string
+	UserIdHeader             string
+	ClientTypeHeader         string
+	BindingsCrudServiceURL   string
+	MongoDBUrl               string
+	RolesCollectionName      string
+	BindingsCollectionName   string
+	PathPrefixStandalone     string
+	DelayShutdownSeconds     int
+	Standalone               bool
+	AdditionalHeadersToProxy string
 }
 
 var EnvVariablesConfig = []configlib.EnvConfig{
@@ -139,6 +141,11 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		Key:      BindingsCrudServiceURL,
 		Variable: "BindingsCrudServiceURL",
 	},
+	{
+		Key:          "ADDITIONAL_HEADERS_TO_PROXY",
+		Variable:     "AdditionalHeadersToProxy",
+		DefaultValue: "miauserid",
+	},
 }
 
 type EnvKey struct{}
@@ -179,4 +186,26 @@ func GetEnvOrDie() EnvironmentVariables {
 	}
 
 	return env
+}
+
+var extraHeadersKeys = []string{"x-request-id", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-host"}
+
+func (env EnvironmentVariables) GetAdditionalHeadersToProxy() []string {
+	if env.AdditionalHeadersToProxy == "" {
+		return extraHeadersKeys
+	}
+	customHeaders := strings.Split(env.AdditionalHeadersToProxy, ",")
+	for _, extraHeaderKey := range extraHeadersKeys {
+		duplicate := false
+		for _, customHeader := range customHeaders {
+			if customHeader == extraHeaderKey {
+				duplicate = true
+				break
+			}
+		}
+		if !duplicate {
+			customHeaders = append(customHeaders, extraHeaderKey)
+		}
+	}
+	return customHeaders
 }

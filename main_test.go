@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -1665,10 +1666,12 @@ func TestSetupRouterStandaloneMode(t *testing.T) {
 	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
 	env := config.EnvironmentVariables{
-		Standalone:           true,
-		TargetServiceHost:    "my-service:4444",
-		PathPrefixStandalone: "/my-prefix",
-		ServiceVersion:       "my-version",
+		Standalone:               true,
+		TargetServiceHost:        "my-service:4444",
+		PathPrefixStandalone:     "/my-prefix",
+		ServiceVersion:           "my-version",
+		BindingsCrudServiceURL:   "http://crud:3030",
+		AdditionalHeadersToProxy: "miauserid",
 	}
 	opa := &OPAModuleConfig{
 		Name: "policies",
@@ -1753,6 +1756,32 @@ filter_policy {
 		assert.NilError(t, err, "unexpected error")
 		assert.Equal(t, requestError.Message, "Internal server error, please try again later")
 		assert.Equal(t, requestError.Error, "EOF")
+	})
+
+	t.Run("grant API with headers to proxy", func(t *testing.T) {
+		reqBody := GrantRequestBody{
+			ResourceID:  "my-company",
+			Subjects:    []string{"subj"},
+			Groups:      []string{"group1"},
+			Roles:       []string{"role1"},
+			Permissions: []string{"permission1"},
+		}
+		reqBodyBytes, err := json.Marshal(reqBody)
+		require.Nil(t, err, "Unexpected error")
+
+		w := httptest.NewRecorder()
+
+		gock.New("http://crud:3030").
+			Post("/").
+			MatchHeader("miauserid", "my user id to proxy").
+			Reply(200).
+			JSON([]byte(`{"_id":"theobjectid"}`))
+
+		req := httptest.NewRequest(http.MethodPost, "/grant/bindings/resource/some-resource", bytes.NewReader(reqBodyBytes))
+		req.Header.Set("miauserid", "my user id to proxy")
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("API documentation is correctly exposed - json", func(t *testing.T) {
