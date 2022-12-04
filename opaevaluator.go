@@ -250,7 +250,20 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 	if err != nil {
 		return nil, fmt.Errorf("policy Evaluation has failed when partially evaluating the query: %s", err.Error())
 	}
-	logger.Tracef("OPA partial evaluation in: %+v", time.Since(opaEvaluationTime))
+	routerInfo, err := GetRouterInfo(evaluator.Context)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.WithFields(logrus.Fields{
+		"evaluationTimeMicroseconds": time.Since(opaEvaluationTime).Microseconds(),
+		"policyName":                 evaluator.PolicyName,
+		"partialEval":                true,
+		"allowed":                    true,
+		"matchedPath":                routerInfo.MatchedPath,
+		"requestedPath":              routerInfo.RequestedPath,
+		"method":                     routerInfo.Method,
+	}).Info("policy evaluation completed")
 
 	client := opatranslator.OPAClient{}
 	q, err := client.ProcessQuery(partialResults)
@@ -272,9 +285,20 @@ func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, erro
 	if err != nil {
 		return nil, fmt.Errorf("policy Evaluation has failed when evaluating the query: %s", err.Error())
 	}
+	routerInfo, err := GetRouterInfo(evaluator.Context)
+	if err != nil {
+		return nil, err
+	}
+
 	logger.WithFields(logrus.Fields{
-		"policyName": evaluator.PolicyName,
-	}).Tracef("OPA evaluation in: %+v", time.Since(opaEvaluationTime))
+		"evaluationTimeMicroseconds": time.Since(opaEvaluationTime).Microseconds(),
+		"policyName":                 evaluator.PolicyName,
+		"partialEval":                false,
+		"allowed":                    results.Allowed(),
+		"matchedPath":                routerInfo.MatchedPath,
+		"requestedPath":              routerInfo.RequestedPath,
+		"method":                     routerInfo.Method,
+	}).Info("policy evaluation completed")
 
 	if results.Allowed() {
 		logger.WithFields(logrus.Fields{
@@ -289,7 +313,7 @@ func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, erro
 	// - Expressions: list of list
 	// - Bindings: object
 	// e.g. [{Expressions:[[map["element": true]]] Bindings:map[]}]
-	// Since we are ALWAYS querying ONE specifc policy the result length could not be greater than 1
+	// Since we are ALWAYS querying ONE specific policy the result length could not be greater than 1
 	if len(results) == 1 {
 		if exprs := results[0].Expressions; len(exprs) == 1 {
 			if value, ok := exprs[0].Value.([]interface{}); ok && value != nil && len(value) != 0 {

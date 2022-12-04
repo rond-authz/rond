@@ -34,6 +34,7 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/types"
+	"github.com/stretchr/testify/require"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
@@ -547,6 +548,122 @@ allow {
 		assert.Assert(t, !invoked, "Handler was not invoked.")
 		assert.Equal(t, w.Result().StatusCode, http.StatusForbidden, "Unexpected status code.")
 		assert.Equal(t, w.Result().Header.Get(ContentTypeHeaderKey), JSONContentTypeHeader, "Unexpected content type.")
+	})
+
+	t.Run("data evalutation logs correctly added", func(t *testing.T) {
+		partialEvaluators, err := setupEvaluators(ctx, nil, &oas, mockOPAModule, envs)
+		assert.Equal(t, err, nil, "Unexpected error")
+
+		t.Run("no query generation", func(t *testing.T) {
+			invoked := false
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				invoked = true
+
+				assert.Equal(t, r.URL.Path, "/api", "Mocked Backend: Unexpected path of request url")
+				assert.Equal(t, r.URL.RawQuery, "mockQuery=iamquery", "Mocked Backend: Unexpected rawQuery of request url")
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			serverURL, _ := url.Parse(server.URL)
+
+			ctx := createContext(t,
+				ctx,
+				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
+				nil,
+				mockXPermission,
+				mockOPAModule,
+				partialEvaluators,
+			)
+
+			log, hook := test.NewNullLogger()
+			ctx = glogger.WithLogger(ctx, logrus.NewEntry(log))
+
+			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
+			assert.Equal(t, err, nil, "Unexpected error")
+
+			w := httptest.NewRecorder()
+
+			rbacHandler(w, r)
+
+			assert.Assert(t, invoked, "Handler was not invoked.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
+
+			actualLog := findLogWithMessage(hook.AllEntries(), "policy evaluation completed")
+			require.Len(t, actualLog, 1)
+			require.NotEmpty(t, actualLog[0].Data["evaluationTimeMicroseconds"])
+			delete(actualLog[0].Data, "evaluationTimeMicroseconds")
+			require.Equal(t, logrus.Fields{
+				"allowed":       true,
+				"matchedPath":   "/matched/path",
+				"method":        "GET",
+				"partialEval":   false,
+				"policyName":    "todo",
+				"requestedPath": "/requested/path",
+			}, actualLog[0].Data)
+		})
+
+		t.Run("with query generation", func(t *testing.T) {
+			invoked := false
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				invoked = true
+
+				assert.Equal(t, r.URL.Path, "/api", "Mocked Backend: Unexpected path of request url")
+				assert.Equal(t, r.URL.RawQuery, "mockQuery=iamquery", "Mocked Backend: Unexpected rawQuery of request url")
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			serverURL, _ := url.Parse(server.URL)
+
+			opaModuleConfig := &OPAModuleConfig{
+				Name: "mypolicy.rego",
+				Content: `package policies
+allow {
+	input.request.method == "GET"
+	input.request.path == "/api"
+	employee := data.resources[_]
+	employee.salary < 0
+}`,
+			}
+			partialEvaluators, err := setupEvaluators(ctx, nil, &oasWithFilter, opaModuleConfig, envs)
+			require.NoError(t, err)
+
+			ctx := createContext(t,
+				ctx,
+				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
+				nil,
+				mockRondConfigWithQueryGen,
+				opaModuleConfig,
+				partialEvaluators,
+			)
+
+			log, hook := test.NewNullLogger()
+			ctx = glogger.WithLogger(ctx, logrus.NewEntry(log))
+
+			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
+			assert.Equal(t, err, nil, "Unexpected error")
+
+			w := httptest.NewRecorder()
+
+			rbacHandler(w, r)
+
+			assert.Assert(t, invoked, "Handler was not invoked.")
+			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
+
+			actualLog := findLogWithMessage(hook.AllEntries(), "policy evaluation completed")
+			require.Len(t, actualLog, 1)
+			require.NotEmpty(t, actualLog[0].Data["evaluationTimeMicroseconds"])
+			delete(actualLog[0].Data, "evaluationTimeMicroseconds")
+			require.Equal(t, logrus.Fields{
+				"allowed":       true,
+				"matchedPath":   "/matched/path",
+				"method":        "GET",
+				"partialEval":   true,
+				"policyName":    "allow",
+				"requestedPath": "/requested/path",
+			}, actualLog[0].Data)
+		})
 	})
 }
 
@@ -1999,4 +2116,14 @@ var testmongoMock = &mocks.MongoClientMock{
 			CRUDDocumentState: "PUBLIC",
 		},
 	},
+}
+
+func findLogWithMessage(logs []*logrus.Entry, message string) []*logrus.Entry {
+	logToReturn := []*logrus.Entry{}
+	for _, log := range logs {
+		if log.Message == message {
+			logToReturn = append(logToReturn, log)
+		}
+	}
+	return logToReturn
 }

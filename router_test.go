@@ -209,6 +209,12 @@ func createContext(
 	log, _ := test.NewNullLogger()
 	partialContext = glogger.WithLogger(partialContext, logrus.NewEntry(log))
 
+	partialContext = context.WithValue(partialContext, RouterInfoKey{}, RouterInfo{
+		MatchedPath:   "/matched/path",
+		RequestedPath: "/requested/path",
+		Method:        "GET",
+	})
+
 	return partialContext
 }
 

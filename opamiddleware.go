@@ -37,6 +37,7 @@ var (
 )
 
 type OPAModuleConfigKey struct{}
+type RouterInfoKey struct{}
 
 type OPAModuleConfig struct {
 	Name    string
@@ -58,13 +59,15 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 				path = strings.Replace(r.URL.EscapedPath(), envs.PathPrefixStandalone, "", 1)
 			}
 
+			logger := glogger.Get(r.Context())
+
 			permission, err := openAPISpec.FindPermission(OASrouter, path, r.Method)
 			if r.Method == http.MethodGet && r.URL.Path == envs.TargetServiceOASPath && permission.RequestFlow.PolicyName == "" {
 				fields := logrus.Fields{}
 				if err != nil {
 					fields["error"] = logrus.Fields{"message": err.Error()}
 				}
-				glogger.Get(r.Context()).WithFields(fields).Info("Proxying call to OAS Path even with no permission")
+				logger.WithFields(fields).Info("Proxying call to OAS Path even with no permission")
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -86,7 +89,7 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 				if errors.Is(err, ErrNotFoundOASDefinition) {
 					statusCode = http.StatusNotFound
 				}
-				glogger.Get(r.Context()).WithFields(fields).Errorf(errorMessage)
+				logger.WithFields(fields).Errorf(errorMessage)
 				failResponseWithCode(w, statusCode, technicalError, errorMessage)
 				return
 			}
@@ -94,7 +97,7 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 			ctx := WithXPermission(
 				WithOPAModuleConfig(
 					WithPartialResultsEvaluators(
-						r.Context(),
+						WithRouterInfo(logger, r.Context(), r),
 						policyEvaluators,
 					),
 					opaModuleConfig,
@@ -149,4 +152,40 @@ func GetOPAModuleConfig(requestContext context.Context) (*OPAModuleConfig, error
 	}
 
 	return permission, nil
+}
+
+type RouterInfo struct {
+	MatchedPath   string
+	RequestedPath string
+	Method        string
+}
+
+func WithRouterInfo(logger *logrus.Entry, requestContext context.Context, req *http.Request) context.Context {
+	pathTemplate := getPathTemplateOrDefaultToEmptyString(logger, req)
+	return context.WithValue(requestContext, RouterInfoKey{}, RouterInfo{
+		MatchedPath:   utils.SanitizeString(pathTemplate),
+		RequestedPath: utils.SanitizeString(req.URL.Path),
+		Method:        utils.SanitizeString(req.Method),
+	})
+}
+
+func getPathTemplateOrDefaultToEmptyString(logger *logrus.Entry, req *http.Request) string {
+	var pathTemplate string
+	route := mux.CurrentRoute(req)
+	if route != nil {
+		var err error
+		if pathTemplate, err = route.GetPathTemplate(); err != nil {
+			logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("path template is empty")
+			return ""
+		}
+	}
+	return pathTemplate
+}
+
+func GetRouterInfo(requestContext context.Context) (RouterInfo, error) {
+	routerInfo, ok := requestContext.Value(RouterInfoKey{}).(RouterInfo)
+	if !ok {
+		return RouterInfo{}, fmt.Errorf("no router info found")
+	}
+	return routerInfo, nil
 }
