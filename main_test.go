@@ -1806,3 +1806,71 @@ filter_policy {
 		assert.Assert(t, string(responseBody) != "")
 	})
 }
+
+func TestSetupRouterMetrics(t *testing.T) {
+	defer gock.Off()
+	defer gock.DisableNetworkingFilters()
+	defer gock.Flush()
+
+	log, _ := test.NewNullLogger()
+	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
+
+	env := config.EnvironmentVariables{
+		Standalone:               true,
+		TargetServiceHost:        "my-service:4444",
+		PathPrefixStandalone:     "/my-prefix",
+		ServiceVersion:           "my-version",
+		BindingsCrudServiceURL:   "http://crud:3030",
+		AdditionalHeadersToProxy: "miauserid",
+		ExposeMetrics:            true,
+	}
+	opa := &OPAModuleConfig{
+		Name: "policies",
+		Content: `package policies
+test_policy { true }
+
+filter_policy {
+	query := data.resources[_]
+	query.answer = 42
+}
+`,
+	}
+	oas := &OpenAPISpec{
+		Paths: OpenAPIPaths{
+			"/evalapi": PathVerbs{
+				"get": VerbConfig{
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "test_policy"},
+					},
+				},
+			},
+			"/evalfilter": PathVerbs{
+				"get": VerbConfig{
+					PermissionV2: &RondConfig{
+						RequestFlow: RequestFlow{PolicyName: "filter_policy", GenerateQuery: true, QueryOptions: QueryOptions{HeaderName: "my-query"}},
+					},
+				},
+			},
+		},
+	}
+
+	var mongoClient *mongoclient.MongoClient
+	evaluatorsMap, err := setupEvaluators(ctx, mongoClient, oas, opa, env)
+	require.NoError(t, err, "unexpected error")
+
+	router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+	require.NoError(t, err, "unexpected error")
+
+	t.Run("metrics API exposed correctly", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+		router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+		responseBody := getResponseBody(t, w)
+		require.Contains(t, string(responseBody), "go_gc_duration_seconds")
+
+		fmt.Println(string(responseBody))
+	})
+}

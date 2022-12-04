@@ -56,6 +56,7 @@ type EnvironmentVariables struct {
 	DelayShutdownSeconds     int
 	Standalone               bool
 	AdditionalHeadersToProxy string
+	ExposeMetrics            bool
 }
 
 var EnvVariablesConfig = []configlib.EnvConfig{
@@ -145,6 +146,10 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		Key:          "ADDITIONAL_HEADERS_TO_PROXY",
 		Variable:     "AdditionalHeadersToProxy",
 		DefaultValue: "miauserid",
+	},
+	{
+		Key:      "EXPOSE_METRICS",
+		Variable: "ExposeMetrics",
 	},
 }
 
