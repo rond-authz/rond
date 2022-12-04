@@ -34,7 +34,6 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/types"
-	"github.com/stretchr/testify/require"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
@@ -42,6 +41,7 @@ import (
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/stretchr/testify/require"
 	"gotest.tools/v3/assert"
 )
 
