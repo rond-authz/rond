@@ -41,7 +41,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"gopkg.in/h2non/gock.v1"
-	"gotest.tools/v3/assert"
 )
 
 func TestProxyOASPath(t *testing.T) {
@@ -1705,17 +1704,17 @@ filter_policy {
 
 	var mongoClient *mongoclient.MongoClient
 	evaluatorsMap, err := setupEvaluators(ctx, mongoClient, oas, opa, env)
-	assert.NilError(t, err, "unexpected error")
+	require.NoError(t, err, "unexpected error")
 
 	router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
-	assert.NilError(t, err, "unexpected error")
+	require.NoError(t, err, "unexpected error")
 
 	t.Run("some eval API", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/my-prefix/evalapi", nil)
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("eval with request filter generation", func(t *testing.T) {
@@ -1723,9 +1722,9 @@ filter_policy {
 		req := httptest.NewRequest(http.MethodGet, "/my-prefix/evalfilter", nil)
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		queryHeader := w.Header().Get("my-query")
-		assert.Equal(t, queryHeader, `{"$or":[{"$and":[{"answer":{"$eq":42}}]}]}`)
+		require.Equal(t, `{"$or":[{"$and":[{"answer":{"$eq":42}}]}]}`, queryHeader)
 	})
 
 	t.Run("revoke API", func(t *testing.T) {
@@ -1734,13 +1733,13 @@ filter_policy {
 		router.ServeHTTP(w, req)
 
 		// Bad request expected for missing body and so decoder fails!
-		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+		require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 
 		var requestError types.RequestError
 		err := json.Unmarshal(w.Body.Bytes(), &requestError)
-		assert.NilError(t, err, "unexpected error")
-		assert.Equal(t, requestError.Message, "Internal server error, please try again later")
-		assert.Equal(t, requestError.Error, "EOF")
+		require.NoError(t, err, "unexpected error")
+		require.Equal(t, "Internal server error, please try again later", requestError.Message)
+		require.Equal(t, "EOF", requestError.Error)
 	})
 
 	t.Run("grant API", func(t *testing.T) {
@@ -1749,13 +1748,13 @@ filter_policy {
 		router.ServeHTTP(w, req)
 
 		// Bad request expected for missing body and so decoder fails!
-		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+		require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 
 		var requestError types.RequestError
 		err := json.Unmarshal(w.Body.Bytes(), &requestError)
-		assert.NilError(t, err, "unexpected error")
-		assert.Equal(t, requestError.Message, "Internal server error, please try again later")
-		assert.Equal(t, requestError.Error, "EOF")
+		require.NoError(t, err, "unexpected error")
+		require.Equal(t, "Internal server error, please try again later", requestError.Message)
+		require.Equal(t, "EOF", requestError.Error)
 	})
 
 	t.Run("grant API with headers to proxy", func(t *testing.T) {
@@ -1781,7 +1780,7 @@ filter_policy {
 		req.Header.Set("miauserid", "my user id to proxy")
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("API documentation is correctly exposed - json", func(t *testing.T) {
@@ -1789,10 +1788,10 @@ filter_policy {
 		req := httptest.NewRequest(http.MethodGet, "/openapi/json", nil)
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
 		responseBody := getResponseBody(t, w)
-		assert.Assert(t, string(responseBody) != "")
+		require.True(t, string(responseBody) != "")
 	})
 
 	t.Run("API documentation is correctly exposed - yaml", func(t *testing.T) {
@@ -1800,9 +1799,9 @@ filter_policy {
 		req := httptest.NewRequest(http.MethodGet, "/openapi/yaml", nil)
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
 		responseBody := getResponseBody(t, w)
-		assert.Assert(t, string(responseBody) != "")
+		require.True(t, string(responseBody) != "")
 	})
 }

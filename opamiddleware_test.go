@@ -29,7 +29,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/v3/assert"
 )
 
 var envs = config.EnvironmentVariables{}
@@ -57,13 +56,13 @@ todo { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/not-existing-path", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Result().StatusCode, http.StatusNotFound, "Unexpected status code.")
-			assert.DeepEqual(t, getJSONResponseBody[types.RequestError](t, w), &types.RequestError{
+			require.Equal(t, http.StatusNotFound, w.Result().StatusCode, "Unexpected status code.")
+			require.Equal(t, &types.RequestError{
 				Message:    "The request doesn't match any known API",
 				Error:      "not found oas definition: GET /not-existing-path",
 				StatusCode: http.StatusNotFound,
-			})
-			assert.Equal(t, w.Result().Header.Get(ContentTypeHeaderKey), JSONContentTypeHeader, "Unexpected content type.")
+			}, getJSONResponseBody[types.RequestError](t, w))
+			require.Equal(t, JSONContentTypeHeader, w.Result().Header.Get(ContentTypeHeaderKey), "Unexpected content type.")
 		})
 
 		t.Run(`missing method`, func(t *testing.T) {
@@ -75,13 +74,13 @@ todo { true }`,
 			r := httptest.NewRequest(http.MethodDelete, "http://example.com/users/", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Result().StatusCode, http.StatusNotFound, "Unexpected status code.")
-			assert.DeepEqual(t, getJSONResponseBody[types.RequestError](t, w), &types.RequestError{
+			require.Equal(t, http.StatusNotFound, w.Result().StatusCode, "Unexpected status code.")
+			require.Equal(t, &types.RequestError{
 				Message:    "The request doesn't match any known API",
 				Error:      "not found oas definition: DELETE /users/",
 				StatusCode: http.StatusNotFound,
-			})
-			assert.Equal(t, w.Result().Header.Get(ContentTypeHeaderKey), JSONContentTypeHeader, "Unexpected content type.")
+			}, getJSONResponseBody[types.RequestError](t, w))
+			require.Equal(t, JSONContentTypeHeader, w.Result().Header.Get(ContentTypeHeaderKey), "Unexpected content type.")
 		})
 
 		t.Run(`missing permission`, func(t *testing.T) {
@@ -93,7 +92,7 @@ todo { true }`,
 			r := httptest.NewRequest(http.MethodPost, "http://example.com/no-permission", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Result().StatusCode, http.StatusForbidden, "Unexpected status code.")
+			require.Equal(t, http.StatusForbidden, w.Result().StatusCode, "Unexpected status code.")
 		})
 	})
 
@@ -106,7 +105,7 @@ foobar { true }`,
 
 		t.Run(`ok - path is known on oas with no permission declared`, func(t *testing.T) {
 			openAPISpec, err := loadOASFile("./mocks/documentationPathMock.json")
-			assert.NilError(t, err)
+			require.NoError(t, err)
 			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/json",
 			}
@@ -119,12 +118,12 @@ foobar { true }`,
 			r := httptest.NewRequest(http.MethodPost, "http://example.com/documentation/json", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
+			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 		})
 
 		t.Run(`ok - path is missing on oas and request is equal to serviceTargetOASPath`, func(t *testing.T) {
 			openAPISpec, err := loadOASFile("./mocks/simplifiedMock.json")
-			assert.NilError(t, err)
+			require.NoError(t, err)
 			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/json",
 			}
@@ -137,12 +136,12 @@ foobar { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/documentation/json", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
+			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 		})
 
 		t.Run(`ok - path is NOT known on oas but is proxied anyway`, func(t *testing.T) {
 			openAPISpec, err := loadOASFile("./mocks/simplifiedMock.json")
-			assert.NilError(t, err)
+			require.NoError(t, err)
 			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/custom/json",
 			}
@@ -155,13 +154,13 @@ foobar { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/documentation/custom/json", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
+			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 		})
 	})
 
 	t.Run(`injects opa instance with correct query`, func(t *testing.T) {
 		openAPISpec, err := loadOASFile("./mocks/simplifiedMock.json")
-		assert.NilError(t, err)
+		require.NoError(t, err)
 
 		t.Run(`rego package doesn't contain expected permission`, func(t *testing.T) {
 			opaModule := &OPAModuleConfig{
@@ -182,7 +181,7 @@ todo { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/users/", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
+			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 		})
 
 		t.Run(`rego package contains expected permission`, func(t *testing.T) {
@@ -204,7 +203,7 @@ foobar { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/users/", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
+			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 		})
 
 		t.Run(`rego package contains composed permission`, func(t *testing.T) {
@@ -226,7 +225,7 @@ very_very_composed_permission { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/composed/permission/", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
+			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 		})
 
 		t.Run("injects correct permission", func(t *testing.T) {
@@ -253,7 +252,7 @@ very_very_composed_permission_with_eval { true }`,
 			r := httptest.NewRequest(http.MethodGet, "http://example.com/eval/composed/permission/", nil)
 			builtHandler.ServeHTTP(w, r)
 
-			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
+			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 		})
 	})
 }
@@ -286,7 +285,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 		r := httptest.NewRequest(http.MethodGet, "http://example.com/eval/composed/permission/", nil)
 		builtHandler.ServeHTTP(w, r)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
+		require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 	})
 
 	t.Run("injects correct path removing only one prefix", func(t *testing.T) {
@@ -308,7 +307,7 @@ very_very_composed_permission_with_eval { true }`,
 		r := httptest.NewRequest(http.MethodGet, "http://example.com/eval/eval/composed/permission/", nil)
 		builtHandler.ServeHTTP(w, r)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
+		require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 	})
 }
 
@@ -333,16 +332,16 @@ func TestGetHeaderFunction(t *testing.T) {
 		inputBytes, _ := json.Marshal(input)
 
 		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, env)
-		assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
+		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
 
 		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())
-		assert.NilError(t, err, "Unexpected error during rego validation")
-		assert.Assert(t, results.Allowed(), "The input is not allowed by rego")
+		require.NoError(t, err, "Unexpected error during rego validation")
+		require.True(t, results.Allowed(), "The input is not allowed by rego")
 
 		partialResults, err := opaEvaluator.PolicyEvaluator.Partial(context.TODO())
-		assert.NilError(t, err, "Unexpected error during rego validation")
+		require.NoError(t, err, "Unexpected error during rego validation")
 
-		assert.Equal(t, 1, len(partialResults.Queries), "Rego policy allows illegal input")
+		require.Len(t, partialResults.Queries, 1, "Rego policy allows illegal input")
 	})
 
 	t.Run("if header key not exists", func(t *testing.T) {
@@ -352,16 +351,16 @@ func TestGetHeaderFunction(t *testing.T) {
 		inputBytes, _ := json.Marshal(input)
 
 		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, env)
-		assert.NilError(t, err, "Unexpected error during creation of opaEvaluator")
+		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
 
 		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())
-		assert.NilError(t, err, "Unexpected error during rego validation")
-		assert.Assert(t, !results.Allowed(), "Rego policy allows illegal input")
+		require.NoError(t, err, "Unexpected error during rego validation")
+		require.True(t, !results.Allowed(), "Rego policy allows illegal input")
 
 		partialResults, err := opaEvaluator.PolicyEvaluator.Partial(context.TODO())
-		assert.NilError(t, err, "Unexpected error during rego validation")
+		require.NoError(t, err, "Unexpected error during rego validation")
 
-		assert.Equal(t, 0, len(partialResults.Queries), "Rego policy allows illegal input")
+		require.Len(t, partialResults.Queries, 0, "Rego policy allows illegal input")
 	})
 }
 

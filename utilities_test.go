@@ -23,7 +23,7 @@ import (
 
 	"github.com/rond-authz/rond/types"
 
-	"gotest.tools/v3/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUnmarshalHeader(t *testing.T) {
@@ -33,7 +33,7 @@ func TestUnmarshalHeader(t *testing.T) {
 		"key": []string{"is", "not"},
 	}
 	mockedUserPropertiesStringified, err := json.Marshal(mockedUserProperties)
-	assert.NilError(t, err)
+	require.NoError(t, err)
 
 	t.Run("header not exists", func(t *testing.T) {
 		headers := http.Header{}
@@ -41,8 +41,8 @@ func TestUnmarshalHeader(t *testing.T) {
 
 		ok, err := unmarshalHeader(headers, userPropertiesHeaderKey, &userProperties)
 
-		assert.Assert(t, !ok, "Unmarshal not existing header")
-		assert.NilError(t, err, "Unexpected error if doesn't exist header")
+		require.True(t, !ok, "Unmarshal not existing header")
+		require.NoError(t, err, "Unexpected error if doesn't exist header")
 	})
 
 	t.Run("header exists but the unmarshalling fails", func(t *testing.T) {
@@ -51,9 +51,9 @@ func TestUnmarshalHeader(t *testing.T) {
 		var userProperties string
 
 		ok, err := unmarshalHeader(headers, userPropertiesHeaderKey, &userProperties)
-
-		assert.Assert(t, !ok, "Unexpected success during unmarshalling")
-		assert.ErrorType(t, err, &json.UnmarshalTypeError{}, "Unexpected error on unmarshalling")
+		require.False(t, ok, "Unexpected success during unmarshalling")
+		var unmarshalErr = &json.UnmarshalTypeError{}
+		require.ErrorAs(t, err, &unmarshalErr, "Unexpected error on unmarshalling")
 	})
 
 	t.Run("header exists and unmarshalling finishes correctly", func(t *testing.T) {
@@ -62,8 +62,8 @@ func TestUnmarshalHeader(t *testing.T) {
 		var userProperties map[string]interface{}
 
 		ok, err := unmarshalHeader(headers, userPropertiesHeaderKey, &userProperties)
-		assert.Assert(t, ok, "Unexpected failure")
-		assert.NilError(t, err, "Unexpected error")
+		require.True(t, ok, "Unexpected failure")
+		require.NoError(t, err, "Unexpected error")
 	})
 }
 
@@ -71,20 +71,20 @@ func TestFailResponseWithCode(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	failResponseWithCode(w, http.StatusInternalServerError, "The Error", "The Message")
-	assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
+	require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 
-	assert.Equal(t, w.Result().Header.Get(ContentTypeHeaderKey), JSONContentTypeHeader)
+	require.Equal(t, JSONContentTypeHeader, w.Result().Header.Get(ContentTypeHeaderKey))
 
 	bodyBytes, err := io.ReadAll(w.Body)
-	assert.NilError(t, err)
+	require.NoError(t, err)
 
 	var response types.RequestError
 	err = json.Unmarshal(bodyBytes, &response)
-	assert.NilError(t, err)
+	require.NoError(t, err)
 
-	assert.DeepEqual(t, response, types.RequestError{
+	require.Equal(t, types.RequestError{
 		StatusCode: http.StatusInternalServerError,
 		Error:      "The Error",
 		Message:    "The Message",
-	})
+	}, response)
 }

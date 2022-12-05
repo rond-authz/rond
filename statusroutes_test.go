@@ -30,7 +30,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/v3/assert"
 )
 
 func TestStatusRoutes(testCase *testing.T) {
@@ -112,7 +111,7 @@ test_policy { true }
 
 	var mongoClient *mongoclient.MongoClient
 	evaluatorsMap, err := setupEvaluators(ctx, mongoClient, oas, opa, envs)
-	assert.NilError(t, err, "unexpected error")
+	require.NoError(t, err, "unexpected error")
 
 	t.Run("non standalone", func(t *testing.T) {
 		env := config.EnvironmentVariables{
@@ -121,28 +120,28 @@ test_policy { true }
 			PathPrefixStandalone: "/my-prefix",
 		}
 		router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
-		assert.NilError(t, err, "unexpected error")
+		require.NoError(t, err, "unexpected error")
 
 		t.Run("/-/rbac-ready", func(t *testing.T) {
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/-/rbac-ready", nil)
 			router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
 		t.Run("/-/rbac-healthz", func(t *testing.T) {
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/-/rbac-healthz", nil)
 			router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
 		t.Run("/-/rbac-check-up", func(t *testing.T) {
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/-/rbac-check-up", nil)
 			router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
 	})
 
@@ -154,27 +153,27 @@ test_policy { true }
 			ServiceVersion:       "latest",
 		}
 		router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
-		assert.NilError(t, err, "unexpected error")
+		require.NoError(t, err, "unexpected error")
 		t.Run("/-/rbac-ready", func(t *testing.T) {
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/-/rbac-ready", nil)
 			router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
 		t.Run("/-/rbac-healthz", func(t *testing.T) {
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/-/rbac-healthz", nil)
 			router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
 		t.Run("/-/rbac-check-up", func(t *testing.T) {
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/-/rbac-check-up", nil)
 			router.ServeHTTP(w, req)
 
-			assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
 	})
 }

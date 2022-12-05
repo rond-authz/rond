@@ -28,9 +28,9 @@ import (
 	"github.com/rond-authz/rond/types"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/stretchr/testify/require"
 
 	"github.com/gorilla/mux"
-	"gotest.tools/v3/assert"
 )
 
 func TestSetupRoutes(t *testing.T) {
@@ -65,7 +65,7 @@ func TestSetupRoutes(t *testing.T) {
 		})
 		sort.Strings(foundPaths)
 
-		assert.DeepEqual(t, foundPaths, expectedPaths)
+		require.Equal(t, expectedPaths, foundPaths)
 	})
 
 	t.Run("expect to register nested route correctly", func(t *testing.T) {
@@ -99,7 +99,7 @@ func TestSetupRoutes(t *testing.T) {
 		})
 		sort.Strings(foundPaths)
 
-		assert.DeepEqual(t, foundPaths, expectedPaths)
+		require.Equal(t, expectedPaths, foundPaths)
 	})
 
 	t.Run("expect to register route correctly in standalone mode", func(t *testing.T) {
@@ -135,7 +135,7 @@ func TestSetupRoutes(t *testing.T) {
 		})
 		sort.Strings(foundPaths)
 
-		assert.DeepEqual(t, foundPaths, expectedPaths)
+		require.Equal(t, expectedPaths, foundPaths)
 	})
 }
 
@@ -158,7 +158,7 @@ func TestConvertPathVariables(t *testing.T) {
 	t.Run("convert correctly paths", func(t *testing.T) {
 		for _, path := range listOfPaths {
 			convertedPath := convertPathVariablesToBrackets(path.Path)
-			assert.Equal(t, convertedPath, path.ConvertedPath, "Path not converted correctly.")
+			require.Equal(t, path.ConvertedPath, convertedPath, "Path not converted correctly.")
 		}
 	})
 }
@@ -181,7 +181,7 @@ func TestConvertPathVariables2(t *testing.T) {
 	t.Run("convert correctly paths", func(t *testing.T) {
 		for _, path := range listOfPaths {
 			convertedPath := convertPathVariablesToColons(path.Path)
-			assert.Equal(t, convertedPath, path.ConvertedPath, "Path not converted correctly.")
+			require.Equal(t, path.ConvertedPath, convertedPath, "Path not converted correctly.")
 		}
 	})
 }
@@ -246,8 +246,8 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		var invoked bool
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			invoked = true
-			assert.Equal(t, r.URL.Path, "/users/", "Mocked Backend: Unexpected path of request url")
-			assert.Equal(t, r.URL.RawQuery, "foo=bar", "Mocked Backend: Unexpected rawQuery of request url")
+			require.Equal(t, "/users/", r.URL.Path, "Mocked Backend: Unexpected path of request url")
+			require.Equal(t, "foo=bar", r.URL.RawQuery, "Mocked Backend: Unexpected rawQuery of request url")
 			w.WriteHeader(http.StatusOK)
 		}))
 		defer server.Close()
@@ -266,25 +266,25 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
-		assert.Equal(t, err, nil, "Unexpected error")
+		require.NoError(t, err, "Unexpected error")
 
 		var matchedRouted mux.RouteMatch
 		ok := router.Match(req, &matchedRouted)
-		assert.Assert(t, ok, "Route not found")
+		require.True(t, ok, "Route not found")
 
 		w := httptest.NewRecorder()
 		matchedRouted.Handler.ServeHTTP(w, req)
 
-		assert.Assert(t, invoked, "mock server was not invoked")
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+		require.True(t, invoked, "mock server was not invoked")
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("invokes unknown API", func(t *testing.T) {
 		var invoked bool
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			invoked = true
-			assert.Equal(t, r.URL.Path, "/unknown/path", "Mocked Backend: Unexpected path of request url")
-			assert.Equal(t, r.URL.RawQuery, "foo=bar", "Mocked Backend: Unexpected rawQuery of request url")
+			require.Equal(t, "/unknown/path", r.URL.Path, "Mocked Backend: Unexpected path of request url")
+			require.Equal(t, "foo=bar", r.URL.RawQuery, "Mocked Backend: Unexpected rawQuery of request url")
 			w.WriteHeader(http.StatusOK)
 		}))
 		defer server.Close()
@@ -303,17 +303,17 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/unknown/path?foo=bar", nil)
-		assert.Equal(t, err, nil, "Unexpected error")
+		require.NoError(t, err, "Unexpected error")
 
 		var matchedRouted mux.RouteMatch
 		ok := router.Match(req, &matchedRouted)
-		assert.Assert(t, ok, "Route not found")
+		require.True(t, ok, "Route not found")
 
 		w := httptest.NewRecorder()
 		matchedRouted.Handler.ServeHTTP(w, req)
 
-		assert.Assert(t, invoked, "mock server was not invoked")
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+		require.True(t, invoked, "mock server was not invoked")
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("blocks request on not allowed policy evaluation", func(t *testing.T) {
@@ -336,16 +336,16 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
-		assert.Equal(t, err, nil, "Unexpected error")
+		require.NoError(t, err, "Unexpected error")
 
 		var matchedRouted mux.RouteMatch
 		ok := router.Match(req, &matchedRouted)
-		assert.Assert(t, ok, "Route not found")
+		require.True(t, ok, "Route not found")
 
 		w := httptest.NewRecorder()
 		matchedRouted.Handler.ServeHTTP(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusForbidden)
+		require.Equal(t, http.StatusForbidden, w.Result().StatusCode)
 	})
 
 	t.Run("blocks request on policy evaluation error", func(t *testing.T) {
@@ -368,16 +368,16 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://my-service.com/users/?foo=bar", nil)
-		assert.Equal(t, err, nil, "Unexpected error")
+		require.NoError(t, err, "Unexpected error")
 
 		var matchedRouted mux.RouteMatch
 		ok := router.Match(req, &matchedRouted)
-		assert.Assert(t, ok, "Route not found")
+		require.True(t, ok, "Route not found")
 
 		w := httptest.NewRecorder()
 		matchedRouted.Handler.ServeHTTP(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
+		require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 	})
 
 	t.Run("invokes the API not explicitly set in the oas file", func(t *testing.T) {
@@ -404,17 +404,17 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://my-service.com/foo/route-not-registered-explicitly", nil)
-		assert.Equal(t, err, nil, "Unexpected error")
+		require.NoError(t, err, "Unexpected error")
 
 		var matchedRouted mux.RouteMatch
 		ok := router.Match(req, &matchedRouted)
-		assert.Assert(t, ok, "Route not found")
+		require.True(t, ok, "Route not found")
 
 		w := httptest.NewRecorder()
 		matchedRouted.Handler.ServeHTTP(w, req)
 
-		assert.Assert(t, invoked, "mock server was not invoked")
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+		require.True(t, invoked, "mock server was not invoked")
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("invokes a specific API within a nested path", func(t *testing.T) {
@@ -441,17 +441,17 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/foo/bar/nested", nil)
-		assert.Equal(t, err, nil, "Unexpected error")
+		require.NoError(t, err, "Unexpected error")
 
 		var matchedRouted mux.RouteMatch
 		ok := router.Match(req, &matchedRouted)
-		assert.Assert(t, ok, "Route not found")
+		require.True(t, ok, "Route not found")
 
 		w := httptest.NewRecorder()
 		matchedRouted.Handler.ServeHTTP(w, req)
 
-		assert.Assert(t, invoked, "mock server was not invoked")
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+		require.True(t, invoked, "mock server was not invoked")
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 }
 
@@ -459,6 +459,6 @@ func prepareOASFromFile(t *testing.T, filePath string) *OpenAPISpec {
 	t.Helper()
 
 	oas, err := loadOASFile(filePath)
-	assert.NilError(t, err)
+	require.NoError(t, err)
 	return oas
 }
