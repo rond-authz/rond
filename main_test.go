@@ -1870,7 +1870,5 @@ filter_policy {
 
 		responseBody := getResponseBody(t, w)
 		require.Contains(t, string(responseBody), "go_gc_duration_seconds")
-
-		fmt.Println(string(responseBody))
 	})
 }

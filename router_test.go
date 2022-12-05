@@ -24,6 +24,7 @@ import (
 
 	"github.com/mia-platform/glogger/v2"
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/types"
 	"github.com/sirupsen/logrus"
@@ -214,6 +215,8 @@ func createContext(
 		RequestedPath: "/requested/path",
 		Method:        "GET",
 	})
+
+	partialContext = metrics.WithValue(partialContext, metrics.SetupMetrics("test_rond"))
 
 	return partialContext
 }

@@ -28,8 +28,11 @@ import (
 
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
@@ -200,7 +203,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		opaModuleConfig := &OPAModuleConfig{
 			Name: "example.rego",
 			Content: `package policies
-		todo { input.request.body.hello == "world" }`,
+			todo { input.request.body.hello == "world" }`,
 		}
 
 		partialEvaluators, err := setupEvaluators(ctx, nil, &oas, opaModuleConfig, envs)
@@ -244,27 +247,27 @@ func TestDirectProxyHandler(t *testing.T) {
 
 	t.Run("sends filter query", func(t *testing.T) {
 		policy := `package policies
-allow {
-	get_header("examplekey", input.headers) == "value"
-	input.request.method == "GET"
-	employee := data.resources[_]
-	employee.name == "name_test"
-}
+	allow {
+		get_header("examplekey", input.headers) == "value"
+		input.request.method == "GET"
+		employee := data.resources[_]
+		employee.name == "name_test"
+	}
 
-allow {
-	input.request.method == "GET"
+	allow {
+		input.request.method == "GET"
 
-	employee := data.resources[_]
-	employee.manager == "manager_test"
-}
+		employee := data.resources[_]
+		employee.manager == "manager_test"
+	}
 
-allow {
-	input.request.method == "GET"
-	input.request.path == "/api"
-	employee := data.resources[_]
-	employee.salary > 0
-}
-`
+	allow {
+		input.request.method == "GET"
+		input.request.path == "/api"
+		employee := data.resources[_]
+		employee.salary > 0
+	}
+	`
 
 		invoked := false
 		mockBodySting := "I am a body"
@@ -318,23 +321,23 @@ allow {
 
 	t.Run("sends empty filter query", func(t *testing.T) {
 		policy := `package policies
-allow {
-	get_header("examplekey", input.headers) == "value"
-	input.request.method == "GET"
-	employee := data.resources[_]
-}
+	allow {
+		get_header("examplekey", input.headers) == "value"
+		input.request.method == "GET"
+		employee := data.resources[_]
+	}
 
-allow {
-	input.request.method == "GET"
+	allow {
+		input.request.method == "GET"
 
-	employee := data.resources[_]
-}
+		employee := data.resources[_]
+	}
 
-allow {
-	input.request.method == "GET"
-	input.request.path == "/api"
-}
-`
+	allow {
+		input.request.method == "GET"
+		input.request.path == "/api"
+	}
+	`
 
 		invoked := false
 		mockBodySting := "I am a body"
@@ -388,12 +391,12 @@ allow {
 
 	t.Run("sends empty filter query with application-json as content-type", func(t *testing.T) {
 		policy := `package policies
-allow {
-	false
-	employee := data.resources[_]
-	employee.name == "name_test"
-}
-`
+	allow {
+		false
+		employee := data.resources[_]
+		employee.name == "name_test"
+	}
+	`
 
 		mockBodySting := "I am a body"
 
@@ -435,12 +438,12 @@ allow {
 
 	t.Run("sends empty filter query with text/plain as content-type", func(t *testing.T) {
 		policy := `package policies
-allow {
-	false
-	employee := data.resources[_]
-	employee.name == "name_test"
-}
-`
+	allow {
+		false
+		employee := data.resources[_]
+		employee.name == "name_test"
+	}
+	`
 
 		invoked := false
 		mockBodySting := "I am a body"
@@ -480,27 +483,27 @@ allow {
 
 	t.Run("filter query return not allow", func(t *testing.T) {
 		policy := `package policies
-allow {
-	get_header("examplekey", input.headers) == "test"
-	input.request.method == "DELETE"
-	employee := data.resources[_]
-	employee.name == "name_test"
-}
+	allow {
+		get_header("examplekey", input.headers) == "test"
+		input.request.method == "DELETE"
+		employee := data.resources[_]
+		employee.name == "name_test"
+	}
 
-allow {
-	input.request.method == "GET111"
+	allow {
+		input.request.method == "GET111"
 
-	employee := data.resources[_]
-	employee.manager == "manager_test"
-}
+		employee := data.resources[_]
+		employee.manager == "manager_test"
+	}
 
-allow {
-	input.request.method == "GETAAA"
-	input.request.path == "/api"
-	employee := data.resources[_]
-	employee.salary < 0
-}
-`
+	allow {
+		input.request.method == "GETAAA"
+		input.request.path == "/api"
+		employee := data.resources[_]
+		employee.salary < 0
+	}
+	`
 
 		invoked := false
 		mockBodySting := "I am a body"
@@ -550,10 +553,7 @@ allow {
 		assert.Equal(t, w.Result().Header.Get(ContentTypeHeaderKey), JSONContentTypeHeader, "Unexpected content type.")
 	})
 
-	t.Run("data evalutation logs correctly added", func(t *testing.T) {
-		partialEvaluators, err := setupEvaluators(ctx, nil, &oas, mockOPAModule, envs)
-		assert.Equal(t, err, nil, "Unexpected error")
-
+	t.Run("data evaluation correctly added - logs and metrics", func(t *testing.T) {
 		t.Run("no query generation", func(t *testing.T) {
 			invoked := false
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -566,6 +566,9 @@ allow {
 			defer server.Close()
 
 			serverURL, _ := url.Parse(server.URL)
+
+			partialEvaluators, err := setupEvaluators(ctx, nil, &oas, mockOPAModule, envs)
+			assert.Equal(t, err, nil, "Unexpected error")
 
 			ctx := createContext(t,
 				ctx,
@@ -589,18 +592,48 @@ allow {
 			assert.Assert(t, invoked, "Handler was not invoked.")
 			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 
-			actualLog := findLogWithMessage(hook.AllEntries(), "policy evaluation completed")
-			require.Len(t, actualLog, 1)
-			require.NotEmpty(t, actualLog[0].Data["evaluationTimeMicroseconds"])
-			delete(actualLog[0].Data, "evaluationTimeMicroseconds")
-			require.Equal(t, logrus.Fields{
-				"allowed":       true,
-				"matchedPath":   "/matched/path",
-				"method":        "GET",
-				"partialEval":   false,
-				"policyName":    "todo",
-				"requestedPath": "/requested/path",
-			}, actualLog[0].Data)
+			t.Run("logs", func(t *testing.T) {
+				actualLog := findLogWithMessage(hook.AllEntries(), "policy evaluation completed")
+				require.Len(t, actualLog, 1)
+				require.NotEmpty(t, actualLog[0].Data["evaluationTimeMicroseconds"])
+				delete(actualLog[0].Data, "evaluationTimeMicroseconds")
+				require.Equal(t, logrus.Fields{
+					"allowed":       true,
+					"matchedPath":   "/matched/path",
+					"method":        "GET",
+					"partialEval":   false,
+					"policyName":    "todo",
+					"requestedPath": "/requested/path",
+				}, actualLog[0].Data)
+			})
+
+			t.Run("metrics", func(t *testing.T) {
+				m, err := metrics.GetFromContext(ctx)
+				require.NoError(t, err)
+				registry := prometheus.NewPedanticRegistry()
+				m.MustRegister(registry)
+
+				problem, err := testutil.CollectAndLint(registry, "test_rond_policy_evaluation_duration_milliseconds")
+				require.NoError(t, err, problem)
+				require.Equal(t, 1, testutil.CollectAndCount(registry, "test_rond_policy_evaluation_duration_milliseconds"), "register")
+
+				metadata := `
+								# HELP test_rond_policy_evaluation_duration_milliseconds A histogram of the policy evaluation durations in milliseconds.
+								# TYPE test_rond_policy_evaluation_duration_milliseconds histogram
+			`
+				expected := `
+								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="1"} 1
+								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="5"} 1
+								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="10"} 1
+								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="50"} 1
+								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="100"} 1
+								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="+Inf"} 1
+								test_rond_policy_evaluation_duration_milliseconds_sum{policy_name="todo"} 0
+								test_rond_policy_evaluation_duration_milliseconds_count{policy_name="todo"} 1
+			`
+
+				require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(metadata+expected), "test_rond_policy_evaluation_duration_milliseconds"))
+			})
 		})
 
 		t.Run("with query generation", func(t *testing.T) {
@@ -651,18 +684,47 @@ allow {
 			assert.Assert(t, invoked, "Handler was not invoked.")
 			assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code.")
 
-			actualLog := findLogWithMessage(hook.AllEntries(), "policy evaluation completed")
-			require.Len(t, actualLog, 1)
-			require.NotEmpty(t, actualLog[0].Data["evaluationTimeMicroseconds"])
-			delete(actualLog[0].Data, "evaluationTimeMicroseconds")
-			require.Equal(t, logrus.Fields{
-				"allowed":       true,
-				"matchedPath":   "/matched/path",
-				"method":        "GET",
-				"partialEval":   true,
-				"policyName":    "allow",
-				"requestedPath": "/requested/path",
-			}, actualLog[0].Data)
+			t.Run("logs", func(t *testing.T) {
+				actualLog := findLogWithMessage(hook.AllEntries(), "policy evaluation completed")
+				require.Len(t, actualLog, 1)
+				require.NotEmpty(t, actualLog[0].Data["evaluationTimeMicroseconds"])
+				delete(actualLog[0].Data, "evaluationTimeMicroseconds")
+				require.Equal(t, logrus.Fields{
+					"allowed":       true,
+					"matchedPath":   "/matched/path",
+					"method":        "GET",
+					"partialEval":   true,
+					"policyName":    "allow",
+					"requestedPath": "/requested/path",
+				}, actualLog[0].Data)
+			})
+
+			t.Run("metrics", func(t *testing.T) {
+				m, err := metrics.GetFromContext(ctx)
+				require.NoError(t, err)
+				registry := prometheus.NewPedanticRegistry()
+				m.MustRegister(registry)
+
+				problem, err := testutil.CollectAndLint(registry, "test_rond_policy_evaluation_duration_milliseconds")
+				require.NoError(t, err, problem)
+				require.Equal(t, 1, testutil.CollectAndCount(registry, "test_rond_policy_evaluation_duration_milliseconds"), "register")
+
+				metadata := `
+					# HELP test_rond_policy_evaluation_duration_milliseconds A histogram of the policy evaluation durations in milliseconds.
+					# TYPE test_rond_policy_evaluation_duration_milliseconds histogram
+`
+				expected := `
+					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="1"} 1
+					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="5"} 1
+					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="10"} 1
+					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="50"} 1
+					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="100"} 1
+					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="+Inf"} 1
+					test_rond_policy_evaluation_duration_milliseconds_sum{policy_name="allow"} 0
+					test_rond_policy_evaluation_duration_milliseconds_count{policy_name="allow"} 1
+`
+				require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(metadata+expected), "test_rond_policy_evaluation_duration_milliseconds"))
+			})
 		})
 	})
 }

@@ -9,13 +9,13 @@ type Metrics struct {
 	PolicyEvaluationDurationMilliseconds *prometheus.HistogramVec
 }
 
-func SetupMetricsOrDie(prefix string) Metrics {
+func SetupMetrics(prefix string) Metrics {
 	m := Metrics{
 		PolicyEvaluationDurationMilliseconds: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: prefix,
 			Name:      "policy_evaluation_duration_milliseconds",
 			Help:      "A histogram of the policy evaluation durations in milliseconds.",
-			Buckets:   prometheus.ExponentialBucketsRange(0.1, 500, 10),
+			Buckets:   []float64{1, 5, 10, 50, 100},
 		}, []string{"policy_name"}),
 	}
 

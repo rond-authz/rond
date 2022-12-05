@@ -154,11 +154,12 @@ func setupRouter(
 	StatusRoutes(router, serviceName, env.ServiceVersion)
 
 	registry := prometheus.NewRegistry()
-	m := metrics.SetupMetricsOrDie("rond")
+	m := metrics.SetupMetrics("rond")
 	if env.ExposeMetrics {
 		m.MustRegister(registry)
 		metrics.MetricsRoute(router, registry)
 	}
+	router.Use(metrics.RequestMiddleware(m))
 
 	router.Use(config.RequestMiddlewareEnvironments(env))
 
