@@ -148,8 +148,9 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		DefaultValue: "miauserid",
 	},
 	{
-		Key:      "EXPOSE_METRICS",
-		Variable: "ExposeMetrics",
+		Key:          "EXPOSE_METRICS",
+		Variable:     "ExposeMetrics",
+		DefaultValue: "true",
 	},
 }
 
