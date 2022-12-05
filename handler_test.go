@@ -580,6 +580,7 @@ func TestDirectProxyHandler(t *testing.T) {
 			)
 
 			log, hook := test.NewNullLogger()
+			log.Level = logrus.TraceLevel
 			ctx = glogger.WithLogger(ctx, logrus.NewEntry(log))
 
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
@@ -672,6 +673,7 @@ allow {
 			)
 
 			log, hook := test.NewNullLogger()
+			log.Level = logrus.TraceLevel
 			ctx = glogger.WithLogger(ctx, logrus.NewEntry(log))
 
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)

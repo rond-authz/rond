@@ -275,7 +275,7 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 		"matchedPath":                routerInfo.MatchedPath,
 		"requestedPath":              routerInfo.RequestedPath,
 		"method":                     routerInfo.Method,
-	}).Info("policy evaluation completed")
+	}).Debug("policy evaluation completed")
 
 	client := opatranslator.OPAClient{}
 	q, err := client.ProcessQuery(partialResults)
@@ -320,7 +320,7 @@ func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, erro
 		"matchedPath":                routerInfo.MatchedPath,
 		"requestedPath":              routerInfo.RequestedPath,
 		"method":                     routerInfo.Method,
-	}).Info("policy evaluation completed")
+	}).Debug("policy evaluation completed")
 
 	if results.Allowed() {
 		logger.WithFields(logrus.Fields{
