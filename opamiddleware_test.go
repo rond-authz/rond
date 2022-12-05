@@ -23,8 +23,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/types"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/v3/assert"
 )
@@ -375,6 +378,106 @@ func TestGetOPAModuleConfig(t *testing.T) {
 		opaEval, err := GetOPAModuleConfig(ctx)
 		require.True(t, err == nil, "Unexpected error.")
 		require.True(t, opaEval != nil, "OPA Module config not found.")
+	})
+}
+
+func TestRouterInfoContext(t *testing.T) {
+	nullLogger, _ := test.NewNullLogger()
+	logger := logrus.NewEntry(nullLogger)
+
+	t.Run("GetRouterInfo fails because no key has been set", func(t *testing.T) {
+		ctx := context.Background()
+		routerInfo, err := GetRouterInfo(ctx)
+		require.EqualError(t, err, "no router info found")
+		require.Empty(t, routerInfo)
+	})
+
+	t.Run("WithRouterInfo not inside mux router - empty matched path", func(t *testing.T) {
+		ctx := context.Background()
+		req := httptest.NewRequest("GET", "/hello", nil)
+		ctx = WithRouterInfo(logger, ctx, req)
+		routerInfo, err := GetRouterInfo(ctx)
+		require.NoError(t, err)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "",
+			RequestedPath: "/hello",
+			Method:        "GET",
+		}, routerInfo)
+	})
+
+	t.Run("WithRouterInfo without router path - matched path is empty", func(t *testing.T) {
+		ctx := context.Background()
+		router := mux.NewRouter()
+
+		router.NewRoute().HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			ctx := WithRouterInfo(logger, ctx, req)
+
+			routerInfo, err := GetRouterInfo(ctx)
+			require.NoError(t, err)
+			require.Equal(t, RouterInfo{
+				MatchedPath:   "",
+				RequestedPath: "/hello",
+				Method:        "GET",
+			}, routerInfo)
+
+			w.Write([]byte("ok"))
+		})
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/hello", nil)
+		router.ServeHTTP(w, req)
+
+		require.Equal(t, 200, w.Result().StatusCode)
+	})
+
+	t.Run("correctly get router info", func(t *testing.T) {
+		ctx := context.Background()
+		router := mux.NewRouter()
+
+		router.HandleFunc("/hello/{name}", func(w http.ResponseWriter, req *http.Request) {
+			ctx := WithRouterInfo(logger, ctx, req)
+
+			routerInfo, err := GetRouterInfo(ctx)
+			require.NoError(t, err)
+			require.Equal(t, RouterInfo{
+				MatchedPath:   "/hello/{name}",
+				RequestedPath: "/hello/my-username",
+				Method:        "GET",
+			}, routerInfo)
+
+			w.Write([]byte("ok"))
+		})
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/hello/my-username", nil)
+		router.ServeHTTP(w, req)
+
+		require.Equal(t, 200, w.Result().StatusCode)
+	})
+
+	t.Run("correctly get router info with path prefix", func(t *testing.T) {
+		ctx := context.Background()
+		router := mux.NewRouter()
+
+		router.PathPrefix("/hello/").HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			ctx := WithRouterInfo(logger, ctx, req)
+
+			routerInfo, err := GetRouterInfo(ctx)
+			require.NoError(t, err)
+			require.Equal(t, RouterInfo{
+				MatchedPath:   "/hello/",
+				RequestedPath: "/hello/my-username",
+				Method:        "GET",
+			}, routerInfo)
+
+			w.Write([]byte("ok"))
+		})
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/hello/my-username", nil)
+		router.ServeHTTP(w, req)
+
+		require.Equal(t, 200, w.Result().StatusCode)
 	})
 }
 
