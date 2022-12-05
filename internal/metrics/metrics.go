@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
 type Metrics struct {
@@ -23,6 +24,8 @@ func SetupMetricsOrDie(prefix string) Metrics {
 
 func (m Metrics) MustRegister(reg prometheus.Registerer) Metrics {
 	reg.MustRegister(
+		collectors.NewGoCollector(),
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		m.PolicyEvaluationDurationMilliseconds,
 	)
 
