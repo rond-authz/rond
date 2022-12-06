@@ -50,7 +50,7 @@ func TestGetEnv(t *testing.T) {
 	t.Run(`GetEnv fails because no key has been passed`, func(t *testing.T) {
 		ctx := context.Background()
 		env, err := GetEnv(ctx)
-		require.NoError(t, err, "An error was expected.")
+		require.Error(t, err, "An error was expected.")
 		t.Logf("Expected error: %s - env: %+v", err.Error(), env)
 	})
 
