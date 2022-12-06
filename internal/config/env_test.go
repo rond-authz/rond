@@ -81,6 +81,7 @@ func TestGetEnvOrDie(t *testing.T) {
 
 		OPAModulesDirectory:      "/modules",
 		AdditionalHeadersToProxy: "miauserid",
+		ExposeMetrics:            true,
 	}
 
 	t.Run(`returns correctly - with TargetServiceHost`, func(t *testing.T) {

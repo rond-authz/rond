@@ -25,7 +25,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/types"
 
@@ -245,7 +247,7 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 }
 
 func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitive.M, error) {
-	opaEvaluationTime := time.Now()
+	opaEvaluationTimeStart := time.Now()
 	partialResults, err := evaluator.PolicyEvaluator.Partial(evaluator.Context)
 	if err != nil {
 		return nil, fmt.Errorf("policy Evaluation has failed when partially evaluating the query: %s", err.Error())
@@ -254,16 +256,26 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 	if err != nil {
 		return nil, err
 	}
+	m, err := metrics.GetFromContext(evaluator.Context)
+	if err != nil {
+		return nil, err
+	}
+
+	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
+
+	m.PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
+		"policy_name": evaluator.PolicyName,
+	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
 	logger.WithFields(logrus.Fields{
-		"evaluationTimeMicroseconds": time.Since(opaEvaluationTime).Microseconds(),
+		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                true,
 		"allowed":                    true,
 		"matchedPath":                routerInfo.MatchedPath,
 		"requestedPath":              routerInfo.RequestedPath,
 		"method":                     routerInfo.Method,
-	}).Info("policy evaluation completed")
+	}).Debug("policy evaluation completed")
 
 	client := opatranslator.OPAClient{}
 	q, err := client.ProcessQuery(partialResults)
@@ -280,7 +292,7 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 }
 
 func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, error) {
-	opaEvaluationTime := time.Now()
+	opaEvaluationTimeStart := time.Now()
 	results, err := evaluator.PolicyEvaluator.Eval(evaluator.Context)
 	if err != nil {
 		return nil, fmt.Errorf("policy Evaluation has failed when evaluating the query: %s", err.Error())
@@ -289,16 +301,26 @@ func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, erro
 	if err != nil {
 		return nil, err
 	}
+	m, err := metrics.GetFromContext(evaluator.Context)
+	if err != nil {
+		return nil, err
+	}
+
+	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
+
+	m.PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
+		"policy_name": evaluator.PolicyName,
+	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
 	logger.WithFields(logrus.Fields{
-		"evaluationTimeMicroseconds": time.Since(opaEvaluationTime).Microseconds(),
+		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                false,
 		"allowed":                    results.Allowed(),
 		"matchedPath":                routerInfo.MatchedPath,
 		"requestedPath":              routerInfo.RequestedPath,
 		"method":                     routerInfo.Method,
-	}).Info("policy evaluation completed")
+	}).Debug("policy evaluation completed")
 
 	if results.Allowed() {
 		logger.WithFields(logrus.Fields{

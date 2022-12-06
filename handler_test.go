@@ -28,8 +28,11 @@ import (
 
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
@@ -199,7 +202,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		opaModuleConfig := &OPAModuleConfig{
 			Name: "example.rego",
 			Content: `package policies
-		todo { input.request.body.hello == "world" }`,
+			todo { input.request.body.hello == "world" }`,
 		}
 
 		partialEvaluators, err := setupEvaluators(ctx, nil, &oas, opaModuleConfig, envs)
@@ -549,10 +552,7 @@ allow {
 		require.Equal(t, JSONContentTypeHeader, w.Result().Header.Get(ContentTypeHeaderKey), "Unexpected content type.")
 	})
 
-	t.Run("data evalutation logs correctly added", func(t *testing.T) {
-		partialEvaluators, err := setupEvaluators(ctx, nil, &oas, mockOPAModule, envs)
-		require.NoError(t, err, "Unexpected error")
-
+	t.Run("data evaluation correctly added - logs and metrics", func(t *testing.T) {
 		t.Run("no query generation", func(t *testing.T) {
 			invoked := false
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -566,6 +566,9 @@ allow {
 
 			serverURL, _ := url.Parse(server.URL)
 
+			partialEvaluators, err := setupEvaluators(ctx, nil, &oas, mockOPAModule, envs)
+			require.NoError(t, err, "Unexpected error")
+
 			ctx := createContext(t,
 				ctx,
 				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -576,6 +579,7 @@ allow {
 			)
 
 			log, hook := test.NewNullLogger()
+			log.Level = logrus.TraceLevel
 			ctx = glogger.WithLogger(ctx, logrus.NewEntry(log))
 
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
@@ -588,18 +592,48 @@ allow {
 			require.True(t, invoked, "Handler was not invoked.")
 			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 
-			actualLog := findLogWithMessage(hook.AllEntries(), "policy evaluation completed")
-			require.Len(t, actualLog, 1)
-			require.NotEmpty(t, actualLog[0].Data["evaluationTimeMicroseconds"])
-			delete(actualLog[0].Data, "evaluationTimeMicroseconds")
-			require.Equal(t, logrus.Fields{
-				"allowed":       true,
-				"matchedPath":   "/matched/path",
-				"method":        "GET",
-				"partialEval":   false,
-				"policyName":    "todo",
-				"requestedPath": "/requested/path",
-			}, actualLog[0].Data)
+			t.Run("logs", func(t *testing.T) {
+				actualLog := findLogWithMessage(hook.AllEntries(), "policy evaluation completed")
+				require.Len(t, actualLog, 1)
+				require.NotEmpty(t, actualLog[0].Data["evaluationTimeMicroseconds"])
+				delete(actualLog[0].Data, "evaluationTimeMicroseconds")
+				require.Equal(t, logrus.Fields{
+					"allowed":       true,
+					"matchedPath":   "/matched/path",
+					"method":        "GET",
+					"partialEval":   false,
+					"policyName":    "todo",
+					"requestedPath": "/requested/path",
+				}, actualLog[0].Data)
+			})
+
+			t.Run("metrics", func(t *testing.T) {
+				m, err := metrics.GetFromContext(ctx)
+				require.NoError(t, err)
+				registry := prometheus.NewPedanticRegistry()
+				m.MustRegister(registry)
+
+				problem, err := testutil.CollectAndLint(registry, "test_rond_policy_evaluation_duration_milliseconds")
+				require.NoError(t, err, problem)
+				require.Equal(t, 1, testutil.CollectAndCount(registry, "test_rond_policy_evaluation_duration_milliseconds"), "register")
+
+				metadata := `
+								# HELP test_rond_policy_evaluation_duration_milliseconds A histogram of the policy evaluation durations in milliseconds.
+								# TYPE test_rond_policy_evaluation_duration_milliseconds histogram
+			`
+				expected := `
+								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="1"} 1
+								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="5"} 1
+								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="10"} 1
+								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="50"} 1
+								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="100"} 1
+								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="+Inf"} 1
+								test_rond_policy_evaluation_duration_milliseconds_sum{policy_name="todo"} 0
+								test_rond_policy_evaluation_duration_milliseconds_count{policy_name="todo"} 1
+			`
+
+				require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(metadata+expected), "test_rond_policy_evaluation_duration_milliseconds"))
+			})
 		})
 
 		t.Run("with query generation", func(t *testing.T) {
@@ -638,6 +672,7 @@ allow {
 			)
 
 			log, hook := test.NewNullLogger()
+			log.Level = logrus.TraceLevel
 			ctx = glogger.WithLogger(ctx, logrus.NewEntry(log))
 
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
@@ -650,18 +685,47 @@ allow {
 			require.True(t, invoked, "Handler was not invoked.")
 			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 
-			actualLog := findLogWithMessage(hook.AllEntries(), "policy evaluation completed")
-			require.Len(t, actualLog, 1)
-			require.NotEmpty(t, actualLog[0].Data["evaluationTimeMicroseconds"])
-			delete(actualLog[0].Data, "evaluationTimeMicroseconds")
-			require.Equal(t, logrus.Fields{
-				"allowed":       true,
-				"matchedPath":   "/matched/path",
-				"method":        "GET",
-				"partialEval":   true,
-				"policyName":    "allow",
-				"requestedPath": "/requested/path",
-			}, actualLog[0].Data)
+			t.Run("logs", func(t *testing.T) {
+				actualLog := findLogWithMessage(hook.AllEntries(), "policy evaluation completed")
+				require.Len(t, actualLog, 1)
+				require.NotEmpty(t, actualLog[0].Data["evaluationTimeMicroseconds"])
+				delete(actualLog[0].Data, "evaluationTimeMicroseconds")
+				require.Equal(t, logrus.Fields{
+					"allowed":       true,
+					"matchedPath":   "/matched/path",
+					"method":        "GET",
+					"partialEval":   true,
+					"policyName":    "allow",
+					"requestedPath": "/requested/path",
+				}, actualLog[0].Data)
+			})
+
+			t.Run("metrics", func(t *testing.T) {
+				m, err := metrics.GetFromContext(ctx)
+				require.NoError(t, err)
+				registry := prometheus.NewPedanticRegistry()
+				m.MustRegister(registry)
+
+				problem, err := testutil.CollectAndLint(registry, "test_rond_policy_evaluation_duration_milliseconds")
+				require.NoError(t, err, problem)
+				require.Equal(t, 1, testutil.CollectAndCount(registry, "test_rond_policy_evaluation_duration_milliseconds"), "register")
+
+				metadata := `
+					# HELP test_rond_policy_evaluation_duration_milliseconds A histogram of the policy evaluation durations in milliseconds.
+					# TYPE test_rond_policy_evaluation_duration_milliseconds histogram
+`
+				expected := `
+					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="1"} 1
+					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="5"} 1
+					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="10"} 1
+					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="50"} 1
+					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="100"} 1
+					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="+Inf"} 1
+					test_rond_policy_evaluation_duration_milliseconds_sum{policy_name="allow"} 0
+					test_rond_policy_evaluation_duration_milliseconds_count{policy_name="allow"} 1
+`
+				require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(metadata+expected), "test_rond_policy_evaluation_duration_milliseconds"))
+			})
 		})
 	})
 }

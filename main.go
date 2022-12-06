@@ -26,8 +26,10 @@ import (
 	swagger "github.com/davidebianchi/gswagger"
 	"github.com/davidebianchi/gswagger/apirouter"
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mongoclient"
 
 	"github.com/gorilla/mux"
@@ -150,6 +152,14 @@ func setupRouter(
 	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
 	serviceName := "rönd"
 	StatusRoutes(router, serviceName, env.ServiceVersion)
+
+	registry := prometheus.NewRegistry()
+	m := metrics.SetupMetrics("rond")
+	if env.ExposeMetrics {
+		m.MustRegister(registry)
+		metrics.MetricsRoute(router, registry)
+	}
+	router.Use(metrics.RequestMiddleware(m))
 
 	router.Use(config.RequestMiddlewareEnvironments(env))
 
