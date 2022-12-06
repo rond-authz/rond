@@ -1862,7 +1862,7 @@ filter_policy {
 
 	t.Run("metrics API exposed correctly", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+		req := httptest.NewRequest(http.MethodGet, "/-/rond/metrics", nil)
 		router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)

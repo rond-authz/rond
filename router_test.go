@@ -42,15 +42,20 @@ func TestSetupRoutes(t *testing.T) {
 		router := mux.NewRouter()
 		oas := &OpenAPISpec{
 			Paths: OpenAPIPaths{
-				"/foo":        PathVerbs{},
-				"/bar":        PathVerbs{},
-				"/foo/bar":    PathVerbs{},
-				"/-/ready":    PathVerbs{},
-				"/-/healthz":  PathVerbs{},
-				"/-/check-up": PathVerbs{},
+				"/foo":             PathVerbs{},
+				"/bar":             PathVerbs{},
+				"/foo/bar":         PathVerbs{},
+				"/-/ready":         PathVerbs{},
+				"/-/healthz":       PathVerbs{},
+				"/-/check-up":      PathVerbs{},
+				"/-/metrics":       PathVerbs{},
+				"/-/rond/metrics":  PathVerbs{},
+				"/-/rbac-healthz":  PathVerbs{},
+				"/-/rbac-ready":    PathVerbs{},
+				"/-/rbac-check-up": PathVerbs{},
 			},
 		}
-		expectedPaths := []string{"/", "/-/check-up", "/-/healthz", "/-/ready", "/bar", "/documentation/json", "/foo", "/foo/bar"}
+		expectedPaths := []string{"/", "/-/check-up", "/-/healthz", "/-/metrics", "/-/ready", "/bar", "/documentation/json", "/foo", "/foo/bar"}
 
 		setupRoutes(router, oas, envs)
 
@@ -456,6 +461,10 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		require.True(t, invoked, "mock server was not invoked")
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
+}
+
+func TestRoutesToNotProxy(t *testing.T) {
+	require.Equal(t, routesToNotProxy, []string{"/-/rbac-healthz", "/-/rbac-ready", "/-/rbac-check-up", "/-/rond/metrics"})
 }
 
 func prepareOASFromFile(t *testing.T, filePath string) *OpenAPISpec {
