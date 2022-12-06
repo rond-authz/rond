@@ -49,7 +49,7 @@ func OPAMiddleware(opaModuleConfig *OPAModuleConfig, openAPISpec *OpenAPISpec, e
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if utils.Contains(statusRoutes, r.URL.RequestURI()) {
+			if utils.Contains(routesToNotProxy, r.URL.RequestURI()) {
 				next.ServeHTTP(w, r)
 				return
 			}

@@ -10,8 +10,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+var MetricsRoutePath = "/-/rond/metrics"
+
 func MetricsRoute(r *mux.Router, registry *prometheus.Registry) {
-	r.Handle("/metrics", promhttp.InstrumentMetricHandler(
+	r.Handle(MetricsRoutePath, promhttp.InstrumentMetricHandler(
 		registry,
 		promhttp.HandlerFor(registry, promhttp.HandlerOpts{
 			Registry:          registry,

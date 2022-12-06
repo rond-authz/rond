@@ -32,3 +32,5 @@ func SanitizeString(input string) string {
 	sanitized = strings.Replace(sanitized, "\r", "", -1)
 	return sanitized
 }
+
+var Union = lo.Union[string]

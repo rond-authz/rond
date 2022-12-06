@@ -24,11 +24,14 @@ import (
 
 	swagger "github.com/davidebianchi/gswagger"
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
 )
+
+var routesToNotProxy = utils.Union(statusRoutes, []string{metrics.MetricsRoutePath})
 
 var revokeDefinitions = swagger.Definitions{
 	RequestBody: &swagger.ContentValue{
@@ -135,7 +138,7 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVar
 		if env.Standalone {
 			pathToRegister = fmt.Sprintf("%s%s", env.PathPrefixStandalone, path)
 		}
-		if utils.Contains(statusRoutes, pathToRegister) {
+		if utils.Contains(routesToNotProxy, pathToRegister) {
 			continue
 		}
 		if strings.Contains(pathToRegister, "*") {

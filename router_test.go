@@ -48,9 +48,10 @@ func TestSetupRoutes(t *testing.T) {
 				"/-/ready":    PathVerbs{},
 				"/-/healthz":  PathVerbs{},
 				"/-/check-up": PathVerbs{},
+				"/-/metrics":  PathVerbs{},
 			},
 		}
-		expectedPaths := []string{"/", "/-/check-up", "/-/healthz", "/-/ready", "/bar", "/documentation/json", "/foo", "/foo/bar"}
+		expectedPaths := []string{"/", "/-/check-up", "/-/healthz", "/-/metrics", "/-/ready", "/bar", "/documentation/json", "/foo", "/foo/bar"}
 
 		setupRoutes(router, oas, envs)
 
@@ -456,6 +457,10 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		require.True(t, invoked, "mock server was not invoked")
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
+}
+
+func TestRoutesToNotProxy(t *testing.T) {
+	require.Equal(t, routesToNotProxy, []string{"/-/rbac-healthz", "/-/rbac-ready", "/-/rbac-check-up", "/-/rond/metrics"})
 }
 
 func prepareOASFromFile(t *testing.T, filePath string) *OpenAPISpec {
