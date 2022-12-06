@@ -42,13 +42,17 @@ func TestSetupRoutes(t *testing.T) {
 		router := mux.NewRouter()
 		oas := &OpenAPISpec{
 			Paths: OpenAPIPaths{
-				"/foo":        PathVerbs{},
-				"/bar":        PathVerbs{},
-				"/foo/bar":    PathVerbs{},
-				"/-/ready":    PathVerbs{},
-				"/-/healthz":  PathVerbs{},
-				"/-/check-up": PathVerbs{},
-				"/-/metrics":  PathVerbs{},
+				"/foo":             PathVerbs{},
+				"/bar":             PathVerbs{},
+				"/foo/bar":         PathVerbs{},
+				"/-/ready":         PathVerbs{},
+				"/-/healthz":       PathVerbs{},
+				"/-/check-up":      PathVerbs{},
+				"/-/metrics":       PathVerbs{},
+				"/-/rond/metrics":  PathVerbs{},
+				"/-/rbac-healthz":  PathVerbs{},
+				"/-/rbac-ready":    PathVerbs{},
+				"/-/rbac-check-up": PathVerbs{},
 			},
 		}
 		expectedPaths := []string{"/", "/-/check-up", "/-/healthz", "/-/metrics", "/-/ready", "/bar", "/documentation/json", "/foo", "/foo/bar"}
