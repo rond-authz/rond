@@ -29,7 +29,7 @@ import (
 	"github.com/rond-authz/rond/types"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
-	"gotest.tools/v3/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMongoCollectionInjectorMiddleware(t *testing.T) {
@@ -40,8 +40,8 @@ func TestMongoCollectionInjectorMiddleware(t *testing.T) {
 		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			invoked = true
 			collection, ok := r.Context().Value(types.MongoClientContextKey{}).(*MongoClient)
-			assert.Assert(t, ok, "Collection not found")
-			assert.Equal(t, collection, testCollections)
+			require.True(t, ok, "Collection not found")
+			require.Equal(t, testCollections, collection)
 
 			w.WriteHeader(http.StatusOK)
 		})
@@ -54,8 +54,8 @@ func TestMongoCollectionInjectorMiddleware(t *testing.T) {
 
 		builtMiddleware.ServeHTTP(w, r)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK, "Unexpected status code")
-		assert.Assert(t, invoked, "Next middleware not invoked")
+		require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code")
+		require.True(t, invoked, "Next middleware not invoked")
 	})
 }
 
@@ -63,16 +63,16 @@ func TestGetMongoCollectionFromContext(t *testing.T) {
 	t.Run(`config not found in context`, func(t *testing.T) {
 		ctx := context.Background()
 		config, err := GetMongoClientFromContext(ctx)
-		assert.Assert(t, config == nil)
-		assert.NilError(t, err, "no error expected")
+		require.True(t, config == nil)
+		require.NoError(t, err, "no error expected")
 	})
 
 	t.Run(`config found in context`, func(t *testing.T) {
 		testCollections := &MongoClient{}
 		ctx := context.WithValue(context.Background(), types.MongoClientContextKey{}, testCollections)
 		foundConfig, err := GetMongoClientFromContext(ctx)
-		assert.NilError(t, err, "unexpected error")
-		assert.Assert(t, foundConfig != nil)
+		require.NoError(t, err, "unexpected error")
+		require.True(t, foundConfig != nil)
 	})
 }
 
@@ -81,7 +81,7 @@ func TestSetupMongoCollection(t *testing.T) {
 		env := config.EnvironmentVariables{}
 		log, _ := test.NewNullLogger()
 		adapter, _ := NewMongoClient(env, log)
-		assert.Assert(t, adapter == nil, "MongoDBUrl is not nil")
+		require.True(t, adapter == nil, "MongoDBUrl is not nil")
 	})
 
 	t.Run("if RolesCollectionName empty, returns error", func(t *testing.T) {
@@ -91,8 +91,8 @@ func TestSetupMongoCollection(t *testing.T) {
 		}
 		log, _ := test.NewNullLogger()
 		adapter, err := NewMongoClient(env, log)
-		assert.Assert(t, adapter == nil, "RolesCollectionName collection is not nil")
-		assert.ErrorContains(t, err, `MongoDB url is not empty, required variables might be missing: BindingsCollectionName: "Some different name",  RolesCollectionName: ""`)
+		require.True(t, adapter == nil, "RolesCollectionName collection is not nil")
+		require.Contains(t, err.Error(), `MongoDB url is not empty, required variables might be missing: BindingsCollectionName: "Some different name",  RolesCollectionName: ""`)
 	})
 
 	t.Run("throws if mongo url is without protocol", func(t *testing.T) {
@@ -105,9 +105,9 @@ func TestSetupMongoCollection(t *testing.T) {
 		}
 		log, _ := test.NewNullLogger()
 		adapter, err := NewMongoClient(env, log)
-		assert.Assert(t, err != nil, "setup mongo not returns error")
-		assert.ErrorContains(t, err, "failed MongoDB connection string validation:")
-		assert.Assert(t, adapter == nil)
+		require.True(t, err != nil, "setup mongo not returns error")
+		require.Contains(t, err.Error(), "failed MongoDB connection string validation:")
+		require.True(t, adapter == nil)
 	})
 
 	t.Run("correctly returns mongodb collection", func(t *testing.T) {
@@ -127,8 +127,8 @@ func TestSetupMongoCollection(t *testing.T) {
 		mongoClient, err := NewMongoClient(env, log)
 
 		defer mongoClient.Disconnect()
-		assert.Assert(t, err == nil, "setup mongo returns error")
-		assert.Assert(t, mongoClient != nil)
+		require.True(t, err == nil, "setup mongo returns error")
+		require.True(t, mongoClient != nil)
 	})
 }
 
@@ -149,7 +149,7 @@ func TestMongoCollections(t *testing.T) {
 		log, _ := test.NewNullLogger()
 		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
-		assert.Assert(t, err == nil, "setup mongo returns error")
+		require.True(t, err == nil, "setup mongo returns error")
 		client, _, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
 		mongoClient.client = client
 		mongoClient.roles = rolesCollection
@@ -217,7 +217,7 @@ func TestMongoCollections(t *testing.T) {
 				CRUDDocumentState: "PUBLIC",
 			},
 		}
-		assert.Assert(t, reflect.DeepEqual(result, expected),
+		require.True(t, reflect.DeepEqual(result, expected),
 			"Error while getting permissions")
 	})
 
@@ -237,7 +237,7 @@ func TestMongoCollections(t *testing.T) {
 		log, _ := test.NewNullLogger()
 		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
-		assert.Assert(t, err == nil, "setup mongo returns error")
+		require.True(t, err == nil, "setup mongo returns error")
 		client, _, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
 		mongoClient.client = client
 		mongoClient.roles = rolesCollection
@@ -265,7 +265,7 @@ func TestMongoCollections(t *testing.T) {
 				CRUDDocumentState: "PUBLIC",
 			},
 		}
-		assert.Assert(t, reflect.DeepEqual(result, expected),
+		require.True(t, reflect.DeepEqual(result, expected),
 			"Error while getting permissions")
 	})
 
@@ -285,7 +285,7 @@ func TestMongoCollections(t *testing.T) {
 		log, _ := test.NewNullLogger()
 		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
-		assert.Assert(t, err == nil, "setup mongo returns error")
+		require.True(t, err == nil, "setup mongo returns error")
 		client, _, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
 		mongoClient.client = client
 		mongoClient.roles = rolesCollection
@@ -308,7 +308,7 @@ func TestMongoCollections(t *testing.T) {
 				CRUDDocumentState: "PUBLIC",
 			},
 		}
-		assert.Assert(t, reflect.DeepEqual(result, expected),
+		require.True(t, reflect.DeepEqual(result, expected),
 			"Error while getting permissions")
 	})
 }
@@ -328,7 +328,7 @@ func TestMongoFindOne(t *testing.T) {
 	log, _ := test.NewNullLogger()
 	mongoClient, err := NewMongoClient(env, log)
 	defer mongoClient.Disconnect()
-	assert.Assert(t, err == nil, "setup mongo returns error")
+	require.True(t, err == nil, "setup mongo returns error")
 
 	client, dbName, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
 	mongoClient.client = client
@@ -344,12 +344,12 @@ func TestMongoFindOne(t *testing.T) {
 		result, err := mongoClient.FindOne(context.Background(), "roles", map[string]interface{}{
 			"roleId": "role3",
 		})
-		assert.NilError(t, err)
+		require.NoError(t, err)
 		resultMap := result.(map[string]interface{})
-		assert.Assert(t, resultMap["_id"] != nil)
+		require.True(t, resultMap["_id"] != nil)
 
 		delete(resultMap, "_id")
-		assert.DeepEqual(t, result, map[string]interface{}{
+		require.Equal(t, map[string]interface{}{
 			"roleId":    "role3",
 			"__STATE__": "PUBLIC",
 			"permissions": []interface{}{
@@ -357,15 +357,15 @@ func TestMongoFindOne(t *testing.T) {
 				string("permission5"),
 				string("console.project.view"),
 			},
-		})
+		}, result)
 	})
 
 	t.Run("does not find a document", func(t *testing.T) {
 		result, err := mongoClient.FindOne(context.Background(), "roles", map[string]interface{}{
 			"key": 42,
 		})
-		assert.NilError(t, err)
-		assert.Assert(t, result == nil)
+		require.NoError(t, err)
+		require.True(t, result == nil)
 	})
 }
 
@@ -384,7 +384,7 @@ func TestMongoFindMany(t *testing.T) {
 	log, _ := test.NewNullLogger()
 	mongoClient, err := NewMongoClient(env, log)
 	defer mongoClient.Disconnect()
-	assert.Assert(t, err == nil, "setup mongo returns error")
+	require.True(t, err == nil, "setup mongo returns error")
 
 	client, dbName, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
 	mongoClient.client = client
@@ -404,14 +404,14 @@ func TestMongoFindMany(t *testing.T) {
 				{"roleId": "role6"},
 			},
 		})
-		assert.NilError(t, err)
+		require.NoError(t, err)
 
-		assert.Equal(t, len(result), 2)
+		require.Len(t, result, 2)
 		resultMap := result[0].(map[string]interface{})
-		assert.Assert(t, resultMap["_id"] != nil)
+		require.True(t, resultMap["_id"] != nil)
 
 		delete(resultMap, "_id")
-		assert.DeepEqual(t, resultMap, map[string]interface{}{
+		require.Equal(t, map[string]interface{}{
 			"roleId":    "role3",
 			"__STATE__": "PUBLIC",
 			"permissions": []interface{}{
@@ -419,36 +419,36 @@ func TestMongoFindMany(t *testing.T) {
 				string("permission5"),
 				string("console.project.view"),
 			},
-		})
+		}, resultMap)
 
 		result1Map := result[1].(map[string]interface{})
-		assert.Assert(t, result1Map["_id"] != nil)
+		require.True(t, result1Map["_id"] != nil)
 
 		delete(result1Map, "_id")
-		assert.DeepEqual(t, result1Map, map[string]interface{}{
+		require.Equal(t, map[string]interface{}{
 			"roleId":    "role6",
 			"__STATE__": "PRIVATE",
 			"permissions": []interface{}{
 				string("permission3"),
 				string("permission5"),
 			},
-		})
+		}, result1Map)
 	})
 
 	t.Run("does not find any document", func(t *testing.T) {
 		result, err := mongoClient.FindMany(context.Background(), "roles", map[string]interface{}{
 			"roleId": "role9999",
 		})
-		assert.NilError(t, err)
-		assert.Equal(t, len(result), 0)
+		require.NoError(t, err)
+		require.Len(t, result, 0)
 	})
 
 	t.Run("returns error on invalid query", func(t *testing.T) {
 		result, err := mongoClient.FindMany(context.Background(), "roles", map[string]interface{}{
 			"$UNKWNONW": "role9999",
 		})
-		assert.ErrorContains(t, err, "unknown top level operator")
-		assert.Equal(t, len(result), 0)
+		require.Contains(t, err.Error(), "unknown top level operator")
+		require.Len(t, result, 0)
 	})
 }
 
@@ -460,7 +460,7 @@ func TestRolesIDSFromBindings(t *testing.T) {
 		{Roles: []string{"e"}},
 	})
 
-	assert.DeepEqual(t, result, []string{"a", "b", "c", "d", "e"})
+	require.Equal(t, []string{"a", "b", "c", "d", "e"}, result)
 }
 
 func TestRetrieveUserBindingsAndRoles(t *testing.T) {
@@ -475,7 +475,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req = req.WithContext(context.WithValue(req.Context(), types.MongoClientContextKey{}, "test"))
 
 		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logger), req, env)
-		assert.Error(t, err, "Unexpected error retrieving MongoDB Client from request context")
+		require.Error(t, err, "Unexpected error retrieving MongoDB Client from request context")
 	})
 
 	t.Run("extract user from request without querying MongoDB", func(t *testing.T) {
@@ -484,11 +484,11 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req.Header.Set("theuserheader", "userId")
 
 		user, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logger), req, env)
-		assert.NilError(t, err)
-		assert.DeepEqual(t, user, types.User{
+		require.NoError(t, err)
+		require.Equal(t, types.User{
 			UserID:     "userId",
 			UserGroups: []string{"group1", "group2"},
-		})
+		}, user)
 	})
 
 	t.Run("extract user with no id in headers does not perform queries", func(t *testing.T) {
@@ -499,7 +499,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req = req.WithContext(WithMongoClient(req.Context(), mock))
 
 		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, env)
-		assert.NilError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("extract user but retrieve bindings fails", func(t *testing.T) {
@@ -512,7 +512,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req.Header.Set("theuserheader", "userId")
 
 		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, env)
-		assert.Error(t, err, "Error while retrieving user bindings: some error")
+		require.Error(t, err, "Error while retrieving user bindings: some error")
 	})
 
 	t.Run("extract user bindings but retrieve roles by role id fails", func(t *testing.T) {
@@ -528,7 +528,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req.Header.Set("theuserheader", "userId")
 
 		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, env)
-		assert.Error(t, err, "Error while retrieving user Roles: some error 2")
+		require.Error(t, err, "Error while retrieving user Roles: some error 2")
 	})
 
 	t.Run("extract user bindings and roles", func(t *testing.T) {
@@ -549,8 +549,8 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req.Header.Set("theuserheader", "userId")
 
 		user, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, env)
-		assert.NilError(t, err)
-		assert.DeepEqual(t, user, types.User{
+		require.NoError(t, err)
+		require.Equal(t, types.User{
 			UserID:     "userId",
 			UserGroups: []string{"group1", "group2"},
 			UserBindings: []types.Binding{
@@ -562,6 +562,6 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 				{RoleID: "r2", Permissions: []string{"p3", "p4"}},
 				{RoleID: "r3", Permissions: []string{"p5"}},
 			},
-		})
+		}, user)
 	})
 }

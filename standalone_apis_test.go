@@ -30,7 +30,6 @@ import (
 	"github.com/rond-authz/rond/types"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
-	"gotest.tools/v3/assert"
 )
 
 func TestRevokeHandler(t *testing.T) {
@@ -50,12 +49,12 @@ func TestRevokeHandler(t *testing.T) {
 			ResourceIDs: []string{"mike"},
 		})
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody))
-		assert.NilError(t, err, "unexpected error")
+		require.NoError(t, err, "unexpected error")
 		w := httptest.NewRecorder()
 
 		revokeHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusBadRequest)
+		require.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
 	})
 
 	t.Run("400 on missing resourceIds from body if resourceType request param is present", func(t *testing.T) {
@@ -71,7 +70,7 @@ func TestRevokeHandler(t *testing.T) {
 
 		revokeHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusBadRequest)
+		require.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
 	})
 
 	reqBody := setupRevokeRequestBody(t, RevokeRequestBody{
@@ -95,7 +94,7 @@ func TestRevokeHandler(t *testing.T) {
 
 		revokeHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
+		require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 	})
 
 	t.Run("error on CRUD delete API", func(t *testing.T) {
@@ -134,7 +133,7 @@ func TestRevokeHandler(t *testing.T) {
 
 		revokeHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
+		require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 	})
 
 	t.Run("does not invoke delete API if not necessary", func(t *testing.T) {
@@ -181,7 +180,7 @@ func TestRevokeHandler(t *testing.T) {
 
 		revokeHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("performs correct delete query only on subject", func(t *testing.T) {
@@ -230,7 +229,7 @@ func TestRevokeHandler(t *testing.T) {
 
 		revokeHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("performs correct delete query only on group", func(t *testing.T) {
@@ -279,7 +278,7 @@ func TestRevokeHandler(t *testing.T) {
 
 		revokeHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("performs correct patch API invocation", func(t *testing.T) {
@@ -311,7 +310,7 @@ func TestRevokeHandler(t *testing.T) {
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
 				var body []PatchItem
 				err := json.NewDecoder(req.Body).Decode(&body)
-				assert.NilError(t, err, "unxpected error parsing body in matcher")
+				require.NoError(t, err, "unxpected error parsing body in matcher")
 
 				require.Equal(t, []PatchItem{
 					{
@@ -341,7 +340,7 @@ func TestRevokeHandler(t *testing.T) {
 
 		revokeHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("performs correct delete and patch APIs", func(t *testing.T) {
@@ -394,7 +393,7 @@ func TestRevokeHandler(t *testing.T) {
 				var body []PatchItem
 
 				err := json.NewDecoder(req.Body).Decode(&body)
-				assert.NilError(t, err, "unxpected error parsing body in matcher")
+				require.NoError(t, err, "unxpected error parsing body in matcher")
 
 				require.Equal(t, []PatchItem{
 					{
@@ -425,11 +424,11 @@ func TestRevokeHandler(t *testing.T) {
 
 		revokeHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
 		revokeResponse := RevokeResponseBody{}
 		err := json.NewDecoder(w.Body).Decode(&revokeResponse)
-		assert.NilError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("performs correct delete and patch APIs without resourceType request param", func(t *testing.T) {
@@ -474,7 +473,7 @@ func TestRevokeHandler(t *testing.T) {
 				var body []PatchItem
 
 				err := json.NewDecoder(req.Body).Decode(&body)
-				assert.NilError(t, err, "unxpected error parsing body in matcher")
+				require.NoError(t, err, "unxpected error parsing body in matcher")
 
 				require.Equal(t, []PatchItem{
 					{
@@ -502,11 +501,11 @@ func TestRevokeHandler(t *testing.T) {
 
 		revokeHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
 		revokeResponse := RevokeResponseBody{}
 		err := json.NewDecoder(w.Body).Decode(&revokeResponse)
-		assert.NilError(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -525,12 +524,12 @@ func TestGrantHandler(t *testing.T) {
 			ResourceID: "my-resource",
 		})
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody))
-		assert.NilError(t, err, "unexpected error")
+		require.NoError(t, err, "unexpected error")
 		w := httptest.NewRecorder()
 
 		grantHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusBadRequest)
+		require.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
 	})
 
 	t.Run("400 on missing resourceId from body if resourceType request param is present", func(t *testing.T) {
@@ -549,7 +548,7 @@ func TestGrantHandler(t *testing.T) {
 
 		grantHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusBadRequest)
+		require.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
 	})
 
 	t.Run("performs correct API invocation insert bindings only on subject", func(t *testing.T) {
@@ -602,14 +601,14 @@ func TestGrantHandler(t *testing.T) {
 
 		grantHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
 		var response GrantResponseBody
 		err := json.NewDecoder(w.Body).Decode(&response)
-		assert.NilError(t, err, "unexpected error")
+		require.NoError(t, err, "unexpected error")
 
 		_, err = uuid.Parse(response.BindingID)
-		assert.NilError(t, err, "unxpected error")
+		require.NoError(t, err, "unxpected error")
 	})
 
 	t.Run("performs correct API invocation insert bindings only on subject without resourceType request param", func(t *testing.T) {
@@ -655,14 +654,14 @@ func TestGrantHandler(t *testing.T) {
 
 		grantHandler(w, req)
 
-		assert.Equal(t, w.Result().StatusCode, http.StatusOK)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
 		var response GrantResponseBody
 		err := json.NewDecoder(w.Body).Decode(&response)
-		assert.NilError(t, err, "unexpected error")
+		require.NoError(t, err, "unexpected error")
 
 		_, err = uuid.Parse(response.BindingID)
-		assert.NilError(t, err, "unxpected error")
+		require.NoError(t, err, "unxpected error")
 	})
 
 	t.Run("crud request return error", func(t *testing.T) {
@@ -681,10 +680,10 @@ func TestGrantHandler(t *testing.T) {
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
 				var body types.Binding
 				err := json.NewDecoder(req.Body).Decode(&body)
-				assert.NilError(t, err, "unxpected error parsing body in matcher")
+				require.NoError(t, err, "unxpected error parsing body in matcher")
 
 				_, err = uuid.Parse(body.BindingID)
-				assert.NilError(t, err, "unexpected error")
+				require.NoError(t, err, "unexpected error")
 
 				body.BindingID = "REDACTED"
 				require.Equal(t, types.Binding{
@@ -708,7 +707,7 @@ func TestGrantHandler(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		grantHandler(w, req)
-		assert.Equal(t, w.Result().StatusCode, http.StatusInternalServerError)
+		require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 	})
 }
 
@@ -827,7 +826,7 @@ func setupBodyBytes(t *testing.T, body interface{}) []byte {
 	t.Helper()
 
 	bodyBytes, err := json.Marshal(body)
-	assert.NilError(t, err, "unexpected error")
+	require.NoError(t, err, "unexpected error")
 	return bodyBytes
 }
 
@@ -842,7 +841,7 @@ func requestWithParams(
 	t.Helper()
 
 	req, err := http.NewRequestWithContext(ctx, method, path, body)
-	assert.NilError(t, err, "unexpected error creating request with context and params")
+	require.NoError(t, err, "unexpected error creating request with context and params")
 
 	if params != nil {
 		req = mux.SetURLVars(req, params)

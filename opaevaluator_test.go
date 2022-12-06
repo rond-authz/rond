@@ -33,7 +33,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/v3/assert"
 )
 
 func TestNewOPAEvaluator(t *testing.T) {
@@ -156,14 +155,14 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 			OPAModulesDirectory:    "./mocks/rego-policies",
 		}
 		openApiSpec, err := loadOASFromFileOrNetwork(log, envs)
-		assert.Assert(t, err == nil, "unexpected error")
+		require.NoError(t, err, "unexpected error")
 
 		opaModuleConfig, err := loadRegoModule(envs.OPAModulesDirectory)
-		assert.Assert(t, err == nil, "unexpected error")
+		require.NoError(t, err, "unexpected error")
 
 		policyEvals, err := setupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, envs)
-		assert.Assert(t, err == nil, "unexpected error creating evaluators")
-		assert.Equal(t, len(policyEvals), 4, "unexpected length")
+		require.NoError(t, err, "unexpected error creating evaluators")
+		require.Len(t, policyEvals, 4, "unexpected length")
 	})
 
 	t.Run("with complete oas mock", func(t *testing.T) {
@@ -175,14 +174,14 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 			OPAModulesDirectory:    "./mocks/rego-policies",
 		}
 		openApiSpec, err := loadOASFromFileOrNetwork(log, envs)
-		assert.Assert(t, err == nil, "unexpected error")
+		require.NoError(t, err, "unexpected error")
 
 		opaModuleConfig, err := loadRegoModule(envs.OPAModulesDirectory)
-		assert.Assert(t, err == nil, "unexpected error")
+		require.NoError(t, err, "unexpected error")
 
 		policyEvals, err := setupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, envs)
-		assert.Assert(t, err == nil, "unexpected error creating evaluators")
-		assert.Equal(t, len(policyEvals), 4, "unexpected length")
+		require.NoError(t, err, "unexpected error creating evaluators")
+		require.Len(t, policyEvals, 4, "unexpected length")
 	})
 }
 
@@ -202,7 +201,7 @@ func TestBuildRolesMap(t *testing.T) {
 		"role1": {"permission1", "permission2"},
 		"role2": {"permission3", "permission4"},
 	}
-	assert.DeepEqual(t, result, expected)
+	require.Equal(t, expected, result)
 }
 
 func TestBuildOptimizedResourcePermissionsMap(t *testing.T) {
@@ -257,7 +256,7 @@ func TestBuildOptimizedResourcePermissionsMap(t *testing.T) {
 		"permissionNotInRole2:type3:resource3": true,
 		"permissionNotInRole3:type3:resource3": true,
 	}
-	assert.DeepEqual(t, result, expected)
+	require.Equal(t, expected, result)
 }
 
 func BenchmarkBuildOptimizedResourcePermissionsMap(b *testing.B) {

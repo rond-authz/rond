@@ -33,7 +33,6 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
-	"gotest.tools/v3/assert"
 )
 
 func TestRoundTripErrors(t *testing.T) {
@@ -64,17 +63,17 @@ func TestRoundTripErrors(t *testing.T) {
 		}
 
 		resp, err := transport.RoundTrip(req)
-		assert.NilError(t, err, "unexpected error")
-		assert.Equal(t, resp.StatusCode, http.StatusExpectationFailed, "unexpected status code")
+		require.NoError(t, err, "unexpected error")
+		require.Equal(t, http.StatusExpectationFailed, resp.StatusCode, "unexpected status code")
 
 		bodyBytes, err := io.ReadAll(resp.Body)
-		assert.NilError(t, err, "unexpected error")
+		require.NoError(t, err, "unexpected error")
 
 		actualResponseBody := make(map[string]interface{})
 		err = json.Unmarshal(bodyBytes, &actualResponseBody)
-		assert.NilError(t, err, "unexpected error")
+		require.NoError(t, err, "unexpected error")
 
-		assert.DeepEqual(t, responseBody, actualResponseBody)
+		require.Equal(t, responseBody, actualResponseBody)
 	})
 }
 

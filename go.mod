@@ -18,7 +18,6 @@ require (
 	github.com/uptrace/bunrouter v1.0.19
 	go.mongodb.org/mongo-driver v1.11.0
 	gopkg.in/h2non/gock.v1 v1.1.2
-	gotest.tools/v3 v3.4.0
 )
 
 require (
@@ -34,7 +33,6 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/h2non/parth v0.0.0-20190131123155-b4df798d6542 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/iancoleman/orderedmap v0.2.0 // indirect

@@ -24,7 +24,6 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
-	"gotest.tools/v3/assert"
 )
 
 func TestFetchOpenAPI(t *testing.T) {
@@ -40,10 +39,10 @@ func TestFetchOpenAPI(t *testing.T) {
 
 		openApiSpec, err := fetchOpenAPI(url)
 
-		assert.Assert(t, gock.IsDone(), "Mock has not been invoked")
-		assert.Assert(t, err == nil, "unexpected error")
-		assert.Assert(t, openApiSpec != nil, "unexpected nil result")
-		assert.DeepEqual(t, openApiSpec.Paths, OpenAPIPaths{
+		require.True(t, gock.IsDone(), "Mock has not been invoked")
+		require.NoError(t, err, "unexpected error")
+		require.NotNil(t, openApiSpec, "unexpected nil result")
+		require.Equal(t, OpenAPIPaths{
 			"/users/": PathVerbs{
 				"get": VerbConfig{
 					PermissionV2: &RondConfig{
@@ -79,7 +78,7 @@ func TestFetchOpenAPI(t *testing.T) {
 					},
 				},
 			},
-		})
+		}, openApiSpec.Paths)
 	})
 
 	t.Run("request execution fails for invalid URL", func(t *testing.T) {
@@ -88,7 +87,7 @@ func TestFetchOpenAPI(t *testing.T) {
 		_, err := fetchOpenAPI(url)
 
 		t.Logf("Expected error occurred: %s", err.Error())
-		assert.Assert(t, errors.Is(err, ErrRequestFailed), "unexpected error")
+		require.True(t, errors.Is(err, ErrRequestFailed), "unexpected error")
 	})
 
 	t.Run("request execution fails for invalid URL syntax", func(t *testing.T) {
@@ -97,7 +96,7 @@ func TestFetchOpenAPI(t *testing.T) {
 		_, err := fetchOpenAPI(url)
 
 		t.Logf("Expected error occurred: %s", err.Error())
-		assert.Assert(t, errors.Is(err, ErrRequestFailed), "unexpected error")
+		require.True(t, errors.Is(err, ErrRequestFailed), "unexpected error")
 	})
 
 	t.Run("request execution fails for unexpected server response", func(t *testing.T) {
@@ -113,7 +112,7 @@ func TestFetchOpenAPI(t *testing.T) {
 		_, err := fetchOpenAPI(url)
 
 		t.Logf("Expected error occurred: %s", err.Error())
-		assert.Assert(t, errors.Is(err, ErrRequestFailed), "unexpected error")
+		require.True(t, errors.Is(err, ErrRequestFailed), "unexpected error")
 	})
 
 	t.Run("request execution fails for unexpected server response", func(t *testing.T) {
@@ -128,16 +127,16 @@ func TestFetchOpenAPI(t *testing.T) {
 		_, err := fetchOpenAPI(url)
 
 		t.Logf("Expected error occurred: %s", err.Error())
-		assert.Assert(t, errors.Is(err, ErrRequestFailed), "unexpected error")
+		require.True(t, errors.Is(err, ErrRequestFailed), "unexpected error")
 	})
 }
 
 func TestLoadOASFile(t *testing.T) {
 	t.Run("get oas config from file", func(t *testing.T) {
 		openAPIFile, err := loadOASFile("./mocks/pathsConfig.json")
-		assert.Assert(t, err == nil, "unexpected error")
-		assert.Assert(t, openAPIFile != nil, "unexpected nil result")
-		assert.DeepEqual(t, openAPIFile.Paths, OpenAPIPaths{
+		require.True(t, err == nil, "unexpected error")
+		require.True(t, openAPIFile != nil, "unexpected nil result")
+		require.Equal(t, OpenAPIPaths{
 			"/users-from-static-file/": PathVerbs{
 				"get": VerbConfig{
 					PermissionV2: &RondConfig{
@@ -159,14 +158,14 @@ func TestLoadOASFile(t *testing.T) {
 			"/no-permission-from-static-file": PathVerbs{
 				"post": VerbConfig{},
 			},
-		})
+		}, openAPIFile.Paths)
 	})
 
 	t.Run("fail for invalid filePath", func(t *testing.T) {
 		_, err := loadOASFile("./notExistingFilePath.json")
 
 		t.Logf("Expected error occurred: %s", err.Error())
-		assert.Assert(t, err != nil, "failed documentation file read")
+		require.True(t, err != nil, "failed documentation file read")
 	})
 }
 
@@ -180,9 +179,9 @@ func TestLoadOAS(t *testing.T) {
 			APIPermissionsFilePath: "./mocks/pathsConfig.json",
 		}
 		openApiSpec, err := loadOASFromFileOrNetwork(log, envs)
-		assert.Assert(t, err == nil, "unexpected error")
-		assert.Assert(t, openApiSpec != nil, "unexpected nil result")
-		assert.DeepEqual(t, openApiSpec.Paths, OpenAPIPaths{
+		require.True(t, err == nil, "unexpected error")
+		require.True(t, openApiSpec != nil, "unexpected nil result")
+		require.Equal(t, OpenAPIPaths{
 			"/users-from-static-file/": PathVerbs{
 				"get": VerbConfig{
 					PermissionV2: &RondConfig{
@@ -204,7 +203,7 @@ func TestLoadOAS(t *testing.T) {
 			"/no-permission-from-static-file": PathVerbs{
 				"post": VerbConfig{},
 			},
-		})
+		}, openApiSpec.Paths)
 	})
 
 	t.Run("expect to fetch oasApiSpec from API", func(t *testing.T) {
@@ -220,10 +219,10 @@ func TestLoadOAS(t *testing.T) {
 			File("./mocks/simplifiedMock.json")
 
 		openApiSpec, err := loadOASFromFileOrNetwork(log, envs)
-		assert.Assert(t, gock.IsDone(), "Mock has not been invoked")
-		assert.Assert(t, err == nil, "unexpected error")
-		assert.Assert(t, openApiSpec != nil, "unexpected nil result")
-		assert.DeepEqual(t, openApiSpec.Paths, OpenAPIPaths{
+		require.True(t, gock.IsDone(), "Mock has not been invoked")
+		require.NoError(t, err, "unexpected error")
+		require.NotNil(t, openApiSpec, "unexpected nil result")
+		require.Equal(t, OpenAPIPaths{
 			"/users/": PathVerbs{
 				"get": VerbConfig{
 					PermissionV2: &RondConfig{
@@ -259,7 +258,7 @@ func TestLoadOAS(t *testing.T) {
 					},
 				},
 			},
-		})
+		}, openApiSpec.Paths)
 	})
 
 	t.Run("expect to throw if TargetServiceOASPath or APIPermissionsFilePath is not set", func(t *testing.T) {
@@ -269,7 +268,7 @@ func TestLoadOAS(t *testing.T) {
 		_, err := loadOASFromFileOrNetwork(log, envs)
 
 		t.Logf("Expected error occurred: %s", err.Error())
-		assert.Assert(t, err != nil, fmt.Errorf("missing environment variables one of %s or %s is required", config.TargetServiceOASPathEnvKey, config.APIPermissionsFilePathEnvKey))
+		require.True(t, err != nil, fmt.Errorf("missing environment variables one of %s or %s is required", config.TargetServiceOASPathEnvKey, config.APIPermissionsFilePathEnvKey))
 	})
 }
 
@@ -279,19 +278,19 @@ func TestFindPermission(t *testing.T) {
 		OASRouter := oas.PrepareOASRouter()
 
 		found, err := oas.FindPermission(OASRouter, "/not/existing/route", "GET")
-		assert.Equal(t, RondConfig{}, found)
-		assert.Equal(t, err.Error(), fmt.Sprintf("%s: GET /not/existing/route", ErrNotFoundOASDefinition))
+		require.Empty(t, RondConfig{}, found)
+		require.EqualError(t, err, fmt.Sprintf("%s: GET /not/existing/route", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/no/method", "PUT")
-		assert.Equal(t, RondConfig{}, found)
-		assert.Equal(t, err.Error(), fmt.Sprintf("%s: PUT /no/method", ErrNotFoundOASDefinition))
+		require.Equal(t, RondConfig{}, found)
+		require.EqualError(t, err, fmt.Sprintf("%s: PUT /no/method", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/use/method/that/not/existing/put", "PUT")
-		assert.Equal(t, RondConfig{}, found)
-		assert.Equal(t, err.Error(), fmt.Sprintf("%s: PUT /use/method/that/not/existing/put", ErrNotFoundOASDefinition))
+		require.Equal(t, RondConfig{}, found)
+		require.EqualError(t, err, fmt.Sprintf("%s: PUT /use/method/that/not/existing/put", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/foo/bar/barId", "GET")
-		assert.Equal(t, RondConfig{
+		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{
 				PolicyName:    "foo_bar_params",
 				GenerateQuery: true,
@@ -300,10 +299,10 @@ func TestFindPermission(t *testing.T) {
 				},
 			},
 		}, found)
-		assert.Equal(t, err, nil)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/foo/bar/barId/another-params-not-configured", "GET")
-		assert.Equal(t, RondConfig{
+		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{
 				PolicyName:    "foo_bar",
 				GenerateQuery: true,
@@ -312,14 +311,14 @@ func TestFindPermission(t *testing.T) {
 				},
 			},
 		}, found)
-		assert.Equal(t, err, nil)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/foo/bar/nested/case/really/nested", "GET")
-		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "foo_bar_nested_case"}}, found)
-		assert.Equal(t, err, nil)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "foo_bar_nested_case"}}, found)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/foo/bar/nested", "GET")
-		assert.Equal(t, RondConfig{
+		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{
 				PolicyName:    "foo_bar_nested",
 				GenerateQuery: true,
@@ -328,10 +327,10 @@ func TestFindPermission(t *testing.T) {
 				},
 			},
 		}, found)
-		assert.Equal(t, err, nil)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/foo/simble", "PATCH")
-		assert.Equal(t, RondConfig{
+		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{
 				PolicyName:    "foo",
 				GenerateQuery: true,
@@ -340,47 +339,47 @@ func TestFindPermission(t *testing.T) {
 				},
 			},
 		}, found)
-		assert.Equal(t, err, nil)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all", "GET")
-		assert.Equal(t, RondConfig{}, found)
-		assert.Equal(t, err.Error(), fmt.Sprintf("%s: GET /test/all", ErrNotFoundOASDefinition))
+		require.Equal(t, RondConfig{}, found)
+		require.EqualError(t, err, fmt.Sprintf("%s: GET /test/all", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/", "GET")
-		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
-		assert.Equal(t, err, nil)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "GET")
-		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
-		assert.Equal(t, err, nil)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "POST")
-		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_post"}}, found)
-		assert.Equal(t, err, nil)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_post"}}, found)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "PUT")
-		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
-		assert.Equal(t, err, nil)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "PATCH")
-		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
-		assert.Equal(t, err, nil)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "DELETE")
-		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
-		assert.Equal(t, err, nil)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "HEAD")
-		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
-		assert.Equal(t, err, nil)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/projects/", "POST")
-		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_all"}}, found)
-		assert.Equal(t, err, nil)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_all"}}, found)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/projects/", "GET")
-		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_get"}}, found)
-		assert.Equal(t, err, nil)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_get"}}, found)
+		require.NoError(t, err)
 	})
 
 	t.Run("encoded cases", func(t *testing.T) {
@@ -388,12 +387,12 @@ func TestFindPermission(t *testing.T) {
 		OASRouter := oas.PrepareOASRouter()
 
 		found, err := oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%252Fcms-backend%252FcmsProperties.json", "POST")
-		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "allow_commit"}}, found)
-		assert.Equal(t, err, nil)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "allow_commit"}}, found)
+		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%2Fcms-backend%2FcmsProperties.json", "POST")
-		assert.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "allow_commit"}}, found)
-		assert.Equal(t, err, nil)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "allow_commit"}}, found)
+		require.NoError(t, err)
 	})
 }
 
@@ -674,11 +673,11 @@ func TestAdaptOASSpec(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			adaptOASSpec(testCase.input)
-			assert.DeepEqual(t, testCase.input, testCase.expected)
+			require.Equal(t, testCase.expected, testCase.input)
 
 			for path, pathConfig := range testCase.input.Paths {
 				for verb, verbConfig := range pathConfig {
-					assert.Assert(t, verbConfig.PermissionV1 == nil, "Unexpected non-nil conf for %s %s", verb, path)
+					require.True(t, verbConfig.PermissionV1 == nil, "Unexpected non-nil conf for %s %s", verb, path)
 				}
 			}
 		})
