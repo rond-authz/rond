@@ -617,23 +617,6 @@ allow {
 				problem, err := testutil.CollectAndLint(registry, "test_rond_policy_evaluation_duration_milliseconds")
 				require.NoError(t, err, problem)
 				require.Equal(t, 1, testutil.CollectAndCount(registry, "test_rond_policy_evaluation_duration_milliseconds"), "register")
-
-				metadata := `
-								# HELP test_rond_policy_evaluation_duration_milliseconds A histogram of the policy evaluation durations in milliseconds.
-								# TYPE test_rond_policy_evaluation_duration_milliseconds histogram
-			`
-				expected := `
-								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="1"} 1
-								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="5"} 1
-								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="10"} 1
-								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="50"} 1
-								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="100"} 1
-								test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="todo",le="+Inf"} 1
-								test_rond_policy_evaluation_duration_milliseconds_sum{policy_name="todo"} 0
-								test_rond_policy_evaluation_duration_milliseconds_count{policy_name="todo"} 1
-			`
-
-				require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(metadata+expected), "test_rond_policy_evaluation_duration_milliseconds"))
 			})
 		})
 
@@ -710,22 +693,6 @@ allow {
 				problem, err := testutil.CollectAndLint(registry, "test_rond_policy_evaluation_duration_milliseconds")
 				require.NoError(t, err, problem)
 				require.Equal(t, 1, testutil.CollectAndCount(registry, "test_rond_policy_evaluation_duration_milliseconds"), "register")
-
-				metadata := `
-					# HELP test_rond_policy_evaluation_duration_milliseconds A histogram of the policy evaluation durations in milliseconds.
-					# TYPE test_rond_policy_evaluation_duration_milliseconds histogram
-`
-				expected := `
-					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="1"} 1
-					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="5"} 1
-					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="10"} 1
-					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="50"} 1
-					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="100"} 1
-					test_rond_policy_evaluation_duration_milliseconds_bucket{policy_name="allow",le="+Inf"} 1
-					test_rond_policy_evaluation_duration_milliseconds_sum{policy_name="allow"} 0
-					test_rond_policy_evaluation_duration_milliseconds_count{policy_name="allow"} 1
-`
-				require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(metadata+expected), "test_rond_policy_evaluation_duration_milliseconds"))
 			})
 		})
 	})
