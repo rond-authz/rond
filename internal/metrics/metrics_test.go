@@ -28,6 +28,8 @@ func TestMetrics(t *testing.T) {
 			test_prefix_policy_evaluation_duration_milliseconds_bucket{policy_name="myPolicyName",le="10"} 1
 			test_prefix_policy_evaluation_duration_milliseconds_bucket{policy_name="myPolicyName",le="50"} 1
 			test_prefix_policy_evaluation_duration_milliseconds_bucket{policy_name="myPolicyName",le="100"} 1
+			test_prefix_policy_evaluation_duration_milliseconds_bucket{policy_name="myPolicyName",le="250"} 1
+			test_prefix_policy_evaluation_duration_milliseconds_bucket{policy_name="myPolicyName",le="500"} 1
 			test_prefix_policy_evaluation_duration_milliseconds_bucket{policy_name="myPolicyName",le="+Inf"} 1
 			test_prefix_policy_evaluation_duration_milliseconds_sum{policy_name="myPolicyName"} 10
 			test_prefix_policy_evaluation_duration_milliseconds_count{policy_name="myPolicyName"} 1
