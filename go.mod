@@ -12,7 +12,7 @@ require (
 	github.com/mia-platform/glogger/v2 v2.1.3
 	github.com/open-policy-agent/opa v0.47.3
 	github.com/prometheus/client_golang v1.14.0
-	github.com/samber/lo v1.36.0
+	github.com/samber/lo v1.37.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
 	github.com/uptrace/bunrouter v1.0.19
