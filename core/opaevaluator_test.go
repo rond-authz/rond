@@ -156,8 +156,8 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
 		envs := config.EnvironmentVariables{
-			APIPermissionsFilePath: "./mocks/simplifiedMock.json",
-			OPAModulesDirectory:    "./mocks/rego-policies",
+			APIPermissionsFilePath: "../mocks/simplifiedMock.json",
+			OPAModulesDirectory:    "../mocks/rego-policies",
 		}
 		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, envs)
 		require.NoError(t, err, "unexpected error")
@@ -175,8 +175,8 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
 		envs := config.EnvironmentVariables{
-			APIPermissionsFilePath: "./mocks/pathsConfigAllInclusive.json",
-			OPAModulesDirectory:    "./mocks/rego-policies",
+			APIPermissionsFilePath: "../mocks/pathsConfigAllInclusive.json",
+			OPAModulesDirectory:    "../mocks/rego-policies",
 		}
 		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, envs)
 		require.NoError(t, err, "unexpected error")

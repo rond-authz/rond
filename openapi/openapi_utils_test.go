@@ -33,7 +33,7 @@ func TestFetchOpenAPI(t *testing.T) {
 		gock.New("http://localhost:3000").
 			Get("/documentation/json").
 			Reply(200).
-			File("./mocks/simplifiedMock.json")
+			File("../mocks/simplifiedMock.json")
 
 		url := "http://localhost:3000/documentation/json"
 
@@ -133,7 +133,7 @@ func TestFetchOpenAPI(t *testing.T) {
 
 func TestLoadOASFile(t *testing.T) {
 	t.Run("get oas config from file", func(t *testing.T) {
-		openAPIFile, err := LoadOASFile("./mocks/pathsConfig.json")
+		openAPIFile, err := LoadOASFile("../mocks/pathsConfig.json")
 		require.True(t, err == nil, "unexpected error")
 		require.True(t, openAPIFile != nil, "unexpected nil result")
 		require.Equal(t, OpenAPIPaths{
@@ -176,7 +176,7 @@ func TestLoadOAS(t *testing.T) {
 		envs := config.EnvironmentVariables{
 			TargetServiceHost:      "localhost:3000",
 			TargetServiceOASPath:   "/documentation/json",
-			APIPermissionsFilePath: "./mocks/pathsConfig.json",
+			APIPermissionsFilePath: "../mocks/pathsConfig.json",
 		}
 		openApiSpec, err := LoadOASFromFileOrNetwork(log, envs)
 		require.True(t, err == nil, "unexpected error")
@@ -216,7 +216,7 @@ func TestLoadOAS(t *testing.T) {
 		gock.New("http://localhost:3000").
 			Get("/documentation/json").
 			Reply(200).
-			File("./mocks/simplifiedMock.json")
+			File("../mocks/simplifiedMock.json")
 
 		openApiSpec, err := LoadOASFromFileOrNetwork(log, envs)
 		require.True(t, gock.IsDone(), "Mock has not been invoked")
@@ -274,7 +274,7 @@ func TestLoadOAS(t *testing.T) {
 
 func TestFindPermission(t *testing.T) {
 	t.Run("nested cases", func(t *testing.T) {
-		oas := prepareOASFromFile(t, "./mocks/nestedPathsConfig.json")
+		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
 		OASRouter := oas.PrepareOASRouter()
 
 		found, err := oas.FindPermission(OASRouter, "/not/existing/route", "GET")
@@ -383,7 +383,7 @@ func TestFindPermission(t *testing.T) {
 	})
 
 	t.Run("encoded cases", func(t *testing.T) {
-		oas := prepareOASFromFile(t, "./mocks/mockForEncodedTest.json")
+		oas := prepareOASFromFile(t, "../mocks/mockForEncodedTest.json")
 		OASRouter := oas.PrepareOASRouter()
 
 		found, err := oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%252Fcms-backend%252FcmsProperties.json", "POST")
