@@ -24,7 +24,7 @@ import (
 	"time"
 
 	swagger "github.com/davidebianchi/gswagger"
-	"github.com/davidebianchi/gswagger/apirouter"
+	"github.com/davidebianchi/gswagger/support/gorilla"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/helpers"
@@ -166,7 +166,8 @@ func setupRouter(
 	evalRouter := router.NewRoute().Subrouter()
 	if env.Standalone {
 		router.Use(helpers.AddHeadersToProxyMiddleware(log, env.GetAdditionalHeadersToProxy()))
-		swaggerRouter, err := swagger.NewRouter(apirouter.NewGorillaMuxRouter(router), swagger.Options{
+
+		swaggerRouter, err := swagger.NewRouter(gorilla.NewRouter(router), swagger.Options{
 			Context: context.Background(),
 			Openapi: &openapi3.T{
 				Info: &openapi3.Info{
@@ -180,11 +181,22 @@ func setupRouter(
 		if err != nil {
 			return nil, err
 		}
-		if err := addStandaloneRoutes(swaggerRouter); err != nil {
+
+		// standalone routes
+		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings/resource/{resourceType}", revokeHandler, revokeDefinitions); err != nil {
+			return nil, err
+		}
+		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings/resource/{resourceType}", grantHandler, grantDefinitions); err != nil {
+			return nil, err
+		}
+		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings", revokeHandler, revokeDefinitions); err != nil {
+			return nil, err
+		}
+		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings", grantHandler, grantDefinitions); err != nil {
 			return nil, err
 		}
 
-		if err = swaggerRouter.GenerateAndExposeSwagger(); err != nil {
+		if err = swaggerRouter.GenerateAndExposeOpenapi(); err != nil {
 			return nil, err
 		}
 	}
