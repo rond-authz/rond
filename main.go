@@ -201,7 +201,7 @@ func setupRouter(
 		}
 	}
 
-	evalRouter.Use(OPAMiddleware(opaModuleConfig, oas, &env, policiesEvaluators))
+	evalRouter.Use(core.OPAMiddleware(opaModuleConfig, oas, &env, policiesEvaluators, routesToNotProxy))
 
 	if mongoClient != nil {
 		evalRouter.Use(mongoclient.MongoClientInjectorMiddleware(mongoClient))

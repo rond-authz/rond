@@ -16,7 +16,6 @@ package openapi
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -128,13 +127,4 @@ func TestRouterInfoContext(t *testing.T) {
 
 		require.Equal(t, 200, w.Result().StatusCode)
 	})
-}
-
-func getResponseBody(t *testing.T, w *httptest.ResponseRecorder) []byte {
-	t.Helper()
-
-	responseBody, err := io.ReadAll(w.Result().Body)
-	require.NoError(t, err)
-
-	return responseBody
 }

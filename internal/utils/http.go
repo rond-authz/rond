@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"github.com/rond-authz/rond/internal/types"
 )
 
 const ContentTypeHeaderKey = "content-type"
@@ -34,4 +36,24 @@ func UnmarshalHeader(headers http.Header, headerKey string, v interface{}) (bool
 
 func HasApplicationJSONContentType(headers http.Header) bool {
 	return strings.HasPrefix(headers.Get(ContentTypeHeaderKey), JSONContentTypeHeader)
+}
+
+func FailResponse(w http.ResponseWriter, technicalError, businessError string) {
+	FailResponseWithCode(w, http.StatusInternalServerError, technicalError, businessError)
+}
+
+func FailResponseWithCode(w http.ResponseWriter, statusCode int, technicalError, businessError string) {
+	w.Header().Set(ContentTypeHeaderKey, JSONContentTypeHeader)
+	w.WriteHeader(statusCode)
+	content, err := json.Marshal(types.RequestError{
+		StatusCode: statusCode,
+		Error:      technicalError,
+		Message:    businessError,
+	})
+	if err != nil {
+		return
+	}
+
+	//#nosec G104 -- Intended to avoid disruptive code changes
+	w.Write(content)
 }

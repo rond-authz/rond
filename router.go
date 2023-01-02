@@ -15,7 +15,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -23,14 +22,11 @@ import (
 	"strings"
 
 	swagger "github.com/davidebianchi/gswagger"
-	"github.com/mia-platform/glogger/v2"
-	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
-	"github.com/sirupsen/logrus"
 
 	"github.com/gorilla/mux"
 )
@@ -152,69 +148,4 @@ func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.Enviro
 		fallbackRoute = fmt.Sprintf("%s/", path.Join(env.PathPrefixStandalone, fallbackRoute))
 	}
 	router.PathPrefix(fallbackRoute).HandlerFunc(rbacHandler)
-}
-
-func OPAMiddleware(opaModuleConfig *core.OPAModuleConfig, openAPISpec *openapi.OpenAPISpec, envs *config.EnvironmentVariables, policyEvaluators core.PartialResultsEvaluators) mux.MiddlewareFunc {
-	OASrouter := openAPISpec.PrepareOASRouter()
-
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if utils.Contains(routesToNotProxy, r.URL.RequestURI()) {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			path := r.URL.EscapedPath()
-			if envs.Standalone {
-				path = strings.Replace(r.URL.EscapedPath(), envs.PathPrefixStandalone, "", 1)
-			}
-
-			logger := glogger.Get(r.Context())
-
-			permission, err := openAPISpec.FindPermission(OASrouter, path, r.Method)
-			if r.Method == http.MethodGet && r.URL.Path == envs.TargetServiceOASPath && permission.RequestFlow.PolicyName == "" {
-				fields := logrus.Fields{}
-				if err != nil {
-					fields["error"] = logrus.Fields{"message": err.Error()}
-				}
-				logger.WithFields(fields).Info("Proxying call to OAS Path even with no permission")
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			if err != nil || permission.RequestFlow.PolicyName == "" {
-				errorMessage := "User is not allowed to request the API"
-				statusCode := http.StatusForbidden
-				fields := logrus.Fields{
-					"originalRequestPath": utils.SanitizeString(r.URL.Path),
-					"method":              utils.SanitizeString(r.Method),
-					"allowPermission":     utils.SanitizeString(permission.RequestFlow.PolicyName),
-				}
-				technicalError := ""
-				if err != nil {
-					technicalError = err.Error()
-					fields["error"] = logrus.Fields{"message": err.Error()}
-					errorMessage = "The request doesn't match any known API"
-				}
-				if errors.Is(err, openapi.ErrNotFoundOASDefinition) {
-					statusCode = http.StatusNotFound
-				}
-				logger.WithFields(fields).Errorf(errorMessage)
-				failResponseWithCode(w, statusCode, technicalError, errorMessage)
-				return
-			}
-
-			ctx := openapi.WithXPermission(
-				core.WithOPAModuleConfig(
-					core.WithPartialResultsEvaluators(
-						openapi.WithRouterInfo(logger, r.Context(), r),
-						policyEvaluators,
-					),
-					opaModuleConfig,
-				),
-				&permission,
-			)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
 }
