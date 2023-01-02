@@ -20,7 +20,7 @@ test: clean mongo-start
 	$(MAKE) clean
 
 .PHONY: bench
-bench:
+bench: clean mongo-start
 	go test -benchmem -bench=^Bench ./...
 
 .PHONY: clean
