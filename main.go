@@ -27,17 +27,17 @@ import (
 	"github.com/davidebianchi/gswagger/apirouter"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/openapi"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
 	"github.com/sirupsen/logrus"
 )
-
-const HTTPScheme = "http"
 
 func main() {
 	entrypoint(make(chan os.Signal, 1))
@@ -61,7 +61,7 @@ func entrypoint(shutdown chan os.Signal) {
 		return
 	}
 
-	opaModuleConfig, err := loadRegoModule(env.OPAModulesDirectory)
+	opaModuleConfig, err := core.LoadRegoModule(env.OPAModulesDirectory)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error":        logrus.Fields{"message": err.Error()},
@@ -71,7 +71,7 @@ func entrypoint(shutdown chan os.Signal) {
 	}
 	log.WithField("opaModuleFileName", opaModuleConfig.Name).Trace("rego module successfully loaded")
 
-	oas, err := loadOASFromFileOrNetwork(log, env)
+	oas, err := openapi.LoadOASFromFileOrNetwork(log, env)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error":       logrus.Fields{"message": err.Error()},
@@ -98,7 +98,7 @@ func entrypoint(shutdown chan os.Signal) {
 		logrus.NewEntry(log),
 	)
 
-	policiesEvaluators, err := setupEvaluators(ctx, mongoClient, oas, opaModuleConfig, env)
+	policiesEvaluators, err := core.SetupEvaluators(ctx, mongoClient, oas, opaModuleConfig, env)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},
@@ -143,9 +143,9 @@ func entrypoint(shutdown chan os.Signal) {
 func setupRouter(
 	log *logrus.Logger,
 	env config.EnvironmentVariables,
-	opaModuleConfig *OPAModuleConfig,
-	oas *OpenAPISpec,
-	policiesEvaluators PartialResultsEvaluators,
+	opaModuleConfig *core.OPAModuleConfig,
+	oas *openapi.OpenAPISpec,
+	policiesEvaluators core.PartialResultsEvaluators,
 	mongoClient *mongoclient.MongoClient,
 ) (*mux.Router, error) {
 	router := mux.NewRouter().UseEncodedPath()

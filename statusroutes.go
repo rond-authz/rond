@@ -20,6 +20,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
+	"github.com/rond-authz/rond/internal/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -31,7 +32,7 @@ type StatusResponse struct {
 }
 
 func handleStatusRoutes(w http.ResponseWriter, serviceName, serviceVersion string) (*StatusResponse, []byte) {
-	w.Header().Add(ContentTypeHeaderKey, JSONContentTypeHeader)
+	w.Header().Add(utils.ContentTypeHeaderKey, utils.JSONContentTypeHeader)
 	status := StatusResponse{
 		Status:  "OK",
 		Name:    serviceName,

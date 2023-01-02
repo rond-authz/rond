@@ -25,9 +25,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -85,6 +87,7 @@ func TestIs2xx(t *testing.T) {
 }
 
 func TestOPATransportResponseWithError(t *testing.T) {
+	envs := config.EnvironmentVariables{}
 	logger, _ := test.NewNullLogger()
 
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/some-api", nil)
@@ -359,10 +362,10 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			req.Context(),
 			logrus.NewEntry(logger),
 			req,
-			&RondConfig{
-				ResponseFlow: ResponseFlow{PolicyName: "my_policy"},
+			&openapi.RondConfig{
+				ResponseFlow: openapi.ResponseFlow{PolicyName: "my_policy"},
 			},
-			PartialResultsEvaluators{"my_policy": {}},
+			core.PartialResultsEvaluators{"my_policy": {}},
 			envs,
 		}
 		resp, err := transport.RoundTrip(req)

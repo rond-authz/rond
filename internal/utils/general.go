@@ -15,10 +15,15 @@
 package utils
 
 import (
+	"errors"
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/samber/lo"
 )
+
+var ErrFileLoadFailed = errors.New("file loading failed")
 
 var Contains = lo.Contains[string]
 
@@ -34,3 +39,12 @@ func SanitizeString(input string) string {
 }
 
 var Union = lo.Union[string]
+
+func ReadFile(path string) ([]byte, error) {
+	//#nosec G304 -- This is an expected behaviour
+	fileContentByte, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrFileLoadFailed, err.Error())
+	}
+	return fileContentByte, nil
+}

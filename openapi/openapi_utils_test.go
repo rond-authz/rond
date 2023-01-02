@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package openapi
 
 import (
 	"context"
@@ -133,7 +133,7 @@ func TestFetchOpenAPI(t *testing.T) {
 
 func TestLoadOASFile(t *testing.T) {
 	t.Run("get oas config from file", func(t *testing.T) {
-		openAPIFile, err := loadOASFile("./mocks/pathsConfig.json")
+		openAPIFile, err := LoadOASFile("./mocks/pathsConfig.json")
 		require.True(t, err == nil, "unexpected error")
 		require.True(t, openAPIFile != nil, "unexpected nil result")
 		require.Equal(t, OpenAPIPaths{
@@ -162,7 +162,7 @@ func TestLoadOASFile(t *testing.T) {
 	})
 
 	t.Run("fail for invalid filePath", func(t *testing.T) {
-		_, err := loadOASFile("./notExistingFilePath.json")
+		_, err := LoadOASFile("./notExistingFilePath.json")
 
 		t.Logf("Expected error occurred: %s", err.Error())
 		require.True(t, err != nil, "failed documentation file read")
@@ -178,7 +178,7 @@ func TestLoadOAS(t *testing.T) {
 			TargetServiceOASPath:   "/documentation/json",
 			APIPermissionsFilePath: "./mocks/pathsConfig.json",
 		}
-		openApiSpec, err := loadOASFromFileOrNetwork(log, envs)
+		openApiSpec, err := LoadOASFromFileOrNetwork(log, envs)
 		require.True(t, err == nil, "unexpected error")
 		require.True(t, openApiSpec != nil, "unexpected nil result")
 		require.Equal(t, OpenAPIPaths{
@@ -218,7 +218,7 @@ func TestLoadOAS(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		openApiSpec, err := loadOASFromFileOrNetwork(log, envs)
+		openApiSpec, err := LoadOASFromFileOrNetwork(log, envs)
 		require.True(t, gock.IsDone(), "Mock has not been invoked")
 		require.NoError(t, err, "unexpected error")
 		require.NotNil(t, openApiSpec, "unexpected nil result")
@@ -265,7 +265,7 @@ func TestLoadOAS(t *testing.T) {
 		envs := config.EnvironmentVariables{
 			TargetServiceHost: "localhost:3000",
 		}
-		_, err := loadOASFromFileOrNetwork(log, envs)
+		_, err := LoadOASFromFileOrNetwork(log, envs)
 
 		t.Logf("Expected error occurred: %s", err.Error())
 		require.True(t, err != nil, fmt.Errorf("missing environment variables one of %s or %s is required", config.TargetServiceOASPathEnvKey, config.APIPermissionsFilePathEnvKey))
@@ -409,22 +409,6 @@ func TestGetXPermission(t *testing.T) {
 		permission, err := GetXPermission(ctx)
 		require.True(t, err == nil, "Unexpected error.")
 		require.True(t, permission != nil, "XPermission not found.")
-	})
-}
-
-func TestGetPolicyEvaluators(t *testing.T) {
-	t.Run(`GetPolicyEvaluators fails because no key has been passed`, func(t *testing.T) {
-		ctx := context.Background()
-		env, err := GetPartialResultsEvaluators(ctx)
-		require.True(t, err != nil, "An error was expected.")
-		t.Logf("Expected error: %s - env: %+v", err.Error(), env)
-	})
-
-	t.Run(`GetPartialResultsEvaluators returns PartialResultsEvaluators from context`, func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), PartialResultsEvaluatorConfigKey{}, PartialResultsEvaluators{})
-		opaEval, err := GetPartialResultsEvaluators(ctx)
-		require.True(t, err == nil, "Unexpected error.")
-		require.True(t, opaEval != nil, "OPA Module config not found.")
 	})
 }
 
@@ -682,4 +666,12 @@ func TestAdaptOASSpec(t *testing.T) {
 			}
 		})
 	}
+}
+
+func prepareOASFromFile(t *testing.T, filePath string) *OpenAPISpec {
+	t.Helper()
+
+	oas, err := LoadOASFile(filePath)
+	require.NoError(t, err)
+	return oas
 }

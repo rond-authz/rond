@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package core
 
 import (
 	"bytes"
@@ -26,6 +26,10 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/metrics"
+	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/mia-platform/glogger/v2"
@@ -36,6 +40,7 @@ import (
 )
 
 func TestNewOPAEvaluator(t *testing.T) {
+	envs := config.EnvironmentVariables{}
 	input := map[string]interface{}{}
 	inputBytes, _ := json.Marshal(input)
 	t.Run("policy sanitization", func(t *testing.T) {
@@ -64,7 +69,7 @@ func TestCreateRegoInput(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.Header.Set("userproperties", "")
 
-			_, err := createRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
+			_, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
 			require.Nil(t, err, "Unexpected error")
 		})
 
@@ -75,7 +80,7 @@ func TestCreateRegoInput(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.Header.Set("userproperties", "1")
 
-			_, err := createRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
+			_, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
 			require.Error(t, err)
 		})
 	})
@@ -91,16 +96,16 @@ func TestCreateRegoInput(t *testing.T) {
 		t.Run("ignored on method GET", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", bytes.NewReader(reqBodyBytes))
 
-			inputBytes, err := createRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
+			inputBytes, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
 			require.Nil(t, err, "Unexpected error")
 			require.True(t, !strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)))
 		})
 
 		t.Run("ignore nil body on method POST", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", nil)
-			req.Header.Set(ContentTypeHeaderKey, "application/json")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
 
-			inputBytes, err := createRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
+			inputBytes, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
 			require.Nil(t, err, "Unexpected error")
 			require.True(t, !strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)))
 		})
@@ -110,8 +115,8 @@ func TestCreateRegoInput(t *testing.T) {
 
 			for _, method := range acceptedMethods {
 				req := httptest.NewRequest(method, "/", bytes.NewReader(reqBodyBytes))
-				req.Header.Set(ContentTypeHeaderKey, "application/json")
-				inputBytes, err := createRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
+				req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
+				inputBytes, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
 				require.Nil(t, err, "Unexpected error")
 
 				require.True(t, strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)), "Unexpected body for method %s", method)
@@ -120,8 +125,8 @@ func TestCreateRegoInput(t *testing.T) {
 
 		t.Run("added with content-type specifying charset", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(reqBodyBytes))
-			req.Header.Set(ContentTypeHeaderKey, "application/json;charset=UTF-8")
-			inputBytes, err := createRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json;charset=UTF-8")
+			inputBytes, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
 			require.Nil(t, err, "Unexpected error")
 
 			require.True(t, strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)), "Unexpected body for method %s", http.MethodPost)
@@ -129,16 +134,16 @@ func TestCreateRegoInput(t *testing.T) {
 
 		t.Run("reject on method POST but with invalid body", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
-			req.Header.Set(ContentTypeHeaderKey, "application/json")
-			_, err := createRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
+			_, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
 			require.True(t, err != nil)
 		})
 
 		t.Run("ignore body on method POST but with another content type", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
-			req.Header.Set(ContentTypeHeaderKey, "multipart/form-data")
+			req.Header.Set(utils.ContentTypeHeaderKey, "multipart/form-data")
 
-			inputBytes, err := createRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
+			inputBytes, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
 			require.Nil(t, err, "Unexpected error")
 			require.True(t, !strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)))
 		})
@@ -154,13 +159,13 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 			APIPermissionsFilePath: "./mocks/simplifiedMock.json",
 			OPAModulesDirectory:    "./mocks/rego-policies",
 		}
-		openApiSpec, err := loadOASFromFileOrNetwork(log, envs)
+		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, envs)
 		require.NoError(t, err, "unexpected error")
 
-		opaModuleConfig, err := loadRegoModule(envs.OPAModulesDirectory)
+		opaModuleConfig, err := LoadRegoModule(envs.OPAModulesDirectory)
 		require.NoError(t, err, "unexpected error")
 
-		policyEvals, err := setupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, envs)
+		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, envs)
 		require.NoError(t, err, "unexpected error creating evaluators")
 		require.Len(t, policyEvals, 4, "unexpected length")
 	})
@@ -173,13 +178,13 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 			APIPermissionsFilePath: "./mocks/pathsConfigAllInclusive.json",
 			OPAModulesDirectory:    "./mocks/rego-policies",
 		}
-		openApiSpec, err := loadOASFromFileOrNetwork(log, envs)
+		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, envs)
 		require.NoError(t, err, "unexpected error")
 
-		opaModuleConfig, err := loadRegoModule(envs.OPAModulesDirectory)
+		opaModuleConfig, err := LoadRegoModule(envs.OPAModulesDirectory)
 		require.NoError(t, err, "unexpected error")
 
-		policyEvals, err := setupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, envs)
+		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, envs)
 		require.NoError(t, err, "unexpected error creating evaluators")
 		require.Len(t, policyEvals, 4, "unexpected length")
 	})
@@ -258,6 +263,56 @@ func TestBuildOptimizedResourcePermissionsMap(t *testing.T) {
 	}
 	require.Equal(t, expected, result)
 }
+func TestCreateQueryEvaluator(t *testing.T) {
+	envs := config.EnvironmentVariables{}
+	policy := `package policies
+allow {
+	true
+}
+column_policy{
+	false
+}
+`
+	permission := openapi.XPermission{
+		AllowPermission: "allow",
+		ResponseFilter: openapi.ResponseFilterConfiguration{
+			Policy: "column_policy",
+		},
+	}
+
+	ctx := createContext(t,
+		context.Background(),
+		config.EnvironmentVariables{TargetServiceHost: "test"},
+		nil,
+		&openapi.RondConfig{
+			RequestFlow:  openapi.RequestFlow{PolicyName: "allow"},
+			ResponseFlow: openapi.ResponseFlow{PolicyName: "column_policy"},
+		},
+
+		&OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
+		nil,
+	)
+
+	r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
+	require.NoError(t, err, "Unexpected error")
+	log, _ := test.NewNullLogger()
+	logger := logrus.NewEntry(log)
+
+	input := Input{Request: InputRequest{}, Response: InputResponse{}}
+	inputBytes, _ := json.Marshal(input)
+
+	t.Run("create  evaluator with allowPolicy", func(t *testing.T) {
+		evaluator, err := CreateQueryEvaluator(context.Background(), logger, r, envs, permission.AllowPermission, inputBytes, nil)
+		require.True(t, evaluator != nil)
+		require.NoError(t, err, "Unexpected status code.")
+	})
+
+	t.Run("create  evaluator with policy for column filtering", func(t *testing.T) {
+		evaluator, err := CreateQueryEvaluator(context.Background(), logger, r, envs, permission.ResponseFilter.Policy, inputBytes, nil)
+		require.True(t, evaluator != nil)
+		require.NoError(t, err, "Unexpected status code.")
+	})
+}
 
 func BenchmarkBuildOptimizedResourcePermissionsMap(b *testing.B) {
 	var roles []types.Role
@@ -304,4 +359,122 @@ func TestPrint(t *testing.T) {
 
 	var re = regexp.MustCompile(`"time":\d+`)
 	require.JSONEq(t, `{"level":10,"msg":"the print message","time":123,"policyName":"policy-name"}`, string(re.ReplaceAll(buf.Bytes(), []byte("\"time\":123"))))
+}
+
+func createContext(
+	t *testing.T,
+	originalCtx context.Context,
+	env config.EnvironmentVariables,
+	mongoClient *mocks.MongoClientMock,
+	permission *openapi.RondConfig,
+	opaModuleConfig *OPAModuleConfig,
+	partialResultEvaluators PartialResultsEvaluators,
+) context.Context {
+	t.Helper()
+
+	var partialContext context.Context
+	partialContext = context.WithValue(originalCtx, config.EnvKey{}, env)
+	partialContext = context.WithValue(partialContext, openapi.XPermissionKey{}, permission)
+	partialContext = context.WithValue(partialContext, OPAModuleConfigKey{}, opaModuleConfig)
+	if mongoClient != nil {
+		partialContext = context.WithValue(partialContext, types.MongoClientContextKey{}, mongoClient)
+	}
+	partialContext = context.WithValue(partialContext, PartialResultsEvaluatorConfigKey{}, partialResultEvaluators)
+
+	log, _ := test.NewNullLogger()
+	partialContext = glogger.WithLogger(partialContext, logrus.NewEntry(log))
+
+	partialContext = context.WithValue(partialContext, openapi.RouterInfoKey{}, openapi.RouterInfo{
+		MatchedPath:   "/matched/path",
+		RequestedPath: "/requested/path",
+		Method:        "GET",
+	})
+
+	partialContext = metrics.WithValue(partialContext, metrics.SetupMetrics("test_rond"))
+
+	return partialContext
+}
+func TestGetHeaderFunction(t *testing.T) {
+	headerKeyMocked := "exampleKey"
+	headerValueMocked := "value"
+	env := config.EnvironmentVariables{}
+
+	opaModule := &OPAModuleConfig{
+		Name: "example.rego",
+		Content: `package policies
+		todo { get_header("ExAmPlEkEy", input.headers) == "value" }`,
+	}
+	queryString := "todo"
+
+	t.Run("if header key exists", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Add(headerKeyMocked, headerValueMocked)
+		input := map[string]interface{}{
+			"headers": headers,
+		}
+		inputBytes, _ := json.Marshal(input)
+
+		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, env)
+		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
+
+		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())
+		require.NoError(t, err, "Unexpected error during rego validation")
+		require.True(t, results.Allowed(), "The input is not allowed by rego")
+
+		partialResults, err := opaEvaluator.PolicyEvaluator.Partial(context.TODO())
+		require.NoError(t, err, "Unexpected error during rego validation")
+
+		require.Len(t, partialResults.Queries, 1, "Rego policy allows illegal input")
+	})
+
+	t.Run("if header key not exists", func(t *testing.T) {
+		input := map[string]interface{}{
+			"headers": http.Header{},
+		}
+		inputBytes, _ := json.Marshal(input)
+
+		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, env)
+		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
+
+		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())
+		require.NoError(t, err, "Unexpected error during rego validation")
+		require.True(t, !results.Allowed(), "Rego policy allows illegal input")
+
+		partialResults, err := opaEvaluator.PolicyEvaluator.Partial(context.TODO())
+		require.NoError(t, err, "Unexpected error during rego validation")
+
+		require.Len(t, partialResults.Queries, 0, "Rego policy allows illegal input")
+	})
+}
+
+func TestGetOPAModuleConfig(t *testing.T) {
+	t.Run(`GetOPAModuleConfig fails because no key has been passed`, func(t *testing.T) {
+		ctx := context.Background()
+		env, err := GetOPAModuleConfig(ctx)
+		require.True(t, err != nil, "An error was expected.")
+		t.Logf("Expected error: %s - env: %+v", err.Error(), env)
+	})
+
+	t.Run(`GetOPAModuleConfig returns OPAEvaluator from context`, func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), OPAModuleConfigKey{}, &OPAModuleConfig{})
+		opaEval, err := GetOPAModuleConfig(ctx)
+		require.True(t, err == nil, "Unexpected error.")
+		require.True(t, opaEval != nil, "OPA Module config not found.")
+	})
+}
+
+func TestGetPolicyEvaluators(t *testing.T) {
+	t.Run(`GetPolicyEvaluators fails because no key has been passed`, func(t *testing.T) {
+		ctx := context.Background()
+		env, err := GetPartialResultsEvaluators(ctx)
+		require.True(t, err != nil, "An error was expected.")
+		t.Logf("Expected error: %s - env: %+v", err.Error(), env)
+	})
+
+	t.Run(`GetPartialResultsEvaluators returns PartialResultsEvaluators from context`, func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), PartialResultsEvaluatorConfigKey{}, PartialResultsEvaluators{})
+		opaEval, err := GetPartialResultsEvaluators(ctx)
+		require.True(t, err == nil, "Unexpected error.")
+		require.True(t, opaEval != nil, "OPA Module config not found.")
+	})
 }

@@ -23,8 +23,11 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/sirupsen/logrus"
@@ -36,8 +39,8 @@ type OPATransport struct {
 	context                  context.Context
 	logger                   *logrus.Entry
 	request                  *http.Request
-	permission               *RondConfig
-	partialResultsEvaluators PartialResultsEvaluators
+	permission               *openapi.RondConfig
+	partialResultsEvaluators core.PartialResultsEvaluators
 	env                      config.EnvironmentVariables
 }
 
@@ -67,8 +70,8 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	if !hasApplicationJSONContentType(resp.Header) {
-		t.logger.WithField("foundContentType", resp.Header.Get(ContentTypeHeaderKey)).Debug("found content type")
+	if !utils.HasApplicationJSONContentType(resp.Header) {
+		t.logger.WithField("foundContentType", resp.Header.Get(utils.ContentTypeHeaderKey)).Debug("found content type")
 		t.responseWithError(resp, fmt.Errorf("content-type is not application/json"), http.StatusInternalServerError)
 		return resp, nil
 	}
@@ -84,7 +87,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	input, err := createRegoQueryInput(t.request, t.env, t.permission.Options.EnableResourcePermissionsMapOptimization, userInfo, decodedBody)
+	input, err := core.CreateRegoQueryInput(t.request, t.env, t.permission.Options.EnableResourcePermissionsMapOptimization, userInfo, decodedBody)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusInternalServerError)
 		return resp, nil
@@ -100,7 +103,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	bodyToProxy, err := evaluator.evaluate(t.logger)
+	bodyToProxy, err := evaluator.Evaluate(t.logger)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusForbidden)
 		return resp, nil
