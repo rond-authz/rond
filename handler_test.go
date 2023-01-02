@@ -1970,9 +1970,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 		UserIdHeader:     "miauserid",
 	}
 
-	// nilLogger, _ := test.NewNullLogger()
-	nilLogger := logrus.New()
-	logger := logrus.NewEntry(nilLogger)
+	nilLogger, _ := test.NewNullLogger()
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
@@ -1997,7 +1995,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 					),
 					metrics.SetupMetrics(""),
 				),
-				logger,
+				logrus.NewEntry(nilLogger),
 			),
 		)
 		req.Header.Set("miausergroups", "area_rocket")
