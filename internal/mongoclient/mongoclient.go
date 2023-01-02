@@ -28,6 +28,7 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/types"
+	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -128,13 +129,22 @@ func NewMongoClient(env config.EnvironmentVariables, logger *logrus.Logger) (*Mo
 	return &mongoClient, nil
 }
 
+func sanitizeString(input string) string {
+	return strings.ReplaceAll(input, "$", "")
+}
+func sanitizeList(input []string) []string {
+	return lo.Map(input, func(str string, index int) string {
+		return sanitizeString(str)
+	})
+}
+
 func (mongoClient *MongoClient) RetrieveUserBindings(ctx context.Context, user *types.User) ([]types.Binding, error) {
 	filter := bson.M{
 		"$and": []bson.M{
 			{
 				"$or": []bson.M{
-					{"subjects": bson.M{"$elemMatch": bson.M{"$eq": user.UserID}}},
-					{"groups": bson.M{"$elemMatch": bson.M{"$in": user.UserGroups}}},
+					{"subjects": bson.M{"$elemMatch": bson.M{"$eq": sanitizeString(user.UserID)}}},
+					{"groups": bson.M{"$elemMatch": bson.M{"$in": sanitizeList(user.UserGroups)}}},
 				},
 			},
 			{STATE: PUBLIC},
