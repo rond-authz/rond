@@ -24,7 +24,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/metrics"
@@ -346,7 +345,6 @@ func BenchmarkBuildOptimizedResourcePermissionsMap(b *testing.B) {
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		b.StartTimer()
-		time.Sleep(200 * time.Millisecond)
 		buildOptimizedResourcePermissionsMap(user)
 		b.StopTimer()
 	}
