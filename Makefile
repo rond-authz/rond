@@ -19,6 +19,10 @@ test: clean mongo-start
 	go test ./... -coverprofile coverage.out
 	$(MAKE) clean
 
+.PHONY: bench
+bench:
+	go test -benchmem -bench=^Bench ./...
+
 .PHONY: clean
 clean:
 	docker rm mongo --force
