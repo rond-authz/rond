@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package service
 
 import (
 	"context"
@@ -122,7 +122,7 @@ test_policy { true }
 			TargetServiceHost:    "my-service:4444",
 			PathPrefixStandalone: "/my-prefix",
 		}
-		router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+		router, err := SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
 		require.NoError(t, err, "unexpected error")
 
 		t.Run("/-/rbac-ready", func(t *testing.T) {
@@ -155,7 +155,7 @@ test_policy { true }
 			PathPrefixStandalone: "/my-prefix",
 			ServiceVersion:       "latest",
 		}
-		router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+		router, err := SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
 		require.NoError(t, err, "unexpected error")
 		t.Run("/-/rbac-ready", func(t *testing.T) {
 			w := httptest.NewRecorder()

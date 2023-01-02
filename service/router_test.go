@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package service
 
 import (
 	"context"
@@ -247,7 +247,7 @@ var mockRondConfigWithQueryGen = &openapi.RondConfig{
 
 func TestSetupRoutesIntegration(t *testing.T) {
 	envs := config.EnvironmentVariables{}
-	oas := prepareOASFromFile(t, "./mocks/simplifiedMock.json")
+	oas := prepareOASFromFile(t, "../mocks/simplifiedMock.json")
 
 	log, _ := test.NewNullLogger()
 	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
@@ -392,7 +392,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 	})
 
 	t.Run("invokes the API not explicitly set in the oas file", func(t *testing.T) {
-		oas := prepareOASFromFile(t, "./mocks/nestedPathsConfig.json")
+		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
 
 		var invoked bool
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -429,7 +429,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 	})
 
 	t.Run("invokes a specific API within a nested path", func(t *testing.T) {
-		oas := prepareOASFromFile(t, "./mocks/nestedPathsConfig.json")
+		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
 
 		var invoked bool
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

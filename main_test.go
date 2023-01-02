@@ -35,6 +35,7 @@ import (
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/service"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/sirupsen/logrus"
@@ -1713,7 +1714,7 @@ filter_policy {
 	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, env)
 	require.NoError(t, err, "unexpected error")
 
-	router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+	router, err := service.SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("some eval API", func(t *testing.T) {
@@ -1765,7 +1766,7 @@ filter_policy {
 	})
 
 	t.Run("grant API with headers to proxy", func(t *testing.T) {
-		reqBody := GrantRequestBody{
+		reqBody := service.GrantRequestBody{
 			ResourceID:  "my-company",
 			Subjects:    []string{"subj"},
 			Groups:      []string{"group1"},
@@ -1868,7 +1869,7 @@ filter_policy {
 	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, env)
 	require.NoError(t, err, "unexpected error")
 
-	router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+	router, err := service.SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("metrics API exposed correctly", func(t *testing.T) {

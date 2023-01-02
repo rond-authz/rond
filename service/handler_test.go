@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package service
 
 import (
 	"context"
@@ -1941,7 +1941,7 @@ project.tenantId == "1234"
 }
 
 func BenchmarkEvaluateRequest(b *testing.B) {
-	moduleConfig, err := core.LoadRegoModule("./mocks/bench-policies")
+	moduleConfig, err := core.LoadRegoModule("../mocks/bench-policies")
 	require.NoError(b, err, "Unexpected error")
 	permission := &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "allow_view_project"}}
 
