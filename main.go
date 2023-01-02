@@ -167,7 +167,6 @@ func setupRouter(
 	if env.Standalone {
 		router.Use(helpers.AddHeadersToProxyMiddleware(log, env.GetAdditionalHeadersToProxy()))
 
-		// swaggerRouter, err := swagger.NewRouter(apirouter.NewGorillaMuxRouter(router),
 		swaggerRouter, err := swagger.NewRouter(gorilla.NewRouter(router), swagger.Options{
 			Context: context.Background(),
 			Openapi: &openapi3.T{
