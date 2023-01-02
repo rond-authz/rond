@@ -1882,12 +1882,3 @@ filter_policy {
 		require.Contains(t, string(responseBody), "go_gc_duration_seconds")
 	})
 }
-
-func getResponseBody(t *testing.T, w *httptest.ResponseRecorder) []byte {
-	t.Helper()
-
-	responseBody, err := io.ReadAll(w.Result().Body)
-	require.NoError(t, err)
-
-	return responseBody
-}
