@@ -1351,7 +1351,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r.Header.Set(clientTypeHeaderKey, string(mockedClientType))
 
 			rbacHandler(w, r)
-			testutils.AssertResponseFullErrorMessages(t, w, http.StatusInternalServerError, "user bindings retrieval failed", GENERIC_BUSINESS_ERROR_MESSAGE)
+			testutils.AssertResponseFullErrorMessages(t, w, http.StatusInternalServerError, "user bindings retrieval failed", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 			require.True(t, !invoked, "Handler was not invoked.")
 			require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode, "Unexpected status code.")
 		})
@@ -1442,7 +1442,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			r.Header.Set(userIdHeaderKey, "miauserid")
 
 			rbacHandler(w, r)
-			testutils.AssertResponseFullErrorMessages(t, w, http.StatusForbidden, "RBAC policy evaluation failed", NO_PERMISSIONS_ERROR_MESSAGE)
+			testutils.AssertResponseFullErrorMessages(t, w, http.StatusForbidden, "RBAC policy evaluation failed", utils.NO_PERMISSIONS_ERROR_MESSAGE)
 			require.Equal(t, http.StatusForbidden, w.Result().StatusCode, "Unexpected status code.")
 		})
 

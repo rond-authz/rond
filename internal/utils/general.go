@@ -23,6 +23,9 @@ import (
 	"github.com/samber/lo"
 )
 
+const GENERIC_BUSINESS_ERROR_MESSAGE = "Internal server error, please try again later"
+const NO_PERMISSIONS_ERROR_MESSAGE = "You do not have permissions to access this feature, contact the administrator for more information."
+
 var ErrFileLoadFailed = errors.New("file loading failed")
 
 var Contains = lo.Contains[string]

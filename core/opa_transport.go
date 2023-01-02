@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package core
 
 import (
 	"bytes"
@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
@@ -40,8 +39,28 @@ type OPATransport struct {
 	logger                   *logrus.Entry
 	request                  *http.Request
 	permission               *openapi.RondConfig
-	partialResultsEvaluators core.PartialResultsEvaluators
+	partialResultsEvaluators PartialResultsEvaluators
 	env                      config.EnvironmentVariables
+}
+
+func NewOPATransport(
+	defaultTransport http.RoundTripper,
+	context context.Context,
+	logger *logrus.Entry,
+	req *http.Request,
+	permission *openapi.RondConfig,
+	partialResultsEvaluators PartialResultsEvaluators,
+	env config.EnvironmentVariables,
+) *OPATransport {
+	return &OPATransport{
+		http.DefaultTransport,
+		req.Context(),
+		logger,
+		req,
+		permission,
+		partialResultsEvaluators,
+		env,
+	}
 }
 
 func is2XX(statusCode int) bool {
@@ -87,7 +106,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	input, err := core.CreateRegoQueryInput(t.request, t.env, t.permission.Options.EnableResourcePermissionsMapOptimization, userInfo, decodedBody)
+	input, err := CreateRegoQueryInput(t.request, t.env, t.permission.Options.EnableResourcePermissionsMapOptimization, userInfo, decodedBody)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusInternalServerError)
 		return resp, nil
@@ -120,9 +139,9 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 
 func (t *OPATransport) responseWithError(resp *http.Response, err error, statusCode int) {
 	t.logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("error while evaluating column filter query")
-	message := NO_PERMISSIONS_ERROR_MESSAGE
+	message := utils.NO_PERMISSIONS_ERROR_MESSAGE
 	if statusCode != http.StatusForbidden {
-		message = GENERIC_BUSINESS_ERROR_MESSAGE
+		message = utils.GENERIC_BUSINESS_ERROR_MESSAGE
 	}
 	content, _ := json.Marshal(types.RequestError{
 		StatusCode: statusCode,

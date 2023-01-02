@@ -47,23 +47,23 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 	logger := glogger.Get(r.Context())
 	env, err := config.GetEnv(r.Context())
 	if err != nil {
-		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), GENERIC_BUSINESS_ERROR_MESSAGE)
+		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
 	reqBody := RevokeRequestBody{}
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), GENERIC_BUSINESS_ERROR_MESSAGE)
+		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
 	resourceType := mux.Vars(r)["resourceType"]
 	if resourceType != "" && len(reqBody.ResourceIDs) == 0 {
-		utils.FailResponseWithCode(w, http.StatusBadRequest, "empty resources list", GENERIC_BUSINESS_ERROR_MESSAGE)
+		utils.FailResponseWithCode(w, http.StatusBadRequest, "empty resources list", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 	if len(reqBody.Subjects) == 0 && len(reqBody.Groups) == 0 {
-		utils.FailResponseWithCode(w, http.StatusBadRequest, "empty subjects and groups lists", GENERIC_BUSINESS_ERROR_MESSAGE)
+		utils.FailResponseWithCode(w, http.StatusBadRequest, "empty subjects and groups lists", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
@@ -72,20 +72,20 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 	client, err := crudclient.New(env.BindingsCrudServiceURL)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud setup")
-		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), GENERIC_BUSINESS_ERROR_MESSAGE)
+		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
 	query, err := buildQuery(resourceType, reqBody.ResourceIDs, reqBody.Subjects, reqBody.Groups)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed find query crud setup")
-		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed find query crud setup", GENERIC_BUSINESS_ERROR_MESSAGE)
+		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed find query crud setup", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
 	if err := client.Get(r.Context(), fmt.Sprintf("_q=%s&_l=%d", string(query), BINDINGS_MAX_PAGE_SIZE), &bindings); err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud request")
-		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed crud request for finding bindings", GENERIC_BUSINESS_ERROR_MESSAGE)
+		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed crud request for finding bindings", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
@@ -98,7 +98,7 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 		query, err := buildQueryForBindingsToDelete(bindingsToDelete)
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed delete query crud setup")
-			utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed delete query crud setup", GENERIC_BUSINESS_ERROR_MESSAGE)
+			utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed delete query crud setup", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 			return
 		}
 
@@ -109,7 +109,7 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 
 		if err := client.Delete(r.Context(), fmt.Sprintf("_q=%s", string(query)), &deleteCrudResponse); err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud request")
-			utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed crud request for deleting unused bindings", GENERIC_BUSINESS_ERROR_MESSAGE)
+			utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed crud request for deleting unused bindings", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 			return
 		}
 		logger.WithField("deletedBindings", deleteCrudResponse).Debug("binding deletion finished")
@@ -124,7 +124,7 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 				w,
 				http.StatusInternalServerError,
 				fmt.Sprintf("failed crud request to modify existing bindings. removed bindings: %d", deleteCrudResponse),
-				GENERIC_BUSINESS_ERROR_MESSAGE,
+				utils.GENERIC_BUSINESS_ERROR_MESSAGE,
 			)
 			return
 		}
@@ -142,7 +142,7 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 			w,
 			http.StatusInternalServerError,
 			fmt.Sprintf("failed response body creation. removed bindings: %d, modified bindings: %d", deleteCrudResponse, patchCrudResponse),
-			GENERIC_BUSINESS_ERROR_MESSAGE,
+			utils.GENERIC_BUSINESS_ERROR_MESSAGE,
 		)
 	}
 	if _, err := w.Write(responseBytes); err != nil {
@@ -165,31 +165,31 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 	logger := glogger.Get(r.Context())
 	env, err := config.GetEnv(r.Context())
 	if err != nil {
-		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), GENERIC_BUSINESS_ERROR_MESSAGE)
+		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
 	reqBody := GrantRequestBody{}
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), GENERIC_BUSINESS_ERROR_MESSAGE)
+		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
 	resourceType := mux.Vars(r)["resourceType"]
 	if resourceType != "" && reqBody.ResourceID == "" {
-		utils.FailResponseWithCode(w, http.StatusBadRequest, "missing resource id", GENERIC_BUSINESS_ERROR_MESSAGE)
+		utils.FailResponseWithCode(w, http.StatusBadRequest, "missing resource id", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
 	if len(reqBody.Groups) == 0 && len(reqBody.Permissions) == 0 && len(reqBody.Subjects) == 0 && len(reqBody.Roles) == 0 {
-		utils.FailResponseWithCode(w, http.StatusBadRequest, "missing body fields, one of groups, permissions, subjects or roles is required", GENERIC_BUSINESS_ERROR_MESSAGE)
+		utils.FailResponseWithCode(w, http.StatusBadRequest, "missing body fields, one of groups, permissions, subjects or roles is required", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
 	client, err := crudclient.New(env.BindingsCrudServiceURL)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud setup")
-		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), GENERIC_BUSINESS_ERROR_MESSAGE)
+		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
@@ -210,7 +210,7 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 	var bindingIDCreated types.BindingCreateResponse
 	if err := client.Post(r.Context(), &bindingToCreate, &bindingIDCreated); err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud request")
-		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed crud request for creating bindings", GENERIC_BUSINESS_ERROR_MESSAGE)
+		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed crud request for creating bindings", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 	logger.WithFields(logrus.Fields{
@@ -229,7 +229,7 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 			w,
 			http.StatusInternalServerError,
 			"failed response body creation",
-			GENERIC_BUSINESS_ERROR_MESSAGE,
+			utils.GENERIC_BUSINESS_ERROR_MESSAGE,
 		)
 	}
 	if _, err := w.Write(responseBytes); err != nil {
