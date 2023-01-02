@@ -1969,8 +1969,10 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 		UserGroupsHeader: "miausergroups",
 		UserIdHeader:     "miauserid",
 	}
-	nilLogger, _ := test.NewNullLogger()
 
+	// nilLogger, _ := test.NewNullLogger()
+	nilLogger := logrus.New()
+	logger := logrus.NewEntry(nilLogger)
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
@@ -1978,17 +1980,24 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 		originalRequest := httptest.NewRequest(http.MethodGet, "/projects/project123", nil)
 		req := originalRequest.WithContext(
 			glogger.WithLogger(
-				context.WithValue(
+				metrics.WithValue(
 					context.WithValue(
-						openapi.WithXPermission(
-							core.WithOPAModuleConfig(originalRequest.Context(), moduleConfig),
-							permission,
+						openapi.WithRouterInfo(
+							logger,
+							context.WithValue(
+								openapi.WithXPermission(
+									core.WithOPAModuleConfig(originalRequest.Context(), moduleConfig),
+									permission,
+								),
+								types.MongoClientContextKey{}, testmongoMock,
+							),
+							httptest.NewRequest(http.MethodGet, "/", nil),
 						),
-						types.MongoClientContextKey{}, testmongoMock,
+						config.EnvKey{}, envs,
 					),
-					config.EnvKey{}, envs,
+					metrics.SetupMetrics(""),
 				),
-				logrus.NewEntry(nilLogger),
+				logger,
 			),
 		)
 		req.Header.Set("miausergroups", "area_rocket")
