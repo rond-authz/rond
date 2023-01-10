@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package core
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -23,29 +22,31 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gorilla/mux"
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
+
 	"github.com/stretchr/testify/require"
 )
 
-var envs = config.EnvironmentVariables{}
-
-var partialEvaluators = PartialResultsEvaluators{}
-
 func TestOPAMiddleware(t *testing.T) {
+	var envs = config.EnvironmentVariables{}
+	var partialEvaluators = PartialResultsEvaluators{}
+	routesNotToProxy := make([]string, 0)
+
 	t.Run(`strict mode failure`, func(t *testing.T) {
 		opaModule := &OPAModuleConfig{
 			Name: "example.rego",
 			Content: `package policies
 todo { true }`,
 		}
-		var openAPISpec *OpenAPISpec
-		openAPISpecContent, _ := os.ReadFile("./mocks/simplifiedMock.json")
-		_ = json.Unmarshal(openAPISpecContent, &openAPISpec)
-		middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
+		var openAPISpec *openapi.OpenAPISpec
+		openAPISpecContent, err := os.ReadFile("../mocks/simplifiedMock.json")
+		require.NoError(t, err)
+		err = json.Unmarshal(openAPISpecContent, &openAPISpec)
+		require.NoError(t, err)
+		middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators, routesNotToProxy)
 
 		t.Run(`missing oas paths`, func(t *testing.T) {
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +63,7 @@ todo { true }`,
 				Error:      "not found oas definition: GET /not-existing-path",
 				StatusCode: http.StatusNotFound,
 			}, getJSONResponseBody[types.RequestError](t, w))
-			require.Equal(t, JSONContentTypeHeader, w.Result().Header.Get(ContentTypeHeaderKey), "Unexpected content type.")
+			require.Equal(t, utils.JSONContentTypeHeader, w.Result().Header.Get(utils.ContentTypeHeaderKey), "Unexpected content type.")
 		})
 
 		t.Run(`missing method`, func(t *testing.T) {
@@ -80,7 +81,7 @@ todo { true }`,
 				Error:      "not found oas definition: DELETE /users/",
 				StatusCode: http.StatusNotFound,
 			}, getJSONResponseBody[types.RequestError](t, w))
-			require.Equal(t, JSONContentTypeHeader, w.Result().Header.Get(ContentTypeHeaderKey), "Unexpected content type.")
+			require.Equal(t, utils.JSONContentTypeHeader, w.Result().Header.Get(utils.ContentTypeHeaderKey), "Unexpected content type.")
 		})
 
 		t.Run(`missing permission`, func(t *testing.T) {
@@ -104,12 +105,12 @@ foobar { true }`,
 		}
 
 		t.Run(`ok - path is known on oas with no permission declared`, func(t *testing.T) {
-			openAPISpec, err := loadOASFile("./mocks/documentationPathMock.json")
+			openAPISpec, err := openapi.LoadOASFile("../mocks/documentationPathMock.json")
 			require.NoError(t, err)
 			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/json",
 			}
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators, routesNotToProxy)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -122,12 +123,12 @@ foobar { true }`,
 		})
 
 		t.Run(`ok - path is missing on oas and request is equal to serviceTargetOASPath`, func(t *testing.T) {
-			openAPISpec, err := loadOASFile("./mocks/simplifiedMock.json")
+			openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 			require.NoError(t, err)
 			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/json",
 			}
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators, routesNotToProxy)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -140,12 +141,12 @@ foobar { true }`,
 		})
 
 		t.Run(`ok - path is NOT known on oas but is proxied anyway`, func(t *testing.T) {
-			openAPISpec, err := loadOASFile("./mocks/simplifiedMock.json")
+			openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 			require.NoError(t, err)
 			var envs = config.EnvironmentVariables{
 				TargetServiceOASPath: "/documentation/custom/json",
 			}
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators, routesNotToProxy)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -159,7 +160,7 @@ foobar { true }`,
 	})
 
 	t.Run(`injects opa instance with correct query`, func(t *testing.T) {
-		openAPISpec, err := loadOASFile("./mocks/simplifiedMock.json")
+		openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 		require.NoError(t, err)
 
 		t.Run(`rego package doesn't contain expected permission`, func(t *testing.T) {
@@ -169,11 +170,11 @@ foobar { true }`,
 todo { true }`,
 			}
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators, routesNotToProxy)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				permission, err := GetXPermission(r.Context())
+				permission, err := openapi.GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, permission, &RondConfig{RequestFlow: RequestFlow{PolicyName: "todo"}})
+				require.Equal(t, permission, &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}})
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -191,11 +192,11 @@ todo { true }`,
 foobar { true }`,
 			}
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators, routesNotToProxy)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				permission, err := GetXPermission(r.Context())
+				permission, err := openapi.GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, &RondConfig{RequestFlow: RequestFlow{PolicyName: "todo"}}, permission)
+				require.Equal(t, &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}, permission)
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -213,11 +214,11 @@ foobar { true }`,
 very_very_composed_permission { true }`,
 			}
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators, routesNotToProxy)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				permission, err := GetXPermission(r.Context())
+				permission, err := openapi.GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, &RondConfig{RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission"}}, permission)
+				require.Equal(t, &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission"}}, permission)
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -240,11 +241,11 @@ very_very_composed_permission_with_eval { true }`,
 				PathPrefixStandalone: "/eval", // default value
 			}
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
+			middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators, routesNotToProxy)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				permission, err := GetXPermission(r.Context())
+				permission, err := openapi.GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, &RondConfig{RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, permission)
+				require.Equal(t, &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, permission)
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -258,7 +259,10 @@ very_very_composed_permission_with_eval { true }`,
 }
 
 func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
-	openAPISpec, err := loadOASFile("./mocks/simplifiedMock.json")
+	var partialEvaluators = PartialResultsEvaluators{}
+	var routesNotToProxy = []string{}
+
+	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 	require.Nil(t, err)
 
 	envs := config.EnvironmentVariables{
@@ -273,11 +277,11 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 			very_very_composed_permission { true }`,
 		}
 
-		middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
+		middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators, routesNotToProxy)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			permission, err := GetXPermission(r.Context())
+			permission, err := openapi.GetXPermission(r.Context())
 			require.True(t, err == nil, "Unexpected error")
-			require.Equal(t, &RondConfig{RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission"}}, permission)
+			require.Equal(t, &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission"}}, permission)
 			w.WriteHeader(http.StatusOK)
 		}))
 
@@ -295,11 +299,11 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 very_very_composed_permission_with_eval { true }`,
 		}
 
-		middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators)
+		middleware := OPAMiddleware(opaModule, openAPISpec, &envs, partialEvaluators, routesNotToProxy)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			permission, err := GetXPermission(r.Context())
+			permission, err := openapi.GetXPermission(r.Context())
 			require.True(t, err == nil, "Unexpected error")
-			require.Equal(t, &RondConfig{RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, permission)
+			require.Equal(t, &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, permission)
 			w.WriteHeader(http.StatusOK)
 		}))
 
@@ -311,188 +315,12 @@ very_very_composed_permission_with_eval { true }`,
 	})
 }
 
-func TestGetHeaderFunction(t *testing.T) {
-	headerKeyMocked := "exampleKey"
-	headerValueMocked := "value"
-	env := config.EnvironmentVariables{}
-
-	opaModule := &OPAModuleConfig{
-		Name: "example.rego",
-		Content: `package policies
-		todo { get_header("ExAmPlEkEy", input.headers) == "value" }`,
-	}
-	queryString := "todo"
-
-	t.Run("if header key exists", func(t *testing.T) {
-		headers := http.Header{}
-		headers.Add(headerKeyMocked, headerValueMocked)
-		input := map[string]interface{}{
-			"headers": headers,
-		}
-		inputBytes, _ := json.Marshal(input)
-
-		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, env)
-		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
-
-		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())
-		require.NoError(t, err, "Unexpected error during rego validation")
-		require.True(t, results.Allowed(), "The input is not allowed by rego")
-
-		partialResults, err := opaEvaluator.PolicyEvaluator.Partial(context.TODO())
-		require.NoError(t, err, "Unexpected error during rego validation")
-
-		require.Len(t, partialResults.Queries, 1, "Rego policy allows illegal input")
-	})
-
-	t.Run("if header key not exists", func(t *testing.T) {
-		input := map[string]interface{}{
-			"headers": http.Header{},
-		}
-		inputBytes, _ := json.Marshal(input)
-
-		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, env)
-		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
-
-		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())
-		require.NoError(t, err, "Unexpected error during rego validation")
-		require.True(t, !results.Allowed(), "Rego policy allows illegal input")
-
-		partialResults, err := opaEvaluator.PolicyEvaluator.Partial(context.TODO())
-		require.NoError(t, err, "Unexpected error during rego validation")
-
-		require.Len(t, partialResults.Queries, 0, "Rego policy allows illegal input")
-	})
-}
-
-func TestGetOPAModuleConfig(t *testing.T) {
-	t.Run(`GetOPAModuleConfig fails because no key has been passed`, func(t *testing.T) {
-		ctx := context.Background()
-		env, err := GetOPAModuleConfig(ctx)
-		require.True(t, err != nil, "An error was expected.")
-		t.Logf("Expected error: %s - env: %+v", err.Error(), env)
-	})
-
-	t.Run(`GetOPAModuleConfig returns OPAEvaluator from context`, func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), OPAModuleConfigKey{}, &OPAModuleConfig{})
-		opaEval, err := GetOPAModuleConfig(ctx)
-		require.True(t, err == nil, "Unexpected error.")
-		require.True(t, opaEval != nil, "OPA Module config not found.")
-	})
-}
-
-func TestRouterInfoContext(t *testing.T) {
-	nullLogger, _ := test.NewNullLogger()
-	logger := logrus.NewEntry(nullLogger)
-
-	t.Run("GetRouterInfo fails because no key has been set", func(t *testing.T) {
-		ctx := context.Background()
-		routerInfo, err := GetRouterInfo(ctx)
-		require.EqualError(t, err, "no router info found")
-		require.Empty(t, routerInfo)
-	})
-
-	t.Run("WithRouterInfo not inside mux router - empty matched path", func(t *testing.T) {
-		ctx := context.Background()
-		req := httptest.NewRequest("GET", "/hello", nil)
-		ctx = WithRouterInfo(logger, ctx, req)
-		routerInfo, err := GetRouterInfo(ctx)
-		require.NoError(t, err)
-		require.Equal(t, RouterInfo{
-			MatchedPath:   "",
-			RequestedPath: "/hello",
-			Method:        "GET",
-		}, routerInfo)
-	})
-
-	t.Run("WithRouterInfo without router path - matched path is empty", func(t *testing.T) {
-		ctx := context.Background()
-		router := mux.NewRouter()
-
-		router.NewRoute().HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			ctx := WithRouterInfo(logger, ctx, req)
-
-			routerInfo, err := GetRouterInfo(ctx)
-			require.NoError(t, err)
-			require.Equal(t, RouterInfo{
-				MatchedPath:   "",
-				RequestedPath: "/hello",
-				Method:        "GET",
-			}, routerInfo)
-
-			w.Write([]byte("ok"))
-		})
-
-		w := httptest.NewRecorder()
-		req := httptest.NewRequest("GET", "/hello", nil)
-		router.ServeHTTP(w, req)
-
-		require.Equal(t, 200, w.Result().StatusCode)
-	})
-
-	t.Run("correctly get router info", func(t *testing.T) {
-		ctx := context.Background()
-		router := mux.NewRouter()
-
-		router.HandleFunc("/hello/{name}", func(w http.ResponseWriter, req *http.Request) {
-			ctx := WithRouterInfo(logger, ctx, req)
-
-			routerInfo, err := GetRouterInfo(ctx)
-			require.NoError(t, err)
-			require.Equal(t, RouterInfo{
-				MatchedPath:   "/hello/{name}",
-				RequestedPath: "/hello/my-username",
-				Method:        "GET",
-			}, routerInfo)
-
-			w.Write([]byte("ok"))
-		})
-
-		w := httptest.NewRecorder()
-		req := httptest.NewRequest("GET", "/hello/my-username", nil)
-		router.ServeHTTP(w, req)
-
-		require.Equal(t, 200, w.Result().StatusCode)
-	})
-
-	t.Run("correctly get router info with path prefix", func(t *testing.T) {
-		ctx := context.Background()
-		router := mux.NewRouter()
-
-		router.PathPrefix("/hello/").HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			ctx := WithRouterInfo(logger, ctx, req)
-
-			routerInfo, err := GetRouterInfo(ctx)
-			require.NoError(t, err)
-			require.Equal(t, RouterInfo{
-				MatchedPath:   "/hello/",
-				RequestedPath: "/hello/my-username",
-				Method:        "GET",
-			}, routerInfo)
-
-			w.Write([]byte("ok"))
-		})
-
-		w := httptest.NewRecorder()
-		req := httptest.NewRequest("GET", "/hello/my-username", nil)
-		router.ServeHTTP(w, req)
-
-		require.Equal(t, 200, w.Result().StatusCode)
-	})
-}
-
-func getResponseBody(t *testing.T, w *httptest.ResponseRecorder) []byte {
+func getJSONResponseBody[T any](t *testing.T, w *httptest.ResponseRecorder) *T {
 	t.Helper()
 
 	responseBody, err := io.ReadAll(w.Result().Body)
 	require.NoError(t, err)
 
-	return responseBody
-}
-
-func getJSONResponseBody[T any](t *testing.T, w *httptest.ResponseRecorder) *T {
-	t.Helper()
-
-	responseBody := getResponseBody(t, w)
 	out := new(T)
 	if err := json.Unmarshal(responseBody, out); err != nil {
 		require.Error(t, err, "fails to unmarshal")

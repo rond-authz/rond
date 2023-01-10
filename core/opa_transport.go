@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package core
 
 import (
 	"bytes"
@@ -25,6 +25,8 @@ import (
 
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/sirupsen/logrus"
@@ -36,9 +38,29 @@ type OPATransport struct {
 	context                  context.Context
 	logger                   *logrus.Entry
 	request                  *http.Request
-	permission               *RondConfig
+	permission               *openapi.RondConfig
 	partialResultsEvaluators PartialResultsEvaluators
 	env                      config.EnvironmentVariables
+}
+
+func NewOPATransport(
+	defaultTransport http.RoundTripper,
+	context context.Context,
+	logger *logrus.Entry,
+	req *http.Request,
+	permission *openapi.RondConfig,
+	partialResultsEvaluators PartialResultsEvaluators,
+	env config.EnvironmentVariables,
+) *OPATransport {
+	return &OPATransport{
+		http.DefaultTransport,
+		req.Context(),
+		logger,
+		req,
+		permission,
+		partialResultsEvaluators,
+		env,
+	}
 }
 
 func is2XX(statusCode int) bool {
@@ -67,8 +89,8 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	if !hasApplicationJSONContentType(resp.Header) {
-		t.logger.WithField("foundContentType", resp.Header.Get(ContentTypeHeaderKey)).Debug("found content type")
+	if !utils.HasApplicationJSONContentType(resp.Header) {
+		t.logger.WithField("foundContentType", resp.Header.Get(utils.ContentTypeHeaderKey)).Debug("found content type")
 		t.responseWithError(resp, fmt.Errorf("content-type is not application/json"), http.StatusInternalServerError)
 		return resp, nil
 	}
@@ -84,7 +106,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	input, err := createRegoQueryInput(t.request, t.env, t.permission.Options.EnableResourcePermissionsMapOptimization, userInfo, decodedBody)
+	input, err := CreateRegoQueryInput(t.request, t.env, t.permission.Options.EnableResourcePermissionsMapOptimization, userInfo, decodedBody)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusInternalServerError)
 		return resp, nil
@@ -100,7 +122,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	bodyToProxy, err := evaluator.evaluate(t.logger)
+	bodyToProxy, err := evaluator.Evaluate(t.logger)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusForbidden)
 		return resp, nil
@@ -117,9 +139,9 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 
 func (t *OPATransport) responseWithError(resp *http.Response, err error, statusCode int) {
 	t.logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("error while evaluating column filter query")
-	message := NO_PERMISSIONS_ERROR_MESSAGE
+	message := utils.NO_PERMISSIONS_ERROR_MESSAGE
 	if statusCode != http.StatusForbidden {
-		message = GENERIC_BUSINESS_ERROR_MESSAGE
+		message = utils.GENERIC_BUSINESS_ERROR_MESSAGE
 	}
 	content, _ := json.Marshal(types.RequestError{
 		StatusCode: statusCode,

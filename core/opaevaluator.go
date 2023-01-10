@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package core
 
 import (
 	"bytes"
@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -29,6 +31,8 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/opatranslator"
+	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/rond-authz/rond/custom_builtins"
@@ -47,7 +51,7 @@ type Evaluator interface {
 	Partial(ctx context.Context) (*rego.PartialQueries, error)
 }
 
-var unknowns = []string{"data.resources"}
+var Unknowns = []string{"data.resources"}
 
 type OPAEvaluator struct {
 	PolicyEvaluator Evaluator
@@ -62,7 +66,7 @@ type PartialEvaluator struct {
 	PartialEvaluator *rego.PartialResult
 }
 
-func createPartialEvaluator(policy string, ctx context.Context, mongoClient types.IMongoClient, oas *OpenAPISpec, opaModuleConfig *OPAModuleConfig, env config.EnvironmentVariables) (*PartialEvaluator, error) {
+func createPartialEvaluator(policy string, ctx context.Context, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, env config.EnvironmentVariables) (*PartialEvaluator, error) {
 	glogger.Get(ctx).Infof("precomputing rego query for allow policy: %s", policy)
 
 	policyEvaluatorTime := time.Now()
@@ -76,7 +80,7 @@ func createPartialEvaluator(policy string, ctx context.Context, mongoClient type
 	return nil, err
 }
 
-func setupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *OpenAPISpec, opaModuleConfig *OPAModuleConfig, env config.EnvironmentVariables) (PartialResultsEvaluators, error) {
+func SetupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, env config.EnvironmentVariables) (PartialResultsEvaluators, error) {
 	policyEvaluators := PartialResultsEvaluators{}
 	for path, OASContent := range oas.Paths {
 		for verb, verbConfig := range OASContent {
@@ -165,7 +169,7 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 		rego.Query(queryString),
 		rego.Module(opaModuleConfig.Name, opaModuleConfig.Content),
 		rego.ParsedInput(inputTerm.Value),
-		rego.Unknowns(unknowns),
+		rego.Unknowns(Unknowns),
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
 		rego.EnablePrintStatements(env.LogLevel == config.TraceLogLevel),
 		rego.PrintHook(NewPrintHook(os.Stdout, policy)),
@@ -181,7 +185,7 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 	}, nil
 }
 
-func createQueryEvaluator(ctx context.Context, logger *logrus.Entry, req *http.Request, env config.EnvironmentVariables, policy string, input []byte, responseBody interface{}) (*OPAEvaluator, error) {
+func CreateQueryEvaluator(ctx context.Context, logger *logrus.Entry, req *http.Request, env config.EnvironmentVariables, policy string, input []byte, responseBody interface{}) (*OPAEvaluator, error) {
 	opaModuleConfig, err := GetOPAModuleConfig(req.Context())
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no OPA module configuration found in context")
@@ -209,7 +213,7 @@ func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 	options := []func(*rego.Rego){
 		rego.Query(queryString),
 		rego.Module(opaModuleConfig.Name, opaModuleConfig.Content),
-		rego.Unknowns(unknowns),
+		rego.Unknowns(Unknowns),
 		rego.EnablePrintStatements(env.LogLevel == config.TraceLogLevel),
 		rego.PrintHook(NewPrintHook(os.Stdout, policy)),
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
@@ -252,7 +256,7 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 	if err != nil {
 		return nil, fmt.Errorf("policy Evaluation has failed when partially evaluating the query: %s", err.Error())
 	}
-	routerInfo, err := GetRouterInfo(evaluator.Context)
+	routerInfo, err := openapi.GetRouterInfo(evaluator.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -291,13 +295,13 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 	return q, nil
 }
 
-func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, error) {
+func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, error) {
 	opaEvaluationTimeStart := time.Now()
 	results, err := evaluator.PolicyEvaluator.Eval(evaluator.Context)
 	if err != nil {
 		return nil, fmt.Errorf("policy Evaluation has failed when evaluating the query: %s", err.Error())
 	}
-	routerInfo, err := GetRouterInfo(evaluator.Context)
+	routerInfo, err := openapi.GetRouterInfo(evaluator.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -349,24 +353,24 @@ func (evaluator *OPAEvaluator) evaluate(logger *logrus.Entry) (interface{}, erro
 	return nil, fmt.Errorf("RBAC policy evaluation failed, user is not allowed")
 }
 
-func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission *RondConfig) (interface{}, primitive.M, error) {
+func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission *openapi.RondConfig) (interface{}, primitive.M, error) {
 	if permission.RequestFlow.GenerateQuery {
 		query, err := evaluator.partiallyEvaluate(logger)
 		return nil, query, err
 	}
-	dataFromEvaluation, err := evaluator.evaluate(logger)
+	dataFromEvaluation, err := evaluator.Evaluate(logger)
 	if err != nil {
 		return nil, nil, err
 	}
 	return dataFromEvaluation, nil, nil
 }
 
-func createRegoQueryInput(req *http.Request, env config.EnvironmentVariables, enableResourcePermissionsMapOptimization bool, user types.User, responseBody interface{}) ([]byte, error) {
+func CreateRegoQueryInput(req *http.Request, env config.EnvironmentVariables, enableResourcePermissionsMapOptimization bool, user types.User, responseBody interface{}) ([]byte, error) {
 	requestContext := req.Context()
 	logger := glogger.Get(requestContext)
 	opaInputCreationTime := time.Now()
 	userProperties := make(map[string]interface{})
-	_, err := unmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
+	_, err := utils.UnmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
 	if err != nil {
 		return nil, fmt.Errorf("user properties header is not valid: %s", err.Error())
 	}
@@ -406,7 +410,7 @@ func createRegoQueryInput(req *http.Request, env config.EnvironmentVariables, en
 		},
 	}
 
-	shouldParseJSONBody := hasApplicationJSONContentType(req.Header) &&
+	shouldParseJSONBody := utils.HasApplicationJSONContentType(req.Header) &&
 		req.ContentLength > 0 &&
 		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete)
 
@@ -470,4 +474,92 @@ func GetPartialResultsEvaluators(requestContext context.Context) (PartialResults
 	}
 
 	return evaluators, nil
+}
+
+// TODO: This should be made private in the future.
+type OPAModuleConfigKey struct{}
+
+type OPAModuleConfig struct {
+	Name    string
+	Content string
+}
+
+func WithOPAModuleConfig(requestContext context.Context, permission *OPAModuleConfig) context.Context {
+	return context.WithValue(requestContext, OPAModuleConfigKey{}, permission)
+}
+
+// GetOPAModuleConfig can be used by a request handler to get OPAModuleConfig instance from its context.
+func GetOPAModuleConfig(requestContext context.Context) (*OPAModuleConfig, error) {
+	permission, ok := requestContext.Value(OPAModuleConfigKey{}).(*OPAModuleConfig)
+	if !ok {
+		return nil, fmt.Errorf("no opa module config found in request context")
+	}
+
+	return permission, nil
+}
+
+type Input struct {
+	Request    InputRequest  `json:"request"`
+	Response   InputResponse `json:"response"`
+	ClientType string        `json:"clientType,omitempty"`
+	User       InputUser     `json:"user"`
+}
+type InputRequest struct {
+	Body       interface{}       `json:"body,omitempty"`
+	Headers    http.Header       `json:"headers,omitempty"`
+	Query      url.Values        `json:"query,omitempty"`
+	PathParams map[string]string `json:"pathParams,omitempty"`
+	Method     string            `json:"method"`
+	Path       string            `json:"path"`
+}
+
+type InputResponse struct {
+	Body interface{} `json:"body,omitempty"`
+}
+
+type InputUser struct {
+	Properties             map[string]interface{}   `json:"properties,omitempty"`
+	Groups                 []string                 `json:"groups,omitempty"`
+	Bindings               []types.Binding          `json:"bindings,omitempty"`
+	Roles                  []types.Role             `json:"roles,omitempty"`
+	ResourcePermissionsMap PermissionsOnResourceMap `json:"resourcePermissionsMap,omitempty"`
+}
+
+type PermissionOnResourceKey string
+
+type PermissionsOnResourceMap map[PermissionOnResourceKey]bool
+
+func buildPermissionOnResourceKey(permission string, resourceType string, resourceId string) PermissionOnResourceKey {
+	return PermissionOnResourceKey(fmt.Sprintf("%s:%s:%s", permission, resourceType, resourceId))
+}
+
+func LoadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
+	var regoModulePath string
+	//#nosec G104 -- Produces a false positive
+	filepath.Walk(rootDirectory, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if regoModulePath != "" {
+			return nil
+		}
+
+		if filepath.Ext(path) == ".rego" {
+			regoModulePath = path
+		}
+		return nil
+	})
+
+	if regoModulePath == "" {
+		return nil, fmt.Errorf("no rego module found in directory")
+	}
+	fileContent, err := utils.ReadFile(regoModulePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed rego file read: %s", err.Error())
+	}
+
+	return &OPAModuleConfig{
+		Name:    filepath.Base(regoModulePath),
+		Content: string(fileContent),
+	}, nil
 }

@@ -29,9 +29,13 @@ import (
 	"time"
 
 	"github.com/mia-platform/glogger/v2"
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
+	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/service"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/sirupsen/logrus"
@@ -712,7 +716,7 @@ func TestEntrypoint(t *testing.T) {
 			require.NoError(t, err)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
-			req.Header.Set(ContentTypeHeaderKey, "application/json")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
 			client := &http.Client{}
 			resp, err := client.Do(req)
 			require.Equal(t, "user1", resp.Header.Get("someuserheader"))
@@ -758,7 +762,7 @@ func TestEntrypoint(t *testing.T) {
 			require.NoError(t, err)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
-			req.Header.Set(ContentTypeHeaderKey, "application/json")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
 			client := &http.Client{}
 			resp, err := client.Do(req)
 
@@ -795,7 +799,7 @@ func TestEntrypoint(t *testing.T) {
 
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
-			req.Header.Set(ContentTypeHeaderKey, "application/json")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
 			client := &http.Client{}
 			resp, err := client.Do(req)
 
@@ -1672,7 +1676,7 @@ func TestSetupRouterStandaloneMode(t *testing.T) {
 		BindingsCrudServiceURL:   "http://crud:3030",
 		AdditionalHeadersToProxy: "miauserid",
 	}
-	opa := &OPAModuleConfig{
+	opa := &core.OPAModuleConfig{
 		Name: "policies",
 		Content: `package policies
 test_policy { true }
@@ -1683,19 +1687,23 @@ filter_policy {
 }
 `,
 	}
-	oas := &OpenAPISpec{
-		Paths: OpenAPIPaths{
-			"/evalapi": PathVerbs{
-				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "test_policy"},
+	oas := &openapi.OpenAPISpec{
+		Paths: openapi.OpenAPIPaths{
+			"/evalapi": openapi.PathVerbs{
+				"get": openapi.VerbConfig{
+					PermissionV2: &openapi.RondConfig{
+						RequestFlow: openapi.RequestFlow{PolicyName: "test_policy"},
 					},
 				},
 			},
-			"/evalfilter": PathVerbs{
-				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "filter_policy", GenerateQuery: true, QueryOptions: QueryOptions{HeaderName: "my-query"}},
+			"/evalfilter": openapi.PathVerbs{
+				"get": openapi.VerbConfig{
+					PermissionV2: &openapi.RondConfig{
+						RequestFlow: openapi.RequestFlow{
+							PolicyName:    "filter_policy",
+							GenerateQuery: true,
+							QueryOptions:  openapi.QueryOptions{HeaderName: "my-query"},
+						},
 					},
 				},
 			},
@@ -1703,10 +1711,10 @@ filter_policy {
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := setupEvaluators(ctx, mongoClient, oas, opa, env)
+	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, env)
 	require.NoError(t, err, "unexpected error")
 
-	router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+	router, err := service.SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("some eval API", func(t *testing.T) {
@@ -1758,7 +1766,7 @@ filter_policy {
 	})
 
 	t.Run("grant API with headers to proxy", func(t *testing.T) {
-		reqBody := GrantRequestBody{
+		reqBody := service.GrantRequestBody{
 			ResourceID:  "my-company",
 			Subjects:    []string{"subj"},
 			Groups:      []string{"group1"},
@@ -1823,7 +1831,7 @@ func TestSetupRouterMetrics(t *testing.T) {
 		AdditionalHeadersToProxy: "miauserid",
 		ExposeMetrics:            true,
 	}
-	opa := &OPAModuleConfig{
+	opa := &core.OPAModuleConfig{
 		Name: "policies",
 		Content: `package policies
 test_policy { true }
@@ -1834,19 +1842,23 @@ filter_policy {
 }
 `,
 	}
-	oas := &OpenAPISpec{
-		Paths: OpenAPIPaths{
-			"/evalapi": PathVerbs{
-				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "test_policy"},
+	oas := &openapi.OpenAPISpec{
+		Paths: openapi.OpenAPIPaths{
+			"/evalapi": openapi.PathVerbs{
+				"get": openapi.VerbConfig{
+					PermissionV2: &openapi.RondConfig{
+						RequestFlow: openapi.RequestFlow{PolicyName: "test_policy"},
 					},
 				},
 			},
-			"/evalfilter": PathVerbs{
-				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "filter_policy", GenerateQuery: true, QueryOptions: QueryOptions{HeaderName: "my-query"}},
+			"/evalfilter": openapi.PathVerbs{
+				"get": openapi.VerbConfig{
+					PermissionV2: &openapi.RondConfig{
+						RequestFlow: openapi.RequestFlow{
+							PolicyName:    "filter_policy",
+							GenerateQuery: true,
+							QueryOptions:  openapi.QueryOptions{HeaderName: "my-query"},
+						},
 					},
 				},
 			},
@@ -1854,10 +1866,10 @@ filter_policy {
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := setupEvaluators(ctx, mongoClient, oas, opa, env)
+	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, env)
 	require.NoError(t, err, "unexpected error")
 
-	router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+	router, err := service.SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("metrics API exposed correctly", func(t *testing.T) {
@@ -1870,4 +1882,13 @@ filter_policy {
 		responseBody := getResponseBody(t, w)
 		require.Contains(t, string(responseBody), "go_gc_duration_seconds")
 	})
+}
+
+func getResponseBody(t *testing.T, w *httptest.ResponseRecorder) []byte {
+	t.Helper()
+
+	responseBody, err := io.ReadAll(w.Result().Body)
+	require.NoError(t, err)
+
+	return responseBody
 }

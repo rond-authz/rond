@@ -12,23 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"path"
-	"regexp"
 	"sort"
 	"strings"
 
 	swagger "github.com/davidebianchi/gswagger"
+	"github.com/davidebianchi/gswagger/support/gorilla"
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/metrics"
+	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
+	"github.com/mia-platform/glogger/v2"
+	"github.com/sirupsen/logrus"
 )
 
 var routesToNotProxy = utils.Union(statusRoutes, []string{metrics.MetricsRoutePath})
@@ -87,7 +96,86 @@ var grantDefinitions = swagger.Definitions{
 	},
 }
 
-func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVariables) {
+func SetupRouter(
+	log *logrus.Logger,
+	env config.EnvironmentVariables,
+	opaModuleConfig *core.OPAModuleConfig,
+	oas *openapi.OpenAPISpec,
+	policiesEvaluators core.PartialResultsEvaluators,
+	mongoClient *mongoclient.MongoClient,
+) (*mux.Router, error) {
+	router := mux.NewRouter().UseEncodedPath()
+	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
+	serviceName := "rönd"
+	StatusRoutes(router, serviceName, env.ServiceVersion)
+
+	registry := prometheus.NewRegistry()
+	m := metrics.SetupMetrics("rond")
+	if env.ExposeMetrics {
+		m.MustRegister(registry)
+		metrics.MetricsRoute(router, registry)
+	}
+	router.Use(metrics.RequestMiddleware(m))
+
+	router.Use(config.RequestMiddlewareEnvironments(env))
+
+	evalRouter := router.NewRoute().Subrouter()
+	if env.Standalone {
+		router.Use(helpers.AddHeadersToProxyMiddleware(log, env.GetAdditionalHeadersToProxy()))
+
+		swaggerRouter, err := swagger.NewRouter(gorilla.NewRouter(router), swagger.Options{
+			Context: context.Background(),
+			Openapi: &openapi3.T{
+				Info: &openapi3.Info{
+					Title:   serviceName,
+					Version: env.ServiceVersion,
+				},
+			},
+			JSONDocumentationPath: "/openapi/json",
+			YAMLDocumentationPath: "/openapi/yaml",
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		// standalone routes
+		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings/resource/{resourceType}", revokeHandler, revokeDefinitions); err != nil {
+			return nil, err
+		}
+		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings/resource/{resourceType}", grantHandler, grantDefinitions); err != nil {
+			return nil, err
+		}
+		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings", revokeHandler, revokeDefinitions); err != nil {
+			return nil, err
+		}
+		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings", grantHandler, grantDefinitions); err != nil {
+			return nil, err
+		}
+
+		if err = swaggerRouter.GenerateAndExposeOpenapi(); err != nil {
+			return nil, err
+		}
+	}
+
+	evalRouter.Use(core.OPAMiddleware(opaModuleConfig, oas, &env, policiesEvaluators, routesToNotProxy))
+
+	if mongoClient != nil {
+		evalRouter.Use(mongoclient.MongoClientInjectorMiddleware(mongoClient))
+	}
+
+	setupRoutes(evalRouter, oas, env)
+
+	//#nosec G104 -- Produces a false positive
+	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		path, _ := route.GetPathTemplate()
+		log.Tracef("Registered path: %s", path)
+		return nil
+	})
+
+	return router, nil
+}
+
+func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.EnvironmentVariables) {
 	var documentationPermission string
 	documentationPathInOAS := oas.Paths[env.TargetServiceOASPath]
 	if documentationPathInOAS != nil {
@@ -104,8 +192,8 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVar
 	for path, pathMethods := range oas.Paths {
 		paths = append(paths, path)
 		for method := range pathMethods {
-			if method == AllHTTPMethod {
-				methods[path] = OasSupportedHTTPMethods
+			if method == openapi.AllHTTPMethod {
+				methods[path] = openapi.OasSupportedHTTPMethods
 				continue
 			}
 			if methods[path] == nil {
@@ -127,17 +215,17 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVar
 		}
 		if strings.Contains(pathToRegister, "*") {
 			pathWithoutAsterisk := strings.ReplaceAll(pathToRegister, "*", "")
-			router.PathPrefix(convertPathVariablesToBrackets(pathWithoutAsterisk)).HandlerFunc(rbacHandler).Methods(methods[path]...)
+			router.PathPrefix(openapi.ConvertPathVariablesToBrackets(pathWithoutAsterisk)).HandlerFunc(rbacHandler).Methods(methods[path]...)
 			continue
 		}
 		if path == env.TargetServiceOASPath && documentationPermission == "" {
-			router.HandleFunc(convertPathVariablesToBrackets(pathToRegister), alwaysProxyHandler).Methods(http.MethodGet)
+			router.HandleFunc(openapi.ConvertPathVariablesToBrackets(pathToRegister), alwaysProxyHandler).Methods(http.MethodGet)
 			continue
 		}
-		router.HandleFunc(convertPathVariablesToBrackets(pathToRegister), rbacHandler).Methods(methods[path]...)
+		router.HandleFunc(openapi.ConvertPathVariablesToBrackets(pathToRegister), rbacHandler).Methods(methods[path]...)
 	}
 	if documentationPathInOAS == nil {
-		router.HandleFunc(convertPathVariablesToBrackets(env.TargetServiceOASPath), alwaysProxyHandler)
+		router.HandleFunc(openapi.ConvertPathVariablesToBrackets(env.TargetServiceOASPath), alwaysProxyHandler)
 	}
 	// FIXME: All the routes don't inserted above are anyway handled by rbacHandler.
 	//        Maybe the code above can be cleaned.
@@ -148,16 +236,4 @@ func setupRoutes(router *mux.Router, oas *OpenAPISpec, env config.EnvironmentVar
 		fallbackRoute = fmt.Sprintf("%s/", path.Join(env.PathPrefixStandalone, fallbackRoute))
 	}
 	router.PathPrefix(fallbackRoute).HandlerFunc(rbacHandler)
-}
-
-var matchColons = regexp.MustCompile(`\/:(\w+)`)
-
-func convertPathVariablesToBrackets(path string) string {
-	return matchColons.ReplaceAllString(path, "/{$1}")
-}
-
-var matchBrackets = regexp.MustCompile(`\/{(\w+)}`)
-
-func convertPathVariablesToColons(path string) string {
-	return matchBrackets.ReplaceAllString(path, "/:$1")
 }

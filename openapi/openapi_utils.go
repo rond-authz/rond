@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package openapi
 
 import (
 	"context"
@@ -22,19 +22,19 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
-	"github.com/rond-authz/rond/types"
 
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bunrouter"
 )
+
+const HTTPScheme = "http"
 
 var AllHTTPMethod = "all"
 
@@ -46,6 +46,9 @@ var OasSupportedHTTPMethods = []string{
 	http.MethodDelete,
 	http.MethodHead,
 }
+var (
+	ErrRequestFailed = errors.New("request failed")
+)
 
 var ErrNotFoundOASDefinition = errors.New("not found oas definition")
 
@@ -114,41 +117,6 @@ type OpenAPISpec struct {
 	Paths OpenAPIPaths `json:"paths"`
 }
 
-type Input struct {
-	Request    InputRequest  `json:"request"`
-	Response   InputResponse `json:"response"`
-	ClientType string        `json:"clientType,omitempty"`
-	User       InputUser     `json:"user"`
-}
-type InputRequest struct {
-	Body       interface{}       `json:"body,omitempty"`
-	Headers    http.Header       `json:"headers,omitempty"`
-	Query      url.Values        `json:"query,omitempty"`
-	PathParams map[string]string `json:"pathParams,omitempty"`
-	Method     string            `json:"method"`
-	Path       string            `json:"path"`
-}
-
-type InputResponse struct {
-	Body interface{} `json:"body,omitempty"`
-}
-
-type PermissionOnResourceKey string
-
-type PermissionsOnResourceMap map[PermissionOnResourceKey]bool
-
-func buildPermissionOnResourceKey(permission string, resourceType string, resourceId string) PermissionOnResourceKey {
-	return PermissionOnResourceKey(fmt.Sprintf("%s:%s:%s", permission, resourceType, resourceId))
-}
-
-type InputUser struct {
-	Properties             map[string]interface{}   `json:"properties,omitempty"`
-	Groups                 []string                 `json:"groups,omitempty"`
-	Bindings               []types.Binding          `json:"bindings,omitempty"`
-	Roles                  []types.Role             `json:"roles,omitempty"`
-	ResourcePermissionsMap PermissionsOnResourceMap `json:"resourcePermissionsMap,omitempty"`
-}
-
 func cleanWildcard(path string) string {
 	if strings.HasSuffix(path, "*") {
 		// is a wildcard parameter that matches everything and must always be at the end of the route
@@ -193,7 +161,7 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 	routeMap := oas.createRoutesMap()
 	for OASPath, OASContent := range oas.Paths {
 
-		OASPathCleaned := convertPathVariablesToColons(cleanWildcard(OASPath))
+		OASPathCleaned := ConvertPathVariablesToColons(cleanWildcard(OASPath))
 		for method, methodContent := range OASContent {
 			scopedMethod := strings.ToUpper(method)
 
@@ -314,27 +282,18 @@ func fetchOpenAPI(url string) (*OpenAPISpec, error) {
 	return deserializeSpec(bodyBytes, ErrRequestFailed)
 }
 
-func readFile(path string) ([]byte, error) {
-	//#nosec G304 -- This is an expected behaviour
-	fileContentByte, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrFileLoadFailed, err.Error())
-	}
-	return fileContentByte, nil
-}
-
-func loadOASFile(APIPermissionsFilePath string) (*OpenAPISpec, error) {
-	fileContentByte, err := readFile(APIPermissionsFilePath)
+func LoadOASFile(APIPermissionsFilePath string) (*OpenAPISpec, error) {
+	fileContentByte, err := utils.ReadFile(APIPermissionsFilePath)
 	if err != nil {
 		return nil, err
 	}
-	return deserializeSpec(fileContentByte, ErrFileLoadFailed)
+	return deserializeSpec(fileContentByte, utils.ErrFileLoadFailed)
 }
 
-func loadOASFromFileOrNetwork(log *logrus.Logger, env config.EnvironmentVariables) (*OpenAPISpec, error) {
+func LoadOASFromFileOrNetwork(log *logrus.Logger, env config.EnvironmentVariables) (*OpenAPISpec, error) {
 	if env.APIPermissionsFilePath != "" {
 		log.WithField("oasFilePath", env.APIPermissionsFilePath).Debug("Attempt to load OAS from file")
-		oas, err := loadOASFile(env.APIPermissionsFilePath)
+		oas, err := LoadOASFile(env.APIPermissionsFilePath)
 		if err != nil {
 			log.WithFields(logrus.Fields{
 				"APIPermissionsFilePath": env.APIPermissionsFilePath,
@@ -381,4 +340,16 @@ func GetXPermission(requestContext context.Context) (*RondConfig, error) {
 	}
 
 	return permission, nil
+}
+
+var matchColons = regexp.MustCompile(`\/:(\w+)`)
+
+func ConvertPathVariablesToBrackets(path string) string {
+	return matchColons.ReplaceAllString(path, "/{$1}")
+}
+
+var matchBrackets = regexp.MustCompile(`\/{(\w+)}`)
+
+func ConvertPathVariablesToColons(path string) string {
+	return matchBrackets.ReplaceAllString(path, "/:$1")
 }

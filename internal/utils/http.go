@@ -12,28 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package utils
 
 import (
 	"encoding/json"
 	"net/http"
 	"strings"
 
-	"github.com/rond-authz/rond/types"
+	"github.com/rond-authz/rond/internal/types"
 )
 
 const ContentTypeHeaderKey = "content-type"
 const JSONContentTypeHeader = "application/json"
 
-func hasApplicationJSONContentType(headers http.Header) bool {
+func UnmarshalHeader(headers http.Header, headerKey string, v interface{}) (bool, error) {
+	headerValueStringified := headers.Get(headerKey)
+	if headerValueStringified != "" {
+		err := json.Unmarshal([]byte(headerValueStringified), &v)
+		return err == nil, err
+	}
+	return false, nil
+}
+
+func HasApplicationJSONContentType(headers http.Header) bool {
 	return strings.HasPrefix(headers.Get(ContentTypeHeaderKey), JSONContentTypeHeader)
 }
 
-func failResponse(w http.ResponseWriter, technicalError, businessError string) {
-	failResponseWithCode(w, http.StatusInternalServerError, technicalError, businessError)
+func FailResponse(w http.ResponseWriter, technicalError, businessError string) {
+	FailResponseWithCode(w, http.StatusInternalServerError, technicalError, businessError)
 }
 
-func failResponseWithCode(w http.ResponseWriter, statusCode int, technicalError, businessError string) {
+func FailResponseWithCode(w http.ResponseWriter, statusCode int, technicalError, businessError string) {
 	w.Header().Set(ContentTypeHeaderKey, JSONContentTypeHeader)
 	w.WriteHeader(statusCode)
 	content, err := json.Marshal(types.RequestError{
@@ -47,13 +56,4 @@ func failResponseWithCode(w http.ResponseWriter, statusCode int, technicalError,
 
 	//#nosec G104 -- Intended to avoid disruptive code changes
 	w.Write(content)
-}
-
-func unmarshalHeader(headers http.Header, headerKey string, v interface{}) (bool, error) {
-	headerValueStringified := headers.Get(headerKey)
-	if headerValueStringified != "" {
-		err := json.Unmarshal([]byte(headerValueStringified), &v)
-		return err == nil, err
-	}
-	return false, nil
 }

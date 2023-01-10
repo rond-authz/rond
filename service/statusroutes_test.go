@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package service
 
 import (
 	"context"
@@ -23,8 +23,10 @@ import (
 	"testing"
 
 	"github.com/mia-platform/glogger/v2"
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/openapi"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -88,20 +90,21 @@ func TestStatusRoutes(testCase *testing.T) {
 }
 
 func TestStatusRoutesIntegration(t *testing.T) {
+	envs := config.EnvironmentVariables{}
 	log, _ := test.NewNullLogger()
 	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
-	opa := &OPAModuleConfig{
+	opa := &core.OPAModuleConfig{
 		Name: "policies",
 		Content: `package policies
 test_policy { true }
 `,
 	}
-	oas := &OpenAPISpec{
-		Paths: OpenAPIPaths{
-			"/evalapi": PathVerbs{
-				"get": VerbConfig{
-					PermissionV1: &XPermission{
+	oas := &openapi.OpenAPISpec{
+		Paths: openapi.OpenAPIPaths{
+			"/evalapi": openapi.PathVerbs{
+				"get": openapi.VerbConfig{
+					PermissionV1: &openapi.XPermission{
 						AllowPermission: "test_policy",
 					},
 				},
@@ -110,7 +113,7 @@ test_policy { true }
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := setupEvaluators(ctx, mongoClient, oas, opa, envs)
+	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, envs)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("non standalone", func(t *testing.T) {
@@ -119,7 +122,7 @@ test_policy { true }
 			TargetServiceHost:    "my-service:4444",
 			PathPrefixStandalone: "/my-prefix",
 		}
-		router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+		router, err := SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
 		require.NoError(t, err, "unexpected error")
 
 		t.Run("/-/rbac-ready", func(t *testing.T) {
@@ -152,7 +155,7 @@ test_policy { true }
 			PathPrefixStandalone: "/my-prefix",
 			ServiceVersion:       "latest",
 		}
-		router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+		router, err := SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
 		require.NoError(t, err, "unexpected error")
 		t.Run("/-/rbac-ready", func(t *testing.T) {
 			w := httptest.NewRecorder()

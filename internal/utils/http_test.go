@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package utils
 
 import (
 	"encoding/json"
@@ -21,8 +21,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rond-authz/rond/types"
-
+	"github.com/rond-authz/rond/internal/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,7 +38,7 @@ func TestUnmarshalHeader(t *testing.T) {
 		headers := http.Header{}
 		var userProperties map[string]interface{}
 
-		ok, err := unmarshalHeader(headers, userPropertiesHeaderKey, &userProperties)
+		ok, err := UnmarshalHeader(headers, userPropertiesHeaderKey, &userProperties)
 
 		require.True(t, !ok, "Unmarshal not existing header")
 		require.NoError(t, err, "Unexpected error if doesn't exist header")
@@ -50,7 +49,7 @@ func TestUnmarshalHeader(t *testing.T) {
 		headers.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
 		var userProperties string
 
-		ok, err := unmarshalHeader(headers, userPropertiesHeaderKey, &userProperties)
+		ok, err := UnmarshalHeader(headers, userPropertiesHeaderKey, &userProperties)
 		require.False(t, ok, "Unexpected success during unmarshalling")
 		var unmarshalErr = &json.UnmarshalTypeError{}
 		require.ErrorAs(t, err, &unmarshalErr, "Unexpected error on unmarshalling")
@@ -61,7 +60,7 @@ func TestUnmarshalHeader(t *testing.T) {
 		headers.Set(userPropertiesHeaderKey, string(mockedUserPropertiesStringified))
 		var userProperties map[string]interface{}
 
-		ok, err := unmarshalHeader(headers, userPropertiesHeaderKey, &userProperties)
+		ok, err := UnmarshalHeader(headers, userPropertiesHeaderKey, &userProperties)
 		require.True(t, ok, "Unexpected failure")
 		require.NoError(t, err, "Unexpected error")
 	})
@@ -70,7 +69,7 @@ func TestUnmarshalHeader(t *testing.T) {
 func TestFailResponseWithCode(t *testing.T) {
 	w := httptest.NewRecorder()
 
-	failResponseWithCode(w, http.StatusInternalServerError, "The Error", "The Message")
+	FailResponseWithCode(w, http.StatusInternalServerError, "The Error", "The Message")
 	require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 
 	require.Equal(t, JSONContentTypeHeader, w.Result().Header.Get(ContentTypeHeaderKey))

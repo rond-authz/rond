@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package core
 
 import (
 	"bytes"
@@ -28,6 +28,8 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -85,6 +87,7 @@ func TestIs2xx(t *testing.T) {
 }
 
 func TestOPATransportResponseWithError(t *testing.T) {
+	envs := config.EnvironmentVariables{}
 	logger, _ := test.NewNullLogger()
 
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/some-api", nil)
@@ -113,7 +116,7 @@ func TestOPATransportResponseWithError(t *testing.T) {
 		require.Nil(t, err)
 		expectedBytes, err := json.Marshal(types.RequestError{
 			StatusCode: http.StatusInternalServerError,
-			Message:    GENERIC_BUSINESS_ERROR_MESSAGE,
+			Message:    utils.GENERIC_BUSINESS_ERROR_MESSAGE,
 			Error:      "some error",
 		})
 		require.Nil(t, err)
@@ -135,7 +138,7 @@ func TestOPATransportResponseWithError(t *testing.T) {
 		require.Nil(t, err)
 		expectedBytes, err := json.Marshal(types.RequestError{
 			StatusCode: http.StatusForbidden,
-			Message:    NO_PERMISSIONS_ERROR_MESSAGE,
+			Message:    utils.NO_PERMISSIONS_ERROR_MESSAGE,
 			Error:      "some error",
 		})
 		require.Nil(t, err)
@@ -359,8 +362,8 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			req.Context(),
 			logrus.NewEntry(logger),
 			req,
-			&RondConfig{
-				ResponseFlow: ResponseFlow{PolicyName: "my_policy"},
+			&openapi.RondConfig{
+				ResponseFlow: openapi.ResponseFlow{PolicyName: "my_policy"},
 			},
 			PartialResultsEvaluators{"my_policy": {}},
 			envs,
