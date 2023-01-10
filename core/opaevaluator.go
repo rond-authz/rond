@@ -476,6 +476,7 @@ func GetPartialResultsEvaluators(requestContext context.Context) (PartialResults
 	return evaluators, nil
 }
 
+// TODO: This should be made private in the future.
 type OPAModuleConfigKey struct{}
 
 type OPAModuleConfig struct {

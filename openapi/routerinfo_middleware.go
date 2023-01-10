@@ -25,6 +25,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// TODO: This should be made private in the future.
 type RouterInfoKey struct{}
 
 type RouterInfo struct {
