@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -89,8 +88,7 @@ func TestGetEnvOrDie(t *testing.T) {
 			{name: "TARGET_SERVICE_HOST", value: "http://localhost:3000"},
 		}
 		envs := append(requiredEnvs, otherEnvs...)
-		unsetEnvs := setEnvs(envs)
-		defer unsetEnvs()
+		setEnvs(t, envs)
 
 		actualEnvs := GetEnvOrDie()
 		expectedEnvs := defaultAndRequiredEnvironmentVariables
@@ -105,8 +103,7 @@ func TestGetEnvOrDie(t *testing.T) {
 			{name: "BINDINGS_CRUD_SERVICE_URL", value: "http://crud-client"},
 		}
 		envs := append(requiredEnvs, otherEnvs...)
-		unsetEnvs := setEnvs(envs)
-		defer unsetEnvs()
+		setEnvs(t, envs)
 
 		actualEnvs := GetEnvOrDie()
 		expectedEnvs := defaultAndRequiredEnvironmentVariables
@@ -121,8 +118,7 @@ func TestGetEnvOrDie(t *testing.T) {
 			{name: "STANDALONE", value: "true"},
 		}
 		envs := append(requiredEnvs, otherEnvs...)
-		unsetEnvs := setEnvs(envs)
-		defer unsetEnvs()
+		setEnvs(t, envs)
 
 		defer func() {
 			r := recover()
@@ -139,8 +135,7 @@ func TestGetEnvOrDie(t *testing.T) {
 			{name: "STANDALONE", value: "false"},
 		}
 		envs := append(requiredEnvs, otherEnvs...)
-		unsetEnvs := setEnvs(envs)
-		defer unsetEnvs()
+		setEnvs(t, envs)
 
 		require.PanicsWithError(t, fmt.Sprintf("missing environment variables, one of %s or %s set to true is required", TargetServiceHostEnvKey, StandaloneEnvKey), func() {
 			GetEnvOrDie()
@@ -150,8 +145,7 @@ func TestGetEnvOrDie(t *testing.T) {
 	t.Run(`throws - no Standalone or TargetServiceHost`, func(t *testing.T) {
 		otherEnvs := []env{}
 		envs := append(requiredEnvs, otherEnvs...)
-		unsetEnvs := setEnvs(envs)
-		defer unsetEnvs()
+		setEnvs(t, envs)
 
 		require.PanicsWithError(t, fmt.Sprintf("missing environment variables, one of %s or %s set to true is required", TargetServiceHostEnvKey, StandaloneEnvKey), func() {
 			GetEnvOrDie()
@@ -164,15 +158,9 @@ type env struct {
 	value string
 }
 
-func setEnvs(envsToSet []env) func() {
+func setEnvs(t *testing.T, envsToSet []env) {
 	for _, env := range envsToSet {
-		os.Setenv(env.name, env.value)
-	}
-
-	return func() {
-		for _, env := range envsToSet {
-			os.Unsetenv(env.name)
-		}
+		t.Setenv(env.name, env.value)
 	}
 }
 
