@@ -68,7 +68,7 @@ func TestProxyOASPath(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3000"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/custom/documentation/json"},
@@ -80,7 +80,6 @@ func TestProxyOASPath(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -112,7 +111,7 @@ func TestProxyOASPath(t *testing.T) {
 			Reply(200).
 			File("./mocks/documentationPathMock.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3007"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3006"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -123,7 +122,6 @@ func TestProxyOASPath(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -155,7 +153,7 @@ func TestProxyOASPath(t *testing.T) {
 			Reply(200).
 			File("./mocks/documentationPathMockWithPermissions.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3009"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3008"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -166,7 +164,6 @@ func TestProxyOASPath(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -180,7 +177,7 @@ func TestProxyOASPath(t *testing.T) {
 // FIXME: This function needs to be performed as last in order to make other tests working
 func TestEntrypoint(t *testing.T) {
 	t.Run("fails for invalid module path, no module found", func(t *testing.T) {
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3000"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -191,7 +188,6 @@ func TestEntrypoint(t *testing.T) {
 
 		entrypoint(shutdown)
 		require.True(t, true, "If we get here the service has not started")
-		unsetEnvs()
 	})
 
 	t.Run("opens server on port 3000", func(t *testing.T) {
@@ -208,7 +204,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3000"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -220,7 +216,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 
@@ -238,7 +233,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3000"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -262,7 +257,6 @@ func TestEntrypoint(t *testing.T) {
 
 		flag := <-done
 		require.Equal(t, true, flag)
-		unsetEnvs()
 	})
 
 	t.Run("opa integration", func(t *testing.T) {
@@ -287,7 +281,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3000"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -299,7 +293,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -350,7 +343,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3026"},
 			{name: "LOG_LEVEL", value: "fatal"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
@@ -364,7 +357,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -400,7 +392,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/mockWithXPermissionEmpty.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3005"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3004"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -412,7 +404,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -445,7 +436,7 @@ func TestEntrypoint(t *testing.T) {
 			return true
 		})
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3333"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:4000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/nestedPathsConfig.json"},
@@ -457,7 +448,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -494,7 +484,7 @@ func TestEntrypoint(t *testing.T) {
 			return true
 		})
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "5555"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
@@ -506,7 +496,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -543,7 +532,7 @@ func TestEntrypoint(t *testing.T) {
 			return true
 		})
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "5556"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
@@ -555,7 +544,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -592,7 +580,7 @@ func TestEntrypoint(t *testing.T) {
 			return true
 		})
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "5557"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
@@ -604,7 +592,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -655,7 +642,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3003"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3002"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -690,7 +677,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -830,7 +816,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMockWithRowFiltering.json")
 
-		unsetBaseEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3034"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3033"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -845,7 +831,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetOtherEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -876,8 +862,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetBaseEnvs()
-			unsetOtherEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -926,7 +910,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "5034"},
 			{name: "LOG_LEVEL", value: "fatal"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:5033"},
@@ -962,7 +946,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -1010,7 +993,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMockWithRowFiltering.json")
 
-		unsetBaseEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3036"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3035"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -1025,7 +1008,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetOtherEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1056,8 +1039,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetBaseEnvs()
-			unsetOtherEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -1096,7 +1077,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/pathsWithWildCardCollision.json")
 
-		unsetBaseEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3039"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3038"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -1109,7 +1090,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetOtherEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1140,8 +1121,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetBaseEnvs()
-			unsetOtherEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -1182,7 +1161,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/pathsWithWildCardCollision2.json")
 
-		unsetBaseEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3039"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3038"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -1195,7 +1174,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetOtherEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1226,8 +1205,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetBaseEnvs()
-			unsetOtherEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -1268,7 +1245,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/pathsWithWildCardCollision.json")
 
-		unsetBaseEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3039"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3038"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -1281,7 +1258,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetOtherEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1312,8 +1289,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetBaseEnvs()
-			unsetOtherEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -1354,7 +1329,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/oasExampleCrud.json")
 
-		unsetBaseEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3044"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3043"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -1367,7 +1342,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetOtherEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1398,8 +1373,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetBaseEnvs()
-			unsetOtherEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -1447,7 +1420,7 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 		Reply(200).
 		File("./mocks/mockForResponseFilteringOnResponse.json")
 
-	unsetBaseEnvs := setEnvs([]env{
+	setEnvs(t, []env{
 		{name: "HTTP_PORT", value: "3041"},
 		{name: "TARGET_SERVICE_HOST", value: "localhost:3040"},
 		{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -1462,7 +1435,7 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 	randomizedDBNamePart := testutils.GetRandomName(10)
 	mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-	unsetOtherEnvs := setEnvs([]env{
+	setEnvs(t, []env{
 		{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 		{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 		{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1493,8 +1466,6 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 		entrypoint(shutdown)
 	}()
 	defer func() {
-		unsetBaseEnvs()
-		unsetOtherEnvs()
 		shutdown <- syscall.SIGTERM
 	}()
 	time.Sleep(1 * time.Second)
@@ -1555,15 +1526,9 @@ type env struct {
 	value string
 }
 
-func setEnvs(envsToSet []env) func() {
+func setEnvs(t *testing.T, envsToSet []env) {
 	for _, env := range envsToSet {
-		os.Setenv(env.name, env.value)
-	}
-
-	return func() {
-		for _, env := range envsToSet {
-			os.Unsetenv(env.name)
-		}
+		t.Setenv(env.name, env.value)
 	}
 }
 
@@ -1589,7 +1554,7 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 		Reply(200).
 		File("./mocks/routesWithSamePath.json")
 
-	unsetBaseEnvs := setEnvs([]env{
+	setEnvs(t, []env{
 		{name: "HTTP_PORT", value: "3051"},
 		{name: "TARGET_SERVICE_HOST", value: "localhost:3050"},
 		{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -1604,7 +1569,7 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 	randomizedDBNamePart := testutils.GetRandomName(10)
 	mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-	unsetOtherEnvs := setEnvs([]env{
+	setEnvs(t, []env{
 		{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 		{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 		{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1636,8 +1601,6 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 		entrypoint(shutdown)
 	}()
 	defer func() {
-		unsetBaseEnvs()
-		unsetOtherEnvs()
 		shutdown <- syscall.SIGTERM
 	}()
 	time.Sleep(1 * time.Second)
