@@ -1,7 +1,7 @@
 ############################
 # STEP 1 build executable binary
 ############################
-FROM golang:1.19.4 AS builder
+FROM golang:1.19.5 AS builder
 
 WORKDIR /app
 
