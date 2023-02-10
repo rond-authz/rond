@@ -26,10 +26,10 @@ import (
 	"gopkg.in/h2non/gock.v1"
 )
 
-func TestfetchOpenAPI(log, t *testing.T) {
-	t.Run("fetches json OAS", func(t *testing.T) {
-		log, _ := test.NewNullLogger()
+func TestFetchOpenAPI(t *testing.T) {
+	log, _ := test.NewNullLogger()
 
+	t.Run("fetches json OAS", func(t *testing.T) {
 		defer gock.Off()
 
 		gock.New("http://localhost:3000").
