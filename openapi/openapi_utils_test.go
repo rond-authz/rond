@@ -27,6 +27,8 @@ import (
 )
 
 func TestFetchOpenAPI(t *testing.T) {
+	log, _ := test.NewNullLogger()
+
 	t.Run("fetches json OAS", func(t *testing.T) {
 		defer gock.Off()
 
@@ -37,7 +39,7 @@ func TestFetchOpenAPI(t *testing.T) {
 
 		url := "http://localhost:3000/documentation/json"
 
-		openApiSpec, err := fetchOpenAPI(url)
+		openApiSpec, err := fetchOpenAPI(log, url)
 
 		require.True(t, gock.IsDone(), "Mock has not been invoked")
 		require.NoError(t, err, "unexpected error")
@@ -84,7 +86,7 @@ func TestFetchOpenAPI(t *testing.T) {
 	t.Run("request execution fails for invalid URL", func(t *testing.T) {
 		url := "http://invalidUrl.com"
 
-		_, err := fetchOpenAPI(url)
+		_, err := fetchOpenAPI(log, url)
 
 		t.Logf("Expected error occurred: %s", err.Error())
 		require.True(t, errors.Is(err, ErrRequestFailed), "unexpected error")
@@ -93,7 +95,7 @@ func TestFetchOpenAPI(t *testing.T) {
 	t.Run("request execution fails for invalid URL syntax", func(t *testing.T) {
 		url := "	http://url with a tab.com"
 
-		_, err := fetchOpenAPI(url)
+		_, err := fetchOpenAPI(log, url)
 
 		t.Logf("Expected error occurred: %s", err.Error())
 		require.True(t, errors.Is(err, ErrRequestFailed), "unexpected error")
@@ -109,7 +111,7 @@ func TestFetchOpenAPI(t *testing.T) {
 
 		url := "http://localhost:3000/documentation/json"
 
-		_, err := fetchOpenAPI(url)
+		_, err := fetchOpenAPI(log, url)
 
 		t.Logf("Expected error occurred: %s", err.Error())
 		require.True(t, errors.Is(err, ErrRequestFailed), "unexpected error")
@@ -124,7 +126,7 @@ func TestFetchOpenAPI(t *testing.T) {
 
 		url := "http://localhost:3000/documentation/json"
 
-		_, err := fetchOpenAPI(url)
+		_, err := fetchOpenAPI(log, url)
 
 		t.Logf("Expected error occurred: %s", err.Error())
 		require.True(t, errors.Is(err, ErrRequestFailed), "unexpected error")
