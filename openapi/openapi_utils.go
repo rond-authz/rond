@@ -267,12 +267,17 @@ func deserializeSpec(spec []byte, errorWrapper error) (*OpenAPISpec, error) {
 	return &oas, nil
 }
 
-func fetchOpenAPI(url string) (*OpenAPISpec, error) {
+func fetchOpenAPI(log *logrus.Logger, url string) (*OpenAPISpec, error) {
 	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrRequestFailed, err)
 	}
-	defer func() { resp.Body.Close() }()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed response body close")
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%w: invalid status code %d", ErrRequestFailed, resp.StatusCode)
@@ -309,7 +314,7 @@ func LoadOASFromFileOrNetwork(log *logrus.Logger, env config.EnvironmentVariable
 		var oas *OpenAPISpec
 		documentationURL := fmt.Sprintf("%s://%s%s", HTTPScheme, env.TargetServiceHost, env.TargetServiceOASPath)
 		for {
-			fetchedOAS, err := fetchOpenAPI(documentationURL)
+			fetchedOAS, err := fetchOpenAPI(log, documentationURL)
 			if err != nil {
 				log.WithFields(logrus.Fields{
 					"targetServiceHost": env.TargetServiceHost,
