@@ -270,6 +270,9 @@ func deserializeSpec(spec []byte, errorWrapper error) (*OpenAPISpec, error) {
 func fetchOpenAPI(url string) (*OpenAPISpec, error) {
 	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
 		return nil, fmt.Errorf("%w: %s", ErrRequestFailed, err)
 	}
 	defer resp.Body.Close()
