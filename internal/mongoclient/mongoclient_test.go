@@ -251,22 +251,24 @@ func TestMongoCollections(t *testing.T) {
 		expected := []types.Role{
 			{
 				RoleID:            "role1",
+				RoleName:          "Role1",
 				Permissions:       []string{"permission1", "permission2", "foobar"},
 				CRUDDocumentState: "PUBLIC",
 			},
 			{
 				RoleID:            "role3",
+				RoleName:          "Role3",
 				Permissions:       []string{"permission3", "permission5", "console.project.view"},
 				CRUDDocumentState: "PUBLIC",
 			},
 			{
 				RoleID:            "notUsedByAnyone",
+				RoleName:          "Not Used By Anyone",
 				Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
 				CRUDDocumentState: "PUBLIC",
 			},
 		}
-		require.True(t, reflect.DeepEqual(result, expected),
-			"Error while getting permissions")
+		require.True(t, reflect.DeepEqual(result, expected), "Error while getting permissions")
 	})
 
 	t.Run("retrieve all roles by id from mongo", func(t *testing.T) {
@@ -299,11 +301,13 @@ func TestMongoCollections(t *testing.T) {
 		expected := []types.Role{
 			{
 				RoleID:            "role1",
+				RoleName:          "Role1",
 				Permissions:       []string{"permission1", "permission2", "foobar"},
 				CRUDDocumentState: "PUBLIC",
 			},
 			{
 				RoleID:            "role3",
+				RoleName:          "Role3",
 				Permissions:       []string{"permission3", "permission5", "console.project.view"},
 				CRUDDocumentState: "PUBLIC",
 			},
@@ -343,6 +347,7 @@ func TestMongoFindOne(t *testing.T) {
 	t.Run("finds a document", func(t *testing.T) {
 		result, err := mongoClient.FindOne(context.Background(), "roles", map[string]interface{}{
 			"roleId": "role3",
+			"name":   "Role3",
 		})
 		require.NoError(t, err)
 		resultMap := result.(map[string]interface{})
@@ -351,6 +356,7 @@ func TestMongoFindOne(t *testing.T) {
 		delete(resultMap, "_id")
 		require.Equal(t, map[string]interface{}{
 			"roleId":    "role3",
+			"name":      "Role3",
 			"__STATE__": "PUBLIC",
 			"permissions": []interface{}{
 				string("permission3"),
@@ -399,9 +405,9 @@ func TestMongoFindMany(t *testing.T) {
 	t.Run("finds multiple documents", func(t *testing.T) {
 		result, err := mongoClient.FindMany(context.Background(), "roles", map[string]interface{}{
 			"$or": []map[string]interface{}{
-				{"roleId": "role3"},
+				{"roleId": "role3", "name": "Role3"},
 				{"roleId": "role9999"},
-				{"roleId": "role6"},
+				{"roleId": "role6", "name": "Role6"},
 			},
 		})
 		require.NoError(t, err)
@@ -413,6 +419,7 @@ func TestMongoFindMany(t *testing.T) {
 		delete(resultMap, "_id")
 		require.Equal(t, map[string]interface{}{
 			"roleId":    "role3",
+			"name":      "Role3",
 			"__STATE__": "PUBLIC",
 			"permissions": []interface{}{
 				string("permission3"),
@@ -427,6 +434,7 @@ func TestMongoFindMany(t *testing.T) {
 		delete(result1Map, "_id")
 		require.Equal(t, map[string]interface{}{
 			"roleId":    "role6",
+			"name":      "Role6",
 			"__STATE__": "PRIVATE",
 			"permissions": []interface{}{
 				string("permission3"),

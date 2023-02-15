@@ -127,21 +127,25 @@ func PopulateDBForTesting(
 	roles := []interface{}{
 		types.Role{
 			RoleID:            "role1",
+			RoleName:          "Role1",
 			Permissions:       []string{"permission1", "permission2", "foobar"},
 			CRUDDocumentState: "PUBLIC",
 		},
 		types.Role{
 			RoleID:            "role3",
+			RoleName:          "Role3",
 			Permissions:       []string{"permission3", "permission5", "console.project.view"},
 			CRUDDocumentState: "PUBLIC",
 		},
 		types.Role{
 			RoleID:            "role6",
+			RoleName:          "Role6",
 			Permissions:       []string{"permission3", "permission5"},
 			CRUDDocumentState: "PRIVATE",
 		},
 		types.Role{
 			RoleID:            "notUsedByAnyone",
+			RoleName:          "Not Used By Anyone",
 			Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
 			CRUDDocumentState: "PUBLIC",
 		},

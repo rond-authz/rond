@@ -57,6 +57,7 @@ type BindingCreateResponse struct {
 
 type Role struct {
 	RoleID            string   `bson:"roleId" json:"roleId"`
+	RoleName          string   `bson:"name" json:"name"`
 	CRUDDocumentState string   `bson:"__STATE__" json:"-"`
 	Permissions       []string `bson:"permissions" json:"permissions"`
 }
