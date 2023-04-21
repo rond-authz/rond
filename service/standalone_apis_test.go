@@ -555,10 +555,11 @@ func TestGrantHandler(t *testing.T) {
 		defer gock.Flush()
 
 		reqBody := setupGrantRequestBody(t, GrantRequestBody{
-			Subjects:   []string{"piero"},
-			ResourceID: "projectID",
-			Roles:      []string{"editor"},
-			Groups:     []string{"test-group"},
+			Subjects:    []string{"piero"},
+			ResourceID:  "projectID",
+			Roles:       []string{"editor"},
+			Permissions: []string{"test-permission"},
+			Groups:      []string{"test-group"},
 		})
 
 		gock.DisableNetworking()
@@ -569,9 +570,6 @@ func TestGrantHandler(t *testing.T) {
 				bodyBytes, err := io.ReadAll(req.Body)
 				require.Nil(t, err, "unxpected error reading body in matcher")
 
-				containsNull := strings.Contains(string(bodyBytes), `"permissions":null`)
-				require.False(t, containsNull, "unexpected null found")
-
 				err = json.Unmarshal(bodyBytes, &body)
 				require.Nil(t, err, "unxpected error parsing body in matcher")
 
@@ -580,10 +578,11 @@ func TestGrantHandler(t *testing.T) {
 
 				body.BindingID = "REDACTED"
 				require.Equal(t, types.Binding{
-					BindingID: "REDACTED",
-					Groups:    []string{"test-group"},
-					Roles:     []string{"editor"},
-					Subjects:  []string{"piero"},
+					BindingID:   "REDACTED",
+					Groups:      []string{"test-group"},
+					Permissions: []string{"test-permission"},
+					Roles:       []string{"editor"},
+					Subjects:    []string{"piero"},
 					Resource: &types.Resource{
 						ResourceType: "my-resource",
 						ResourceID:   "projectID",

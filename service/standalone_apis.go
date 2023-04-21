@@ -194,10 +194,11 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	bindingToCreate := types.Binding{
-		BindingID: uuid.New().String(),
-		Groups:    reqBody.Groups,
-		Roles:     reqBody.Roles,
-		Subjects:  reqBody.Subjects,
+		BindingID:   uuid.New().String(),
+		Groups:      reqBody.Groups,
+		Permissions: reqBody.Permissions,
+		Roles:       reqBody.Roles,
+		Subjects:    reqBody.Subjects,
 	}
 
 	if resourceType != "" {
