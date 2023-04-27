@@ -15,6 +15,8 @@
 package opatranslator
 
 import (
+	"reflect"
+
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -30,6 +32,8 @@ const (
 	EqOp    = "eq"
 	EqualOp = "equal"
 	NeqOp   = "neq"
+	// https://github.com/open-policy-agent/opa/blob/main/ast/builtins.go#L345
+	InOp = "internal.member_2"
 )
 
 var rangeOperatorStrategies = map[string]func(pipeline *[]bson.M, fieldName string, fieldValue interface{}){
@@ -40,6 +44,7 @@ var rangeOperatorStrategies = map[string]func(pipeline *[]bson.M, fieldName stri
 	EqOp:    HandleEquals,
 	EqualOp: HandleEquals,
 	NeqOp:   HandleNotEquals,
+	InOp:    HandleIn,
 }
 
 func HandleOperations(operation string, pipeline *[]bson.M, fieldName string, fieldValue interface{}) bool {
@@ -53,6 +58,19 @@ func HandleOperations(operation string, pipeline *[]bson.M, fieldName string, fi
 // Parse the == into equivalent mongo query.
 func HandleEquals(pipeline *[]bson.M, fieldName string, fieldValue interface{}) {
 	filter := bson.M{fieldName: bson.M{"$eq": fieldValue}}
+	*pipeline = append(*pipeline, filter)
+}
+
+// Parse the in operator into equivalent mongo query.
+func HandleIn(pipeline *[]bson.M, fieldName string, fieldValue interface{}) {
+	reflectValue := reflect.ValueOf(fieldValue)
+
+	mongoInOperatorValue := fieldValue
+	if reflectValue.Kind() != reflect.Slice {
+		mongoInOperatorValue = []interface{}{fieldValue}
+	}
+
+	filter := bson.M{fieldName: bson.M{"$in": mongoInOperatorValue}}
 	*pipeline = append(*pipeline, filter)
 }
 
