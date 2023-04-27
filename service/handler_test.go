@@ -878,7 +878,7 @@ allow {
 	groups := {"groupid":123}
 
 	query := data.resources[_]
-	query.membership in groups.groupid
+	groups.groupid in query.membership
 }
 
 allow {
