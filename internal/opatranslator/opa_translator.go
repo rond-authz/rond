@@ -66,7 +66,6 @@ func (c *OPAClient) ProcessQuery(pq *rego.PartialQueries) (bson.M, error) {
 				return nil, nil
 			}
 			stringifiedOperator := expr.Operator().String()
-			fmt.Printf("STRINGIFIED TRANSLATOR IS %s\n", stringifiedOperator)
 			operationHandled := HandleOperations(stringifiedOperator, pipeline, processedTerm[1], value)
 			if !operationHandled {
 				return nil, fmt.Errorf("invalid expression: operator not supported: %v", expr.Operator().String())

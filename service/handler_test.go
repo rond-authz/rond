@@ -817,15 +817,16 @@ allow {
 	})
 
 	t.Run("sends filter query with $in", func(t *testing.T) {
-		policy := `package policies
+		t.Run("as array", func(t *testing.T) {
 
-		import future.keywords.in
+			policy := `package policies
+import future.keywords.in
 
 allow {
 	input.request.method == "GET"
 
 	employee := data.resources[_]
-	employee.membership in "member_test"
+	["member_test"] in employee.membership
 }
 
 allow {
@@ -836,35 +837,89 @@ allow {
 }
 `
 
-		mockBodySting := "I am a body"
+			mockBodySting := "I am a body"
 
-		body := strings.NewReader(mockBodySting)
+			body := strings.NewReader(mockBodySting)
 
-		partialEvaluators, err := core.SetupEvaluators(ctx, nil, &oasWithFilter, mockOPAModule, envs)
-		require.NoError(t, err, "Unexpected error")
+			partialEvaluators, err := core.SetupEvaluators(ctx, nil, &oasWithFilter, mockOPAModule, envs)
+			require.NoError(t, err, "Unexpected error")
 
-		ctx := createContext(t,
-			context.Background(),
-			env,
-			nil,
-			mockRondConfigWithQueryGen,
-			&core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
-			partialEvaluators,
-		)
+			ctx := createContext(t,
+				context.Background(),
+				env,
+				nil,
+				mockRondConfigWithQueryGen,
+				&core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
+				partialEvaluators,
+			)
 
-		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
-		require.NoError(t, err, "Unexpected error")
-		r.Header.Set("miauserproperties", `{"name":"gianni"}`)
-		r.Header.Set("examplekey", "value")
-		r.Header.Set("Content-Type", "text/plain")
-		w := httptest.NewRecorder()
+			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
+			require.NoError(t, err, "Unexpected error")
+			r.Header.Set("miauserproperties", `{"name":"gianni"}`)
+			r.Header.Set("examplekey", "value")
+			r.Header.Set("Content-Type", "text/plain")
+			w := httptest.NewRecorder()
 
-		rbacHandler(w, r)
+			rbacHandler(w, r)
 
-		require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
-		filterQuery := r.Header.Get("rowfilterquery")
-		expectedQuery := `{"$or":[{"$and":[{"membership":{"$in":"member_test"}}]},{"$and":[{"salary":{"$gt":0}}]}]}`
-		require.Equal(t, expectedQuery, filterQuery)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
+			filterQuery := r.Header.Get("rowfilterquery")
+			expectedQuery := `{"$or":[{"$and":[{"membership":{"$in":["member_test"]}}]},{"$and":[{"salary":{"$gt":0}}]}]}`
+			require.Equal(t, expectedQuery, filterQuery)
+		})
+
+		t.Run("as single item", func(t *testing.T) {
+
+			policy := `package policies
+import future.keywords.in
+
+allow {
+	input.request.method == "GET"
+	groups := {"groupid":123}
+
+	query := data.resources[_]
+	query.membership in groups.groupid
+}
+
+allow {
+	input.request.method == "GET"
+	input.request.path == "/api"
+	employee := data.resources[_]
+	employee.salary > 0
+}
+`
+
+			mockBodySting := "I am a body"
+
+			body := strings.NewReader(mockBodySting)
+
+			partialEvaluators, err := core.SetupEvaluators(ctx, nil, &oasWithFilter, mockOPAModule, envs)
+			require.NoError(t, err, "Unexpected error")
+
+			ctx := createContext(t,
+				context.Background(),
+				env,
+				nil,
+				mockRondConfigWithQueryGen,
+				&core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
+				partialEvaluators,
+			)
+
+			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
+			require.NoError(t, err, "Unexpected error")
+			r.Header.Set("miauserproperties", `{"name":"gianni"}`)
+			r.Header.Set("examplekey", "value")
+			r.Header.Set("Content-Type", "text/plain")
+			w := httptest.NewRecorder()
+
+			rbacHandler(w, r)
+
+			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
+			filterQuery := r.Header.Get("rowfilterquery")
+			expectedQuery := `{"$or":[{"$and":[{"membership":{"$in":[123]}}]},{"$and":[{"salary":{"$gt":0}}]}]}`
+			require.Equal(t, expectedQuery, filterQuery)
+		})
+
 	})
 
 	t.Run("sends empty filter query", func(t *testing.T) {
