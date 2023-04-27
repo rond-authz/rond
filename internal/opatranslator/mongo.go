@@ -30,6 +30,7 @@ const (
 	EqOp    = "eq"
 	EqualOp = "equal"
 	NeqOp   = "neq"
+	InOp    = "internal.member_2"
 )
 
 var rangeOperatorStrategies = map[string]func(pipeline *[]bson.M, fieldName string, fieldValue interface{}){
@@ -40,6 +41,7 @@ var rangeOperatorStrategies = map[string]func(pipeline *[]bson.M, fieldName stri
 	EqOp:    HandleEquals,
 	EqualOp: HandleEquals,
 	NeqOp:   HandleNotEquals,
+	InOp:    HandleIn,
 }
 
 func HandleOperations(operation string, pipeline *[]bson.M, fieldName string, fieldValue interface{}) bool {
@@ -53,6 +55,12 @@ func HandleOperations(operation string, pipeline *[]bson.M, fieldName string, fi
 // Parse the == into equivalent mongo query.
 func HandleEquals(pipeline *[]bson.M, fieldName string, fieldValue interface{}) {
 	filter := bson.M{fieldName: bson.M{"$eq": fieldValue}}
+	*pipeline = append(*pipeline, filter)
+}
+
+// Parse the in operator into equivalent mongo query.
+func HandleIn(pipeline *[]bson.M, fieldName string, fieldValue interface{}) {
+	filter := bson.M{fieldName: bson.M{"$in": fieldValue}}
 	*pipeline = append(*pipeline, filter)
 }
 

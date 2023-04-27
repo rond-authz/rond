@@ -818,6 +818,9 @@ allow {
 
 	t.Run("sends filter query with $in", func(t *testing.T) {
 		policy := `package policies
+
+		import future.keywords.in
+
 allow {
 	input.request.method == "GET"
 
@@ -860,7 +863,7 @@ allow {
 
 		require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 		filterQuery := r.Header.Get("rowfilterquery")
-		expectedQuery := `{"$or":[{"$and":[{"membership":{"$in":["manager_test"]}}]},{"$and":[{"salary":{"$gt":0}}]}]}`
+		expectedQuery := `{"$or":[{"$and":[{"membership":{"$in":"member_test"}}]},{"$and":[{"salary":{"$gt":0}}]}]}`
 		require.Equal(t, expectedQuery, filterQuery)
 	})
 
