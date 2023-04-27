@@ -919,7 +919,6 @@ allow {
 			expectedQuery := `{"$or":[{"$and":[{"membership":{"$in":[123]}}]},{"$and":[{"salary":{"$gt":0}}]}]}`
 			require.Equal(t, expectedQuery, filterQuery)
 		})
-
 	})
 
 	t.Run("sends empty filter query", func(t *testing.T) {
