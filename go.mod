@@ -11,7 +11,7 @@ require (
 	github.com/mia-platform/configlib v1.0.0
 	github.com/mia-platform/glogger/v2 v2.1.3
 	github.com/open-policy-agent/opa v0.52.0
-	github.com/prometheus/client_golang v1.15.0
+	github.com/prometheus/client_golang v1.15.1
 	github.com/samber/lo v1.38.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.2
