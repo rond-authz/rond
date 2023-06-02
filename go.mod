@@ -3,7 +3,7 @@ module github.com/rond-authz/rond
 go 1.18
 
 require (
-	github.com/davidebianchi/go-jsonclient v1.3.0
+	github.com/davidebianchi/go-jsonclient v1.5.0
 	github.com/davidebianchi/gswagger v0.9.0
 	github.com/getkin/kin-openapi v0.117.0
 	github.com/google/uuid v1.3.0
