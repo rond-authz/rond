@@ -96,8 +96,8 @@ github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f/go.mod h1:E3G3o1h8I7cfc
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/davidebianchi/go-jsonclient v1.3.0 h1:6579uXOHEDcClHK8b3j/xWbQV4Khpn7aMcH7tOmRjwY=
-github.com/davidebianchi/go-jsonclient v1.3.0/go.mod h1:lIOd35jxGfGENA/M0s1klHJgagIDj2KM1O6A/V5vpPI=
+github.com/davidebianchi/go-jsonclient v1.5.0 h1:PVDunAF/6c30D2SSx711efsrUP3hhml+uGT6oD3lzVY=
+github.com/davidebianchi/go-jsonclient v1.5.0/go.mod h1:lXd/hkx23H590Dod74j5GsmpgxF8RIAGZDt1P5+2mqo=
 github.com/davidebianchi/gswagger v0.9.0 h1:wztdl5oSQ0PGgrbhivPr71VNIf4QUKQCeOffbd6lnTE=
 github.com/davidebianchi/gswagger v0.9.0/go.mod h1:Ge69aGQIAWZs63UzaStPfqGT5u/gEXLsQ6vTM3gzDCE=
 github.com/dgraph-io/badger/v3 v3.2103.5 h1:ylPa6qzbjYRQMU6jokoj4wzcaweHylt//CH0AKt0akg=
