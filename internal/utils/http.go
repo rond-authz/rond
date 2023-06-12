@@ -19,7 +19,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/rond-authz/rond/internal/types"
+	"github.com/rond-authz/rond/types"
 )
 
 const ContentTypeHeaderKey = "content-type"
