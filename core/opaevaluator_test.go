@@ -39,11 +39,10 @@ import (
 )
 
 func TestNewOPAEvaluator(t *testing.T) {
-	envs := config.EnvironmentVariables{}
 	input := map[string]interface{}{}
 	inputBytes, _ := json.Marshal(input)
 	t.Run("policy sanitization", func(t *testing.T) {
-		evaluator, _ := NewOPAEvaluator(context.Background(), "very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, inputBytes, envs)
+		evaluator, _ := NewOPAEvaluator(context.Background(), "very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, inputBytes, nil)
 
 		result, err := evaluator.PolicyEvaluator.Eval(context.TODO())
 		require.Nil(t, err, "unexpected error")
@@ -153,7 +152,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		opaModuleConfig, err := LoadRegoModule(envs.OPAModulesDirectory)
 		require.NoError(t, err, "unexpected error")
 
-		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, envs)
+		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, nil)
 		require.NoError(t, err, "unexpected error creating evaluators")
 		require.Len(t, policyEvals, 4, "unexpected length")
 	})
@@ -172,7 +171,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		opaModuleConfig, err := LoadRegoModule(envs.OPAModulesDirectory)
 		require.NoError(t, err, "unexpected error")
 
-		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, envs)
+		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, nil)
 		require.NoError(t, err, "unexpected error creating evaluators")
 		require.Len(t, policyEvals, 4, "unexpected length")
 	})
@@ -198,7 +197,6 @@ func TestBuildRolesMap(t *testing.T) {
 }
 
 func TestCreateQueryEvaluator(t *testing.T) {
-	envs := config.EnvironmentVariables{}
 	policy := `package policies
 allow {
 	true
@@ -236,13 +234,13 @@ column_policy{
 	inputBytes, _ := json.Marshal(input)
 
 	t.Run("create  evaluator with allowPolicy", func(t *testing.T) {
-		evaluator, err := CreateQueryEvaluator(context.Background(), logger, r, envs, permission.AllowPermission, inputBytes, nil)
+		evaluator, err := CreateQueryEvaluator(context.Background(), logger, r, permission.AllowPermission, inputBytes, nil, nil)
 		require.True(t, evaluator != nil)
 		require.NoError(t, err, "Unexpected status code.")
 	})
 
 	t.Run("create  evaluator with policy for column filtering", func(t *testing.T) {
-		evaluator, err := CreateQueryEvaluator(context.Background(), logger, r, envs, permission.ResponseFilter.Policy, inputBytes, nil)
+		evaluator, err := CreateQueryEvaluator(context.Background(), logger, r, permission.ResponseFilter.Policy, inputBytes, nil, nil)
 		require.True(t, evaluator != nil)
 		require.NoError(t, err, "Unexpected status code.")
 	})
@@ -337,7 +335,6 @@ func createContext(
 func TestGetHeaderFunction(t *testing.T) {
 	headerKeyMocked := "exampleKey"
 	headerValueMocked := "value"
-	env := config.EnvironmentVariables{}
 
 	opaModule := &OPAModuleConfig{
 		Name: "example.rego",
@@ -354,7 +351,7 @@ func TestGetHeaderFunction(t *testing.T) {
 		}
 		inputBytes, _ := json.Marshal(input)
 
-		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, env)
+		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, nil)
 		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
 
 		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())
@@ -373,7 +370,7 @@ func TestGetHeaderFunction(t *testing.T) {
 		}
 		inputBytes, _ := json.Marshal(input)
 
-		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, env)
+		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, nil)
 		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
 
 		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())

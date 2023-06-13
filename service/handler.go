@@ -127,16 +127,20 @@ func EvaluateRequest(
 		return err
 	}
 
+	evaluatorOptions := &core.EvaluatorOptions{
+		EnablePrintStatements: env.IsTraceLogLevel(),
+	}
+
 	var evaluatorAllowPolicy *core.OPAEvaluator
 	if !permission.RequestFlow.GenerateQuery {
-		evaluatorAllowPolicy, err = partialResultsEvaluators.GetEvaluatorFromPolicy(requestContext, permission.RequestFlow.PolicyName, regoInput, env.LogLevel)
+		evaluatorAllowPolicy, err = partialResultsEvaluators.GetEvaluatorFromPolicy(requestContext, permission.RequestFlow.PolicyName, regoInput, evaluatorOptions)
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("cannot find policy evaluator")
 			utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed partial evaluator retrieval", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 			return err
 		}
 	} else {
-		evaluatorAllowPolicy, err = core.CreateQueryEvaluator(requestContext, logger, req, env, permission.RequestFlow.PolicyName, regoInput, nil)
+		evaluatorAllowPolicy, err = core.CreateQueryEvaluator(requestContext, logger, req, permission.RequestFlow.PolicyName, regoInput, nil, evaluatorOptions)
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("cannot create evaluator")
 			utils.FailResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluator creation failed", utils.NO_PERMISSIONS_ERROR_MESSAGE)
@@ -204,6 +208,10 @@ func ReverseProxy(
 		},
 	}
 
+	options := &core.EvaluatorOptions{
+		EnablePrintStatements: env.IsTraceLogLevel(),
+	}
+
 	// Check on nil is performed to proxy the oas documentation path
 	if permission == nil || permission.ResponseFlow.PolicyName == "" {
 		proxy.ServeHTTP(w, req)
@@ -221,7 +229,7 @@ func ReverseProxy(
 		env.UserGroupsHeader,
 		env.UserIdHeader,
 		env.UserPropertiesHeader,
-		env.LogLevel,
+		options,
 	)
 	proxy.ServeHTTP(w, req)
 }

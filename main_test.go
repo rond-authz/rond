@@ -1674,7 +1674,7 @@ filter_policy {
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, env)
+	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, nil)
 	require.NoError(t, err, "unexpected error")
 
 	router, err := service.SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
@@ -1829,7 +1829,7 @@ filter_policy {
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, env)
+	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, nil)
 	require.NoError(t, err, "unexpected error")
 
 	router, err := service.SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)

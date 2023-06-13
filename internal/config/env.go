@@ -31,7 +31,7 @@ const (
 	TargetServiceHostEnvKey      = "TARGET_SERVICE_HOST"
 	BindingsCrudServiceURL       = "BINDINGS_CRUD_SERVICE_URL"
 
-	TraceLogLevel = "trace"
+	traceLogLevel = "trace"
 )
 
 // EnvironmentVariables struct with the mapping of desired
@@ -214,4 +214,8 @@ func (env EnvironmentVariables) GetAdditionalHeadersToProxy() []string {
 		}
 	}
 	return customHeaders
+}
+
+func (env EnvironmentVariables) IsTraceLogLevel() bool {
+	return env.LogLevel == traceLogLevel
 }

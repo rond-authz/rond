@@ -45,7 +45,7 @@ type OPATransport struct {
 	userGroupsHeaderKey     string
 	userIdHeaderKey         string
 	userPropertiesHeaderKey string
-	logLevel                string
+	evaluatorOptions        *EvaluatorOptions
 }
 
 func NewOPATransport(
@@ -59,7 +59,7 @@ func NewOPATransport(
 	userGroupsHeaderKey string,
 	userIdHeaderKey string,
 	userPropertiesHeaderKey string,
-	logLevel string,
+	evaluatorOptions *EvaluatorOptions,
 ) *OPATransport {
 	return &OPATransport{
 		RoundTripper:             http.DefaultTransport,
@@ -73,7 +73,7 @@ func NewOPATransport(
 		userGroupsHeaderKey:     userGroupsHeaderKey,
 		userIdHeaderKey:         userIdHeaderKey,
 		userPropertiesHeaderKey: userPropertiesHeaderKey,
-		logLevel:                logLevel,
+		evaluatorOptions:        evaluatorOptions,
 	}
 }
 
@@ -139,7 +139,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	evaluator, err := t.partialResultsEvaluators.GetEvaluatorFromPolicy(t.context, t.permission.ResponseFlow.PolicyName, regoInput, t.logLevel)
+	evaluator, err := t.partialResultsEvaluators.GetEvaluatorFromPolicy(t.context, t.permission.ResponseFlow.PolicyName, regoInput, t.evaluatorOptions)
 	if err != nil {
 		t.logger.WithField("error", logrus.Fields{
 			"policyName": t.permission.ResponseFlow.PolicyName,

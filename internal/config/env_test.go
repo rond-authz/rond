@@ -208,3 +208,19 @@ func TestGetAdditionalHeadersToProxy(t *testing.T) {
 		require.Equal(t, []string{"head1", "head2", "x-forwarded-for", "x-request-id", "x-forwarded-proto", "x-forwarded-host"}, headersToProxy)
 	})
 }
+
+func TestIsTraceLogLevel(t *testing.T) {
+	t.Run("true", func(t *testing.T) {
+		env := EnvironmentVariables{
+			LogLevel: traceLogLevel,
+		}
+
+		require.True(t, env.IsTraceLogLevel())
+	})
+
+	t.Run("true", func(t *testing.T) {
+		env := EnvironmentVariables{}
+
+		require.False(t, env.IsTraceLogLevel())
+	})
+}

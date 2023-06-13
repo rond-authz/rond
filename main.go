@@ -93,7 +93,9 @@ func entrypoint(shutdown chan os.Signal) {
 		logrus.NewEntry(log),
 	)
 
-	policiesEvaluators, err := core.SetupEvaluators(ctx, mongoClient, oas, opaModuleConfig, env)
+	policiesEvaluators, err := core.SetupEvaluators(ctx, mongoClient, oas, opaModuleConfig, &core.EvaluatorOptions{
+		EnablePrintStatements: env.IsTraceLogLevel(),
+	})
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},

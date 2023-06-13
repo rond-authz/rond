@@ -58,7 +58,8 @@ func TestRoundTripErrors(t *testing.T) {
 			req,
 			nil,
 			nil,
-			"", "", "", "", "",
+			"", "", "", "",
+			nil,
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -95,7 +96,8 @@ func TestOPATransportResponseWithError(t *testing.T) {
 		req,
 		nil,
 		nil,
-		"", "", "", "", "",
+		"", "", "", "",
+		nil,
 	}
 
 	t.Run("generic business error message", func(t *testing.T) {
