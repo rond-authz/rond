@@ -215,6 +215,8 @@ func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.Enviro
 
 	for _, path := range paths {
 		pathToRegister := path
+		router.Use(core.TrailingSlashMiddleware(ignoreTrailingSlashMap[path]))
+
 		if env.Standalone {
 			pathToRegister = fmt.Sprintf("%s%s", env.PathPrefixStandalone, path)
 		}
@@ -229,13 +231,6 @@ func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.Enviro
 		if path == env.TargetServiceOASPath && documentationPermission == "" {
 			router.HandleFunc(openapi.ConvertPathVariablesToBrackets(pathToRegister), alwaysProxyHandler).Methods(http.MethodGet)
 			continue
-		}
-		if ignoreTrailingSlashMap[path] {
-			router.StrictSlash(true)
-			// pathRegExp := fmt.Sprintf("/{%s:%s\\/?}", openapi.ConvertPathVariablesToBrackets(pathToRegister), openapi.ConvertPathVariablesToBrackets(pathToRegister))
-			// router.HandleFunc(pathRegExp, rbacHandler).Methods(http.MethodGet)
-		} else {
-			router.StrictSlash(false)
 		}
 		router.HandleFunc(openapi.ConvertPathVariablesToBrackets(pathToRegister), rbacHandler).Methods(methods[path]...)
 	}
