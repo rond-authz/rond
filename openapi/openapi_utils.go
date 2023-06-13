@@ -171,6 +171,15 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 
 			if scopedMethod != strings.ToUpper(AllHTTPMethod) {
 				OASRouter.Handle(scopedMethod, OASPathCleaned, handler)
+				if methodContent.PermissionV2.Options.IgnoreTrailingSlash {
+					slashLaxPathToRegister := OASPathCleaned
+					if strings.HasSuffix(OASPathCleaned, "/") {
+						slashLaxPathToRegister = strings.TrimSuffix(slashLaxPathToRegister, "/")
+					} else {
+						slashLaxPathToRegister += "/"
+					}
+					OASRouter.Handle(scopedMethod, slashLaxPathToRegister, handler)
+				}
 				continue
 			}
 
@@ -238,6 +247,10 @@ func newRondConfigFromPermissionV1(v1Permission *XPermission) *RondConfig {
 		},
 		ResponseFlow: ResponseFlow{
 			PolicyName: v1Permission.ResponseFilter.Policy,
+		},
+		Options: PermissionOptions{
+			EnableResourcePermissionsMapOptimization: v1Permission.Options.EnableResourcePermissionsMapOptimization,
+			IgnoreTrailingSlash:                      v1Permission.Options.IgnoreTrailingSlash,
 		},
 	}
 }
