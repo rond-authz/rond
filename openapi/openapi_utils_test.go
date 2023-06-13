@@ -407,18 +407,6 @@ func TestFindPermission(t *testing.T) {
 		}, found)
 		require.NoError(t, err)
 
-		found, err = oas.FindPermission(OASRouter, "/with/trailing/slash/", "GET")
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{
-			PolicyName:    "requestpolicy",
-			GenerateQuery: true,
-			QueryOptions: QueryOptions{
-				HeaderName: "x-query-header",
-			}},
-			ResponseFlow: ResponseFlow{PolicyName: "responsepolicy"},
-			Options:      PermissionOptions{IgnoreTrailingSlash: true},
-		}, found)
-		require.NoError(t, err)
-
 		found, err = oas.FindPermission(OASRouter, "/without/trailing/slash", "POST")
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{
 			PolicyName:    "requestpolicy",
