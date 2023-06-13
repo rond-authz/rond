@@ -68,7 +68,7 @@ func TestSetupRoutes(t *testing.T) {
 				},
 			},
 		}
-		expectedPaths := []string{"/", "/-/check-up", "/-/healthz", "/-/metrics", "/-/ready", "/bar", "/documentation/json", "/foo", "/foo/bar", "/with/trailing/slash"} // "/{/with/trailing/slash:/with/trailing/slash\\/?}"
+		expectedPaths := []string{"/", "/-/check-up", "/-/healthz", "/-/metrics", "/-/ready", "/bar", "/documentation/json", "/foo", "/foo/bar", "/{/with/trailing/slash:/with/trailing/slash\\/?}"}
 
 		setupRoutes(router, oas, envs)
 
