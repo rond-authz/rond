@@ -473,16 +473,17 @@ func TestRolesIDSFromBindings(t *testing.T) {
 
 func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 	logger, _ := test.NewNullLogger()
-	env := config.EnvironmentVariables{
-		UserGroupsHeader: "thegroupsheader",
-		UserIdHeader:     "theuserheader",
+	userHeaders := UserHeaders{
+		GroupsHeaderKey:     "thegroupsheader",
+		IDHeaderKey:         "theuserheader",
+		PropertiesHeaderKey: "userproperties",
 	}
 
 	t.Run("fails if MongoClient is in context but of the wrong type", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req = req.WithContext(context.WithValue(req.Context(), types.MongoClientContextKey{}, "test"))
 
-		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logger), req, env)
+		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logger), req, userHeaders)
 		require.Error(t, err, "Unexpected error retrieving MongoDB Client from request context")
 	})
 
@@ -491,11 +492,12 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req.Header.Set("thegroupsheader", "group1,group2")
 		req.Header.Set("theuserheader", "userId")
 
-		user, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logger), req, env)
+		user, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logger), req, userHeaders)
 		require.NoError(t, err)
 		require.Equal(t, types.User{
 			UserID:     "userId",
 			UserGroups: []string{"group1", "group2"},
+			Properties: map[string]interface{}{},
 		}, user)
 	})
 
@@ -506,7 +508,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req = req.WithContext(WithMongoClient(req.Context(), mock))
 
-		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, env)
+		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, userHeaders)
 		require.NoError(t, err)
 	})
 
@@ -519,7 +521,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req.Header.Set("thegroupsheader", "group1,group2")
 		req.Header.Set("theuserheader", "userId")
 
-		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, env)
+		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, userHeaders)
 		require.Error(t, err, "Error while retrieving user bindings: some error")
 	})
 
@@ -535,7 +537,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req.Header.Set("thegroupsheader", "group1,group2")
 		req.Header.Set("theuserheader", "userId")
 
-		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, env)
+		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, userHeaders)
 		require.Error(t, err, "Error while retrieving user Roles: some error 2")
 	})
 
@@ -556,7 +558,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req.Header.Set("thegroupsheader", "group1,group2")
 		req.Header.Set("theuserheader", "userId")
 
-		user, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, env)
+		user, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, userHeaders)
 		require.NoError(t, err)
 		require.Equal(t, types.User{
 			UserID:     "userId",
@@ -570,6 +572,30 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 				{RoleID: "r2", Permissions: []string{"p3", "p4"}},
 				{RoleID: "r3", Permissions: []string{"p5"}},
 			},
+			Properties: map[string]interface{}{},
 		}, user)
+	})
+
+	t.Run("allow empty userproperties header", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("userproperties", "")
+		req.Header.Set("thegroupsheader", "group1,group2")
+		req.Header.Set("theuserheader", "userId")
+
+		user, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, userHeaders)
+		require.NoError(t, err)
+		require.Equal(t, types.User{
+			UserID:     "userId",
+			UserGroups: []string{"group1", "group2"},
+			Properties: map[string]interface{}{},
+		}, user)
+	})
+
+	t.Run("fail on invalid userproperties header value", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("userproperties", "1")
+
+		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, userHeaders)
+		require.ErrorContains(t, err, "user properties header is not valid:")
 	})
 }

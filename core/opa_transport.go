@@ -23,12 +23,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -40,7 +40,12 @@ type OPATransport struct {
 	request                  *http.Request
 	permission               *openapi.RondConfig
 	partialResultsEvaluators PartialResultsEvaluators
-	env                      config.EnvironmentVariables
+
+	clientHeaderKey         string
+	userGroupsHeaderKey     string
+	userIdHeaderKey         string
+	userPropertiesHeaderKey string
+	logLevel                string
 }
 
 func NewOPATransport(
@@ -50,16 +55,25 @@ func NewOPATransport(
 	req *http.Request,
 	permission *openapi.RondConfig,
 	partialResultsEvaluators PartialResultsEvaluators,
-	env config.EnvironmentVariables,
+	clientHeaderKey string,
+	userGroupsHeaderKey string,
+	userIdHeaderKey string,
+	userPropertiesHeaderKey string,
+	logLevel string,
 ) *OPATransport {
 	return &OPATransport{
-		http.DefaultTransport,
-		req.Context(),
-		logger,
-		req,
-		permission,
-		partialResultsEvaluators,
-		env,
+		RoundTripper:             http.DefaultTransport,
+		context:                  req.Context(),
+		logger:                   logger,
+		request:                  req,
+		permission:               permission,
+		partialResultsEvaluators: partialResultsEvaluators,
+
+		clientHeaderKey:         clientHeaderKey,
+		userGroupsHeaderKey:     userGroupsHeaderKey,
+		userIdHeaderKey:         userIdHeaderKey,
+		userPropertiesHeaderKey: userPropertiesHeaderKey,
+		logLevel:                logLevel,
 	}
 }
 
@@ -100,19 +114,32 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return nil, fmt.Errorf("response body is not valid: %s", err.Error())
 	}
 
-	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(t.logger, t.request, t.env)
+	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(t.logger, t.request, mongoclient.UserHeaders{
+		IDHeaderKey:         t.userIdHeaderKey,
+		GroupsHeaderKey:     t.userGroupsHeaderKey,
+		PropertiesHeaderKey: t.userPropertiesHeaderKey,
+	})
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusInternalServerError)
 		return resp, nil
 	}
 
-	input, err := CreateRegoQueryInput(t.request, t.env, t.permission.Options.EnableResourcePermissionsMapOptimization, userInfo, decodedBody)
+	pathParams := mux.Vars(t.request)
+	input, err := InputFromRequest(t.request, userInfo, t.clientHeaderKey, pathParams, decodedBody)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusInternalServerError)
 		return resp, nil
 	}
 
-	evaluator, err := t.partialResultsEvaluators.GetEvaluatorFromPolicy(t.context, t.permission.ResponseFlow.PolicyName, input, t.env)
+	regoInput, err := CreateRegoQueryInput(t.logger, input, RegoInputOptions{
+		EnableResourcePermissionsMapOptimization: t.permission.Options.EnableResourcePermissionsMapOptimization,
+	})
+	if err != nil {
+		t.responseWithError(resp, err, http.StatusInternalServerError)
+		return resp, nil
+	}
+
+	evaluator, err := t.partialResultsEvaluators.GetEvaluatorFromPolicy(t.context, t.permission.ResponseFlow.PolicyName, regoInput, t.logLevel)
 	if err != nil {
 		t.logger.WithField("error", logrus.Fields{
 			"policyName": t.permission.ResponseFlow.PolicyName,

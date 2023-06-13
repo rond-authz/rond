@@ -37,7 +37,6 @@ import (
 
 	"github.com/rond-authz/rond/custom_builtins"
 
-	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
@@ -228,7 +227,7 @@ func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 	return &results, err
 }
 
-func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx context.Context, policy string, input []byte, env config.EnvironmentVariables) (*OPAEvaluator, error) {
+func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx context.Context, policy string, input []byte, logLevel string) (*OPAEvaluator, error) {
 	if eval, ok := partialEvaluators[policy]; ok {
 		inputTerm, err := ast.ParseTerm(string(input))
 		if err != nil {
@@ -237,7 +236,7 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 
 		evaluator := eval.PartialEvaluator.Rego(
 			rego.ParsedInput(inputTerm.Value),
-			rego.EnablePrintStatements(env.LogLevel == config.TraceLogLevel),
+			rego.EnablePrintStatements(logLevel == config.TraceLogLevel),
 			rego.PrintHook(NewPrintHook(os.Stdout, policy)),
 		)
 
@@ -365,93 +364,25 @@ func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission
 	return dataFromEvaluation, nil, nil
 }
 
-func CreateRegoQueryInput(req *http.Request, env config.EnvironmentVariables, enableResourcePermissionsMapOptimization bool, user types.User, responseBody interface{}) ([]byte, error) {
-	requestContext := req.Context()
-	logger := glogger.Get(requestContext)
+type RegoInputOptions struct {
+	EnableResourcePermissionsMapOptimization bool
+}
+
+func CreateRegoQueryInput(
+	logger *logrus.Entry,
+	input Input,
+	options RegoInputOptions,
+) ([]byte, error) {
 	opaInputCreationTime := time.Now()
-	userProperties := make(map[string]interface{})
-	_, err := utils.UnmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
-	if err != nil {
-		return nil, fmt.Errorf("user properties header is not valid: %s", err.Error())
-	}
 
-	userGroup := make([]string, 0)
-	userGroupsNotSplitted := req.Header.Get(env.UserGroupsHeader)
-	if userGroupsNotSplitted != "" {
-		userGroup = strings.Split(userGroupsNotSplitted, ",")
-	}
+	input.buildOptimizedResourcePermissionsMap(logger, options.EnableResourcePermissionsMapOptimization)
 
-	var permissionsMap PermissionsOnResourceMap
-	if enableResourcePermissionsMapOptimization {
-		logger.Info("preparing optimized resourcePermissionMap for OPA evaluator")
-		opaPermissionsMapTime := time.Now()
-		permissionsMap = buildOptimizedResourcePermissionsMap(user)
-		logger.WithField("resourcePermissionMapCreationTime", fmt.Sprintf("%+v", time.Since(opaPermissionsMapTime))).Tracef("resource permission map creation")
-	}
-
-	input := Input{
-		ClientType: req.Header.Get(env.ClientTypeHeader),
-		Request: InputRequest{
-			Method:     req.Method,
-			Path:       req.URL.Path,
-			Headers:    req.Header,
-			Query:      req.URL.Query(),
-			PathParams: mux.Vars(req),
-		},
-		Response: InputResponse{
-			Body: responseBody,
-		},
-		User: InputUser{
-			Bindings:               user.UserBindings,
-			Roles:                  user.UserRoles,
-			Properties:             userProperties,
-			Groups:                 userGroup,
-			ResourcePermissionsMap: permissionsMap,
-		},
-	}
-
-	shouldParseJSONBody := utils.HasApplicationJSONContentType(req.Header) &&
-		req.ContentLength > 0 &&
-		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete)
-
-	if shouldParseJSONBody {
-		bodyBytes, err := io.ReadAll(req.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed request body parse: %s", err.Error())
-		}
-		if err := json.Unmarshal(bodyBytes, &input.Request.Body); err != nil {
-			return nil, fmt.Errorf("failed request body deserialization: %s", err.Error())
-		}
-		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-	}
 	inputBytes, err := json.Marshal(input)
 	if err != nil {
 		return nil, fmt.Errorf("failed input JSON encode: %v", err)
 	}
 	logger.Tracef("OPA input rego creation in: %+v", time.Since(opaInputCreationTime))
 	return inputBytes, nil
-}
-
-func buildOptimizedResourcePermissionsMap(user types.User) PermissionsOnResourceMap {
-	permissionsOnResourceMap := make(PermissionsOnResourceMap, 0)
-	rolesMap := buildRolesMap(user.UserRoles)
-	for _, binding := range user.UserBindings {
-		for _, role := range binding.Roles {
-			rolePermissions, ok := rolesMap[role]
-			if !ok {
-				continue
-			}
-			for _, permission := range rolePermissions {
-				key := buildPermissionOnResourceKey(permission, binding.Resource.ResourceType, binding.Resource.ResourceID)
-				permissionsOnResourceMap[key] = true
-			}
-		}
-		for _, permission := range binding.Permissions {
-			key := buildPermissionOnResourceKey(permission, binding.Resource.ResourceType, binding.Resource.ResourceID)
-			permissionsOnResourceMap[key] = true
-		}
-	}
-	return permissionsOnResourceMap
 }
 
 func buildRolesMap(roles []types.Role) map[string][]string {
@@ -504,6 +435,37 @@ type Input struct {
 	ClientType string        `json:"clientType,omitempty"`
 	User       InputUser     `json:"user"`
 }
+
+func (input *Input) buildOptimizedResourcePermissionsMap(logger *logrus.Entry, enableResourcePermissionsMapOptimization bool) {
+	if !enableResourcePermissionsMapOptimization {
+		return
+	}
+	logger.Info("preparing optimized resourcePermissionMap for OPA evaluator")
+	opaPermissionsMapTime := time.Now()
+
+	user := input.User
+	permissionsOnResourceMap := make(PermissionsOnResourceMap, 0)
+	rolesMap := buildRolesMap(user.Roles)
+	for _, binding := range user.Bindings {
+		for _, role := range binding.Roles {
+			rolePermissions, ok := rolesMap[role]
+			if !ok {
+				continue
+			}
+			for _, permission := range rolePermissions {
+				key := buildPermissionOnResourceKey(permission, binding.Resource.ResourceType, binding.Resource.ResourceID)
+				permissionsOnResourceMap[key] = true
+			}
+		}
+		for _, permission := range binding.Permissions {
+			key := buildPermissionOnResourceKey(permission, binding.Resource.ResourceType, binding.Resource.ResourceID)
+			permissionsOnResourceMap[key] = true
+		}
+	}
+	input.User.ResourcePermissionsMap = permissionsOnResourceMap
+	logger.WithField("resourcePermissionMapCreationTime", fmt.Sprintf("%+v", time.Since(opaPermissionsMapTime))).Tracef("resource permission map creation")
+}
+
 type InputRequest struct {
 	Body       interface{}       `json:"body,omitempty"`
 	Headers    http.Header       `json:"headers,omitempty"`
@@ -561,5 +523,50 @@ func LoadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 	return &OPAModuleConfig{
 		Name:    filepath.Base(regoModulePath),
 		Content: string(fileContent),
+	}, nil
+}
+
+func InputFromRequest(
+	req *http.Request,
+	user types.User,
+	clientTypeHeaderKey string,
+	pathParams map[string]string,
+	responseBody any,
+) (Input, error) {
+	shouldParseJSONBody := utils.HasApplicationJSONContentType(req.Header) &&
+		req.ContentLength > 0 &&
+		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete)
+
+	var requestBody any
+	if shouldParseJSONBody {
+		bodyBytes, err := io.ReadAll(req.Body)
+		if err != nil {
+			return Input{}, fmt.Errorf("failed request body parse: %s", err.Error())
+		}
+		if err := json.Unmarshal(bodyBytes, &requestBody); err != nil {
+			return Input{}, fmt.Errorf("failed request body deserialization: %s", err.Error())
+		}
+		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	}
+
+	return Input{
+		ClientType: req.Header.Get(clientTypeHeaderKey),
+		Request: InputRequest{
+			Method:     req.Method,
+			Path:       req.URL.Path,
+			Headers:    req.Header,
+			Query:      req.URL.Query(),
+			PathParams: pathParams,
+			Body:       requestBody,
+		},
+		Response: InputResponse{
+			Body: responseBody,
+		},
+		User: InputUser{
+			Properties: user.Properties,
+			Groups:     user.UserGroups,
+			Bindings:   user.UserBindings,
+			Roles:      user.UserRoles,
+		},
 	}, nil
 }

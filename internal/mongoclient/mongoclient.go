@@ -282,23 +282,36 @@ func RolesIDsFromBindings(bindings []types.Binding) []string {
 	return rolesIds
 }
 
-func RetrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, env config.EnvironmentVariables) (types.User, error) {
+type UserHeaders struct {
+	GroupsHeaderKey     string
+	IDHeaderKey         string
+	PropertiesHeaderKey string
+}
+
+func RetrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, userHeaders UserHeaders) (types.User, error) {
 	requestContext := req.Context()
 	mongoClient, err := GetMongoClientFromContext(requestContext)
 	if err != nil {
-		return types.User{}, fmt.Errorf("Unexpected error retrieving MongoDB Client from request context")
+		return types.User{}, fmt.Errorf("unexpected error retrieving MongoDB Client from request context")
 	}
 
 	var user types.User
 
-	user.UserGroups = strings.Split(req.Header.Get(env.UserGroupsHeader), ",")
-	user.UserID = req.Header.Get(env.UserIdHeader)
+	user.UserGroups = strings.Split(req.Header.Get(userHeaders.GroupsHeaderKey), ",")
+	user.UserID = req.Header.Get(userHeaders.IDHeaderKey)
+
+	userProperties := make(map[string]interface{})
+	_, err = utils.UnmarshalHeader(req.Header, userHeaders.PropertiesHeaderKey, &userProperties)
+	if err != nil {
+		return types.User{}, fmt.Errorf("user properties header is not valid: %s", err.Error())
+	}
+	user.Properties = userProperties
 
 	if mongoClient != nil && user.UserID != "" {
 		user.UserBindings, err = mongoClient.RetrieveUserBindings(requestContext, &user)
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user bindings")
-			return types.User{}, fmt.Errorf("Error while retrieving user bindings: %s", err.Error())
+			return types.User{}, fmt.Errorf("error while retrieving user bindings: %s", err.Error())
 		}
 
 		userRolesIds := RolesIDsFromBindings(user.UserBindings)
@@ -306,7 +319,7 @@ func RetrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, env c
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user roles")
 
-			return types.User{}, fmt.Errorf("Error while retrieving user Roles: %s", err.Error())
+			return types.User{}, fmt.Errorf("error while retrieving user Roles: %s", err.Error())
 		}
 		logger.WithFields(logrus.Fields{
 			"foundBindingsLength": len(user.UserBindings),
