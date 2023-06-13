@@ -16,7 +16,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -45,17 +44,17 @@ func TestSetupRoutes(t *testing.T) {
 		router := mux.NewRouter()
 		oas := &openapi.OpenAPISpec{
 			Paths: openapi.OpenAPIPaths{
-				"/foo":             openapi.PathVerbs{},
-				"/bar":             openapi.PathVerbs{},
-				"/foo/bar":         openapi.PathVerbs{},
-				"/-/ready":         openapi.PathVerbs{},
-				"/-/healthz":       openapi.PathVerbs{},
-				"/-/check-up":      openapi.PathVerbs{},
-				"/-/metrics":       openapi.PathVerbs{},
-				"/-/rond/metrics":  openapi.PathVerbs{},
-				"/-/rbac-healthz":  openapi.PathVerbs{},
-				"/-/rbac-ready":    openapi.PathVerbs{},
-				"/-/rbac-check-up": openapi.PathVerbs{},
+				"/foo":             openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/bar":             openapi.PathVerbs{"post": openapi.VerbConfig{}},
+				"/foo/bar":         openapi.PathVerbs{"patch": openapi.VerbConfig{}},
+				"/-/ready":         openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/-/healthz":       openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/-/check-up":      openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/-/metrics":       openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/-/rond/metrics":  openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/-/rbac-healthz":  openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/-/rbac-ready":    openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/-/rbac-check-up": openapi.PathVerbs{"get": openapi.VerbConfig{}},
 				"/with/trailing/slash": openapi.PathVerbs{
 					"get": openapi.VerbConfig{
 						PermissionV2: &openapi.RondConfig{
@@ -68,7 +67,18 @@ func TestSetupRoutes(t *testing.T) {
 				},
 			},
 		}
-		expectedPaths := []string{"/", "/-/check-up", "/-/healthz", "/-/metrics", "/-/ready", "/bar", "/documentation/json", "/foo", "/foo/bar", "/{/with/trailing/slash:/with/trailing/slash\\/?}"}
+		expectedPaths := []string{
+			"/",
+			"/-/check-up",
+			"/-/healthz",
+			"/-/metrics",
+			"/-/ready",
+			"/bar",
+			"/documentation/json",
+			"/foo",
+			"/foo/bar",
+			"/{/with/trailing/slash:/with/trailing/slash\\/?}",
+		}
 
 		setupRoutes(router, oas, envs)
 
@@ -78,7 +88,6 @@ func TestSetupRoutes(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unexpected error during walk: %s", err.Error())
 			}
-			fmt.Printf("🚀 ~ file: router_test.go ~ line 74 ~ router.Walk ~ path : %+v ", path)
 
 			foundPaths = append(foundPaths, path)
 			return nil
@@ -92,17 +101,27 @@ func TestSetupRoutes(t *testing.T) {
 		router := mux.NewRouter()
 		oas := &openapi.OpenAPISpec{
 			Paths: openapi.OpenAPIPaths{
-				"/-/ready":    openapi.PathVerbs{},
-				"/-/healthz":  openapi.PathVerbs{},
-				"/-/check-up": openapi.PathVerbs{},
+				"/-/ready":    openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/-/healthz":  openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/-/check-up": openapi.PathVerbs{"get": openapi.VerbConfig{}},
 				// General route
-				"/foo/*":          openapi.PathVerbs{},
-				"/foo/bar/*":      openapi.PathVerbs{},
-				"/foo/bar/nested": openapi.PathVerbs{},
-				"/foo/bar/:barId": openapi.PathVerbs{},
+				"/foo/*":          openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/foo/bar/*":      openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/foo/bar/nested": openapi.PathVerbs{"post": openapi.VerbConfig{}},
+				"/foo/bar/:barId": openapi.PathVerbs{"get": openapi.VerbConfig{}},
 			},
 		}
-		expectedPaths := []string{"/", "/-/ready", "/-/healthz", "/-/check-up", "/foo/", "/foo/bar/", "/foo/bar/nested", "/foo/bar/{barId}", "/documentation/json"}
+		expectedPaths := []string{
+			"/",
+			"/-/ready",
+			"/-/healthz",
+			"/-/check-up",
+			"/foo/bar/nested",
+			"/foo/bar/{barId}",
+			"/foo/bar/",
+			"/foo/",
+			"/documentation/json",
+		}
 		sort.Strings(expectedPaths)
 
 		setupRoutes(router, oas, envs)
@@ -131,11 +150,11 @@ func TestSetupRoutes(t *testing.T) {
 		router := mux.NewRouter()
 		oas := &openapi.OpenAPISpec{
 			Paths: openapi.OpenAPIPaths{
-				"/documentation/json": openapi.PathVerbs{},
-				"/foo/*":              openapi.PathVerbs{},
-				"/foo/bar/*":          openapi.PathVerbs{},
-				"/foo/bar/nested":     openapi.PathVerbs{},
-				"/foo/bar/:barId":     openapi.PathVerbs{},
+				"/documentation/json": openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/foo/*":              openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/foo/bar/*":          openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/foo/bar/nested":     openapi.PathVerbs{"get": openapi.VerbConfig{}},
+				"/foo/bar/:barId":     openapi.PathVerbs{"get": openapi.VerbConfig{}},
 			},
 		}
 		expectedPaths := []string{"/validate/", "/validate/documentation/json", "/validate/foo/", "/validate/foo/bar/", "/validate/foo/bar/nested", "/validate/foo/bar/{barId}"}

@@ -171,7 +171,7 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 
 			if scopedMethod != strings.ToUpper(AllHTTPMethod) {
 				OASRouter.Handle(scopedMethod, OASPathCleaned, handler)
-				if methodContent.PermissionV2.Options.IgnoreTrailingSlash {
+				if methodContent.PermissionV2 != nil && methodContent.PermissionV2.Options.IgnoreTrailingSlash {
 					slashLaxPathToRegister := OASPathCleaned
 					if strings.HasSuffix(OASPathCleaned, "/") {
 						slashLaxPathToRegister = strings.TrimSuffix(slashLaxPathToRegister, "/")
