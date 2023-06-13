@@ -16,6 +16,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -55,9 +56,19 @@ func TestSetupRoutes(t *testing.T) {
 				"/-/rbac-healthz":  openapi.PathVerbs{},
 				"/-/rbac-ready":    openapi.PathVerbs{},
 				"/-/rbac-check-up": openapi.PathVerbs{},
+				"/with/trailing/slash": openapi.PathVerbs{
+					"get": openapi.VerbConfig{
+						PermissionV2: &openapi.RondConfig{
+							RequestFlow: openapi.RequestFlow{
+								PolicyName: "filter_policy",
+							},
+							Options: openapi.PermissionOptions{IgnoreTrailingSlash: true},
+						},
+					},
+				},
 			},
 		}
-		expectedPaths := []string{"/", "/-/check-up", "/-/healthz", "/-/metrics", "/-/ready", "/bar", "/documentation/json", "/foo", "/foo/bar"}
+		expectedPaths := []string{"/", "/-/check-up", "/-/healthz", "/-/metrics", "/-/ready", "/bar", "/documentation/json", "/foo", "/foo/bar", "/with/trailing/slash"} // "/{/with/trailing/slash:/with/trailing/slash\\/?}"
 
 		setupRoutes(router, oas, envs)
 
@@ -67,6 +78,7 @@ func TestSetupRoutes(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unexpected error during walk: %s", err.Error())
 			}
+			fmt.Printf("🚀 ~ file: router_test.go ~ line 74 ~ router.Walk ~ path : %+v ", path)
 
 			foundPaths = append(foundPaths, path)
 			return nil
@@ -451,6 +463,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			mockPartialEvaluators,
 		)
 
+		//  req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/with/trailing/slash/", nil)
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/foo/bar/nested", nil)
 		require.NoError(t, err, "Unexpected error")
 

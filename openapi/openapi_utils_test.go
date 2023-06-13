@@ -382,6 +382,30 @@ func TestFindPermission(t *testing.T) {
 		found, err = oas.FindPermission(OASRouter, "/projects/", "GET")
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_get"}}, found)
 		require.NoError(t, err)
+
+		found, err = oas.FindPermission(OASRouter, "/with/trailing/slash/", "GET")
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{
+			PolicyName:    "requestpolicy",
+			GenerateQuery: true,
+			QueryOptions: QueryOptions{
+				HeaderName: "x-query-header",
+			}},
+			ResponseFlow: ResponseFlow{PolicyName: "responsepolicy"},
+			Options:      PermissionOptions{IgnoreTrailingSlash: true},
+		}, found)
+		require.NoError(t, err)
+
+		// found, err = oas.FindPermission(OASRouter, "/with/trailing/slash", "GET")
+		// require.Equal(t, RondConfig{RequestFlow: RequestFlow{
+		// 	PolicyName:    "requestpolicy",
+		// 	GenerateQuery: true,
+		// 	QueryOptions: QueryOptions{
+		// 		HeaderName: "x-query-header",
+		// 	}},
+		// 	ResponseFlow: ResponseFlow{PolicyName: "responsepolicy"},
+		// 	Options:      PermissionOptions{IgnoreTrailingSlash: true},
+		// }, found)
+		// require.NoError(t, err)
 	})
 
 	t.Run("encoded cases", func(t *testing.T) {

@@ -56,6 +56,7 @@ type XPermissionKey struct{}
 
 type PermissionOptions struct {
 	EnableResourcePermissionsMapOptimization bool `json:"enableResourcePermissionsMapOptimization"`
+	IgnoreTrailingSlash                      bool `json:"ignoreTrailingSlash,omitempty"`
 }
 
 // Config v1 //
@@ -153,6 +154,7 @@ func createOasHandler(scopedMethodContent VerbConfig) func(http.ResponseWriter, 
 		header.Set("resourceFilter.rowFilter.headerKey", permission.RequestFlow.QueryOptions.HeaderName)
 		header.Set("responseFilter.policy", permission.ResponseFlow.PolicyName)
 		header.Set("options.enableResourcePermissionsMapOptimization", strconv.FormatBool(permission.Options.EnableResourcePermissionsMapOptimization))
+		header.Set("options.ignoreTrailingSlash", strconv.FormatBool(permission.Options.IgnoreTrailingSlash))
 	}
 }
 
@@ -201,7 +203,11 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 	}
 	enableResourcePermissionsMapOptimization, err := strconv.ParseBool(recorderResult.Header.Get("options.enableResourcePermissionsMapOptimization"))
 	if err != nil {
-		return RondConfig{}, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
+		return RondConfig{}, fmt.Errorf("error while parsing options.enableResourcePermissionsMapOptimization: %s", err)
+	}
+	ignoreTrailingSlash, err := strconv.ParseBool(recorderResult.Header.Get("options.ignoreTrailingSlash"))
+	if err != nil {
+		return RondConfig{}, fmt.Errorf("error while parsing options.ignoreTrailingSlash: %s", err)
 	}
 	return RondConfig{
 		RequestFlow: RequestFlow{
@@ -216,6 +222,7 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 		},
 		Options: PermissionOptions{
 			EnableResourcePermissionsMapOptimization: enableResourcePermissionsMapOptimization,
+			IgnoreTrailingSlash:                      ignoreTrailingSlash,
 		},
 	}, nil
 }

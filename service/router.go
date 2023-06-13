@@ -188,8 +188,16 @@ func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.Enviro
 	// routes to be registered in the proper order
 	paths := make([]string, 0)
 	methods := make(map[string][]string, 0)
+	ignoreTrailingSlashMap := make(map[string]bool, 0)
 
 	for path, pathMethods := range oas.Paths {
+		var ignoreTrailingSlash bool
+		permission := pathMethods[strings.ToLower(http.MethodGet)].PermissionV2
+		if permission != nil {
+			ignoreTrailingSlash = permission.Options.IgnoreTrailingSlash
+		}
+		ignoreTrailingSlashMap[path] = ignoreTrailingSlash
+
 		paths = append(paths, path)
 		for method := range pathMethods {
 			if method == openapi.AllHTTPMethod {
@@ -221,6 +229,13 @@ func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.Enviro
 		if path == env.TargetServiceOASPath && documentationPermission == "" {
 			router.HandleFunc(openapi.ConvertPathVariablesToBrackets(pathToRegister), alwaysProxyHandler).Methods(http.MethodGet)
 			continue
+		}
+		if ignoreTrailingSlashMap[path] {
+			router.StrictSlash(true)
+			// pathRegExp := fmt.Sprintf("/{%s:%s\\/?}", openapi.ConvertPathVariablesToBrackets(pathToRegister), openapi.ConvertPathVariablesToBrackets(pathToRegister))
+			// router.HandleFunc(pathRegExp, rbacHandler).Methods(http.MethodGet)
+		} else {
+			router.StrictSlash(false)
 		}
 		router.HandleFunc(openapi.ConvertPathVariablesToBrackets(pathToRegister), rbacHandler).Methods(methods[path]...)
 	}

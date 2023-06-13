@@ -147,6 +147,25 @@
                     "allow": "project_get"
                 }
             }
+        },
+        "/with/trailing/slash/": {
+            "get": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "requestpolicy",
+                  "generateQuery": true,
+                  "queryOptions": {
+                    "headerName": "x-query-header"
+                  }
+                },
+                "responseFlow": {
+                  "policyName": "responsepolicy"
+                },
+                "options": {
+                    "ignoreTrailingSlash": true
+                }
+              }
+            }
         }
     }
 }
