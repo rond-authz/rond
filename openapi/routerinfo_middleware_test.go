@@ -21,13 +21,10 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/rond-authz/rond/internal/config"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
-
-var envs = config.EnvironmentVariables{}
 
 func TestRouterInfoContext(t *testing.T) {
 	nullLogger, _ := test.NewNullLogger()

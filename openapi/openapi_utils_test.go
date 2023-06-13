@@ -175,12 +175,12 @@ func TestLoadOAS(t *testing.T) {
 	log, _ := test.NewNullLogger()
 
 	t.Run("if TargetServiceOASPath & APIPermissionsFilePath are set together, expect to read oas from static file", func(t *testing.T) {
-		envs := config.EnvironmentVariables{
+		options := LoadOptions{
 			TargetServiceHost:      "localhost:3000",
 			TargetServiceOASPath:   "/documentation/json",
 			APIPermissionsFilePath: "../mocks/pathsConfig.json",
 		}
-		openApiSpec, err := LoadOASFromFileOrNetwork(log, envs)
+		openApiSpec, err := LoadOASFromFileOrNetwork(log, options)
 		require.True(t, err == nil, "unexpected error")
 		require.True(t, openApiSpec != nil, "unexpected nil result")
 		require.Equal(t, OpenAPIPaths{
@@ -209,7 +209,7 @@ func TestLoadOAS(t *testing.T) {
 	})
 
 	t.Run("expect to fetch oasApiSpec from API", func(t *testing.T) {
-		envs := config.EnvironmentVariables{
+		options := LoadOptions{
 			TargetServiceHost:    "localhost:3000",
 			TargetServiceOASPath: "/documentation/json",
 		}
@@ -220,7 +220,7 @@ func TestLoadOAS(t *testing.T) {
 			Reply(200).
 			File("../mocks/simplifiedMock.json")
 
-		openApiSpec, err := LoadOASFromFileOrNetwork(log, envs)
+		openApiSpec, err := LoadOASFromFileOrNetwork(log, options)
 		require.True(t, gock.IsDone(), "Mock has not been invoked")
 		require.NoError(t, err, "unexpected error")
 		require.NotNil(t, openApiSpec, "unexpected nil result")
@@ -264,10 +264,10 @@ func TestLoadOAS(t *testing.T) {
 	})
 
 	t.Run("expect to throw if TargetServiceOASPath or APIPermissionsFilePath is not set", func(t *testing.T) {
-		envs := config.EnvironmentVariables{
+		options := LoadOptions{
 			TargetServiceHost: "localhost:3000",
 		}
-		_, err := LoadOASFromFileOrNetwork(log, envs)
+		_, err := LoadOASFromFileOrNetwork(log, options)
 
 		t.Logf("Expected error occurred: %s", err.Error())
 		require.True(t, err != nil, fmt.Errorf("missing environment variables one of %s or %s is required", config.TargetServiceOASPathEnvKey, config.APIPermissionsFilePathEnvKey))

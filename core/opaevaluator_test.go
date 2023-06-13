@@ -142,14 +142,14 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		log, _ := test.NewNullLogger()
 		ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
-		envs := config.EnvironmentVariables{
+		opaModuleDirectory := "../mocks/rego-policies"
+		loadOptions := openapi.LoadOptions{
 			APIPermissionsFilePath: "../mocks/simplifiedMock.json",
-			OPAModulesDirectory:    "../mocks/rego-policies",
 		}
-		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, envs)
+		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, loadOptions)
 		require.NoError(t, err, "unexpected error")
 
-		opaModuleConfig, err := LoadRegoModule(envs.OPAModulesDirectory)
+		opaModuleConfig, err := LoadRegoModule(opaModuleDirectory)
 		require.NoError(t, err, "unexpected error")
 
 		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, nil)
@@ -161,14 +161,15 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		log, _ := test.NewNullLogger()
 		ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
-		envs := config.EnvironmentVariables{
+		opaModulesDirectory := "../mocks/rego-policies"
+
+		loadOptions := openapi.LoadOptions{
 			APIPermissionsFilePath: "../mocks/pathsConfigAllInclusive.json",
-			OPAModulesDirectory:    "../mocks/rego-policies",
 		}
-		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, envs)
+		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, loadOptions)
 		require.NoError(t, err, "unexpected error")
 
-		opaModuleConfig, err := LoadRegoModule(envs.OPAModulesDirectory)
+		opaModuleConfig, err := LoadRegoModule(opaModulesDirectory)
 		require.NoError(t, err, "unexpected error")
 
 		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, nil)
