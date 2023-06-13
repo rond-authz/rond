@@ -152,14 +152,10 @@
             "get": {
               "x-rond": {
                 "requestFlow": {
-                  "policyName": "requestpolicy",
-                  "generateQuery": true,
-                  "queryOptions": {
-                    "headerName": "x-query-header"
-                  }
+                  "policyName": "foo_bar"
                 },
                 "responseFlow": {
-                  "policyName": "responsepolicy"
+                  "policyName": "original_path"
                 },
                 "options": {
                     "ignoreTrailingSlash": true
@@ -171,14 +167,7 @@
             "post": {
               "x-rond": {
                 "requestFlow": {
-                  "policyName": "requestpolicy",
-                  "generateQuery": true,
-                  "queryOptions": {
-                    "headerName": "x-query-header"
-                  }
-                },
-                "responseFlow": {
-                  "policyName": "responsepolicy"
+                  "policyName": "foo_bar"
                 },
                 "options": {
                     "ignoreTrailingSlash": true

@@ -19,6 +19,10 @@ responsepolicy [response] {
 	response := {"msg": "hey there"}
 }
 
+original_path [response] {
+	response := input.request.path
+}
+
 allow_commit {
 	input.request.pathParams.projectId == "5df2260277baff0011fde823"
 }
