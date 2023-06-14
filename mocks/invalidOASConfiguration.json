@@ -1,6 +1,6 @@
 {
     "paths": {
-        "/with/trailing/slash/": {
+        "/ignore/trailing/slash/": {
             "all": {
               "x-rond": {
                 "requestFlow": {
@@ -10,12 +10,12 @@
                   "policyName": "original_path"
                 },
                 "options": {
-                    "ignoreTrailingSlash": true
+                    "ignoreTrailingSlash": false
                 }
               }
             }
         },
-        "/with/trailing/slash": {
+        "/ignore/trailing/slash": {
             "get": {
               "x-rond": {
                 "requestFlow": {

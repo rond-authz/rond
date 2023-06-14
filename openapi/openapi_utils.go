@@ -417,13 +417,22 @@ func validateConfiguration(oas *OpenAPISpec) error {
 	for path := range duplicates {
 		pathWithSuffix := path + "/"
 		for _, method := range methodsMap[path] {
-			shouldIgnoreTrailingSlash := ignoreTrailingSlashMap[path][method] && ignoreTrailingSlashMap[pathWithSuffix][method]
+			shouldIgnoreTrailingSlash := listContainsString(methodsMap[path], method) && listContainsString(methodsMap[pathWithSuffix], method) && (ignoreTrailingSlashMap[path][method] || ignoreTrailingSlashMap[pathWithSuffix][method])
 			if shouldIgnoreTrailingSlash {
 				return fmt.Errorf("invalid configuration - duplicate paths: \"%s\" and \"%s\" with IgnoreTrailingSlash flag active", path, pathWithSuffix)
 			}
 		}
 	}
 	return nil
+}
+
+func listContainsString(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+	return false
 }
 
 func CreateOASUtilityMaps(oas *OpenAPISpec) ([]string, map[string][]string, IgnoreTrailingSlashMap) {
@@ -441,8 +450,8 @@ func CreateOASUtilityMaps(oas *OpenAPISpec) ([]string, map[string][]string, Igno
 				if method == AllHTTPMethod {
 					for _, verb := range OasSupportedHTTPMethods {
 						ignoreTrailingSlashMap.Add(path, strings.ToUpper(verb), methodContent.PermissionV2.Options.IgnoreTrailingSlash)
+						continue
 					}
-					continue
 				}
 				ignoreTrailingSlashMap.Add(path, upperCaseMethod, methodContent.PermissionV2.Options.IgnoreTrailingSlash)
 			}

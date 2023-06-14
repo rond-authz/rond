@@ -1,6 +1,6 @@
 {
     "paths": {
-        "/with/trailing/slash": {
+        "/ignore/trailing/slash": {
             "post": {
               "x-rond": {
                 "requestFlow": {
@@ -28,7 +28,7 @@
               }
             }
         },
-        "/with/trailing/slash/": {
+        "/ignore/trailing/slash/": {
             "get": {
               "x-rond": {
                 "requestFlow": {
@@ -39,6 +39,37 @@
                 }
               }
             }
-        }
+        },
+        "/different/api/based/on/final/slash/": {
+            "get": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "foo_bar"
+                }
+              }
+            }
+        },
+        "/different/api/based/on/final/slash": {
+          "get": {
+            "x-rond": {
+              "requestFlow": {
+                "policyName": "foo_bar"
+              },
+              "options": {
+                "ignoreTrailingSlash": false
+              }
+            }
+          },
+          "post": {
+            "x-rond": {
+              "requestFlow": {
+                "policyName": "foo_bar"
+              },
+              "options": {
+                "ignoreTrailingSlash": true
+              }
+            }
+          }
+      }
     }
 }
