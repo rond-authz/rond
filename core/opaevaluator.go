@@ -436,11 +436,16 @@ func buildOptimizedResourcePermissionsMap(user types.User) PermissionsOnResource
 	permissionsOnResourceMap := make(PermissionsOnResourceMap, 0)
 	rolesMap := buildRolesMap(user.UserRoles)
 	for _, binding := range user.UserBindings {
+		if binding.Resource == nil {
+			continue
+		}
+
 		for _, role := range binding.Roles {
 			rolePermissions, ok := rolesMap[role]
 			if !ok {
 				continue
 			}
+
 			for _, permission := range rolePermissions {
 				key := buildPermissionOnResourceKey(permission, binding.Resource.ResourceType, binding.Resource.ResourceID)
 				permissionsOnResourceMap[key] = true
