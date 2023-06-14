@@ -274,10 +274,23 @@ func TestLoadOAS(t *testing.T) {
 	})
 }
 
+func TestConfigurationValidation(t *testing.T) {
+	t.Run("invalid configuration", func(t *testing.T) {
+		oas := prepareOASFromFile(t, "../mocks/invalidConfiguration.json")
+		_, err := oas.PrepareOASRouter()
+		require.EqualError(t, err, "invalid configuration: duplicate path: /with/trailing/slash with IgnoreTrailingSlash flag active")
+	})
+	t.Run("valid configuration", func(t *testing.T) {
+		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
+		_, err := oas.PrepareOASRouter()
+		require.NoError(t, err)
+	})
+}
+
 func TestFindPermission(t *testing.T) {
 	t.Run("nested cases", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
-		OASRouter := oas.PrepareOASRouter()
+		OASRouter, _ := oas.PrepareOASRouter()
 
 		found, err := oas.FindPermission(OASRouter, "/not/existing/route", "GET")
 		require.Empty(t, RondConfig{}, found)
@@ -416,7 +429,7 @@ func TestFindPermission(t *testing.T) {
 
 	t.Run("encoded cases", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/mockForEncodedTest.json")
-		OASRouter := oas.PrepareOASRouter()
+		OASRouter, _ := oas.PrepareOASRouter()
 
 		found, err := oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%252Fcms-backend%252FcmsProperties.json", "POST")
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "allow_commit"}}, found)

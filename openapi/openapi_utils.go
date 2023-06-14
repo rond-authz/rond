@@ -158,15 +158,19 @@ func createOasHandler(scopedMethodContent VerbConfig) func(http.ResponseWriter, 
 	}
 }
 
-func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
+func (oas *OpenAPISpec) PrepareOASRouter() (*bunrouter.CompatRouter, error) {
 	OASRouter := bunrouter.New().Compat()
 	routeMap := oas.createRoutesMap()
-	for OASPath, OASContent := range oas.Paths {
 
+	configurationError := validateConfiguration(oas)
+	if configurationError != nil {
+		return nil, configurationError
+	}
+
+	for OASPath, OASContent := range oas.Paths {
 		OASPathCleaned := ConvertPathVariablesToColons(cleanWildcard(OASPath))
 		for method, methodContent := range OASContent {
 			scopedMethod := strings.ToUpper(method)
-
 			handler := createOasHandler(methodContent)
 
 			if scopedMethod != strings.ToUpper(AllHTTPMethod) {
@@ -191,7 +195,7 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 		}
 	}
 
-	return OASRouter
+	return OASRouter, nil
 }
 
 // FIXME: This is not a logic method of OAS, but could be a method of OASRouter
@@ -377,4 +381,56 @@ var matchBrackets = regexp.MustCompile(`\/{(\w+)}`)
 
 func ConvertPathVariablesToColons(path string) string {
 	return matchBrackets.ReplaceAllString(path, "/:$1")
+}
+
+func findDuplicatesInList(list []string) map[string]bool {
+	duplicatesList := make(map[string]bool)
+	for i := 0; i < len(list)-1; i++ {
+		for j := i + 1; j < len(list); j++ {
+			if list[i] == list[j] {
+				duplicatesList[list[i]] = true
+			}
+		}
+	}
+	return duplicatesList
+}
+
+type IgnoreTrailingSlashMap map[string]map[string]bool
+
+func (i IgnoreTrailingSlashMap) Add(path, verb string, ignore bool) {
+	if verbMap, ok := i[path]; !ok || verbMap == nil {
+		i[path] = make(map[string]bool)
+	}
+	i[path][verb] = ignore
+}
+
+func validateConfiguration(oas *OpenAPISpec) error {
+	paths := make([]string, 0)
+	methods := make(map[string][]string)
+	ignoreTrailingSlashMap := make(IgnoreTrailingSlashMap)
+
+	for OASPath, OASContent := range oas.Paths {
+		paths = append(paths, strings.TrimSuffix(OASPath, "/"))
+
+		for method, methodContent := range OASContent {
+			scopedMethod := strings.ToUpper(method)
+			methods[OASPath] = append(methods[OASPath], scopedMethod)
+
+			if methodContent.PermissionV2 != nil {
+				ignoreTrailingSlashMap.Add(strings.TrimSuffix(OASPath, "/"), scopedMethod, methodContent.PermissionV2.Options.IgnoreTrailingSlash)
+			}
+		}
+	}
+
+	duplicates := findDuplicatesInList(paths)
+
+	for path := range duplicates {
+		for _, method := range methods[path] {
+			shouldIgnoreTrailingSlash := ignoreTrailingSlashMap[path][method]
+			if shouldIgnoreTrailingSlash {
+				return fmt.Errorf("invalid configuration: duplicate path: %s with IgnoreTrailingSlash flag active", path)
+			}
+		}
+	}
+	return nil
 }

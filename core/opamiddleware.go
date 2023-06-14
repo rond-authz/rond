@@ -35,7 +35,10 @@ func OPAMiddleware(
 	policyEvaluators PartialResultsEvaluators,
 	routesToNotProxy []string,
 ) mux.MiddlewareFunc {
-	OASrouter := openAPISpec.PrepareOASRouter()
+	OASrouter, err := openAPISpec.PrepareOASRouter()
+	if err != nil {
+		panic(err.Error())
+	}
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
