@@ -2,10 +2,6 @@
 
 # CHANGELOG
 
-### Added
-
-- `ignoreTrailingSlash` permission option
-
 ## 1.5.0 - 19-10-2022
 
 ## 1.4.3 - 12-10-2022
