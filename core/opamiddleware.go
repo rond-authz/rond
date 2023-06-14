@@ -16,6 +16,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -37,7 +38,7 @@ func OPAMiddleware(
 ) mux.MiddlewareFunc {
 	OASrouter, err := openAPISpec.PrepareOASRouter()
 	if err != nil {
-		panic(err.Error())
+		panic(fmt.Sprintf("Fatal: invalid OAS configuration: %s", err.Error()))
 	}
 
 	return func(next http.Handler) http.Handler {

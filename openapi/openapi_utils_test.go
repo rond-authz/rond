@@ -278,7 +278,7 @@ func TestConfigurationValidation(t *testing.T) {
 	t.Run("invalid configuration", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/invalidOASConfiguration.json")
 		_, err := oas.PrepareOASRouter()
-		require.EqualError(t, err, "invalid configuration - duplicate paths: \"/ignore/trailing/slash\" and \"/ignore/trailing/slash/\" with IgnoreTrailingSlash flag active")
+		require.EqualError(t, err, "duplicate paths: \"/ignore/trailing/slash\" and \"/ignore/trailing/slash/\" with IgnoreTrailingSlash flag active")
 	})
 	t.Run("valid configuration", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/validOASConfiguration.json")
@@ -305,6 +305,7 @@ func TestFindPermission(t *testing.T) {
 		require.EqualError(t, err, fmt.Sprintf("%s: PUT /use/method/that/not/existing/put", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/foo/bar/barId", "GET")
+		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{
 				PolicyName:    "foo_bar_params",
@@ -314,9 +315,9 @@ func TestFindPermission(t *testing.T) {
 				},
 			},
 		}, found)
-		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/foo/bar/barId/another-params-not-configured", "GET")
+		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{
 				PolicyName:    "foo_bar",
@@ -326,13 +327,13 @@ func TestFindPermission(t *testing.T) {
 				},
 			},
 		}, found)
-		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/foo/bar/nested/case/really/nested", "GET")
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "foo_bar_nested_case"}}, found)
 		require.NoError(t, err)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "foo_bar_nested_case"}}, found)
 
 		found, err = oas.FindPermission(OASRouter, "/foo/bar/nested", "GET")
+		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{
 				PolicyName:    "foo_bar_nested",
@@ -342,9 +343,9 @@ func TestFindPermission(t *testing.T) {
 				},
 			},
 		}, found)
-		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/foo/simble", "PATCH")
+		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{
 				PolicyName:    "foo",
@@ -354,77 +355,76 @@ func TestFindPermission(t *testing.T) {
 				},
 			},
 		}, found)
-		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all", "GET")
 		require.Equal(t, RondConfig{}, found)
 		require.EqualError(t, err, fmt.Sprintf("%s: GET /test/all", ErrNotFoundOASDefinition))
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/", "GET")
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
 		require.NoError(t, err)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "GET")
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
 		require.NoError(t, err)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "POST")
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_post"}}, found)
 		require.NoError(t, err)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_post"}}, found)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "PUT")
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
 		require.NoError(t, err)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "PATCH")
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
 		require.NoError(t, err)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "DELETE")
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
 		require.NoError(t, err)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
 
 		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "HEAD")
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
 		require.NoError(t, err)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
 
 		found, err = oas.FindPermission(OASRouter, "/projects/", "POST")
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_all"}}, found)
 		require.NoError(t, err)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_all"}}, found)
 
 		found, err = oas.FindPermission(OASRouter, "/projects/", "GET")
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_get"}}, found)
 		require.NoError(t, err)
+		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_get"}}, found)
 
 		found, err = oas.FindPermission(OASRouter, "/with/trailing/slash/", "GET")
+		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow:  RequestFlow{PolicyName: "foo_bar"},
 			ResponseFlow: ResponseFlow{PolicyName: "original_path"},
 			Options:      PermissionOptions{IgnoreTrailingSlash: true},
 		}, found)
-		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/with/trailing/slash", "GET")
+		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow:  RequestFlow{PolicyName: "foo_bar"},
 			ResponseFlow: ResponseFlow{PolicyName: "original_path"},
 			Options:      PermissionOptions{IgnoreTrailingSlash: true},
 		}, found)
-		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/without/trailing/slash", "POST")
+		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{PolicyName: "foo_bar"},
 			Options:     PermissionOptions{IgnoreTrailingSlash: true},
 		}, found)
-		require.NoError(t, err)
 
 		found, err = oas.FindPermission(OASRouter, "/without/trailing/slash/", "POST")
+		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{PolicyName: "foo_bar"},
 			Options:     PermissionOptions{IgnoreTrailingSlash: true},
 		}, found)
-		require.NoError(t, err)
 	})
 
 	t.Run("encoded cases", func(t *testing.T) {

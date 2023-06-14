@@ -428,7 +428,7 @@ func validateConfiguration(oas *OpenAPISpec) error {
 		for _, method := range methodsMap[path] {
 			shouldIgnoreTrailingSlash := listContainsString(methodsMap[path], method) && listContainsString(methodsMap[pathWithSuffix], method) && (ignoreTrailingSlashMap[path][method] || ignoreTrailingSlashMap[pathWithSuffix][method])
 			if shouldIgnoreTrailingSlash {
-				return fmt.Errorf("invalid configuration - duplicate paths: \"%s\" and \"%s\" with IgnoreTrailingSlash flag active", path, pathWithSuffix)
+				return fmt.Errorf("duplicate paths: \"%s\" and \"%s\" with IgnoreTrailingSlash flag active", path, pathWithSuffix)
 			}
 		}
 	}
