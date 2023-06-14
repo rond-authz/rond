@@ -1,0 +1,31 @@
+{
+    "paths": {
+        "/with/trailing/slash/": {
+            "all": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "foo_bar"
+                },
+                "responseFlow": {
+                  "policyName": "original_path"
+                },
+                "options": {
+                    "ignoreTrailingSlash": true
+                }
+              }
+            }
+        },
+        "/with/trailing/slash": {
+            "get": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "foo_bar"
+                },
+                "options": {
+                    "ignoreTrailingSlash": true
+                }
+              }
+            }
+        }
+    }
+}

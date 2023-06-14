@@ -1,7 +1,20 @@
 {
     "paths": {
-        "/with/trailing/slash/": {
-            "get": {
+        "/with/trailing/slash": {
+            "post": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "foo_bar"
+                },
+                "responseFlow": {
+                  "policyName": "original_path"
+                },
+                "options": {
+                    "ignoreTrailingSlash": true
+                }
+              }
+            },
+            "patch": {
               "x-rond": {
                 "requestFlow": {
                   "policyName": "foo_bar"
@@ -15,7 +28,7 @@
               }
             }
         },
-        "/with/trailing/slash": {
+        "/with/trailing/slash/": {
             "get": {
               "x-rond": {
                 "requestFlow": {

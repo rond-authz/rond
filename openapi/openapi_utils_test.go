@@ -276,12 +276,12 @@ func TestLoadOAS(t *testing.T) {
 
 func TestConfigurationValidation(t *testing.T) {
 	t.Run("invalid configuration", func(t *testing.T) {
-		oas := prepareOASFromFile(t, "../mocks/invalidConfiguration.json")
+		oas := prepareOASFromFile(t, "../mocks/invalidOASConfiguration.json")
 		_, err := oas.PrepareOASRouter()
-		require.EqualError(t, err, "invalid configuration: duplicate path: /with/trailing/slash with IgnoreTrailingSlash flag active")
+		require.EqualError(t, err, "invalid configuration - duplicate paths: \"/with/trailing/slash\" and \"/with/trailing/slash/\" with IgnoreTrailingSlash flag active")
 	})
 	t.Run("valid configuration", func(t *testing.T) {
-		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
+		oas := prepareOASFromFile(t, "../mocks/validOASConfiguration.json")
 		_, err := oas.PrepareOASRouter()
 		require.NoError(t, err)
 	})

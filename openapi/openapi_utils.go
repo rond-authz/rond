@@ -384,15 +384,15 @@ func ConvertPathVariablesToColons(path string) string {
 }
 
 func findDuplicatesInList(list []string) map[string]bool {
-	duplicatesList := make(map[string]bool)
+	duplicates := make(map[string]bool)
 	for i := 0; i < len(list)-1; i++ {
 		for j := i + 1; j < len(list); j++ {
 			if list[i] == list[j] {
-				duplicatesList[list[i]] = true
+				duplicates[list[i]] = true
 			}
 		}
 	}
-	return duplicatesList
+	return duplicates
 }
 
 type IgnoreTrailingSlashMap map[string]map[string]bool
@@ -415,10 +415,11 @@ func validateConfiguration(oas *OpenAPISpec) error {
 	duplicates := findDuplicatesInList(pathsWithoutSuffix)
 
 	for path := range duplicates {
+		pathWithSuffix := path + "/"
 		for _, method := range methodsMap[path] {
-			shouldIgnoreTrailingSlash := ignoreTrailingSlashMap[path][method]
+			shouldIgnoreTrailingSlash := ignoreTrailingSlashMap[path][method] && ignoreTrailingSlashMap[pathWithSuffix][method]
 			if shouldIgnoreTrailingSlash {
-				return fmt.Errorf("invalid configuration: duplicate path: %s with IgnoreTrailingSlash flag active", path)
+				return fmt.Errorf("invalid configuration - duplicate paths: \"%s\" and \"%s\" with IgnoreTrailingSlash flag active", path, pathWithSuffix)
 			}
 		}
 	}
@@ -432,21 +433,29 @@ func CreateOASUtilityMaps(oas *OpenAPISpec) ([]string, map[string][]string, Igno
 
 	for path, pathMethods := range oas.Paths {
 		paths = append(paths, path)
+
 		for method, methodContent := range pathMethods {
+			upperCaseMethod := strings.ToUpper(method)
+
+			if methodContent.PermissionV2 != nil {
+				if method == AllHTTPMethod {
+					for _, verb := range OasSupportedHTTPMethods {
+						ignoreTrailingSlashMap.Add(path, strings.ToUpper(verb), methodContent.PermissionV2.Options.IgnoreTrailingSlash)
+					}
+					continue
+				}
+				ignoreTrailingSlashMap.Add(path, upperCaseMethod, methodContent.PermissionV2.Options.IgnoreTrailingSlash)
+			}
+
 			if method == AllHTTPMethod {
 				methods[path] = OasSupportedHTTPMethods
-				continue
 			}
+
 			if methods[path] == nil {
 				methods[path] = []string{}
 			}
 
-			upperCaseMethod := strings.ToUpper(method)
-
 			methods[path] = append(methods[path], upperCaseMethod)
-			if methodContent.PermissionV2 != nil {
-				ignoreTrailingSlashMap.Add(path, upperCaseMethod, methodContent.PermissionV2.Options.IgnoreTrailingSlash)
-			}
 		}
 	}
 
