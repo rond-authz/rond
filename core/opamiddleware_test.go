@@ -30,7 +30,7 @@ import (
 )
 
 func TestOPAMiddleware(t *testing.T) {
-	var partialEvaluators = PartialResultsEvaluators{}
+	sdk := rondImpl{}
 	routesNotToProxy := make([]string, 0)
 
 	t.Run(`strict mode failure`, func(t *testing.T) {
@@ -44,7 +44,7 @@ todo { true }`,
 		require.NoError(t, err)
 		err = json.Unmarshal(openAPISpecContent, &openAPISpec)
 		require.NoError(t, err)
-		middleware := OPAMiddleware(opaModule, openAPISpec, partialEvaluators, routesNotToProxy, "", nil)
+		middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", nil)
 
 		t.Run(`missing oas paths`, func(t *testing.T) {
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +106,7 @@ foobar { true }`,
 			openAPISpec, err := openapi.LoadOASFile("../mocks/documentationPathMock.json")
 			require.NoError(t, err)
 			targetServiceOASPath := "/documentation/json"
-			middleware := OPAMiddleware(opaModule, openAPISpec, partialEvaluators, routesNotToProxy, targetServiceOASPath, nil)
+			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, targetServiceOASPath, nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -122,7 +122,7 @@ foobar { true }`,
 			openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 			require.NoError(t, err)
 			targetServiceOASPath := "/documentation/json"
-			middleware := OPAMiddleware(opaModule, openAPISpec, partialEvaluators, routesNotToProxy, targetServiceOASPath, nil)
+			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, targetServiceOASPath, nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -138,7 +138,7 @@ foobar { true }`,
 			openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 			require.NoError(t, err)
 			targetServiceOASPath := "/documentation/custom/json"
-			middleware := OPAMiddleware(opaModule, openAPISpec, partialEvaluators, routesNotToProxy, targetServiceOASPath, nil)
+			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, targetServiceOASPath, nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -162,7 +162,7 @@ foobar { true }`,
 todo { true }`,
 			}
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, partialEvaluators, routesNotToProxy, "", nil)
+			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := openapi.GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
@@ -184,7 +184,7 @@ todo { true }`,
 foobar { true }`,
 			}
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, partialEvaluators, routesNotToProxy, "", nil)
+			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := openapi.GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
@@ -206,7 +206,7 @@ foobar { true }`,
 very_very_composed_permission { true }`,
 			}
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, partialEvaluators, routesNotToProxy, "", nil)
+			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := openapi.GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
@@ -233,7 +233,7 @@ very_very_composed_permission_with_eval { true }`,
 				PathPrefixStandalone: "/eval",
 			}
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, partialEvaluators, routesNotToProxy, "", options)
+			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", options)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := openapi.GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
@@ -251,7 +251,7 @@ very_very_composed_permission_with_eval { true }`,
 }
 
 func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
-	var partialEvaluators = PartialResultsEvaluators{}
+	var sdk = rondImpl{}
 	var routesNotToProxy = []string{}
 
 	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
@@ -268,7 +268,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 			very_very_composed_permission { true }`,
 		}
 
-		middleware := OPAMiddleware(opaModule, openAPISpec, partialEvaluators, routesNotToProxy, "", options)
+		middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", options)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			permission, err := openapi.GetXPermission(r.Context())
 			require.True(t, err == nil, "Unexpected error")
@@ -290,7 +290,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 very_very_composed_permission_with_eval { true }`,
 		}
 
-		middleware := OPAMiddleware(opaModule, openAPISpec, partialEvaluators, routesNotToProxy, "", options)
+		middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", options)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			permission, err := openapi.GetXPermission(r.Context())
 			require.True(t, err == nil, "Unexpected error")

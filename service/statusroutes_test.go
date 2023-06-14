@@ -23,11 +23,11 @@ import (
 	"testing"
 
 	"github.com/mia-platform/glogger/v2"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/openapi"
-	"github.com/rond-authz/rond/sdk"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -113,7 +113,8 @@ test_policy { true }
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	sdk, err := sdk.New(ctx, mongoClient, oas, opa, nil, nil)
+	registry := prometheus.NewRegistry()
+	sdk, err := core.NewSDK(ctx, mongoClient, oas, opa, nil, registry)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("non standalone", func(t *testing.T) {

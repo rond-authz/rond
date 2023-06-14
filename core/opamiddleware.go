@@ -35,7 +35,7 @@ type OPAMiddlewareOptions struct {
 func OPAMiddleware(
 	opaModuleConfig *OPAModuleConfig,
 	openAPISpec *openapi.OpenAPISpec,
-	policyEvaluators PartialResultsEvaluators,
+	sdk SDK,
 	routesToNotProxy []string,
 	targetServiceOASPath string,
 	options *OPAMiddlewareOptions,
@@ -93,7 +93,7 @@ func OPAMiddleware(
 				WithOPAModuleConfig(
 					WithPartialResultsEvaluators(
 						openapi.WithRouterInfo(logger, r.Context(), r),
-						policyEvaluators,
+						sdk.Evaluators(),
 					),
 					opaModuleConfig,
 				),

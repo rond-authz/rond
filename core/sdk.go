@@ -1,4 +1,4 @@
-package sdk
+package core
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
@@ -22,24 +21,27 @@ type PolicyResult struct {
 	Allowed      bool
 }
 
-type Rond interface {
-	Evaluators() core.PartialResultsEvaluators
+type SDK interface {
+	Evaluators() PartialResultsEvaluators
+	Metrics() metrics.Metrics
+	Registry() *prometheus.Registry
 
 	EvaluateRequestPolicy(req *http.Request, userInfo types.User, permission *openapi.RondConfig) (PolicyResult, error)
 	// EvaluateResponsePolicy(req *http.Request, userInfo types.User, permission *openapi.RondConfig) (PolicyResult, error)
 }
 
 type rondImpl struct {
-	evaluator             core.PartialResultsEvaluators
+	evaluator             PartialResultsEvaluators
 	logger                *logrus.Entry
 	enablePrintStatements bool
 
-	metrics metrics.Metrics
+	metrics  metrics.Metrics
+	registry *prometheus.Registry
 
 	clientTypeHeaderKey string
 }
 
-func (r rondImpl) Evaluators() core.PartialResultsEvaluators {
+func (r rondImpl) Evaluators() PartialResultsEvaluators {
 	return r.evaluator
 }
 
@@ -47,30 +49,30 @@ func (r rondImpl) EvaluateRequestPolicy(req *http.Request, userInfo types.User, 
 	requestContext := req.Context()
 
 	pathParams := mux.Vars(req)
-	input, err := core.InputFromRequest(req, userInfo, r.clientTypeHeaderKey, pathParams, nil)
+	input, err := InputFromRequest(req, userInfo, r.clientTypeHeaderKey, pathParams, nil)
 	if err != nil {
 		return PolicyResult{}, err
 	}
 
-	regoInput, err := core.CreateRegoQueryInput(r.logger, input, core.RegoInputOptions{
+	regoInput, err := CreateRegoQueryInput(r.logger, input, RegoInputOptions{
 		EnableResourcePermissionsMapOptimization: permission.Options.EnableResourcePermissionsMapOptimization,
 	})
 	if err != nil {
 		return PolicyResult{}, nil
 	}
 
-	evaluatorOptions := &core.EvaluatorOptions{
+	evaluatorOptions := &EvaluatorOptions{
 		EnablePrintStatements: r.enablePrintStatements,
 	}
 
-	var evaluatorAllowPolicy *core.OPAEvaluator
+	var evaluatorAllowPolicy *OPAEvaluator
 	if !permission.RequestFlow.GenerateQuery {
 		evaluatorAllowPolicy, err = r.evaluator.GetEvaluatorFromPolicy(requestContext, permission.RequestFlow.PolicyName, regoInput, evaluatorOptions)
 		if err != nil {
 			return PolicyResult{}, nil
 		}
 	} else {
-		evaluatorAllowPolicy, err = core.CreateQueryEvaluator(requestContext, r.logger, req, permission.RequestFlow.PolicyName, regoInput, nil, evaluatorOptions)
+		evaluatorAllowPolicy, err = CreateQueryEvaluator(requestContext, r.logger, req, permission.RequestFlow.PolicyName, regoInput, nil, evaluatorOptions)
 		if err != nil {
 			return PolicyResult{}, err
 		}
@@ -103,16 +105,24 @@ func (r rondImpl) EvaluateRequestPolicy(req *http.Request, userInfo types.User, 
 	}, nil
 }
 
-func New(
+func (r rondImpl) Metrics() metrics.Metrics {
+	return r.metrics
+}
+
+func (r rondImpl) Registry() *prometheus.Registry {
+	return r.registry
+}
+
+func NewSDK(
 	ctx context.Context,
 	mongoClient types.IMongoClient,
 	oas *openapi.OpenAPISpec,
-	opaModuleConfig *core.OPAModuleConfig,
-	evaluatorOptions *core.EvaluatorOptions,
+	opaModuleConfig *OPAModuleConfig,
+	evaluatorOptions *EvaluatorOptions,
 	registry *prometheus.Registry,
-) (Rond, error) {
+) (SDK, error) {
 	// TODO: use logger instead of get logger from context
-	evaluator, err := core.SetupEvaluators(ctx, mongoClient, oas, opaModuleConfig, evaluatorOptions)
+	evaluator, err := SetupEvaluators(ctx, mongoClient, oas, opaModuleConfig, evaluatorOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -125,6 +135,7 @@ func New(
 	return rondImpl{
 		evaluator: evaluator,
 
-		metrics: m,
+		metrics:  m,
+		registry: registry,
 	}, nil
 }

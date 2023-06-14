@@ -25,7 +25,6 @@ import (
 	swagger "github.com/davidebianchi/gswagger"
 	"github.com/davidebianchi/gswagger/support/gorilla"
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
@@ -33,7 +32,6 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
-	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
@@ -102,7 +100,7 @@ func SetupRouter(
 	env config.EnvironmentVariables,
 	opaModuleConfig *core.OPAModuleConfig,
 	oas *openapi.OpenAPISpec,
-	sdk sdk.Rond,
+	sdk core.SDK,
 	mongoClient *mongoclient.MongoClient,
 ) (*mux.Router, error) {
 	router := mux.NewRouter().UseEncodedPath()
@@ -110,13 +108,8 @@ func SetupRouter(
 	serviceName := "rönd"
 	StatusRoutes(router, serviceName, env.ServiceVersion)
 
-	registry := prometheus.NewRegistry()
-	m := metrics.SetupMetrics("rond")
-	if env.ExposeMetrics {
-		m.MustRegister(registry)
-		metrics.MetricsRoute(router, registry)
-	}
-	router.Use(metrics.RequestMiddleware(m))
+	metrics.MetricsRoute(router, sdk.Registry())
+	router.Use(metrics.RequestMiddleware(sdk.Metrics()))
 
 	router.Use(config.RequestMiddlewareEnvironments(env))
 
@@ -158,7 +151,7 @@ func SetupRouter(
 		}
 	}
 
-	evalRouter.Use(core.OPAMiddleware(opaModuleConfig, oas, sdk.Evaluators(), routesToNotProxy, env.TargetServiceOASPath, &core.OPAMiddlewareOptions{
+	evalRouter.Use(core.OPAMiddleware(opaModuleConfig, oas, sdk, routesToNotProxy, env.TargetServiceOASPath, &core.OPAMiddlewareOptions{
 		IsStandalone:         env.Standalone,
 		PathPrefixStandalone: env.PathPrefixStandalone,
 	}))

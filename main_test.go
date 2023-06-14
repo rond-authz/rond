@@ -29,13 +29,13 @@ import (
 	"time"
 
 	"github.com/mia-platform/glogger/v2"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
-	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/service"
 	"github.com/rond-authz/rond/types"
 
@@ -1675,7 +1675,8 @@ filter_policy {
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	rondSdk, err := sdk.New(ctx, mongoClient, oas, opa, nil, nil)
+	registry := prometheus.NewRegistry()
+	rondSdk, err := core.NewSDK(ctx, mongoClient, oas, opa, nil, registry)
 	require.NoError(t, err, "unexpected error")
 
 	router, err := service.SetupRouter(log, env, opa, oas, rondSdk, mongoClient)
@@ -1830,7 +1831,8 @@ filter_policy {
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	rondSdk, err := sdk.New(ctx, mongoClient, oas, opa, nil, nil)
+	registry := prometheus.NewRegistry()
+	rondSdk, err := core.NewSDK(ctx, mongoClient, oas, opa, nil, registry)
 	require.NoError(t, err, "unexpected error")
 
 	router, err := service.SetupRouter(log, env, opa, oas, rondSdk, mongoClient)
