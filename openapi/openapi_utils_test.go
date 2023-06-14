@@ -278,7 +278,7 @@ func TestConfigurationValidation(t *testing.T) {
 	t.Run("invalid configuration", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/invalidOASConfiguration.json")
 		_, err := oas.PrepareOASRouter()
-		require.EqualError(t, err, "duplicate paths: \"/ignore/trailing/slash\" and \"/ignore/trailing/slash/\" with IgnoreTrailingSlash flag active")
+		require.EqualError(t, err, "duplicate paths: \"/ignore/trailing/slash\" and \"/ignore/trailing/slash/\" with ignoreTrailingSlash flag active")
 	})
 	t.Run("valid configuration", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/validOASConfiguration.json")
