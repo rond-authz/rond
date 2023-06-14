@@ -218,7 +218,7 @@ func TestIsTraceLogLevel(t *testing.T) {
 		require.True(t, env.IsTraceLogLevel())
 	})
 
-	t.Run("true", func(t *testing.T) {
+	t.Run("false", func(t *testing.T) {
 		env := EnvironmentVariables{}
 
 		require.False(t, env.IsTraceLogLevel())
