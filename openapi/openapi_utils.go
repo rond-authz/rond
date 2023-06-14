@@ -383,6 +383,15 @@ func ConvertPathVariablesToColons(path string) string {
 	return matchBrackets.ReplaceAllString(path, "/:$1")
 }
 
+type IgnoreTrailingSlashMap map[string]map[string]bool
+
+func (i IgnoreTrailingSlashMap) Add(path, verb string, ignore bool) {
+	if verbMap, ok := i[path]; !ok || verbMap == nil {
+		i[path] = make(map[string]bool)
+	}
+	i[path][verb] = ignore
+}
+
 func findDuplicatesInList(list []string) map[string]bool {
 	duplicates := make(map[string]bool)
 	for i := 0; i < len(list)-1; i++ {
@@ -395,13 +404,13 @@ func findDuplicatesInList(list []string) map[string]bool {
 	return duplicates
 }
 
-type IgnoreTrailingSlashMap map[string]map[string]bool
-
-func (i IgnoreTrailingSlashMap) Add(path, verb string, ignore bool) {
-	if verbMap, ok := i[path]; !ok || verbMap == nil {
-		i[path] = make(map[string]bool)
+func listContainsString(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
 	}
-	i[path][verb] = ignore
+	return false
 }
 
 func validateConfiguration(oas *OpenAPISpec) error {
@@ -424,15 +433,6 @@ func validateConfiguration(oas *OpenAPISpec) error {
 		}
 	}
 	return nil
-}
-
-func listContainsString(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-	return false
 }
 
 func CreateOASUtilityMaps(oas *OpenAPISpec) ([]string, map[string][]string, IgnoreTrailingSlashMap) {
