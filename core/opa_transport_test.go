@@ -16,6 +16,7 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,6 +25,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
@@ -150,15 +152,18 @@ func TestOPATransportRoundTrip(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/some-api", nil)
 
 	t.Run("returns error on RoundTrip error", func(t *testing.T) {
-		transport := &OPATransport{
-			RoundTripper:            &MockRoundTrip{Error: fmt.Errorf("some error")},
-			context:                 req.Context(),
-			logger:                  logrus.NewEntry(logger),
-			request:                 req,
-			userIdHeaderKey:         "useridheader",
-			userGroupsHeaderKey:     "usergroupsheader",
-			userPropertiesHeaderKey: "userpropertiesheader",
-		}
+		transport := NewOPATransport(
+			&MockRoundTrip{Error: fmt.Errorf("some error")},
+			req.Context(),
+			logrus.NewEntry(logger),
+			req,
+			nil, nil,
+			"",
+			"useridheader",
+			"usergroupsheader",
+			"userpropertiesheader",
+			nil,
+		)
 
 		_, err := transport.RoundTrip(req)
 		require.Error(t, err, "some error")
@@ -259,6 +264,51 @@ func TestOPATransportRoundTrip(t *testing.T) {
 		resp, err := transport.RoundTrip(req)
 		require.Nil(t, err)
 		require.Equal(t, []string{"content"}, resp.Header[http.CanonicalHeaderKey("some")])
+	})
+
+	t.Run("ok with filter response", func(t *testing.T) {
+		resp := http.Response{
+			StatusCode:    http.StatusOK,
+			Body:          io.NopCloser(bytes.NewReader([]byte(`{"some":"field"}`))),
+			ContentLength: 16,
+			Header:        http.Header{"Content-Type": []string{"application/json"}},
+		}
+
+		req = req.Clone(metrics.WithValue(openapi.WithRouterInfo(logrus.NewEntry(logger), req.Context(), req), metrics.SetupMetrics("")))
+
+		partialResult, err := NewPartialResultEvaluator(context.Background(), "my_policy", &OPAModuleConfig{
+			Content: "package policies my_policy [resources] { resources := input.response.body }",
+		}, nil, nil)
+		require.NoError(t, err)
+
+		transport := &OPATransport{
+			RoundTripper: &MockRoundTrip{Response: &resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			permission: &openapi.RondConfig{
+				ResponseFlow: openapi.ResponseFlow{PolicyName: "my_policy"},
+			},
+			partialResultsEvaluators: PartialResultsEvaluators{"my_policy": PartialEvaluator{partialResult}},
+			userIdHeaderKey:          "useridheader",
+			userGroupsHeaderKey:      "usergroupsheader",
+			userPropertiesHeaderKey:  "userpropertiesheader",
+		}
+
+		actualResp, err := transport.RoundTrip(req)
+		require.NoError(t, err, "response body is not valid")
+		require.Equal(t, http.StatusOK, actualResp.StatusCode)
+		require.Equal(t, int64(16), actualResp.ContentLength)
+
+		body, err := io.ReadAll(actualResp.Body)
+		require.NoError(t, err)
+		require.Equal(t, []byte(`{"some":"field"}`), body)
+
+		expectedHeaders := http.Header{}
+		expectedHeaders.Set("Content-Type", "application/json")
+		expectedHeaders.Set("Content-Length", "16")
+
+		require.Equal(t, expectedHeaders, actualResp.Header)
 	})
 
 	t.Run("failure on non-json response content-type", func(t *testing.T) {

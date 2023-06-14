@@ -49,20 +49,20 @@ type OPATransport struct {
 }
 
 func NewOPATransport(
-	defaultTransport http.RoundTripper,
+	transport http.RoundTripper,
 	context context.Context,
 	logger *logrus.Entry,
 	req *http.Request,
 	permission *openapi.RondConfig,
 	partialResultsEvaluators PartialResultsEvaluators,
 	clientHeaderKey string,
-	userGroupsHeaderKey string,
 	userIdHeaderKey string,
+	userGroupsHeaderKey string,
 	userPropertiesHeaderKey string,
 	evaluatorOptions *EvaluatorOptions,
 ) *OPATransport {
 	return &OPATransport{
-		RoundTripper:             http.DefaultTransport,
+		RoundTripper:             transport,
 		context:                  req.Context(),
 		logger:                   logger,
 		request:                  req,

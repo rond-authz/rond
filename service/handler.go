@@ -226,8 +226,8 @@ func ReverseProxy(
 		partialResultsEvaluators,
 
 		env.ClientTypeHeader,
-		env.UserGroupsHeader,
 		env.UserIdHeader,
+		env.UserGroupsHeader,
 		env.UserPropertiesHeader,
 		options,
 	)
