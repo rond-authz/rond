@@ -147,6 +147,33 @@
                     "allow": "project_get"
                 }
             }
+        },
+        "/with/trailing/slash/": {
+            "get": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "foo_bar"
+                },
+                "responseFlow": {
+                  "policyName": "original_path"
+                },
+                "options": {
+                    "ignoreTrailingSlash": true
+                }
+              }
+            }
+        },
+        "/without/trailing/slash": {
+            "post": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "foo_bar"
+                },
+                "options": {
+                    "ignoreTrailingSlash": true
+                }
+              }
+            }
         }
     }
 }

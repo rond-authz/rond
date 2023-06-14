@@ -56,6 +56,7 @@ type XPermissionKey struct{}
 
 type PermissionOptions struct {
 	EnableResourcePermissionsMapOptimization bool `json:"enableResourcePermissionsMapOptimization"`
+	IgnoreTrailingSlash                      bool `json:"ignoreTrailingSlash,omitempty"`
 }
 
 // Config v1 //
@@ -153,22 +154,36 @@ func createOasHandler(scopedMethodContent VerbConfig) func(http.ResponseWriter, 
 		header.Set("resourceFilter.rowFilter.headerKey", permission.RequestFlow.QueryOptions.HeaderName)
 		header.Set("responseFilter.policy", permission.ResponseFlow.PolicyName)
 		header.Set("options.enableResourcePermissionsMapOptimization", strconv.FormatBool(permission.Options.EnableResourcePermissionsMapOptimization))
+		header.Set("options.ignoreTrailingSlash", strconv.FormatBool(permission.Options.IgnoreTrailingSlash))
 	}
 }
 
-func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
+func (oas *OpenAPISpec) PrepareOASRouter() (*bunrouter.CompatRouter, error) {
 	OASRouter := bunrouter.New().Compat()
 	routeMap := oas.createRoutesMap()
-	for OASPath, OASContent := range oas.Paths {
 
+	configurationError := validateConfiguration(oas)
+	if configurationError != nil {
+		return nil, configurationError
+	}
+
+	for OASPath, OASContent := range oas.Paths {
 		OASPathCleaned := ConvertPathVariablesToColons(cleanWildcard(OASPath))
 		for method, methodContent := range OASContent {
 			scopedMethod := strings.ToUpper(method)
-
 			handler := createOasHandler(methodContent)
 
 			if scopedMethod != strings.ToUpper(AllHTTPMethod) {
 				OASRouter.Handle(scopedMethod, OASPathCleaned, handler)
+				if methodContent.PermissionV2 != nil && methodContent.PermissionV2.Options.IgnoreTrailingSlash {
+					slashLaxPathToRegister := OASPathCleaned
+					if strings.HasSuffix(OASPathCleaned, "/") {
+						slashLaxPathToRegister = strings.TrimSuffix(slashLaxPathToRegister, "/")
+					} else {
+						slashLaxPathToRegister += "/"
+					}
+					OASRouter.Handle(scopedMethod, slashLaxPathToRegister, handler)
+				}
 				continue
 			}
 
@@ -180,7 +195,7 @@ func (oas *OpenAPISpec) PrepareOASRouter() *bunrouter.CompatRouter {
 		}
 	}
 
-	return OASRouter
+	return OASRouter, nil
 }
 
 // FIXME: This is not a logic method of OAS, but could be a method of OASRouter
@@ -201,7 +216,11 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 	}
 	enableResourcePermissionsMapOptimization, err := strconv.ParseBool(recorderResult.Header.Get("options.enableResourcePermissionsMapOptimization"))
 	if err != nil {
-		return RondConfig{}, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
+		return RondConfig{}, fmt.Errorf("error while parsing options.enableResourcePermissionsMapOptimization: %s", err)
+	}
+	ignoreTrailingSlash, err := strconv.ParseBool(recorderResult.Header.Get("options.ignoreTrailingSlash"))
+	if err != nil {
+		return RondConfig{}, fmt.Errorf("error while parsing options.ignoreTrailingSlash: %s", err)
 	}
 	return RondConfig{
 		RequestFlow: RequestFlow{
@@ -216,6 +235,7 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 		},
 		Options: PermissionOptions{
 			EnableResourcePermissionsMapOptimization: enableResourcePermissionsMapOptimization,
+			IgnoreTrailingSlash:                      ignoreTrailingSlash,
 		},
 	}, nil
 }
@@ -231,6 +251,10 @@ func newRondConfigFromPermissionV1(v1Permission *XPermission) *RondConfig {
 		},
 		ResponseFlow: ResponseFlow{
 			PolicyName: v1Permission.ResponseFilter.Policy,
+		},
+		Options: PermissionOptions{
+			EnableResourcePermissionsMapOptimization: v1Permission.Options.EnableResourcePermissionsMapOptimization,
+			IgnoreTrailingSlash:                      v1Permission.Options.IgnoreTrailingSlash,
 		},
 	}
 }
@@ -357,4 +381,93 @@ var matchBrackets = regexp.MustCompile(`\/{(\w+)}`)
 
 func ConvertPathVariablesToColons(path string) string {
 	return matchBrackets.ReplaceAllString(path, "/:$1")
+}
+
+type IgnoreTrailingSlashMap map[string]map[string]bool
+
+func (i IgnoreTrailingSlashMap) Add(path, verb string, ignore bool) {
+	if verbMap, ok := i[path]; !ok || verbMap == nil {
+		i[path] = make(map[string]bool)
+	}
+	i[path][verb] = ignore
+}
+
+func findDuplicatesInList(list []string) map[string]bool {
+	duplicates := make(map[string]bool)
+	for i := 0; i < len(list)-1; i++ {
+		for j := i + 1; j < len(list); j++ {
+			if list[i] == list[j] {
+				duplicates[list[i]] = true
+			}
+		}
+	}
+	return duplicates
+}
+
+func listContainsString(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
+
+func validateConfiguration(oas *OpenAPISpec) error {
+	paths, methodsMap, ignoreTrailingSlashMap := oas.UnwrapConfiguration()
+	var pathsWithoutSuffix []string
+
+	for _, path := range paths {
+		pathsWithoutSuffix = append(pathsWithoutSuffix, strings.TrimSuffix(path, "/"))
+	}
+
+	duplicates := findDuplicatesInList(pathsWithoutSuffix)
+
+	for path := range duplicates {
+		pathWithSuffix := path + "/"
+		for _, method := range methodsMap[path] {
+			shouldIgnoreTrailingSlash := listContainsString(methodsMap[path], method) && listContainsString(methodsMap[pathWithSuffix], method) && (ignoreTrailingSlashMap[path][method] || ignoreTrailingSlashMap[pathWithSuffix][method])
+			if shouldIgnoreTrailingSlash {
+				return fmt.Errorf("duplicate paths: \"%s\" and \"%s\" with ignoreTrailingSlash flag active", path, pathWithSuffix)
+			}
+		}
+	}
+	return nil
+}
+
+func (oas *OpenAPISpec) UnwrapConfiguration() ([]string, map[string][]string, IgnoreTrailingSlashMap) {
+	paths := make([]string, 0)
+	methods := make(map[string][]string)
+	ignoreTrailingSlashMap := make(IgnoreTrailingSlashMap)
+
+	for path, pathMethods := range oas.Paths {
+		paths = append(paths, path)
+
+		for method, methodContent := range pathMethods {
+			upperCaseMethod := strings.ToUpper(method)
+
+			if methodContent.PermissionV2 != nil {
+				if method == AllHTTPMethod {
+					for _, verb := range OasSupportedHTTPMethods {
+						ignoreTrailingSlashMap.Add(path, strings.ToUpper(verb), methodContent.PermissionV2.Options.IgnoreTrailingSlash)
+						continue
+					}
+				}
+				ignoreTrailingSlashMap.Add(path, upperCaseMethod, methodContent.PermissionV2.Options.IgnoreTrailingSlash)
+			}
+
+			if method == AllHTTPMethod {
+				methods[path] = OasSupportedHTTPMethods
+				continue
+			}
+
+			if methods[path] == nil {
+				methods[path] = []string{}
+			}
+
+			methods[path] = append(methods[path], upperCaseMethod)
+		}
+	}
+
+	return paths, methods, ignoreTrailingSlashMap
 }

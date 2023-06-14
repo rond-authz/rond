@@ -606,6 +606,94 @@ func TestEntrypoint(t *testing.T) {
 		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
 	})
 
+	t.Run("api permissions file path registered with and without trailing slash when ignoreTrailingSlash is true", func(t *testing.T) {
+		gock.Flush()
+		shutdown := make(chan os.Signal, 1)
+
+		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
+
+		gock.EnableNetworking()
+		gock.NetworkingFilter(func(r *http.Request) bool {
+			if r.URL.Path == "/documentation/json" {
+				return false
+			}
+			if r.URL.Path == "/with/trailing/slash/" && r.URL.Host == "localhost:3339" {
+				return false
+			}
+			if r.URL.Path == "/with/trailing/slash" && r.URL.Host == "localhost:3339" {
+				return false
+			}
+			if r.URL.Path == "/without/trailing/slash" && r.URL.Host == "localhost:3339" {
+				return false
+			}
+			if r.URL.Path == "/without/trailing/slash/" && r.URL.Host == "localhost:3339" {
+				return false
+			}
+
+			return true
+		})
+
+		setEnvs(t, []env{
+			{name: "HTTP_PORT", value: "5559"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:3339"},
+			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/nestedPathsConfig.json"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
+		})
+
+		go func() {
+			entrypoint(shutdown)
+		}()
+		defer func() {
+			shutdown <- syscall.SIGTERM
+		}()
+		time.Sleep(1 * time.Second)
+
+		gock.New("http://localhost:3339").
+			Get("/with/trailing/slash/").
+			Reply(200).
+			JSON(map[string]interface{}{"originalMsg": "this is the original"})
+
+		gock.New("http://localhost:3339").
+			Get("/with/trailing/slash").
+			Reply(200).
+			JSON(map[string]interface{}{"originalMsg": "this is the original"})
+
+		gock.New("http://localhost:3339").
+			Post("/without/trailing/slash").
+			Reply(200)
+
+		gock.New("http://localhost:3339").
+			Post("/without/trailing/slash/").
+			Reply(200)
+
+		resp1, err := http.DefaultClient.Get(fmt.Sprintf("http://localhost:5559%s", "/with/trailing/slash/"))
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp1.StatusCode, "unexpected status code.")
+
+		respBody1, _ := io.ReadAll(resp1.Body)
+		require.Equal(t, "\"/with/trailing/slash/\"", string(respBody1))
+
+		resp2, err := http.DefaultClient.Get(fmt.Sprintf("http://localhost:5559%s", "/with/trailing/slash"))
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp2.StatusCode, "unexpected status code.")
+
+		respBody2, _ := io.ReadAll(resp2.Body)
+		require.Equal(t, "\"/with/trailing/slash\"", string(respBody2))
+
+		resp3, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5559%s", "/without/trailing/slash"), "application/json", nil)
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp3.StatusCode, "unexpected status code.")
+
+		resp4, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5559%s", "/without/trailing/slash/"), "application/json", nil)
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp4.StatusCode, "unexpected status code.")
+
+		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
+	})
+
 	t.Run("mongo integration", func(t *testing.T) {
 		shutdown := make(chan os.Signal, 1)
 

@@ -1,0 +1,75 @@
+{
+    "paths": {
+        "/ignore/trailing/slash": {
+            "post": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "foo_bar"
+                },
+                "responseFlow": {
+                  "policyName": "original_path"
+                },
+                "options": {
+                    "ignoreTrailingSlash": true
+                }
+              }
+            },
+            "patch": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "foo_bar"
+                },
+                "responseFlow": {
+                  "policyName": "original_path"
+                },
+                "options": {
+                    "ignoreTrailingSlash": true
+                }
+              }
+            }
+        },
+        "/ignore/trailing/slash/": {
+            "get": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "foo_bar"
+                },
+                "options": {
+                    "ignoreTrailingSlash": true
+                }
+              }
+            }
+        },
+        "/different/api/based/on/final/slash/": {
+            "get": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "foo_bar"
+                }
+              }
+            }
+        },
+        "/different/api/based/on/final/slash": {
+          "get": {
+            "x-rond": {
+              "requestFlow": {
+                "policyName": "foo_bar"
+              },
+              "options": {
+                "ignoreTrailingSlash": false
+              }
+            }
+          },
+          "post": {
+            "x-rond": {
+              "requestFlow": {
+                "policyName": "foo_bar"
+              },
+              "options": {
+                "ignoreTrailingSlash": true
+              }
+            }
+          }
+      }
+    }
+}
