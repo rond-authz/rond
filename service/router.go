@@ -184,31 +184,10 @@ func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.Enviro
 		}
 	}
 
+	paths, methodsMap, ignoreTrailingSlashMap := openapi.CreateOASUtilityMaps(oas)
+
 	// NOTE: The following sort is required by mux router because it expects
 	// routes to be registered in the proper order
-	paths := make([]string, 0)
-	methods := make(map[string][]string)
-	ignoreTrailingSlashMap := make(IgnoreTrailingSlashMap)
-
-	for path, pathMethods := range oas.Paths {
-		paths = append(paths, path)
-		for method, methodContent := range pathMethods {
-			if method == openapi.AllHTTPMethod {
-				methods[path] = openapi.OasSupportedHTTPMethods
-				continue
-			}
-			if methods[path] == nil {
-				methods[path] = []string{}
-			}
-
-			upperCaseMethod := strings.ToUpper(method)
-
-			methods[path] = append(methods[path], upperCaseMethod)
-			if methodContent.PermissionV2 != nil {
-				ignoreTrailingSlashMap.Add(path, upperCaseMethod, methodContent.PermissionV2.Options.IgnoreTrailingSlash)
-			}
-		}
-	}
 	sort.Sort(sort.Reverse(sort.StringSlice(paths)))
 
 	for _, path := range paths {
@@ -221,14 +200,14 @@ func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.Enviro
 		}
 		if strings.Contains(pathToRegister, "*") {
 			pathWithoutAsterisk := strings.ReplaceAll(pathToRegister, "*", "")
-			router.PathPrefix(openapi.ConvertPathVariablesToBrackets(pathWithoutAsterisk)).HandlerFunc(rbacHandler).Methods(methods[path]...)
+			router.PathPrefix(openapi.ConvertPathVariablesToBrackets(pathWithoutAsterisk)).HandlerFunc(rbacHandler).Methods(methodsMap[path]...)
 			continue
 		}
 		if path == env.TargetServiceOASPath && documentationPermission == "" {
 			router.HandleFunc(openapi.ConvertPathVariablesToBrackets(pathToRegister), alwaysProxyHandler).Methods(http.MethodGet)
 			continue
 		}
-		for _, method := range methods[path] {
+		for _, method := range methodsMap[path] {
 			actualPathToRegister := openapi.ConvertPathVariablesToBrackets(pathToRegister)
 			shouldIgnoreTrailingSlash := ignoreTrailingSlashMap[path][method]
 			if shouldIgnoreTrailingSlash {
