@@ -229,12 +229,3 @@ func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.Enviro
 	}
 	router.PathPrefix(fallbackRoute).HandlerFunc(rbacHandler)
 }
-
-type IgnoreTrailingSlashMap map[string]map[string]bool
-
-func (i IgnoreTrailingSlashMap) Add(path, verb string, ignore bool) {
-	if verbMap, ok := i[path]; !ok || verbMap == nil {
-		i[path] = make(map[string]bool)
-	}
-	i[path][verb] = ignore
-}
