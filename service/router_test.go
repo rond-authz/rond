@@ -482,7 +482,6 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			mockPartialEvaluators,
 		)
 
-		//  req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/with/trailing/slash/", nil)
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/foo/bar/nested", nil)
 		require.NoError(t, err, "Unexpected error")
 
