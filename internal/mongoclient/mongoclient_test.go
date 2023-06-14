@@ -473,7 +473,7 @@ func TestRolesIDSFromBindings(t *testing.T) {
 
 func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 	logger, _ := test.NewNullLogger()
-	userHeaders := UserHeaders{
+	userHeaders := types.UserHeadersKeys{
 		GroupsHeaderKey:     "thegroupsheader",
 		IDHeaderKey:         "theuserheader",
 		PropertiesHeaderKey: "userproperties",

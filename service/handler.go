@@ -26,6 +26,7 @@ import (
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
@@ -101,7 +102,7 @@ func EvaluateRequest(
 	requestContext := req.Context()
 	logger := glogger.Get(requestContext)
 
-	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(logger, req, mongoclient.UserHeaders{
+	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(logger, req, types.UserHeadersKeys{
 		IDHeaderKey:         env.UserIdHeader,
 		GroupsHeaderKey:     env.UserGroupsHeader,
 		PropertiesHeaderKey: env.UserPropertiesHeader,
@@ -226,9 +227,11 @@ func ReverseProxy(
 		partialResultsEvaluators,
 
 		env.ClientTypeHeader,
-		env.UserIdHeader,
-		env.UserGroupsHeader,
-		env.UserPropertiesHeader,
+		types.UserHeadersKeys{
+			IDHeaderKey:         env.UserIdHeader,
+			GroupsHeaderKey:     env.UserGroupsHeader,
+			PropertiesHeaderKey: env.UserPropertiesHeader,
+		},
 		options,
 	)
 	proxy.ServeHTTP(w, req)

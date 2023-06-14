@@ -26,6 +26,12 @@ type User struct {
 	Properties   map[string]any
 }
 
+type UserHeadersKeys struct {
+	GroupsHeaderKey     string
+	IDHeaderKey         string
+	PropertiesHeaderKey string
+}
+
 type MongoClientContextKey struct{}
 
 type Resource struct {

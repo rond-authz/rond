@@ -41,11 +41,9 @@ type OPATransport struct {
 	permission               *openapi.RondConfig
 	partialResultsEvaluators PartialResultsEvaluators
 
-	clientHeaderKey         string
-	userGroupsHeaderKey     string
-	userIdHeaderKey         string
-	userPropertiesHeaderKey string
-	evaluatorOptions        *EvaluatorOptions
+	clientHeaderKey  string
+	userHeaders      types.UserHeadersKeys
+	evaluatorOptions *EvaluatorOptions
 }
 
 func NewOPATransport(
@@ -56,9 +54,7 @@ func NewOPATransport(
 	permission *openapi.RondConfig,
 	partialResultsEvaluators PartialResultsEvaluators,
 	clientHeaderKey string,
-	userIdHeaderKey string,
-	userGroupsHeaderKey string,
-	userPropertiesHeaderKey string,
+	userHeadersKeys types.UserHeadersKeys,
 	evaluatorOptions *EvaluatorOptions,
 ) *OPATransport {
 	return &OPATransport{
@@ -69,11 +65,9 @@ func NewOPATransport(
 		permission:               permission,
 		partialResultsEvaluators: partialResultsEvaluators,
 
-		clientHeaderKey:         clientHeaderKey,
-		userGroupsHeaderKey:     userGroupsHeaderKey,
-		userIdHeaderKey:         userIdHeaderKey,
-		userPropertiesHeaderKey: userPropertiesHeaderKey,
-		evaluatorOptions:        evaluatorOptions,
+		clientHeaderKey:  clientHeaderKey,
+		userHeaders:      userHeadersKeys,
+		evaluatorOptions: evaluatorOptions,
 	}
 }
 
@@ -114,11 +108,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return nil, fmt.Errorf("response body is not valid: %s", err.Error())
 	}
 
-	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(t.logger, t.request, mongoclient.UserHeaders{
-		IDHeaderKey:         t.userIdHeaderKey,
-		GroupsHeaderKey:     t.userGroupsHeaderKey,
-		PropertiesHeaderKey: t.userPropertiesHeaderKey,
-	})
+	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(t.logger, t.request, t.userHeaders)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusInternalServerError)
 		return resp, nil

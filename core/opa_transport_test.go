@@ -60,7 +60,8 @@ func TestRoundTripErrors(t *testing.T) {
 			req,
 			nil,
 			nil,
-			"", "", "", "",
+			"",
+			types.UserHeadersKeys{},
 			nil,
 		}
 
@@ -98,7 +99,8 @@ func TestOPATransportResponseWithError(t *testing.T) {
 		req,
 		nil,
 		nil,
-		"", "", "", "",
+		"",
+		types.UserHeadersKeys{},
 		nil,
 	}
 
@@ -159,9 +161,11 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			req,
 			nil, nil,
 			"",
-			"useridheader",
-			"usergroupsheader",
-			"userpropertiesheader",
+			types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 			nil,
 		)
 
@@ -177,13 +181,15 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{},
 		}
 		transport := &OPATransport{
-			RoundTripper:            &MockRoundTrip{Response: resp},
-			context:                 req.Context(),
-			logger:                  logrus.NewEntry(logger),
-			request:                 req,
-			userIdHeaderKey:         "useridheader",
-			userGroupsHeaderKey:     "usergroupsheader",
-			userPropertiesHeaderKey: "userpropertiesheader",
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 
 		updatedResp, err := transport.RoundTrip(req)
@@ -203,13 +209,15 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{},
 		}
 		transport := &OPATransport{
-			RoundTripper:            &MockRoundTrip{Response: resp},
-			context:                 req.Context(),
-			logger:                  logrus.NewEntry(logger),
-			request:                 req,
-			userIdHeaderKey:         "useridheader",
-			userGroupsHeaderKey:     "usergroupsheader",
-			userPropertiesHeaderKey: "userpropertiesheader",
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -228,13 +236,15 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{},
 		}
 		transport := &OPATransport{
-			RoundTripper:            &MockRoundTrip{Response: resp},
-			context:                 req.Context(),
-			logger:                  logrus.NewEntry(logger),
-			request:                 req,
-			userIdHeaderKey:         "useridheader",
-			userGroupsHeaderKey:     "usergroupsheader",
-			userPropertiesHeaderKey: "userpropertiesheader",
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -252,13 +262,15 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{http.CanonicalHeaderKey("some"): []string{"content"}},
 		}
 		transport := &OPATransport{
-			RoundTripper:            &MockRoundTrip{Response: resp},
-			context:                 req.Context(),
-			logger:                  logrus.NewEntry(logger),
-			request:                 req,
-			userIdHeaderKey:         "useridheader",
-			userGroupsHeaderKey:     "usergroupsheader",
-			userPropertiesHeaderKey: "userpropertiesheader",
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -290,9 +302,11 @@ func TestOPATransportRoundTrip(t *testing.T) {
 				ResponseFlow: openapi.ResponseFlow{PolicyName: "my_policy"},
 			},
 			partialResultsEvaluators: PartialResultsEvaluators{"my_policy": PartialEvaluator{partialResult}},
-			userIdHeaderKey:          "useridheader",
-			userGroupsHeaderKey:      "usergroupsheader",
-			userPropertiesHeaderKey:  "userpropertiesheader",
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 
 		actualResp, err := transport.RoundTrip(req)
@@ -319,13 +333,15 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{"Content-Type": []string{"text/plain"}},
 		}
 		transport := &OPATransport{
-			RoundTripper:            &MockRoundTrip{Response: resp},
-			context:                 req.Context(),
-			logger:                  logrus.NewEntry(logger),
-			request:                 req,
-			userIdHeaderKey:         "useridheader",
-			userGroupsHeaderKey:     "usergroupsheader",
-			userPropertiesHeaderKey: "userpropertiesheader",
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -344,13 +360,15 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{"Content-Type": []string{"application/json"}},
 		}
 		transport := &OPATransport{
-			RoundTripper:            &MockRoundTrip{Response: resp},
-			context:                 req.Context(),
-			logger:                  logrus.NewEntry(logger),
-			request:                 req,
-			userIdHeaderKey:         "useridheader",
-			userGroupsHeaderKey:     "usergroupsheader",
-			userPropertiesHeaderKey: "userpropertiesheader",
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -372,13 +390,15 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{"Content-Type": []string{"application/json"}},
 		}
 		transport := &OPATransport{
-			RoundTripper:            &MockRoundTrip{Response: resp},
-			context:                 ctx,
-			logger:                  logrus.NewEntry(logger),
-			request:                 req,
-			userIdHeaderKey:         "useridheader",
-			userGroupsHeaderKey:     "usergroupsheader",
-			userPropertiesHeaderKey: "userpropertiesheader",
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      ctx,
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 		resp, err := transport.RoundTrip(req)
 		require.Nil(t, err)
@@ -408,9 +428,11 @@ func TestOPATransportRoundTrip(t *testing.T) {
 				ResponseFlow: openapi.ResponseFlow{PolicyName: "my_policy"},
 			},
 			partialResultsEvaluators: PartialResultsEvaluators{"my_policy": {}},
-			userIdHeaderKey:          "useridheader",
-			userGroupsHeaderKey:      "usergroupsheader",
-			userPropertiesHeaderKey:  "userpropertiesheader",
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 		resp, err := transport.RoundTrip(req)
 		require.Nil(t, err)

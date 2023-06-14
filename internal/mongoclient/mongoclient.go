@@ -28,6 +28,7 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/types"
+
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -282,13 +283,7 @@ func RolesIDsFromBindings(bindings []types.Binding) []string {
 	return rolesIds
 }
 
-type UserHeaders struct {
-	GroupsHeaderKey     string
-	IDHeaderKey         string
-	PropertiesHeaderKey string
-}
-
-func RetrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, userHeaders UserHeaders) (types.User, error) {
+func RetrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, userHeaders types.UserHeadersKeys) (types.User, error) {
 	requestContext := req.Context()
 	mongoClient, err := GetMongoClientFromContext(requestContext)
 	if err != nil {
