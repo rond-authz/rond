@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/rond-authz/rond/internal/config"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
@@ -270,7 +269,7 @@ func TestLoadOAS(t *testing.T) {
 		_, err := LoadOASFromFileOrNetwork(log, options)
 
 		t.Logf("Expected error occurred: %s", err.Error())
-		require.True(t, err != nil, fmt.Errorf("missing environment variables one of %s or %s is required", config.TargetServiceOASPathEnvKey, config.APIPermissionsFilePathEnvKey))
+		require.ErrorContains(t, err, "missing openapi config: one of TargetServiceOASPath or APIPermissionsFilePath is required")
 	})
 }
 
