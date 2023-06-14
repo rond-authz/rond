@@ -184,7 +184,7 @@ func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.Enviro
 		}
 	}
 
-	paths, methodsMap, ignoreTrailingSlashMap := openapi.CreateOASUtilityMaps(oas)
+	paths, methodsMap, ignoreTrailingSlashMap := oas.UnwrapConfiguration()
 
 	// NOTE: The following sort is required by mux router because it expects
 	// routes to be registered in the proper order

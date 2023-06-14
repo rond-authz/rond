@@ -414,7 +414,7 @@ func listContainsString(s []string, str string) bool {
 }
 
 func validateConfiguration(oas *OpenAPISpec) error {
-	paths, methodsMap, ignoreTrailingSlashMap := CreateOASUtilityMaps(oas)
+	paths, methodsMap, ignoreTrailingSlashMap := oas.UnwrapConfiguration()
 	var pathsWithoutSuffix []string
 
 	for _, path := range paths {
@@ -435,7 +435,7 @@ func validateConfiguration(oas *OpenAPISpec) error {
 	return nil
 }
 
-func CreateOASUtilityMaps(oas *OpenAPISpec) ([]string, map[string][]string, IgnoreTrailingSlashMap) {
+func (oas *OpenAPISpec) UnwrapConfiguration() ([]string, map[string][]string, IgnoreTrailingSlashMap) {
 	paths := make([]string, 0)
 	methods := make(map[string][]string)
 	ignoreTrailingSlashMap := make(IgnoreTrailingSlashMap)
