@@ -33,6 +33,7 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
@@ -101,7 +102,7 @@ func SetupRouter(
 	env config.EnvironmentVariables,
 	opaModuleConfig *core.OPAModuleConfig,
 	oas *openapi.OpenAPISpec,
-	policiesEvaluators core.PartialResultsEvaluators,
+	sdk sdk.Rond,
 	mongoClient *mongoclient.MongoClient,
 ) (*mux.Router, error) {
 	router := mux.NewRouter().UseEncodedPath()
@@ -157,7 +158,7 @@ func SetupRouter(
 		}
 	}
 
-	evalRouter.Use(core.OPAMiddleware(opaModuleConfig, oas, policiesEvaluators, routesToNotProxy, env.TargetServiceOASPath, &core.OPAMiddlewareOptions{
+	evalRouter.Use(core.OPAMiddleware(opaModuleConfig, oas, sdk.Evaluators(), routesToNotProxy, env.TargetServiceOASPath, &core.OPAMiddlewareOptions{
 		IsStandalone:         env.Standalone,
 		PathPrefixStandalone: env.PathPrefixStandalone,
 	}))

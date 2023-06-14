@@ -35,6 +35,7 @@ import (
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/service"
 	"github.com/rond-authz/rond/types"
 
@@ -1674,10 +1675,10 @@ filter_policy {
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, nil)
+	rondSdk, err := sdk.New(ctx, mongoClient, oas, opa, nil, nil)
 	require.NoError(t, err, "unexpected error")
 
-	router, err := service.SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+	router, err := service.SetupRouter(log, env, opa, oas, rondSdk, mongoClient)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("some eval API", func(t *testing.T) {
@@ -1829,10 +1830,10 @@ filter_policy {
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, nil)
+	rondSdk, err := sdk.New(ctx, mongoClient, oas, opa, nil, nil)
 	require.NoError(t, err, "unexpected error")
 
-	router, err := service.SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+	router, err := service.SetupRouter(log, env, opa, oas, rondSdk, mongoClient)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("metrics API exposed correctly", func(t *testing.T) {
