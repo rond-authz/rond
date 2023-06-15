@@ -174,28 +174,32 @@ func (oas *OpenAPISpec) PrepareOASRouter() (*bunrouter.CompatRouter, error) {
 			handler := createOasHandler(methodContent)
 
 			if scopedMethod != strings.ToUpper(AllHTTPMethod) {
-				OASRouter.Handle(scopedMethod, OASPathCleaned, handler)
-				if methodContent.PermissionV2 != nil && methodContent.PermissionV2.Options.IgnoreTrailingSlash {
-					slashLaxPathToRegister := OASPathCleaned
-					if strings.HasSuffix(OASPathCleaned, "/") {
-						slashLaxPathToRegister = strings.TrimSuffix(slashLaxPathToRegister, "/")
-					} else {
-						slashLaxPathToRegister += "/"
-					}
-					OASRouter.Handle(scopedMethod, slashLaxPathToRegister, handler)
-				}
+				registerLaxPath(OASRouter, scopedMethod, methodContent, OASPathCleaned, handler)
 				continue
 			}
 
 			for _, method := range OasSupportedHTTPMethods {
 				if !routeMap.contains(OASPath, method) {
-					OASRouter.Handle(method, OASPathCleaned, handler)
+					registerLaxPath(OASRouter, method, methodContent, OASPathCleaned, handler)
 				}
 			}
 		}
 	}
 
 	return OASRouter, nil
+}
+
+func registerLaxPath(OASRouter *bunrouter.CompatRouter, method string, methodContent VerbConfig, OASPathCleaned string, handler http.HandlerFunc) {
+	OASRouter.Handle(method, OASPathCleaned, handler)
+	if methodContent.PermissionV2 != nil && methodContent.PermissionV2.Options.IgnoreTrailingSlash {
+		slashLaxPathToRegister := OASPathCleaned
+		if strings.HasSuffix(OASPathCleaned, "/") {
+			slashLaxPathToRegister = strings.TrimSuffix(slashLaxPathToRegister, "/")
+		} else {
+			slashLaxPathToRegister += "/"
+		}
+		OASRouter.Handle(method, slashLaxPathToRegister, handler)
+	}
 }
 
 // FIXME: This is not a logic method of OAS, but could be a method of OASRouter

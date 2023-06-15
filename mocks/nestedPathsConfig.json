@@ -149,7 +149,7 @@
             }
         },
         "/with/trailing/slash/": {
-            "get": {
+            "all": {
               "x-rond": {
                 "requestFlow": {
                   "policyName": "foo_bar"
