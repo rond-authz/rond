@@ -631,6 +631,12 @@ func TestEntrypoint(t *testing.T) {
 			if r.URL.Path == "/without/trailing/slash/" && r.URL.Host == "localhost:3339" {
 				return false
 			}
+			if r.URL.Path == "/ignore/trailing/slash" && r.URL.Host == "localhost:3339" {
+				return false
+			}
+			if r.URL.Path == "/ignore/trailing/slash/" && r.URL.Host == "localhost:3339" {
+				return false
+			}
 
 			return true
 		})
@@ -669,6 +675,16 @@ func TestEntrypoint(t *testing.T) {
 			Post("/without/trailing/slash/").
 			Reply(200)
 
+		gock.New("http://localhost:3339").
+			Get("/ignore/trailing/slash/").
+			Reply(200).
+			JSON(map[string]interface{}{"originalMsg": "this is the original"})
+
+		gock.New("http://localhost:3339").
+			Get("/ignore/trailing/slash").
+			Reply(200).
+			JSON(map[string]interface{}{"originalMsg": "this is the original"})
+
 		resp1, err := http.DefaultClient.Get(fmt.Sprintf("http://localhost:5559%s", "/with/trailing/slash/"))
 		require.Equal(t, nil, err)
 		require.Equal(t, http.StatusOK, resp1.StatusCode, "unexpected status code.")
@@ -690,6 +706,20 @@ func TestEntrypoint(t *testing.T) {
 		resp4, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5559%s", "/without/trailing/slash/"), "application/json", nil)
 		require.Equal(t, nil, err)
 		require.Equal(t, http.StatusOK, resp4.StatusCode, "unexpected status code.")
+
+		resp5, err := http.DefaultClient.Get(fmt.Sprintf("http://localhost:5559%s", "/ignore/trailing/slash/"))
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp5.StatusCode, "unexpected status code.")
+
+		respBody5, _ := io.ReadAll(resp5.Body)
+		require.Equal(t, "\"/ignore/trailing/slash/\"", string(respBody5))
+
+		resp6, err := http.DefaultClient.Get(fmt.Sprintf("http://localhost:5559%s", "/ignore/trailing/slash"))
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp6.StatusCode, "unexpected status code.")
+
+		respBody6, _ := io.ReadAll(resp6.Body)
+		require.Equal(t, "\"/ignore/trailing/slash\"", string(respBody6))
 
 		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
 	})
