@@ -149,6 +149,21 @@
             }
         },
         "/with/trailing/slash/": {
+            "all": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "foo_bar"
+                },
+                "responseFlow": {
+                  "policyName": "original_path"
+                },
+                "options": {
+                    "ignoreTrailingSlash": true
+                }
+              }
+            }
+        },
+        "/ignore/trailing/slash/": {
             "get": {
               "x-rond": {
                 "requestFlow": {
