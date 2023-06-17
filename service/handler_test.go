@@ -481,7 +481,7 @@ allow {
 
 			OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-			partialEvaluators, err := core.SetupEvaluators(ctx, nil, &oasWithFilter, OPAModuleConfig, envs)
+			partialEvaluators, err := core.SetupEvaluators(ctx, nil, &oasWithFilter, OPAModuleConfig, nil)
 			require.NoError(t, err, "Unexpected error")
 
 			serverURL, _ := url.Parse(server.URL)
@@ -541,7 +541,7 @@ allow {
 
 			OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-			partialEvaluators, err := core.SetupEvaluators(ctx, nil, &oasWithFilter, OPAModuleConfig, envs)
+			partialEvaluators, err := core.SetupEvaluators(ctx, nil, &oasWithFilter, OPAModuleConfig, nil)
 			require.NoError(t, err, "Unexpected error")
 
 			serverURL, _ := url.Parse(server.URL)
