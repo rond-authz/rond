@@ -114,7 +114,8 @@ test_policy { true }
 
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
-	sdk, err := core.NewSDK(ctx, mongoClient, oas, opa, nil, registry)
+	logger, _ := test.NewNullLogger()
+	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), mongoClient, oas, opa, nil, registry, "")
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("non standalone", func(t *testing.T) {

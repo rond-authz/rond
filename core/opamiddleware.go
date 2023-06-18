@@ -40,8 +40,6 @@ func OPAMiddleware(
 	targetServiceOASPath string,
 	options *OPAMiddlewareOptions,
 ) mux.MiddlewareFunc {
-	OASrouter := openAPISpec.PrepareOASRouter()
-
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if utils.Contains(routesToNotProxy, r.URL.RequestURI()) {
@@ -56,7 +54,8 @@ func OPAMiddleware(
 
 			logger := glogger.Get(r.Context())
 
-			permission, err := openAPISpec.FindPermission(OASrouter, path, r.Method)
+			evaluator, err := sdk.FindEvaluator(logger, r.Method, path)
+			permission := evaluator.Permission()
 			if r.Method == http.MethodGet && r.URL.Path == targetServiceOASPath && permission.RequestFlow.PolicyName == "" {
 				fields := logrus.Fields{}
 				if err != nil {
@@ -89,6 +88,7 @@ func OPAMiddleware(
 				return
 			}
 
+			// TODO: remove me
 			ctx := openapi.WithXPermission(
 				WithOPAModuleConfig(
 					WithPartialResultsEvaluators(
@@ -99,6 +99,8 @@ func OPAMiddleware(
 				),
 				&permission,
 			)
+			ctx = WithEvaluatorSKD(ctx, evaluator)
+
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

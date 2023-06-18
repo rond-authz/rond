@@ -2,18 +2,14 @@ package core
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"net/http"
+	"fmt"
 
-	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/internal/metrics"
-	"github.com/rond-authz/rond/internal/opatranslator"
-	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 	"github.com/sirupsen/logrus"
+	"github.com/uptrace/bunrouter"
 )
 
 type PolicyResult struct {
@@ -21,19 +17,44 @@ type PolicyResult struct {
 	Allowed      bool
 }
 
+// Warning: This interface is experimental, and it could change with breaking also in rond patches.
+// Does not use outside this repository until it is not ready.
 type SDK interface {
 	Evaluators() PartialResultsEvaluators
 	Metrics() metrics.Metrics
 	Registry() *prometheus.Registry
 
-	EvaluateRequestPolicy(req *http.Request, userInfo types.User, permission *openapi.RondConfig) (PolicyResult, error)
-	// EvaluateResponsePolicy(req *http.Request, userInfo types.User, permission *openapi.RondConfig) (PolicyResult, error)
+	FindEvaluator(logger *logrus.Entry, method, path string) (SDKEvaluator, error)
+	EvaluatorFromConfig(logger *logrus.Entry, config openapi.RondConfig) SDKEvaluator
+}
+
+// Warning: This interface is experimental, and it could change with breaking also in rond patches.
+// Does not use outside this repository until it is not ready.
+type SDKEvaluator interface {
+	Permission() openapi.RondConfig
+	PartialResultsEvaluators() PartialResultsEvaluators
+}
+
+type evaluator struct {
+	rond       rondImpl
+	logger     *logrus.Entry
+	rondConfig openapi.RondConfig
+}
+
+func (e evaluator) Permission() openapi.RondConfig {
+	return e.rondConfig
+}
+
+func (e evaluator) PartialResultsEvaluators() PartialResultsEvaluators {
+	return e.rond.Evaluators()
 }
 
 type rondImpl struct {
-	evaluator             PartialResultsEvaluators
-	logger                *logrus.Entry
-	enablePrintStatements bool
+	evaluator        PartialResultsEvaluators
+	logger           *logrus.Entry
+	evaluatorOptions *EvaluatorOptions
+	oasRouter        *bunrouter.CompatRouter
+	oas              *openapi.OpenAPISpec
 
 	metrics  metrics.Metrics
 	registry *prometheus.Registry
@@ -45,64 +66,21 @@ func (r rondImpl) Evaluators() PartialResultsEvaluators {
 	return r.evaluator
 }
 
-func (r rondImpl) EvaluateRequestPolicy(req *http.Request, userInfo types.User, permission *openapi.RondConfig) (PolicyResult, error) {
-	requestContext := req.Context()
+func (r rondImpl) FindEvaluator(logger *logrus.Entry, method, path string) (SDKEvaluator, error) {
+	permission, err := r.oas.FindPermission(r.oasRouter, path, method)
+	return evaluator{
+		rondConfig: permission,
+		logger:     logger,
+		rond:       r,
+	}, err
+}
 
-	pathParams := mux.Vars(req)
-	input, err := InputFromRequest(req, userInfo, r.clientTypeHeaderKey, pathParams, nil)
-	if err != nil {
-		return PolicyResult{}, err
+func (r rondImpl) EvaluatorFromConfig(logger *logrus.Entry, config openapi.RondConfig) SDKEvaluator {
+	return evaluator{
+		rondConfig: config,
+		logger:     logger,
+		rond:       r,
 	}
-
-	regoInput, err := CreateRegoQueryInput(r.logger, input, RegoInputOptions{
-		EnableResourcePermissionsMapOptimization: permission.Options.EnableResourcePermissionsMapOptimization,
-	})
-	if err != nil {
-		return PolicyResult{}, nil
-	}
-
-	evaluatorOptions := &EvaluatorOptions{
-		EnablePrintStatements: r.enablePrintStatements,
-	}
-
-	var evaluatorAllowPolicy *OPAEvaluator
-	if !permission.RequestFlow.GenerateQuery {
-		evaluatorAllowPolicy, err = r.evaluator.GetEvaluatorFromPolicy(requestContext, permission.RequestFlow.PolicyName, regoInput, evaluatorOptions)
-		if err != nil {
-			return PolicyResult{}, nil
-		}
-	} else {
-		evaluatorAllowPolicy, err = CreateQueryEvaluator(requestContext, r.logger, req, permission.RequestFlow.PolicyName, regoInput, nil, evaluatorOptions)
-		if err != nil {
-			return PolicyResult{}, err
-		}
-	}
-
-	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(r.logger, permission)
-	if err != nil {
-		if errors.Is(err, opatranslator.ErrEmptyQuery) && utils.HasApplicationJSONContentType(req.Header) {
-			return PolicyResult{}, err
-		}
-
-		r.logger.WithField("error", logrus.Fields{
-			"policyName": permission.RequestFlow.PolicyName,
-			"message":    err.Error(),
-		}).Error("RBAC policy evaluation failed")
-		return PolicyResult{}, err
-	}
-
-	var queryToProxy = []byte{}
-	if query != nil {
-		queryToProxy, err = json.Marshal(query)
-		if err != nil {
-			return PolicyResult{}, err
-		}
-	}
-
-	return PolicyResult{
-		Allowed:      true,
-		QueryToProxy: queryToProxy,
-	}, nil
 }
 
 func (r rondImpl) Metrics() metrics.Metrics {
@@ -115,11 +93,13 @@ func (r rondImpl) Registry() *prometheus.Registry {
 
 func NewSDK(
 	ctx context.Context,
+	logger *logrus.Entry,
 	mongoClient types.IMongoClient,
 	oas *openapi.OpenAPISpec,
 	opaModuleConfig *OPAModuleConfig,
 	evaluatorOptions *EvaluatorOptions,
 	registry *prometheus.Registry,
+	clientTypeHeaderKey string,
 ) (SDK, error) {
 	// TODO: use logger instead of get logger from context
 	evaluator, err := SetupEvaluators(ctx, mongoClient, oas, opaModuleConfig, evaluatorOptions)
@@ -127,15 +107,38 @@ func NewSDK(
 		return nil, err
 	}
 
+	oasRouter := oas.PrepareOASRouter()
+
 	m := metrics.SetupMetrics("rond")
 	if registry != nil {
 		m.MustRegister(registry)
 	}
 
 	return rondImpl{
-		evaluator: evaluator,
+		evaluator:        evaluator,
+		oasRouter:        oasRouter,
+		logger:           logger,
+		evaluatorOptions: evaluatorOptions,
+		oas:              oas,
 
 		metrics:  m,
 		registry: registry,
+
+		clientTypeHeaderKey: clientTypeHeaderKey,
 	}, nil
+}
+
+type sdkKey struct{}
+
+func WithEvaluatorSKD(ctx context.Context, evaluator SDKEvaluator) context.Context {
+	return context.WithValue(ctx, sdkKey{}, evaluator)
+}
+
+func GetEvaluatorSKD(ctx context.Context) (SDKEvaluator, error) {
+	sdk, ok := ctx.Value(sdkKey{}).(SDKEvaluator)
+	if !ok {
+		return nil, fmt.Errorf("no SDKEvaluator found in request context")
+	}
+
+	return sdk, nil
 }

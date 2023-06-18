@@ -77,6 +77,9 @@ func createPartialEvaluator(policy string, ctx context.Context, mongoClient type
 }
 
 func SetupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (PartialResultsEvaluators, error) {
+	if oas == nil {
+		return nil, fmt.Errorf("oas must not be nil")
+	}
 	policyEvaluators := PartialResultsEvaluators{}
 	for path, OASContent := range oas.Paths {
 		for verb, verbConfig := range OASContent {
@@ -213,6 +216,9 @@ func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 	if evaluatorOptions == nil {
 		evaluatorOptions = &EvaluatorOptions{}
 	}
+	if opaModuleConfig == nil {
+		return nil, fmt.Errorf("OPAModuleConfig must not be nil")
+	}
 
 	sanitizedPolicy := strings.Replace(policy, ".", "_", -1)
 	queryString := fmt.Sprintf("data.policies.%s", sanitizedPolicy)
@@ -258,7 +264,7 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 			Context:         ctx,
 		}, nil
 	}
-	return nil, fmt.Errorf("policy evaluator not found")
+	return nil, fmt.Errorf("policy evaluator not found: %s", policy)
 }
 
 func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitive.M, error) {
