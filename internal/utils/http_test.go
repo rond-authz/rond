@@ -21,7 +21,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rond-authz/rond/internal/types"
+	"github.com/rond-authz/rond/types"
 	"github.com/stretchr/testify/require"
 )
 

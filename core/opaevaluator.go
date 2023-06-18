@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
@@ -37,7 +36,6 @@ import (
 
 	"github.com/rond-authz/rond/custom_builtins"
 
-	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
@@ -66,11 +64,11 @@ type PartialEvaluator struct {
 	PartialEvaluator *rego.PartialResult
 }
 
-func createPartialEvaluator(policy string, ctx context.Context, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, env config.EnvironmentVariables) (*PartialEvaluator, error) {
+func createPartialEvaluator(policy string, ctx context.Context, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (*PartialEvaluator, error) {
 	glogger.Get(ctx).Infof("precomputing rego query for allow policy: %s", policy)
 
 	policyEvaluatorTime := time.Now()
-	partialResultEvaluator, err := NewPartialResultEvaluator(ctx, policy, opaModuleConfig, mongoClient, env)
+	partialResultEvaluator, err := NewPartialResultEvaluator(ctx, policy, opaModuleConfig, mongoClient, options)
 	if err == nil {
 		glogger.Get(ctx).Infof("computed rego query for policy: %s in %s", policy, time.Since(policyEvaluatorTime))
 		return &PartialEvaluator{
@@ -80,7 +78,7 @@ func createPartialEvaluator(policy string, ctx context.Context, mongoClient type
 	return nil, err
 }
 
-func SetupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, env config.EnvironmentVariables) (PartialResultsEvaluators, error) {
+func SetupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (PartialResultsEvaluators, error) {
 	policyEvaluators := PartialResultsEvaluators{}
 	for path, OASContent := range oas.Paths {
 		for verb, verbConfig := range OASContent {
@@ -98,7 +96,7 @@ func SetupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *o
 			}
 
 			if _, ok := policyEvaluators[allowPolicy]; !ok {
-				evaluator, err := createPartialEvaluator(allowPolicy, ctx, mongoClient, oas, opaModuleConfig, env)
+				evaluator, err := createPartialEvaluator(allowPolicy, ctx, mongoClient, oas, opaModuleConfig, options)
 
 				if err != nil {
 					return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
@@ -109,7 +107,7 @@ func SetupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *o
 
 			if responsePolicy != "" {
 				if _, ok := policyEvaluators[responsePolicy]; !ok {
-					evaluator, err := createPartialEvaluator(responsePolicy, ctx, mongoClient, oas, opaModuleConfig, env)
+					evaluator, err := createPartialEvaluator(responsePolicy, ctx, mongoClient, oas, opaModuleConfig, options)
 
 					if err != nil {
 						return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
@@ -157,7 +155,14 @@ func (h printHook) Print(_ print.Context, message string) error {
 	return err
 }
 
-func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte, env config.EnvironmentVariables) (*OPAEvaluator, error) {
+type EvaluatorOptions struct {
+	EnablePrintStatements bool
+}
+
+func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte, options *EvaluatorOptions) (*OPAEvaluator, error) {
+	if options == nil {
+		options = &EvaluatorOptions{}
+	}
 	inputTerm, err := ast.ParseTerm(string(input))
 	if err != nil {
 		return nil, fmt.Errorf("failed input parse: %v", err)
@@ -171,7 +176,7 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 		rego.ParsedInput(inputTerm.Value),
 		rego.Unknowns(Unknowns),
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
-		rego.EnablePrintStatements(env.LogLevel == config.TraceLogLevel),
+		rego.EnablePrintStatements(options.EnablePrintStatements),
 		rego.PrintHook(NewPrintHook(os.Stdout, policy)),
 		custom_builtins.GetHeaderFunction,
 		custom_builtins.MongoFindOne,
@@ -185,7 +190,7 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 	}, nil
 }
 
-func CreateQueryEvaluator(ctx context.Context, logger *logrus.Entry, req *http.Request, env config.EnvironmentVariables, policy string, input []byte, responseBody interface{}) (*OPAEvaluator, error) {
+func CreateQueryEvaluator(ctx context.Context, logger *logrus.Entry, req *http.Request, policy string, input []byte, responseBody interface{}, options *EvaluatorOptions) (*OPAEvaluator, error) {
 	opaModuleConfig, err := GetOPAModuleConfig(req.Context())
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no OPA module configuration found in context")
@@ -197,7 +202,7 @@ func CreateQueryEvaluator(ctx context.Context, logger *logrus.Entry, req *http.R
 	}).Info("Policy to be evaluated")
 
 	opaEvaluatorInstanceTime := time.Now()
-	evaluator, err := NewOPAEvaluator(ctx, policy, opaModuleConfig, input, env)
+	evaluator, err := NewOPAEvaluator(ctx, policy, opaModuleConfig, input, options)
 	if err != nil {
 		logger.WithError(err).Error("failed RBAC policy creation")
 		return nil, err
@@ -206,7 +211,11 @@ func CreateQueryEvaluator(ctx context.Context, logger *logrus.Entry, req *http.R
 	return evaluator, nil
 }
 
-func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, mongoClient types.IMongoClient, env config.EnvironmentVariables) (*rego.PartialResult, error) {
+func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, mongoClient types.IMongoClient, evaluatorOptions *EvaluatorOptions) (*rego.PartialResult, error) {
+	if evaluatorOptions == nil {
+		evaluatorOptions = &EvaluatorOptions{}
+	}
+
 	sanitizedPolicy := strings.Replace(policy, ".", "_", -1)
 	queryString := fmt.Sprintf("data.policies.%s", sanitizedPolicy)
 
@@ -214,7 +223,7 @@ func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 		rego.Query(queryString),
 		rego.Module(opaModuleConfig.Name, opaModuleConfig.Content),
 		rego.Unknowns(Unknowns),
-		rego.EnablePrintStatements(env.LogLevel == config.TraceLogLevel),
+		rego.EnablePrintStatements(evaluatorOptions.EnablePrintStatements),
 		rego.PrintHook(NewPrintHook(os.Stdout, policy)),
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
 		custom_builtins.GetHeaderFunction,
@@ -228,7 +237,11 @@ func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 	return &results, err
 }
 
-func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx context.Context, policy string, input []byte, env config.EnvironmentVariables) (*OPAEvaluator, error) {
+func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx context.Context, policy string, input []byte, options *EvaluatorOptions) (*OPAEvaluator, error) {
+	if options == nil {
+		options = &EvaluatorOptions{}
+	}
+
 	if eval, ok := partialEvaluators[policy]; ok {
 		inputTerm, err := ast.ParseTerm(string(input))
 		if err != nil {
@@ -237,7 +250,7 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 
 		evaluator := eval.PartialEvaluator.Rego(
 			rego.ParsedInput(inputTerm.Value),
-			rego.EnablePrintStatements(env.LogLevel == config.TraceLogLevel),
+			rego.EnablePrintStatements(options.EnablePrintStatements),
 			rego.PrintHook(NewPrintHook(os.Stdout, policy)),
 		)
 
@@ -365,98 +378,25 @@ func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission
 	return dataFromEvaluation, nil, nil
 }
 
-func CreateRegoQueryInput(req *http.Request, env config.EnvironmentVariables, enableResourcePermissionsMapOptimization bool, user types.User, responseBody interface{}) ([]byte, error) {
-	requestContext := req.Context()
-	logger := glogger.Get(requestContext)
+type RegoInputOptions struct {
+	EnableResourcePermissionsMapOptimization bool
+}
+
+func CreateRegoQueryInput(
+	logger *logrus.Entry,
+	input Input,
+	options RegoInputOptions,
+) ([]byte, error) {
 	opaInputCreationTime := time.Now()
-	userProperties := make(map[string]interface{})
-	_, err := utils.UnmarshalHeader(req.Header, env.UserPropertiesHeader, &userProperties)
-	if err != nil {
-		return nil, fmt.Errorf("user properties header is not valid: %s", err.Error())
-	}
 
-	userGroup := make([]string, 0)
-	userGroupsNotSplitted := req.Header.Get(env.UserGroupsHeader)
-	if userGroupsNotSplitted != "" {
-		userGroup = strings.Split(userGroupsNotSplitted, ",")
-	}
+	input.buildOptimizedResourcePermissionsMap(logger, options.EnableResourcePermissionsMapOptimization)
 
-	var permissionsMap PermissionsOnResourceMap
-	if enableResourcePermissionsMapOptimization {
-		logger.Info("preparing optimized resourcePermissionMap for OPA evaluator")
-		opaPermissionsMapTime := time.Now()
-		permissionsMap = buildOptimizedResourcePermissionsMap(user)
-		logger.WithField("resourcePermissionMapCreationTime", fmt.Sprintf("%+v", time.Since(opaPermissionsMapTime))).Tracef("resource permission map creation")
-	}
-
-	input := Input{
-		ClientType: req.Header.Get(env.ClientTypeHeader),
-		Request: InputRequest{
-			Method:     req.Method,
-			Path:       req.URL.Path,
-			Headers:    req.Header,
-			Query:      req.URL.Query(),
-			PathParams: mux.Vars(req),
-		},
-		Response: InputResponse{
-			Body: responseBody,
-		},
-		User: InputUser{
-			Bindings:               user.UserBindings,
-			Roles:                  user.UserRoles,
-			Properties:             userProperties,
-			Groups:                 userGroup,
-			ResourcePermissionsMap: permissionsMap,
-		},
-	}
-
-	shouldParseJSONBody := utils.HasApplicationJSONContentType(req.Header) &&
-		req.ContentLength > 0 &&
-		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete)
-
-	if shouldParseJSONBody {
-		bodyBytes, err := io.ReadAll(req.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed request body parse: %s", err.Error())
-		}
-		if err := json.Unmarshal(bodyBytes, &input.Request.Body); err != nil {
-			return nil, fmt.Errorf("failed request body deserialization: %s", err.Error())
-		}
-		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-	}
 	inputBytes, err := json.Marshal(input)
 	if err != nil {
 		return nil, fmt.Errorf("failed input JSON encode: %v", err)
 	}
 	logger.Tracef("OPA input rego creation in: %+v", time.Since(opaInputCreationTime))
 	return inputBytes, nil
-}
-
-func buildOptimizedResourcePermissionsMap(user types.User) PermissionsOnResourceMap {
-	permissionsOnResourceMap := make(PermissionsOnResourceMap, 0)
-	rolesMap := buildRolesMap(user.UserRoles)
-	for _, binding := range user.UserBindings {
-		if binding.Resource == nil {
-			continue
-		}
-
-		for _, role := range binding.Roles {
-			rolePermissions, ok := rolesMap[role]
-			if !ok {
-				continue
-			}
-
-			for _, permission := range rolePermissions {
-				key := buildPermissionOnResourceKey(permission, binding.Resource.ResourceType, binding.Resource.ResourceID)
-				permissionsOnResourceMap[key] = true
-			}
-		}
-		for _, permission := range binding.Permissions {
-			key := buildPermissionOnResourceKey(permission, binding.Resource.ResourceType, binding.Resource.ResourceID)
-			permissionsOnResourceMap[key] = true
-		}
-	}
-	return permissionsOnResourceMap
 }
 
 func buildRolesMap(roles []types.Role) map[string][]string {
@@ -509,6 +449,37 @@ type Input struct {
 	ClientType string        `json:"clientType,omitempty"`
 	User       InputUser     `json:"user"`
 }
+
+func (input *Input) buildOptimizedResourcePermissionsMap(logger *logrus.Entry, enableResourcePermissionsMapOptimization bool) {
+	if !enableResourcePermissionsMapOptimization {
+		return
+	}
+	logger.Info("preparing optimized resourcePermissionMap for OPA evaluator")
+	opaPermissionsMapTime := time.Now()
+
+	user := input.User
+	permissionsOnResourceMap := make(PermissionsOnResourceMap, 0)
+	rolesMap := buildRolesMap(user.Roles)
+	for _, binding := range user.Bindings {
+		for _, role := range binding.Roles {
+			rolePermissions, ok := rolesMap[role]
+			if !ok {
+				continue
+			}
+			for _, permission := range rolePermissions {
+				key := buildPermissionOnResourceKey(permission, binding.Resource.ResourceType, binding.Resource.ResourceID)
+				permissionsOnResourceMap[key] = true
+			}
+		}
+		for _, permission := range binding.Permissions {
+			key := buildPermissionOnResourceKey(permission, binding.Resource.ResourceType, binding.Resource.ResourceID)
+			permissionsOnResourceMap[key] = true
+		}
+	}
+	input.User.ResourcePermissionsMap = permissionsOnResourceMap
+	logger.WithField("resourcePermissionMapCreationTime", fmt.Sprintf("%+v", time.Since(opaPermissionsMapTime))).Tracef("resource permission map creation")
+}
+
 type InputRequest struct {
 	Body       interface{}       `json:"body,omitempty"`
 	Headers    http.Header       `json:"headers,omitempty"`
@@ -566,5 +537,50 @@ func LoadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 	return &OPAModuleConfig{
 		Name:    filepath.Base(regoModulePath),
 		Content: string(fileContent),
+	}, nil
+}
+
+func InputFromRequest(
+	req *http.Request,
+	user types.User,
+	clientTypeHeaderKey string,
+	pathParams map[string]string,
+	responseBody any,
+) (Input, error) {
+	shouldParseJSONBody := utils.HasApplicationJSONContentType(req.Header) &&
+		req.ContentLength > 0 &&
+		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete)
+
+	var requestBody any
+	if shouldParseJSONBody {
+		bodyBytes, err := io.ReadAll(req.Body)
+		if err != nil {
+			return Input{}, fmt.Errorf("failed request body parse: %s", err.Error())
+		}
+		if err := json.Unmarshal(bodyBytes, &requestBody); err != nil {
+			return Input{}, fmt.Errorf("failed request body deserialization: %s", err.Error())
+		}
+		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	}
+
+	return Input{
+		ClientType: req.Header.Get(clientTypeHeaderKey),
+		Request: InputRequest{
+			Method:     req.Method,
+			Path:       req.URL.Path,
+			Headers:    req.Header,
+			Query:      req.URL.Query(),
+			PathParams: pathParams,
+			Body:       requestBody,
+		},
+		Response: InputResponse{
+			Body: responseBody,
+		},
+		User: InputUser{
+			Properties: user.Properties,
+			Groups:     user.UserGroups,
+			Bindings:   user.UserBindings,
+			Roles:      user.UserRoles,
+		},
 	}, nil
 }

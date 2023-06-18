@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 
@@ -29,12 +28,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type OPAMiddlewareOptions struct {
+	IsStandalone         bool
+	PathPrefixStandalone string
+}
+
 func OPAMiddleware(
 	opaModuleConfig *OPAModuleConfig,
 	openAPISpec *openapi.OpenAPISpec,
-	envs *config.EnvironmentVariables,
 	policyEvaluators PartialResultsEvaluators,
 	routesToNotProxy []string,
+	targetServiceOASPath string,
+	options *OPAMiddlewareOptions,
 ) mux.MiddlewareFunc {
 	OASrouter, err := openAPISpec.PrepareOASRouter()
 	if err != nil {
@@ -49,14 +54,14 @@ func OPAMiddleware(
 			}
 
 			path := r.URL.EscapedPath()
-			if envs.Standalone {
-				path = strings.Replace(r.URL.EscapedPath(), envs.PathPrefixStandalone, "", 1)
+			if options != nil && options.IsStandalone {
+				path = strings.Replace(r.URL.EscapedPath(), options.PathPrefixStandalone, "", 1)
 			}
 
 			logger := glogger.Get(r.Context())
 
 			permission, err := openAPISpec.FindPermission(OASrouter, path, r.Method)
-			if r.Method == http.MethodGet && r.URL.Path == envs.TargetServiceOASPath && permission.RequestFlow.PolicyName == "" {
+			if r.Method == http.MethodGet && r.URL.Path == targetServiceOASPath && permission.RequestFlow.PolicyName == "" {
 				fields := logrus.Fields{}
 				if err != nil {
 					fields["error"] = logrus.Fields{"message": err.Error()}

@@ -79,6 +79,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		ServiceVersion:       "latest",
 
 		OPAModulesDirectory:      "/modules",
+		APIPermissionsFilePath:   "/oas",
 		AdditionalHeadersToProxy: "miauserid",
 		ExposeMetrics:            true,
 	}
@@ -86,6 +87,7 @@ func TestGetEnvOrDie(t *testing.T) {
 	t.Run(`returns correctly - with TargetServiceHost`, func(t *testing.T) {
 		otherEnvs := []env{
 			{name: "TARGET_SERVICE_HOST", value: "http://localhost:3000"},
+			{name: apiPermissionsFilePathEnvKey, value: "/oas"},
 		}
 		envs := append(requiredEnvs, otherEnvs...)
 		setEnvs(t, envs)
@@ -101,6 +103,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		otherEnvs := []env{
 			{name: "STANDALONE", value: "true"},
 			{name: "BINDINGS_CRUD_SERVICE_URL", value: "http://crud-client"},
+			{name: apiPermissionsFilePathEnvKey, value: "/oas"},
 		}
 		envs := append(requiredEnvs, otherEnvs...)
 		setEnvs(t, envs)
@@ -113,9 +116,10 @@ func TestGetEnvOrDie(t *testing.T) {
 		require.Equal(t, expectedEnvs, actualEnvs, "Unexpected envs variables.")
 	})
 
-	t.Run(`returns error - with Standalone and not BindingsCrudServiceURL`, func(t *testing.T) {
+	t.Run(`throws - with Standalone and not BindingsCrudServiceURL`, func(t *testing.T) {
 		otherEnvs := []env{
 			{name: "STANDALONE", value: "true"},
+			{name: apiPermissionsFilePathEnvKey, value: "/oas"},
 		}
 		envs := append(requiredEnvs, otherEnvs...)
 		setEnvs(t, envs)
@@ -123,7 +127,6 @@ func TestGetEnvOrDie(t *testing.T) {
 		defer func() {
 			r := recover()
 			t.Logf("expected panic %+v", r)
-
 		}()
 
 		GetEnvOrDie()
@@ -133,23 +136,55 @@ func TestGetEnvOrDie(t *testing.T) {
 	t.Run(`throws - with Standalone to false`, func(t *testing.T) {
 		otherEnvs := []env{
 			{name: "STANDALONE", value: "false"},
+			{name: apiPermissionsFilePathEnvKey, value: "/oas"},
 		}
 		envs := append(requiredEnvs, otherEnvs...)
 		setEnvs(t, envs)
 
-		require.PanicsWithError(t, fmt.Sprintf("missing environment variables, one of %s or %s set to true is required", TargetServiceHostEnvKey, StandaloneEnvKey), func() {
+		require.PanicsWithError(t, fmt.Sprintf("missing environment variables, one of %s or %s set to true is required", targetServiceHostEnvKey, standaloneEnvKey), func() {
 			GetEnvOrDie()
 		}, "Unexpected envs variables.")
 	})
 
 	t.Run(`throws - no Standalone or TargetServiceHost`, func(t *testing.T) {
-		otherEnvs := []env{}
+		otherEnvs := []env{
+			{name: apiPermissionsFilePathEnvKey, value: "/oas"},
+		}
 		envs := append(requiredEnvs, otherEnvs...)
 		setEnvs(t, envs)
 
-		require.PanicsWithError(t, fmt.Sprintf("missing environment variables, one of %s or %s set to true is required", TargetServiceHostEnvKey, StandaloneEnvKey), func() {
+		require.PanicsWithError(t, fmt.Sprintf("missing environment variables, one of %s or %s set to true is required", targetServiceHostEnvKey, standaloneEnvKey), func() {
 			GetEnvOrDie()
 		}, "Unexpected envs variables.")
+	})
+
+	t.Run(`throws - no APIPermissionsFilePath or TargetServiceOASPath`, func(t *testing.T) {
+		otherEnvs := []env{
+			{name: "TARGET_SERVICE_HOST", value: "http://localhost:3000"},
+		}
+		envs := append(requiredEnvs, otherEnvs...)
+		setEnvs(t, envs)
+
+		require.PanicsWithError(t, fmt.Sprintf("missing environment variables, one of %s or %s is required", apiPermissionsFilePathEnvKey, targetServiceOASPathEnvKey), func() {
+			GetEnvOrDie()
+		}, "Unexpected envs variables.")
+	})
+
+	t.Run(`returns correctly - TargetServiceOASPath set`, func(t *testing.T) {
+		otherEnvs := []env{
+			{name: "TARGET_SERVICE_HOST", value: "http://localhost:3000"},
+			{name: "TARGET_SERVICE_OAS_PATH", value: "/path"},
+		}
+		envs := append(requiredEnvs, otherEnvs...)
+		setEnvs(t, envs)
+
+		actualEnvs := GetEnvOrDie()
+		expectedEnvs := defaultAndRequiredEnvironmentVariables
+		expectedEnvs.TargetServiceHost = "http://localhost:3000"
+		expectedEnvs.APIPermissionsFilePath = ""
+		expectedEnvs.TargetServiceOASPath = "/path"
+
+		require.Equal(t, expectedEnvs, actualEnvs, "Unexpected envs variables.")
 	})
 }
 
@@ -206,5 +241,21 @@ func TestGetAdditionalHeadersToProxy(t *testing.T) {
 		headersToProxy := env.GetAdditionalHeadersToProxy()
 
 		require.Equal(t, []string{"head1", "head2", "x-forwarded-for", "x-request-id", "x-forwarded-proto", "x-forwarded-host"}, headersToProxy)
+	})
+}
+
+func TestIsTraceLogLevel(t *testing.T) {
+	t.Run("true", func(t *testing.T) {
+		env := EnvironmentVariables{
+			LogLevel: traceLogLevel,
+		}
+
+		require.True(t, env.IsTraceLogLevel())
+	})
+
+	t.Run("false", func(t *testing.T) {
+		env := EnvironmentVariables{}
+
+		require.False(t, env.IsTraceLogLevel())
 	})
 }

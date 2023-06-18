@@ -25,13 +25,13 @@ import (
 )
 
 const (
-	APIPermissionsFilePathEnvKey = "API_PERMISSIONS_FILE_PATH"
-	TargetServiceOASPathEnvKey   = "TARGET_SERVICE_OAS_PATH"
-	StandaloneEnvKey             = "STANDALONE"
-	TargetServiceHostEnvKey      = "TARGET_SERVICE_HOST"
-	BindingsCrudServiceURL       = "BINDINGS_CRUD_SERVICE_URL"
+	apiPermissionsFilePathEnvKey = "API_PERMISSIONS_FILE_PATH"
+	targetServiceOASPathEnvKey   = "TARGET_SERVICE_OAS_PATH"
+	standaloneEnvKey             = "STANDALONE"
+	targetServiceHostEnvKey      = "TARGET_SERVICE_HOST"
+	bindingsCrudServiceURL       = "BINDINGS_CRUD_SERVICE_URL"
 
-	TraceLogLevel = "trace"
+	traceLogLevel = "trace"
 )
 
 // EnvironmentVariables struct with the mapping of desired
@@ -76,11 +76,11 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		DefaultValue: "latest",
 	},
 	{
-		Key:      TargetServiceHostEnvKey,
+		Key:      targetServiceHostEnvKey,
 		Variable: "TargetServiceHost",
 	},
 	{
-		Key:      TargetServiceOASPathEnvKey,
+		Key:      targetServiceOASPathEnvKey,
 		Variable: "TargetServiceOASPath",
 	},
 	{
@@ -89,7 +89,7 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		Required: true,
 	},
 	{
-		Key:      APIPermissionsFilePathEnvKey,
+		Key:      apiPermissionsFilePathEnvKey,
 		Variable: "APIPermissionsFilePath",
 	},
 	{
@@ -130,7 +130,7 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		Variable: "RolesCollectionName",
 	},
 	{
-		Key:      StandaloneEnvKey,
+		Key:      standaloneEnvKey,
 		Variable: "Standalone",
 	},
 	{
@@ -139,7 +139,7 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		DefaultValue: "/eval",
 	},
 	{
-		Key:      BindingsCrudServiceURL,
+		Key:      bindingsCrudServiceURL,
 		Variable: "BindingsCrudServiceURL",
 	},
 	{
@@ -184,11 +184,15 @@ func GetEnvOrDie() EnvironmentVariables {
 	}
 
 	if env.TargetServiceHost == "" && !env.Standalone {
-		panic(fmt.Errorf("missing environment variables, one of %s or %s set to true is required", TargetServiceHostEnvKey, StandaloneEnvKey))
+		panic(fmt.Errorf("missing environment variables, one of %s or %s set to true is required", targetServiceHostEnvKey, standaloneEnvKey))
 	}
 
 	if env.Standalone && env.BindingsCrudServiceURL == "" {
-		panic(fmt.Errorf("missing environment variables, %s must be set if mode is standalone", BindingsCrudServiceURL))
+		panic(fmt.Errorf("missing environment variables, %s must be set if mode is standalone", bindingsCrudServiceURL))
+	}
+
+	if env.APIPermissionsFilePath == "" && env.TargetServiceOASPath == "" {
+		panic(fmt.Errorf("missing environment variables, one of %s or %s is required", apiPermissionsFilePathEnvKey, targetServiceOASPathEnvKey))
 	}
 
 	return env
@@ -214,4 +218,8 @@ func (env EnvironmentVariables) GetAdditionalHeadersToProxy() []string {
 		}
 	}
 	return customHeaders
+}
+
+func (env EnvironmentVariables) IsTraceLogLevel() bool {
+	return env.LogLevel == traceLogLevel
 }

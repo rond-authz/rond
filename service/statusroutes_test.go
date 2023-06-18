@@ -90,7 +90,6 @@ func TestStatusRoutes(testCase *testing.T) {
 }
 
 func TestStatusRoutesIntegration(t *testing.T) {
-	envs := config.EnvironmentVariables{}
 	log, _ := test.NewNullLogger()
 	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
@@ -113,7 +112,7 @@ test_policy { true }
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, envs)
+	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, nil)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("non standalone", func(t *testing.T) {

@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/rond-authz/rond/internal/config"
@@ -40,11 +39,10 @@ import (
 )
 
 func TestNewOPAEvaluator(t *testing.T) {
-	envs := config.EnvironmentVariables{}
 	input := map[string]interface{}{}
 	inputBytes, _ := json.Marshal(input)
 	t.Run("policy sanitization", func(t *testing.T) {
-		evaluator, _ := NewOPAEvaluator(context.Background(), "very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, inputBytes, envs)
+		evaluator, _ := NewOPAEvaluator(context.Background(), "very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, inputBytes, nil)
 
 		result, err := evaluator.PolicyEvaluator.Eval(context.TODO())
 		require.Nil(t, err, "unexpected error")
@@ -57,97 +55,86 @@ func TestNewOPAEvaluator(t *testing.T) {
 }
 
 func TestCreateRegoInput(t *testing.T) {
-	env := config.EnvironmentVariables{}
-	user := types.User{}
-	enableResourcePermissionsMapOptimization := false
+	logrusLogger, _ := test.NewNullLogger()
+	logger := logrus.NewEntry(logrusLogger)
 
-	t.Run("headers", func(t *testing.T) {
-		t.Run("allow empty userproperties header", func(t *testing.T) {
-			env := config.EnvironmentVariables{
-				UserPropertiesHeader: "userproperties",
-			}
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			req.Header.Set("userproperties", "")
-
-			_, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
-			require.Nil(t, err, "Unexpected error")
-		})
-
-		t.Run("fail on invalid userproperties header value", func(t *testing.T) {
-			env := config.EnvironmentVariables{
-				UserPropertiesHeader: "userproperties",
-			}
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			req.Header.Set("userproperties", "1")
-
-			_, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
-			require.Error(t, err)
-		})
+	t.Run("returns correctly", func(t *testing.T) {
+		actual, err := CreateRegoQueryInput(logger, Input{}, RegoInputOptions{})
+		require.NoError(t, err)
+		require.Equal(t, "{\"request\":{\"method\":\"\",\"path\":\"\"},\"response\":{},\"user\":{}}", string(actual))
 	})
 
-	t.Run("body integration", func(t *testing.T) {
-		expectedRequestBody := []byte(`{"Key":42}`)
-		reqBody := struct{ Key int }{
-			Key: 42,
+	t.Run("buildOptimizedResourcePermissionsMap", func(t *testing.T) {
+		user := InputUser{
+			Roles: []types.Role{
+				{
+					RoleID:      "role1",
+					Permissions: []string{"permission1", "permission2"},
+				},
+				{
+					RoleID:      "role2",
+					Permissions: []string{"permission3", "permission4"},
+				},
+			},
+			Bindings: []types.Binding{
+				{
+					Resource: &types.Resource{
+						ResourceType: "type1",
+						ResourceID:   "resource1",
+					},
+					Roles:       []string{"role1"},
+					Permissions: []string{"permissionNotInRole1"},
+				},
+				{
+					Resource: &types.Resource{
+						ResourceType: "type2",
+						ResourceID:   "resource2",
+					},
+					Roles: []string{"role2"},
+				},
+				{
+					Resource: &types.Resource{
+						ResourceType: "type3",
+						ResourceID:   "resource3",
+					},
+					Roles:       []string{"role1", "role2"},
+					Permissions: []string{"permissionNotInRole2", "permissionNotInRole3"},
+				},
+			},
 		}
-		reqBodyBytes, err := json.Marshal(reqBody)
-		require.Nil(t, err, "Unexpected error")
 
-		t.Run("ignored on method GET", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/", bytes.NewReader(reqBodyBytes))
-
-			inputBytes, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
-			require.Nil(t, err, "Unexpected error")
-			require.True(t, !strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)))
-		})
-
-		t.Run("ignore nil body on method POST", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/", nil)
-			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
-
-			inputBytes, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
-			require.Nil(t, err, "Unexpected error")
-			require.True(t, !strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)))
-		})
-
-		t.Run("added on accepted methods", func(t *testing.T) {
-			acceptedMethods := []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
-
-			for _, method := range acceptedMethods {
-				req := httptest.NewRequest(method, "/", bytes.NewReader(reqBodyBytes))
-				req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
-				inputBytes, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
-				require.Nil(t, err, "Unexpected error")
-
-				require.True(t, strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)), "Unexpected body for method %s", method)
+		t.Run("insert map", func(t *testing.T) {
+			input := Input{
+				User: user,
 			}
+
+			input.buildOptimizedResourcePermissionsMap(logger, true)
+			expected := PermissionsOnResourceMap{
+				"permission1:type1:resource1":          true,
+				"permission2:type1:resource1":          true,
+				"permissionNotInRole1:type1:resource1": true,
+				"permission3:type2:resource2":          true,
+				"permission4:type2:resource2":          true,
+				"permission1:type3:resource3":          true,
+				"permission2:type3:resource3":          true,
+				"permission3:type3:resource3":          true,
+				"permission4:type3:resource3":          true,
+				"permissionNotInRole2:type3:resource3": true,
+				"permissionNotInRole3:type3:resource3": true,
+			}
+			require.Equal(t, expected, input.User.ResourcePermissionsMap)
 		})
 
-		t.Run("added with content-type specifying charset", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(reqBodyBytes))
-			req.Header.Set(utils.ContentTypeHeaderKey, "application/json;charset=UTF-8")
-			inputBytes, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
-			require.Nil(t, err, "Unexpected error")
+		t.Run("do nothing if enableResourcePermissionsMapOptimization is false", func(t *testing.T) {
+			input := Input{
+				User: user,
+			}
 
-			require.True(t, strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)), "Unexpected body for method %s", http.MethodPost)
-		})
-
-		t.Run("reject on method POST but with invalid body", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
-			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
-			_, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
-			require.True(t, err != nil)
-		})
-
-		t.Run("ignore body on method POST but with another content type", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
-			req.Header.Set(utils.ContentTypeHeaderKey, "multipart/form-data")
-
-			inputBytes, err := CreateRegoQueryInput(req, env, enableResourcePermissionsMapOptimization, user, nil)
-			require.Nil(t, err, "Unexpected error")
-			require.True(t, !strings.Contains(string(inputBytes), fmt.Sprintf(`"body":%s`, expectedRequestBody)))
+			input.buildOptimizedResourcePermissionsMap(logger, false)
+			require.Nil(t, input.User.ResourcePermissionsMap)
 		})
 	})
+
 }
 
 func TestCreatePolicyEvaluators(t *testing.T) {
@@ -155,17 +142,17 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		log, _ := test.NewNullLogger()
 		ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
-		envs := config.EnvironmentVariables{
+		opaModuleDirectory := "../mocks/rego-policies"
+		loadOptions := openapi.LoadOptions{
 			APIPermissionsFilePath: "../mocks/simplifiedMock.json",
-			OPAModulesDirectory:    "../mocks/rego-policies",
 		}
-		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, envs)
+		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, loadOptions)
 		require.NoError(t, err, "unexpected error")
 
-		opaModuleConfig, err := LoadRegoModule(envs.OPAModulesDirectory)
+		opaModuleConfig, err := LoadRegoModule(opaModuleDirectory)
 		require.NoError(t, err, "unexpected error")
 
-		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, envs)
+		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, nil)
 		require.NoError(t, err, "unexpected error creating evaluators")
 		require.Len(t, policyEvals, 4, "unexpected length")
 	})
@@ -174,17 +161,18 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		log, _ := test.NewNullLogger()
 		ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
-		envs := config.EnvironmentVariables{
+		opaModulesDirectory := "../mocks/rego-policies"
+
+		loadOptions := openapi.LoadOptions{
 			APIPermissionsFilePath: "../mocks/pathsConfigAllInclusive.json",
-			OPAModulesDirectory:    "../mocks/rego-policies",
 		}
-		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, envs)
+		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, loadOptions)
 		require.NoError(t, err, "unexpected error")
 
-		opaModuleConfig, err := LoadRegoModule(envs.OPAModulesDirectory)
+		opaModuleConfig, err := LoadRegoModule(opaModulesDirectory)
 		require.NoError(t, err, "unexpected error")
 
-		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, envs)
+		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, nil)
 		require.NoError(t, err, "unexpected error creating evaluators")
 		require.Len(t, policyEvals, 4, "unexpected length")
 	})
@@ -209,62 +197,7 @@ func TestBuildRolesMap(t *testing.T) {
 	require.Equal(t, expected, result)
 }
 
-func TestBuildOptimizedResourcePermissionsMap(t *testing.T) {
-	user := types.User{
-		UserRoles: []types.Role{
-			{
-				RoleID:      "role1",
-				Permissions: []string{"permission1", "permission2"},
-			},
-			{
-				RoleID:      "role2",
-				Permissions: []string{"permission3", "permission4"},
-			},
-		},
-		UserBindings: []types.Binding{
-			{
-				Resource: &types.Resource{
-					ResourceType: "type1",
-					ResourceID:   "resource1",
-				},
-				Roles:       []string{"role1"},
-				Permissions: []string{"permissionNotInRole1"},
-			},
-			{
-				Resource: &types.Resource{
-					ResourceType: "type2",
-					ResourceID:   "resource2",
-				},
-				Roles: []string{"role2"},
-			},
-			{
-				Resource: &types.Resource{
-					ResourceType: "type3",
-					ResourceID:   "resource3",
-				},
-				Roles:       []string{"role1", "role2"},
-				Permissions: []string{"permissionNotInRole2", "permissionNotInRole3"},
-			},
-		},
-	}
-	result := buildOptimizedResourcePermissionsMap(user)
-	expected := PermissionsOnResourceMap{
-		"permission1:type1:resource1":          true,
-		"permission2:type1:resource1":          true,
-		"permissionNotInRole1:type1:resource1": true,
-		"permission3:type2:resource2":          true,
-		"permission4:type2:resource2":          true,
-		"permission1:type3:resource3":          true,
-		"permission2:type3:resource3":          true,
-		"permission3:type3:resource3":          true,
-		"permission4:type3:resource3":          true,
-		"permissionNotInRole2:type3:resource3": true,
-		"permissionNotInRole3:type3:resource3": true,
-	}
-	require.Equal(t, expected, result)
-}
 func TestCreateQueryEvaluator(t *testing.T) {
-	envs := config.EnvironmentVariables{}
 	policy := `package policies
 allow {
 	true
@@ -302,13 +235,13 @@ column_policy{
 	inputBytes, _ := json.Marshal(input)
 
 	t.Run("create  evaluator with allowPolicy", func(t *testing.T) {
-		evaluator, err := CreateQueryEvaluator(context.Background(), logger, r, envs, permission.AllowPermission, inputBytes, nil)
+		evaluator, err := CreateQueryEvaluator(context.Background(), logger, r, permission.AllowPermission, inputBytes, nil, nil)
 		require.True(t, evaluator != nil)
 		require.NoError(t, err, "Unexpected status code.")
 	})
 
 	t.Run("create  evaluator with policy for column filtering", func(t *testing.T) {
-		evaluator, err := CreateQueryEvaluator(context.Background(), logger, r, envs, permission.ResponseFilter.Policy, inputBytes, nil)
+		evaluator, err := CreateQueryEvaluator(context.Background(), logger, r, permission.ResponseFilter.Policy, inputBytes, nil, nil)
 		require.True(t, evaluator != nil)
 		require.NoError(t, err, "Unexpected status code.")
 	})
@@ -337,15 +270,21 @@ func BenchmarkBuildOptimizedResourcePermissionsMap(b *testing.B) {
 		bindings = append(bindings, binding)
 
 	}
-	user := types.User{
-		UserRoles:    roles,
-		UserBindings: bindings,
+	user := InputUser{
+		Roles:    roles,
+		Bindings: bindings,
+	}
+
+	logrusLogger, _ := test.NewNullLogger()
+	logger := logrus.NewEntry(logrusLogger)
+	input := Input{
+		User: user,
 	}
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		b.StartTimer()
-		buildOptimizedResourcePermissionsMap(user)
+		input.buildOptimizedResourcePermissionsMap(logger, true)
 		b.StopTimer()
 	}
 }
@@ -397,7 +336,6 @@ func createContext(
 func TestGetHeaderFunction(t *testing.T) {
 	headerKeyMocked := "exampleKey"
 	headerValueMocked := "value"
-	env := config.EnvironmentVariables{}
 
 	opaModule := &OPAModuleConfig{
 		Name: "example.rego",
@@ -414,7 +352,7 @@ func TestGetHeaderFunction(t *testing.T) {
 		}
 		inputBytes, _ := json.Marshal(input)
 
-		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, env)
+		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, nil)
 		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
 
 		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())
@@ -433,7 +371,7 @@ func TestGetHeaderFunction(t *testing.T) {
 		}
 		inputBytes, _ := json.Marshal(input)
 
-		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, env)
+		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, nil)
 		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
 
 		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())
@@ -476,5 +414,75 @@ func TestGetPolicyEvaluators(t *testing.T) {
 		opaEval, err := GetPartialResultsEvaluators(ctx)
 		require.True(t, err == nil, "Unexpected error.")
 		require.True(t, opaEval != nil, "OPA Module config not found.")
+	})
+}
+
+func TestInputFromRequest(t *testing.T) {
+	user := types.User{}
+	clientTypeHeaderKey := "clienttypeheader"
+	pathParams := map[string]string{}
+
+	t.Run("request body integration", func(t *testing.T) {
+		expectedRequestBody := map[string]interface{}{
+			"Key": float64(42),
+		}
+		reqBody := struct{ Key int }{
+			Key: 42,
+		}
+		reqBodyBytes, err := json.Marshal(reqBody)
+		require.Nil(t, err, "Unexpected error")
+
+		t.Run("ignored on method GET", func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", bytes.NewReader(reqBodyBytes))
+
+			input, err := InputFromRequest(req, user, clientTypeHeaderKey, pathParams, nil)
+			require.NoError(t, err, "Unexpected error")
+			require.Nil(t, input.Request.Body)
+		})
+
+		t.Run("ignore nil body on method POST", func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/", nil)
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
+
+			input, err := InputFromRequest(req, user, clientTypeHeaderKey, pathParams, nil)
+			require.NoError(t, err, "Unexpected error")
+			require.Nil(t, input.Request.Body)
+		})
+
+		t.Run("added on accepted methods", func(t *testing.T) {
+			acceptedMethods := []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
+
+			for _, method := range acceptedMethods {
+				req := httptest.NewRequest(method, "/", bytes.NewReader(reqBodyBytes))
+				req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
+				input, err := InputFromRequest(req, user, clientTypeHeaderKey, pathParams, nil)
+				require.NoError(t, err, "Unexpected error")
+				require.Equal(t, expectedRequestBody, input.Request.Body)
+			}
+		})
+
+		t.Run("added with content-type specifying charset", func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(reqBodyBytes))
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json;charset=UTF-8")
+			input, err := InputFromRequest(req, user, clientTypeHeaderKey, pathParams, nil)
+			require.NoError(t, err, "Unexpected error")
+			require.Equal(t, expectedRequestBody, input.Request.Body)
+		})
+
+		t.Run("reject on method POST but with invalid body", func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
+			_, err := InputFromRequest(req, user, clientTypeHeaderKey, pathParams, nil)
+			require.ErrorContains(t, err, "failed request body deserialization:")
+		})
+
+		t.Run("ignore body on method POST but with another content type", func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
+			req.Header.Set(utils.ContentTypeHeaderKey, "multipart/form-data")
+
+			input, err := InputFromRequest(req, user, clientTypeHeaderKey, pathParams, nil)
+			require.NoError(t, err, "Unexpected error")
+			require.Nil(t, input.Request.Body)
+		})
 	})
 }

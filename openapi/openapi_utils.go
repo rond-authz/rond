@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
 
 	"github.com/sirupsen/logrus"
@@ -323,13 +322,19 @@ func LoadOASFile(APIPermissionsFilePath string) (*OpenAPISpec, error) {
 	return deserializeSpec(fileContentByte, utils.ErrFileLoadFailed)
 }
 
-func LoadOASFromFileOrNetwork(log *logrus.Logger, env config.EnvironmentVariables) (*OpenAPISpec, error) {
-	if env.APIPermissionsFilePath != "" {
-		log.WithField("oasFilePath", env.APIPermissionsFilePath).Debug("Attempt to load OAS from file")
-		oas, err := LoadOASFile(env.APIPermissionsFilePath)
+type LoadOptions struct {
+	APIPermissionsFilePath string
+	TargetServiceOASPath   string
+	TargetServiceHost      string
+}
+
+func LoadOASFromFileOrNetwork(log *logrus.Logger, config LoadOptions) (*OpenAPISpec, error) {
+	if config.APIPermissionsFilePath != "" {
+		log.WithField("oasFilePath", config.APIPermissionsFilePath).Debug("Attempt to load OAS from file")
+		oas, err := LoadOASFile(config.APIPermissionsFilePath)
 		if err != nil {
 			log.WithFields(logrus.Fields{
-				"APIPermissionsFilePath": env.APIPermissionsFilePath,
+				"APIPermissionsFilePath": config.APIPermissionsFilePath,
 			}).Warn("failed api permissions file read")
 			return nil, err
 		}
@@ -337,16 +342,16 @@ func LoadOASFromFileOrNetwork(log *logrus.Logger, env config.EnvironmentVariable
 		return oas, nil
 	}
 
-	if env.TargetServiceOASPath != "" {
-		log.WithField("oasApiPath", env.TargetServiceOASPath).Debug("Attempt to load OAS from target service")
+	if config.TargetServiceOASPath != "" {
+		log.WithField("oasApiPath", config.TargetServiceOASPath).Debug("Attempt to load OAS from target service")
 		var oas *OpenAPISpec
-		documentationURL := fmt.Sprintf("%s://%s%s", HTTPScheme, env.TargetServiceHost, env.TargetServiceOASPath)
+		documentationURL := fmt.Sprintf("%s://%s%s", HTTPScheme, config.TargetServiceHost, config.TargetServiceOASPath)
 		for {
 			fetchedOAS, err := fetchOpenAPI(log, documentationURL)
 			if err != nil {
 				log.WithFields(logrus.Fields{
-					"targetServiceHost": env.TargetServiceHost,
-					"targetOASPath":     env.TargetServiceOASPath,
+					"targetServiceHost": config.TargetServiceHost,
+					"targetOASPath":     config.TargetServiceOASPath,
 					"error":             logrus.Fields{"message": err.Error()},
 				}).Warn("failed OAS fetch, retry in 1s")
 				time.Sleep(1 * time.Second)
@@ -358,7 +363,7 @@ func LoadOASFromFileOrNetwork(log *logrus.Logger, env config.EnvironmentVariable
 		return oas, nil
 	}
 
-	return nil, fmt.Errorf("missing environment variables one of %s or %s is required", config.TargetServiceOASPathEnvKey, config.APIPermissionsFilePathEnvKey)
+	return nil, fmt.Errorf("missing openapi config: one of TargetServiceOASPath or APIPermissionsFilePath is required")
 }
 
 func WithXPermission(requestContext context.Context, permission *RondConfig) context.Context {

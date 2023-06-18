@@ -16,16 +16,16 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
-	"strings"
 	"testing"
 
-	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
@@ -39,7 +39,6 @@ import (
 
 func TestRoundTripErrors(t *testing.T) {
 	logger, _ := test.NewNullLogger()
-	envs := config.EnvironmentVariables{}
 
 	defer gock.Off()
 
@@ -61,7 +60,9 @@ func TestRoundTripErrors(t *testing.T) {
 			req,
 			nil,
 			nil,
-			envs,
+			"",
+			types.UserHeadersKeys{},
+			nil,
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -87,7 +88,6 @@ func TestIs2xx(t *testing.T) {
 }
 
 func TestOPATransportResponseWithError(t *testing.T) {
-	envs := config.EnvironmentVariables{}
 	logger, _ := test.NewNullLogger()
 
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/some-api", nil)
@@ -99,7 +99,9 @@ func TestOPATransportResponseWithError(t *testing.T) {
 		req,
 		nil,
 		nil,
-		envs,
+		"",
+		types.UserHeadersKeys{},
+		nil,
 	}
 
 	t.Run("generic business error message", func(t *testing.T) {
@@ -148,25 +150,24 @@ func TestOPATransportResponseWithError(t *testing.T) {
 }
 
 func TestOPATransportRoundTrip(t *testing.T) {
-	envs := config.EnvironmentVariables{
-		UserIdHeader:         "useridheader",
-		UserGroupsHeader:     "usergroupsheader",
-		UserPropertiesHeader: "userpropertiesheader",
-	}
-
 	logger, _ := test.NewNullLogger()
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/some-api", nil)
 
 	t.Run("returns error on RoundTrip error", func(t *testing.T) {
-		transport := &OPATransport{
+		transport := NewOPATransport(
 			&MockRoundTrip{Error: fmt.Errorf("some error")},
 			req.Context(),
 			logrus.NewEntry(logger),
 			req,
+			nil, nil,
+			"",
+			types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 			nil,
-			nil,
-			envs,
-		}
+		)
 
 		_, err := transport.RoundTrip(req)
 		require.Error(t, err, "some error")
@@ -180,13 +181,15 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{},
 		}
 		transport := &OPATransport{
-			&MockRoundTrip{Response: resp},
-			req.Context(),
-			logrus.NewEntry(logger),
-			req,
-			nil,
-			nil,
-			envs,
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 
 		updatedResp, err := transport.RoundTrip(req)
@@ -206,13 +209,15 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{},
 		}
 		transport := &OPATransport{
-			&MockRoundTrip{Response: resp},
-			req.Context(),
-			logrus.NewEntry(logger),
-			req,
-			nil,
-			nil,
-			envs,
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -231,13 +236,15 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{},
 		}
 		transport := &OPATransport{
-			&MockRoundTrip{Response: resp},
-			req.Context(),
-			logrus.NewEntry(logger),
-			req,
-			nil,
-			nil,
-			envs,
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -255,18 +262,67 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{http.CanonicalHeaderKey("some"): []string{"content"}},
 		}
 		transport := &OPATransport{
-			&MockRoundTrip{Response: resp},
-			req.Context(),
-			logrus.NewEntry(logger),
-			req,
-			nil,
-			nil,
-			envs,
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 
 		resp, err := transport.RoundTrip(req)
 		require.Nil(t, err)
 		require.Equal(t, []string{"content"}, resp.Header[http.CanonicalHeaderKey("some")])
+	})
+
+	t.Run("ok with filter response", func(t *testing.T) {
+		resp := http.Response{
+			StatusCode:    http.StatusOK,
+			Body:          io.NopCloser(bytes.NewReader([]byte(`{"some":"field"}`))),
+			ContentLength: 16,
+			Header:        http.Header{"Content-Type": []string{"application/json"}},
+		}
+
+		req = req.Clone(metrics.WithValue(openapi.WithRouterInfo(logrus.NewEntry(logger), req.Context(), req), metrics.SetupMetrics("")))
+
+		partialResult, err := NewPartialResultEvaluator(context.Background(), "my_policy", &OPAModuleConfig{
+			Content: "package policies my_policy [resources] { resources := input.response.body }",
+		}, nil, nil)
+		require.NoError(t, err)
+
+		transport := &OPATransport{
+			RoundTripper: &MockRoundTrip{Response: &resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			permission: &openapi.RondConfig{
+				ResponseFlow: openapi.ResponseFlow{PolicyName: "my_policy"},
+			},
+			partialResultsEvaluators: PartialResultsEvaluators{"my_policy": PartialEvaluator{partialResult}},
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
+		}
+
+		actualResp, err := transport.RoundTrip(req)
+		require.NoError(t, err, "response body is not valid")
+		require.Equal(t, http.StatusOK, actualResp.StatusCode)
+		require.Equal(t, int64(16), actualResp.ContentLength)
+
+		body, err := io.ReadAll(actualResp.Body)
+		require.NoError(t, err)
+		require.Equal(t, []byte(`{"some":"field"}`), body)
+
+		expectedHeaders := http.Header{}
+		expectedHeaders.Set("Content-Type", "application/json")
+		expectedHeaders.Set("Content-Length", "16")
+
+		require.Equal(t, expectedHeaders, actualResp.Header)
 	})
 
 	t.Run("failure on non-json response content-type", func(t *testing.T) {
@@ -277,13 +333,15 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{"Content-Type": []string{"text/plain"}},
 		}
 		transport := &OPATransport{
-			&MockRoundTrip{Response: resp},
-			req.Context(),
-			logrus.NewEntry(logger),
-			req,
-			nil,
-			nil,
-			envs,
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -291,7 +349,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 		bodyBytes, err := io.ReadAll(resp.Body)
 		require.Nil(t, err)
-		require.True(t, strings.Contains(string(bodyBytes), "content-type is not application/json"))
+		require.Contains(t, string(bodyBytes), "content-type is not application/json")
 	})
 
 	t.Run("failure on non-json response even with json content-type", func(t *testing.T) {
@@ -302,13 +360,15 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{"Content-Type": []string{"application/json"}},
 		}
 		transport := &OPATransport{
-			&MockRoundTrip{Response: resp},
-			req.Context(),
-			logrus.NewEntry(logger),
-			req,
-			nil,
-			nil,
-			envs,
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -330,20 +390,22 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{"Content-Type": []string{"application/json"}},
 		}
 		transport := &OPATransport{
-			&MockRoundTrip{Response: resp},
-			ctx,
-			logrus.NewEntry(logger),
-			req,
-			nil,
-			nil,
-			envs,
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      ctx,
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 		resp, err := transport.RoundTrip(req)
 		require.Nil(t, err)
 		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 		bodyBytes, err := io.ReadAll(resp.Body)
 		require.Nil(t, err)
-		require.True(t, strings.Contains(string(bodyBytes), "Error while retrieving user bindings"))
+		require.Contains(t, string(bodyBytes), "error while retrieving user bindings")
 	})
 
 	t.Run("failure on create rego input", func(t *testing.T) {
@@ -358,22 +420,26 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{"Content-Type": []string{"application/json"}},
 		}
 		transport := &OPATransport{
-			&MockRoundTrip{Response: resp},
-			req.Context(),
-			logrus.NewEntry(logger),
-			req,
-			&openapi.RondConfig{
+			RoundTripper: &MockRoundTrip{Response: resp},
+			context:      req.Context(),
+			logger:       logrus.NewEntry(logger),
+			request:      req,
+			permission: &openapi.RondConfig{
 				ResponseFlow: openapi.ResponseFlow{PolicyName: "my_policy"},
 			},
-			PartialResultsEvaluators{"my_policy": {}},
-			envs,
+			partialResultsEvaluators: PartialResultsEvaluators{"my_policy": {}},
+			userHeaders: types.UserHeadersKeys{
+				IDHeaderKey:         "useridheader",
+				GroupsHeaderKey:     "usergroupsheader",
+				PropertiesHeaderKey: "userpropertiesheader",
+			},
 		}
 		resp, err := transport.RoundTrip(req)
 		require.Nil(t, err)
 		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 		bodyBytes, err := io.ReadAll(resp.Body)
 		require.Nil(t, err)
-		require.True(t, strings.Contains(string(bodyBytes), "user properties header is not valid"))
+		require.Contains(t, string(bodyBytes), "user properties header is not valid")
 	})
 }
 

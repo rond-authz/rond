@@ -283,7 +283,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 	log, _ := test.NewNullLogger()
 	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
-	mockPartialEvaluators, _ := core.SetupEvaluators(ctx, nil, oas, mockOPAModule, envs)
+	mockPartialEvaluators, _ := core.SetupEvaluators(ctx, nil, oas, mockOPAModule, nil)
 	t.Run("invokes known API", func(t *testing.T) {
 		var invoked bool
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -364,7 +364,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			Content: `package policies
 		todo { false }`,
 		}
-		mockPartialEvaluators, _ := core.SetupEvaluators(ctx, nil, oas, mockOPAModule, envs)
+		mockPartialEvaluators, _ := core.SetupEvaluators(ctx, nil, oas, mockOPAModule, nil)
 		router := mux.NewRouter()
 		setupRoutes(router, oas, envs)
 
@@ -395,7 +395,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		var mockOPAModule = &core.OPAModuleConfig{
 			Content: "FAILING POLICY!!!!",
 		}
-		mockPartialEvaluators, _ := core.SetupEvaluators(ctx, nil, oas, mockOPAModule, envs)
+		mockPartialEvaluators, _ := core.SetupEvaluators(ctx, nil, oas, mockOPAModule, nil)
 
 		router := mux.NewRouter()
 		setupRoutes(router, oas, envs)

@@ -66,7 +66,11 @@ func entrypoint(shutdown chan os.Signal) {
 	}
 	log.WithField("opaModuleFileName", opaModuleConfig.Name).Trace("rego module successfully loaded")
 
-	oas, err := openapi.LoadOASFromFileOrNetwork(log, env)
+	oas, err := openapi.LoadOASFromFileOrNetwork(log, openapi.LoadOptions{
+		APIPermissionsFilePath: env.APIPermissionsFilePath,
+		TargetServiceOASPath:   env.TargetServiceOASPath,
+		TargetServiceHost:      env.TargetServiceHost,
+	})
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error":       logrus.Fields{"message": err.Error()},
@@ -93,7 +97,9 @@ func entrypoint(shutdown chan os.Signal) {
 		logrus.NewEntry(log),
 	)
 
-	policiesEvaluators, err := core.SetupEvaluators(ctx, mongoClient, oas, opaModuleConfig, env)
+	policiesEvaluators, err := core.SetupEvaluators(ctx, mongoClient, oas, opaModuleConfig, &core.EvaluatorOptions{
+		EnablePrintStatements: env.IsTraceLogLevel(),
+	})
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},

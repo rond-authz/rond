@@ -23,6 +23,13 @@ type User struct {
 	UserGroups   []string
 	UserRoles    []Role
 	UserBindings []Binding
+	Properties   map[string]any
+}
+
+type UserHeadersKeys struct {
+	GroupsHeaderKey     string
+	IDHeaderKey         string
+	PropertiesHeaderKey string
 }
 
 type MongoClientContextKey struct{}
