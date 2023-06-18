@@ -20,7 +20,6 @@ type PolicyResult struct {
 // Warning: This interface is experimental, and it could change with breaking also in rond patches.
 // Does not use outside this repository until it is not ready.
 type SDK interface {
-	Evaluators() PartialResultsEvaluators
 	Metrics() metrics.Metrics
 	Registry() *prometheus.Registry
 
@@ -46,12 +45,11 @@ func (e evaluator) Permission() openapi.RondConfig {
 }
 
 func (e evaluator) PartialResultsEvaluators() PartialResultsEvaluators {
-	return e.rond.Evaluators()
+	return e.rond.evaluator
 }
 
 type rondImpl struct {
 	evaluator        PartialResultsEvaluators
-	logger           *logrus.Entry
 	evaluatorOptions *EvaluatorOptions
 	oasRouter        *bunrouter.CompatRouter
 	oas              *openapi.OpenAPISpec
@@ -60,10 +58,6 @@ type rondImpl struct {
 	registry *prometheus.Registry
 
 	clientTypeHeaderKey string
-}
-
-func (r rondImpl) Evaluators() PartialResultsEvaluators {
-	return r.evaluator
 }
 
 func (r rondImpl) FindEvaluator(logger *logrus.Entry, method, path string) (SDKEvaluator, error) {
@@ -107,6 +101,8 @@ func NewSDK(
 		return nil, err
 	}
 
+	logger.WithField("policiesLength", len(evaluator)).Debug("policies evaluators partial results computed")
+
 	oasRouter := oas.PrepareOASRouter()
 
 	m := metrics.SetupMetrics("rond")
@@ -117,7 +113,6 @@ func NewSDK(
 	return rondImpl{
 		evaluator:        evaluator,
 		oasRouter:        oasRouter,
-		logger:           logger,
 		evaluatorOptions: evaluatorOptions,
 		oas:              oas,
 

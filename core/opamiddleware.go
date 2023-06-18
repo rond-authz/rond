@@ -34,7 +34,6 @@ type OPAMiddlewareOptions struct {
 
 func OPAMiddleware(
 	opaModuleConfig *OPAModuleConfig,
-	openAPISpec *openapi.OpenAPISpec,
 	sdk SDK,
 	routesToNotProxy []string,
 	targetServiceOASPath string,
@@ -91,10 +90,7 @@ func OPAMiddleware(
 			// TODO: remove me
 			ctx := openapi.WithXPermission(
 				WithOPAModuleConfig(
-					WithPartialResultsEvaluators(
-						openapi.WithRouterInfo(logger, r.Context(), r),
-						sdk.Evaluators(),
-					),
+					openapi.WithRouterInfo(logger, r.Context(), r),
 					opaModuleConfig,
 				),
 				&permission,

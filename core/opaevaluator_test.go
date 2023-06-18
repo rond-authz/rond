@@ -272,19 +272,3 @@ func TestGetOPAModuleConfig(t *testing.T) {
 		require.True(t, opaEval != nil, "OPA Module config not found.")
 	})
 }
-
-func TestGetPolicyEvaluators(t *testing.T) {
-	t.Run(`GetPolicyEvaluators fails because no key has been passed`, func(t *testing.T) {
-		ctx := context.Background()
-		env, err := GetPartialResultsEvaluators(ctx)
-		require.True(t, err != nil, "An error was expected.")
-		t.Logf("Expected error: %s - env: %+v", err.Error(), env)
-	})
-
-	t.Run(`GetPartialResultsEvaluators returns PartialResultsEvaluators from context`, func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), PartialResultsEvaluatorConfigKey{}, PartialResultsEvaluators{})
-		opaEval, err := GetPartialResultsEvaluators(ctx)
-		require.True(t, err == nil, "Unexpected error.")
-		require.True(t, opaEval != nil, "OPA Module config not found.")
-	})
-}

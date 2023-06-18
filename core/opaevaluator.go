@@ -390,20 +390,6 @@ func buildRolesMap(roles []types.Role) map[string][]string {
 	return rolesMap
 }
 
-func WithPartialResultsEvaluators(requestContext context.Context, evaluators PartialResultsEvaluators) context.Context {
-	return context.WithValue(requestContext, PartialResultsEvaluatorConfigKey{}, evaluators)
-}
-
-// GetPartialResultsEvaluators can be used by a request handler to get PartialResult evaluator instance from context.
-func GetPartialResultsEvaluators(requestContext context.Context) (PartialResultsEvaluators, error) {
-	evaluators, ok := requestContext.Value(PartialResultsEvaluatorConfigKey{}).(PartialResultsEvaluators)
-	if !ok {
-		return nil, fmt.Errorf("no policy evaluators found in request context")
-	}
-
-	return evaluators, nil
-}
-
 // TODO: This should be made private in the future.
 type OPAModuleConfigKey struct{}
 

@@ -66,7 +66,7 @@ todo { true }`,
 		require.NoError(t, err)
 		sdk := getSDK(t, openAPISpec, opaModule)
 
-		middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", nil)
+		middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", nil)
 
 		t.Run(`missing oas paths`, func(t *testing.T) {
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +130,7 @@ foobar { true }`,
 			targetServiceOASPath := "/documentation/json"
 			sdk := getSDK(t, openAPISpec, opaModule)
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, targetServiceOASPath, nil)
+			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, targetServiceOASPath, nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -148,7 +148,7 @@ foobar { true }`,
 			targetServiceOASPath := "/documentation/json"
 			sdk := getSDK(t, openAPISpec, opaModule)
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, targetServiceOASPath, nil)
+			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, targetServiceOASPath, nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -166,7 +166,7 @@ foobar { true }`,
 			targetServiceOASPath := "/documentation/custom/json"
 			sdk := getSDK(t, openAPISpec, opaModule)
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, targetServiceOASPath, nil)
+			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, targetServiceOASPath, nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -191,7 +191,7 @@ todo { true }`,
 			}
 			sdk := getSDK(t, openAPISpec, opaModule)
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", nil)
+			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := openapi.GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
@@ -214,7 +214,7 @@ foobar { true }`,
 			}
 			sdk := getSDK(t, openAPISpec, opaModule)
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", nil)
+			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := openapi.GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
@@ -237,7 +237,7 @@ very_very_composed_permission { true }`,
 			}
 			sdk := getSDK(t, openAPISpec, opaModule)
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", nil)
+			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := openapi.GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
@@ -265,7 +265,7 @@ very_very_composed_permission_with_eval { true }`,
 			}
 			sdk := getSDK(t, openAPISpec, opaModule)
 
-			middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", options)
+			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", options)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				permission, err := openapi.GetXPermission(r.Context())
 				require.True(t, err == nil, "Unexpected error")
@@ -318,7 +318,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 		}
 
 		sdk := getSdk(t, opaModule)
-		middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", options)
+		middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", options)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			permission, err := openapi.GetXPermission(r.Context())
 			require.True(t, err == nil, "Unexpected error")
@@ -341,7 +341,7 @@ very_very_composed_permission_with_eval { true }`,
 		}
 
 		sdk := getSdk(t, opaModule)
-		middleware := OPAMiddleware(opaModule, openAPISpec, sdk, routesNotToProxy, "", options)
+		middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", options)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			permission, err := openapi.GetXPermission(r.Context())
 			require.True(t, err == nil, "Unexpected error")

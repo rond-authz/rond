@@ -109,8 +109,6 @@ func entrypoint(shutdown chan os.Signal) {
 		return
 	}
 
-	log.WithField("policiesLength", len(sdk.Evaluators())).Debug("policies evaluators partial results computed")
-
 	// Routing
 	router, err := service.SetupRouter(log, env, opaModuleConfig, oas, sdk, mongoClient)
 	if mongoClient != nil {

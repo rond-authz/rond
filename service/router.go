@@ -151,7 +151,7 @@ func SetupRouter(
 		}
 	}
 
-	evalRouter.Use(core.OPAMiddleware(opaModuleConfig, oas, sdk, routesToNotProxy, env.TargetServiceOASPath, &core.OPAMiddlewareOptions{
+	evalRouter.Use(core.OPAMiddleware(opaModuleConfig, sdk, routesToNotProxy, env.TargetServiceOASPath, &core.OPAMiddlewareOptions{
 		IsStandalone:         env.Standalone,
 		PathPrefixStandalone: env.PathPrefixStandalone,
 	}))
