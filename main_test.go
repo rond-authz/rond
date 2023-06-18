@@ -1680,7 +1680,7 @@ filter_policy {
 	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), mongoClient, oas, opa, nil, registry, "")
 	require.NoError(t, err, "unexpected error")
 
-	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient)
+	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("some eval API", func(t *testing.T) {
@@ -1837,7 +1837,7 @@ filter_policy {
 	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), mongoClient, oas, opa, nil, registry, "")
 	require.NoError(t, err, "unexpected error")
 
-	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient)
+	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("metrics API exposed correctly", func(t *testing.T) {

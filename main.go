@@ -110,7 +110,7 @@ func entrypoint(shutdown chan os.Signal) {
 	}
 
 	// Routing
-	router, err := service.SetupRouter(log, env, opaModuleConfig, oas, sdk, mongoClient)
+	router, err := service.SetupRouter(log, env, opaModuleConfig, oas, sdk, mongoClient, registry)
 	if mongoClient != nil {
 		defer mongoClient.Disconnect()
 	}

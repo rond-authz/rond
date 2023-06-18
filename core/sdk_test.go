@@ -72,10 +72,6 @@ func TestSDK(t *testing.T) {
 		require.Equal(t, rond.metrics, sdk.Metrics())
 	})
 
-	t.Run("registry", func(t *testing.T) {
-		require.Equal(t, registry, sdk.Registry())
-	})
-
 	t.Run("FindEvaluator", func(t *testing.T) {
 		t.Run("throws if path and method not found", func(t *testing.T) {
 			actual, err := sdk.FindEvaluator(logger, http.MethodGet, "/not-existent/path")

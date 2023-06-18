@@ -25,6 +25,7 @@ import (
 	swagger "github.com/davidebianchi/gswagger"
 	"github.com/davidebianchi/gswagger/support/gorilla"
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
@@ -102,13 +103,14 @@ func SetupRouter(
 	oas *openapi.OpenAPISpec,
 	sdk core.SDK,
 	mongoClient *mongoclient.MongoClient,
+	registry *prometheus.Registry,
 ) (*mux.Router, error) {
 	router := mux.NewRouter().UseEncodedPath()
 	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
 	serviceName := "rönd"
 	StatusRoutes(router, serviceName, env.ServiceVersion)
 
-	metrics.MetricsRoute(router, sdk.Registry())
+	metrics.MetricsRoute(router, registry)
 	router.Use(metrics.RequestMiddleware(sdk.Metrics()))
 
 	router.Use(config.RequestMiddlewareEnvironments(env))

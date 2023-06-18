@@ -21,7 +21,6 @@ type PolicyResult struct {
 // Does not use outside this repository until it is not ready.
 type SDK interface {
 	Metrics() metrics.Metrics
-	Registry() *prometheus.Registry
 
 	FindEvaluator(logger *logrus.Entry, method, path string) (SDKEvaluator, error)
 	EvaluatorFromConfig(logger *logrus.Entry, config openapi.RondConfig) SDKEvaluator
