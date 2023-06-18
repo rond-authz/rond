@@ -54,7 +54,8 @@ func TestNewOPAEvaluator(t *testing.T) {
 func TestCreatePolicyEvaluators(t *testing.T) {
 	t.Run("with simplified mock", func(t *testing.T) {
 		log, _ := test.NewNullLogger()
-		ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
+		logger := logrus.NewEntry(log)
+		ctx := context.Background()
 
 		opaModuleDirectory := "../mocks/rego-policies"
 		loadOptions := openapi.LoadOptions{
@@ -66,14 +67,15 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		opaModuleConfig, err := LoadRegoModule(opaModuleDirectory)
 		require.NoError(t, err, "unexpected error")
 
-		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, nil)
+		policyEvals, err := SetupEvaluators(ctx, logger, nil, openApiSpec, opaModuleConfig, nil)
 		require.NoError(t, err, "unexpected error creating evaluators")
 		require.Len(t, policyEvals, 4, "unexpected length")
 	})
 
 	t.Run("with complete oas mock", func(t *testing.T) {
 		log, _ := test.NewNullLogger()
-		ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
+		logger := logrus.NewEntry(log)
+		ctx := context.Background()
 
 		opaModulesDirectory := "../mocks/rego-policies"
 
@@ -86,7 +88,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		opaModuleConfig, err := LoadRegoModule(opaModulesDirectory)
 		require.NoError(t, err, "unexpected error")
 
-		policyEvals, err := SetupEvaluators(ctx, nil, openApiSpec, opaModuleConfig, nil)
+		policyEvals, err := SetupEvaluators(ctx, logger, nil, openApiSpec, opaModuleConfig, nil)
 		require.NoError(t, err, "unexpected error creating evaluators")
 		require.Len(t, policyEvals, 4, "unexpected length")
 	})

@@ -94,8 +94,7 @@ func NewSDK(
 	registry *prometheus.Registry,
 	clientTypeHeaderKey string,
 ) (SDK, error) {
-	// TODO: use logger instead of get logger from context
-	evaluator, err := SetupEvaluators(ctx, mongoClient, oas, opaModuleConfig, evaluatorOptions)
+	evaluator, err := SetupEvaluators(ctx, logger, mongoClient, oas, opaModuleConfig, evaluatorOptions)
 	if err != nil {
 		return nil, err
 	}

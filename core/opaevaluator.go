@@ -34,7 +34,6 @@ import (
 
 	"github.com/rond-authz/rond/custom_builtins"
 
-	"github.com/mia-platform/glogger/v2"
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/topdown/print"
@@ -62,13 +61,13 @@ type PartialEvaluator struct {
 	PartialEvaluator *rego.PartialResult
 }
 
-func createPartialEvaluator(policy string, ctx context.Context, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (*PartialEvaluator, error) {
-	glogger.Get(ctx).Infof("precomputing rego query for allow policy: %s", policy)
+func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy string, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (*PartialEvaluator, error) {
+	logger.Infof("precomputing rego query for allow policy: %s", policy)
 
 	policyEvaluatorTime := time.Now()
 	partialResultEvaluator, err := NewPartialResultEvaluator(ctx, policy, opaModuleConfig, mongoClient, options)
 	if err == nil {
-		glogger.Get(ctx).Infof("computed rego query for policy: %s in %s", policy, time.Since(policyEvaluatorTime))
+		logger.Infof("computed rego query for policy: %s in %s", policy, time.Since(policyEvaluatorTime))
 		return &PartialEvaluator{
 			PartialEvaluator: partialResultEvaluator,
 		}, nil
@@ -76,7 +75,7 @@ func createPartialEvaluator(policy string, ctx context.Context, mongoClient type
 	return nil, err
 }
 
-func SetupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (PartialResultsEvaluators, error) {
+func SetupEvaluators(ctx context.Context, logger *logrus.Entry, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (PartialResultsEvaluators, error) {
 	if oas == nil {
 		return nil, fmt.Errorf("oas must not be nil")
 	}
@@ -90,14 +89,14 @@ func SetupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *o
 			allowPolicy := verbConfig.PermissionV2.RequestFlow.PolicyName
 			responsePolicy := verbConfig.PermissionV2.ResponseFlow.PolicyName
 
-			glogger.Get(ctx).Infof("precomputing rego queries for API: %s %s. Allow policy: %s. Response policy: %s.", verb, path, allowPolicy, responsePolicy)
+			logger.Infof("precomputing rego queries for API: %s %s. Allow policy: %s. Response policy: %s.", verb, path, allowPolicy, responsePolicy)
 			if allowPolicy == "" {
 				// allow policy is required, if missing assume the API has no valid x-rond configuration.
 				continue
 			}
 
 			if _, ok := policyEvaluators[allowPolicy]; !ok {
-				evaluator, err := createPartialEvaluator(allowPolicy, ctx, mongoClient, oas, opaModuleConfig, options)
+				evaluator, err := createPartialEvaluator(ctx, logger, allowPolicy, mongoClient, oas, opaModuleConfig, options)
 
 				if err != nil {
 					return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
@@ -108,7 +107,7 @@ func SetupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *o
 
 			if responsePolicy != "" {
 				if _, ok := policyEvaluators[responsePolicy]; !ok {
-					evaluator, err := createPartialEvaluator(responsePolicy, ctx, mongoClient, oas, opaModuleConfig, options)
+					evaluator, err := createPartialEvaluator(ctx, logger, responsePolicy, mongoClient, oas, opaModuleConfig, options)
 
 					if err != nil {
 						return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
