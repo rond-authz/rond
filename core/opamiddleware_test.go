@@ -26,9 +26,9 @@ import (
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
+
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
-
 	"github.com/stretchr/testify/require"
 )
 
