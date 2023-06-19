@@ -23,6 +23,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
@@ -97,19 +98,19 @@ func entrypoint(shutdown chan os.Signal) {
 		logrus.NewEntry(log),
 	)
 
-	policiesEvaluators, err := core.SetupEvaluators(ctx, mongoClient, oas, opaModuleConfig, &core.EvaluatorOptions{
+	registry := prometheus.NewRegistry()
+	sdk, err := core.NewSDK(ctx, logrus.NewEntry(log), mongoClient, oas, opaModuleConfig, &core.EvaluatorOptions{
 		EnablePrintStatements: env.IsTraceLogLevel(),
-	})
+	}, registry, env.ClientTypeHeader)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("failed to create evaluators")
+		}).Errorf("failed to create sdk")
 		return
 	}
-	log.WithField("policiesLength", len(policiesEvaluators)).Debug("policies evaluators partial results computed")
 
 	// Routing
-	router, err := service.SetupRouter(log, env, opaModuleConfig, oas, policiesEvaluators, mongoClient)
+	router, err := service.SetupRouter(log, env, opaModuleConfig, oas, sdk, mongoClient, registry)
 	if mongoClient != nil {
 		defer mongoClient.Disconnect()
 	}

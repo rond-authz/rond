@@ -101,21 +101,17 @@ func SetupRouter(
 	env config.EnvironmentVariables,
 	opaModuleConfig *core.OPAModuleConfig,
 	oas *openapi.OpenAPISpec,
-	policiesEvaluators core.PartialResultsEvaluators,
+	sdk core.SDK,
 	mongoClient *mongoclient.MongoClient,
+	registry *prometheus.Registry,
 ) (*mux.Router, error) {
 	router := mux.NewRouter().UseEncodedPath()
 	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
 	serviceName := "rönd"
 	StatusRoutes(router, serviceName, env.ServiceVersion)
 
-	registry := prometheus.NewRegistry()
-	m := metrics.SetupMetrics("rond")
-	if env.ExposeMetrics {
-		m.MustRegister(registry)
-		metrics.MetricsRoute(router, registry)
-	}
-	router.Use(metrics.RequestMiddleware(m))
+	metrics.MetricsRoute(router, registry)
+	router.Use(metrics.RequestMiddleware(sdk.Metrics()))
 
 	router.Use(config.RequestMiddlewareEnvironments(env))
 
@@ -157,7 +153,7 @@ func SetupRouter(
 		}
 	}
 
-	evalRouter.Use(core.OPAMiddleware(opaModuleConfig, oas, policiesEvaluators, routesToNotProxy, env.TargetServiceOASPath, &core.OPAMiddlewareOptions{
+	evalRouter.Use(core.OPAMiddleware(opaModuleConfig, sdk, routesToNotProxy, env.TargetServiceOASPath, &core.OPAMiddlewareOptions{
 		IsStandalone:         env.Standalone,
 		PathPrefixStandalone: env.PathPrefixStandalone,
 	}))

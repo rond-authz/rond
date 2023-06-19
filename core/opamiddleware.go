@@ -16,7 +16,6 @@ package core
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -35,17 +34,11 @@ type OPAMiddlewareOptions struct {
 
 func OPAMiddleware(
 	opaModuleConfig *OPAModuleConfig,
-	openAPISpec *openapi.OpenAPISpec,
-	policyEvaluators PartialResultsEvaluators,
+	sdk SDK,
 	routesToNotProxy []string,
 	targetServiceOASPath string,
 	options *OPAMiddlewareOptions,
 ) mux.MiddlewareFunc {
-	OASrouter, err := openAPISpec.PrepareOASRouter()
-	if err != nil {
-		panic(fmt.Sprintf("Fatal: invalid OAS configuration: %s", err.Error()))
-	}
-
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if utils.Contains(routesToNotProxy, r.URL.RequestURI()) {
@@ -60,7 +53,8 @@ func OPAMiddleware(
 
 			logger := glogger.Get(r.Context())
 
-			permission, err := openAPISpec.FindPermission(OASrouter, path, r.Method)
+			evaluator, err := sdk.FindEvaluator(logger, r.Method, path)
+			permission := evaluator.Config()
 			if r.Method == http.MethodGet && r.URL.Path == targetServiceOASPath && permission.RequestFlow.PolicyName == "" {
 				fields := logrus.Fields{}
 				if err != nil {
@@ -93,16 +87,16 @@ func OPAMiddleware(
 				return
 			}
 
+			// TODO: remove me
 			ctx := openapi.WithXPermission(
 				WithOPAModuleConfig(
-					WithPartialResultsEvaluators(
-						openapi.WithRouterInfo(logger, r.Context(), r),
-						policyEvaluators,
-					),
+					openapi.WithRouterInfo(logger, r.Context(), r),
 					opaModuleConfig,
 				),
 				&permission,
 			)
+			ctx = WithEvaluatorSKD(ctx, evaluator)
+
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

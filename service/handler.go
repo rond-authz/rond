@@ -41,9 +41,15 @@ func ReverseProxyOrResponse(
 	env config.EnvironmentVariables,
 	w http.ResponseWriter,
 	req *http.Request,
-	permission *openapi.RondConfig,
-	partialResultsEvaluators core.PartialResultsEvaluators,
+	evaluatorSdk core.SDKEvaluator,
 ) {
+	var permission openapi.RondConfig
+	var partialResultsEvaluators core.PartialResultsEvaluators
+	if evaluatorSdk != nil {
+		permission = evaluatorSdk.Config()
+		partialResultsEvaluators = evaluatorSdk.PartialResultsEvaluators()
+	}
+
 	if env.Standalone {
 		if permission.RequestFlow.GenerateQuery {
 			queryHeaderKey := BASE_ROW_FILTER_HEADER_KEY
@@ -59,7 +65,7 @@ func ReverseProxyOrResponse(
 		}
 		return
 	}
-	ReverseProxy(logger, env, w, req, permission, partialResultsEvaluators)
+	ReverseProxy(logger, env, w, req, &permission, partialResultsEvaluators)
 }
 
 func rbacHandler(w http.ResponseWriter, req *http.Request) {
@@ -73,34 +79,30 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	permission, err := openapi.GetXPermission(requestContext)
+	evaluatorSdk, err := core.GetEvaluatorSKD(requestContext)
 	if err != nil {
-		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no policy permission found in context")
-		utils.FailResponse(w, "no policy permission found in context", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
-		return
-	}
-	partialResultEvaluators, err := core.GetPartialResultsEvaluators(requestContext)
-	if err != nil {
-		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no partialResult evaluators found in context")
-		utils.FailResponse(w, "no partialResult evaluators found in context", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no evaluatorSdk found in context")
+		utils.FailResponse(w, "no evaluators sdk found in context", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
-	if err := EvaluateRequest(req, env, w, partialResultEvaluators, permission); err != nil {
+	if err := EvaluateRequest(req, env, w, evaluatorSdk); err != nil {
 		return
 	}
-	ReverseProxyOrResponse(logger, env, w, req, permission, partialResultEvaluators)
+	ReverseProxyOrResponse(logger, env, w, req, evaluatorSdk)
 }
 
 func EvaluateRequest(
 	req *http.Request,
 	env config.EnvironmentVariables,
 	w http.ResponseWriter,
-	partialResultsEvaluators core.PartialResultsEvaluators,
-	permission *openapi.RondConfig,
+	evaluatorSdk core.SDKEvaluator,
 ) error {
 	requestContext := req.Context()
 	logger := glogger.Get(requestContext)
+
+	permission := evaluatorSdk.Config()
+	partialResultsEvaluators := evaluatorSdk.PartialResultsEvaluators()
 
 	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(logger, req, types.UserHeadersKeys{
 		IDHeaderKey:         env.UserIdHeader,
@@ -149,7 +151,7 @@ func EvaluateRequest(
 		}
 	}
 
-	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(logger, permission)
+	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(logger, &permission)
 	if err != nil {
 		if errors.Is(err, opatranslator.ErrEmptyQuery) && utils.HasApplicationJSONContentType(req.Header) {
 			w.Header().Set(utils.ContentTypeHeaderKey, utils.JSONContentTypeHeader)
@@ -204,7 +206,7 @@ func ReverseProxy(
 			req.URL.Scheme = URL_SCHEME
 			if _, ok := req.Header["User-Agent"]; !ok {
 				// explicitly disable User-Agent so it's not set to default value
-				req.Header.Set("User-Agent", "")
+				req.Header.Del("User-Agent")
 			}
 		},
 	}
@@ -246,5 +248,5 @@ func alwaysProxyHandler(w http.ResponseWriter, req *http.Request) {
 		utils.FailResponse(w, "no environment found in context", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
-	ReverseProxyOrResponse(logger, env, w, req, nil, nil)
+	ReverseProxyOrResponse(logger, env, w, req, nil)
 }

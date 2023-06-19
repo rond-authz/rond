@@ -37,8 +37,7 @@ func TestRevokeHandler(t *testing.T) {
 		context.Background(),
 		config.EnvironmentVariables{BindingsCrudServiceURL: "http://crud-service/bindings/"},
 		nil,
-		nil,
-		nil,
+		mockOPAModule,
 		nil,
 	)
 
@@ -514,8 +513,7 @@ func TestGrantHandler(t *testing.T) {
 		context.Background(),
 		config.EnvironmentVariables{BindingsCrudServiceURL: "http://crud-service/bindings/"},
 		nil,
-		nil,
-		nil,
+		mockOPAModule,
 		nil,
 	)
 

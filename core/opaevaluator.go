@@ -15,13 +15,11 @@
 package core
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,7 +34,6 @@ import (
 
 	"github.com/rond-authz/rond/custom_builtins"
 
-	"github.com/mia-platform/glogger/v2"
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/topdown/print"
@@ -64,13 +61,13 @@ type PartialEvaluator struct {
 	PartialEvaluator *rego.PartialResult
 }
 
-func createPartialEvaluator(policy string, ctx context.Context, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (*PartialEvaluator, error) {
-	glogger.Get(ctx).Infof("precomputing rego query for allow policy: %s", policy)
+func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy string, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (*PartialEvaluator, error) {
+	logger.Infof("precomputing rego query for allow policy: %s", policy)
 
 	policyEvaluatorTime := time.Now()
 	partialResultEvaluator, err := NewPartialResultEvaluator(ctx, policy, opaModuleConfig, mongoClient, options)
 	if err == nil {
-		glogger.Get(ctx).Infof("computed rego query for policy: %s in %s", policy, time.Since(policyEvaluatorTime))
+		logger.Infof("computed rego query for policy: %s in %s", policy, time.Since(policyEvaluatorTime))
 		return &PartialEvaluator{
 			PartialEvaluator: partialResultEvaluator,
 		}, nil
@@ -78,7 +75,10 @@ func createPartialEvaluator(policy string, ctx context.Context, mongoClient type
 	return nil, err
 }
 
-func SetupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (PartialResultsEvaluators, error) {
+func SetupEvaluators(ctx context.Context, logger *logrus.Entry, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (PartialResultsEvaluators, error) {
+	if oas == nil {
+		return nil, fmt.Errorf("oas must not be nil")
+	}
 	policyEvaluators := PartialResultsEvaluators{}
 	for path, OASContent := range oas.Paths {
 		for verb, verbConfig := range OASContent {
@@ -89,14 +89,14 @@ func SetupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *o
 			allowPolicy := verbConfig.PermissionV2.RequestFlow.PolicyName
 			responsePolicy := verbConfig.PermissionV2.ResponseFlow.PolicyName
 
-			glogger.Get(ctx).Infof("precomputing rego queries for API: %s %s. Allow policy: %s. Response policy: %s.", verb, path, allowPolicy, responsePolicy)
+			logger.Infof("precomputing rego queries for API: %s %s. Allow policy: %s. Response policy: %s.", verb, path, allowPolicy, responsePolicy)
 			if allowPolicy == "" {
 				// allow policy is required, if missing assume the API has no valid x-rond configuration.
 				continue
 			}
 
 			if _, ok := policyEvaluators[allowPolicy]; !ok {
-				evaluator, err := createPartialEvaluator(allowPolicy, ctx, mongoClient, oas, opaModuleConfig, options)
+				evaluator, err := createPartialEvaluator(ctx, logger, allowPolicy, mongoClient, oas, opaModuleConfig, options)
 
 				if err != nil {
 					return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
@@ -107,7 +107,7 @@ func SetupEvaluators(ctx context.Context, mongoClient types.IMongoClient, oas *o
 
 			if responsePolicy != "" {
 				if _, ok := policyEvaluators[responsePolicy]; !ok {
-					evaluator, err := createPartialEvaluator(responsePolicy, ctx, mongoClient, oas, opaModuleConfig, options)
+					evaluator, err := createPartialEvaluator(ctx, logger, responsePolicy, mongoClient, oas, opaModuleConfig, options)
 
 					if err != nil {
 						return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
@@ -215,6 +215,9 @@ func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 	if evaluatorOptions == nil {
 		evaluatorOptions = &EvaluatorOptions{}
 	}
+	if opaModuleConfig == nil {
+		return nil, fmt.Errorf("OPAModuleConfig must not be nil")
+	}
 
 	sanitizedPolicy := strings.Replace(policy, ".", "_", -1)
 	queryString := fmt.Sprintf("data.policies.%s", sanitizedPolicy)
@@ -260,7 +263,7 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 			Context:         ctx,
 		}, nil
 	}
-	return nil, fmt.Errorf("policy evaluator not found")
+	return nil, fmt.Errorf("policy evaluator not found: %s", policy)
 }
 
 func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitive.M, error) {
@@ -378,47 +381,12 @@ func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission
 	return dataFromEvaluation, nil, nil
 }
 
-type RegoInputOptions struct {
-	EnableResourcePermissionsMapOptimization bool
-}
-
-func CreateRegoQueryInput(
-	logger *logrus.Entry,
-	input Input,
-	options RegoInputOptions,
-) ([]byte, error) {
-	opaInputCreationTime := time.Now()
-
-	input.buildOptimizedResourcePermissionsMap(logger, options.EnableResourcePermissionsMapOptimization)
-
-	inputBytes, err := json.Marshal(input)
-	if err != nil {
-		return nil, fmt.Errorf("failed input JSON encode: %v", err)
-	}
-	logger.Tracef("OPA input rego creation in: %+v", time.Since(opaInputCreationTime))
-	return inputBytes, nil
-}
-
 func buildRolesMap(roles []types.Role) map[string][]string {
 	var rolesMap = make(map[string][]string, 0)
 	for _, role := range roles {
 		rolesMap[role.RoleID] = role.Permissions
 	}
 	return rolesMap
-}
-
-func WithPartialResultsEvaluators(requestContext context.Context, evaluators PartialResultsEvaluators) context.Context {
-	return context.WithValue(requestContext, PartialResultsEvaluatorConfigKey{}, evaluators)
-}
-
-// GetPartialResultsEvaluators can be used by a request handler to get PartialResult evaluator instance from context.
-func GetPartialResultsEvaluators(requestContext context.Context) (PartialResultsEvaluators, error) {
-	evaluators, ok := requestContext.Value(PartialResultsEvaluatorConfigKey{}).(PartialResultsEvaluators)
-	if !ok {
-		return nil, fmt.Errorf("no policy evaluators found in request context")
-	}
-
-	return evaluators, nil
 }
 
 // TODO: This should be made private in the future.
@@ -441,68 +409,6 @@ func GetOPAModuleConfig(requestContext context.Context) (*OPAModuleConfig, error
 	}
 
 	return permission, nil
-}
-
-type Input struct {
-	Request    InputRequest  `json:"request"`
-	Response   InputResponse `json:"response"`
-	ClientType string        `json:"clientType,omitempty"`
-	User       InputUser     `json:"user"`
-}
-
-func (input *Input) buildOptimizedResourcePermissionsMap(logger *logrus.Entry, enableResourcePermissionsMapOptimization bool) {
-	if !enableResourcePermissionsMapOptimization {
-		return
-	}
-	logger.Info("preparing optimized resourcePermissionMap for OPA evaluator")
-	opaPermissionsMapTime := time.Now()
-
-	user := input.User
-	permissionsOnResourceMap := make(PermissionsOnResourceMap, 0)
-	rolesMap := buildRolesMap(user.Roles)
-	for _, binding := range user.Bindings {
-		if binding.Resource == nil {
-			continue
-		}
-
-		for _, role := range binding.Roles {
-			rolePermissions, ok := rolesMap[role]
-			if !ok {
-				continue
-			}
-			for _, permission := range rolePermissions {
-				key := buildPermissionOnResourceKey(permission, binding.Resource.ResourceType, binding.Resource.ResourceID)
-				permissionsOnResourceMap[key] = true
-			}
-		}
-		for _, permission := range binding.Permissions {
-			key := buildPermissionOnResourceKey(permission, binding.Resource.ResourceType, binding.Resource.ResourceID)
-			permissionsOnResourceMap[key] = true
-		}
-	}
-	input.User.ResourcePermissionsMap = permissionsOnResourceMap
-	logger.WithField("resourcePermissionMapCreationTime", fmt.Sprintf("%+v", time.Since(opaPermissionsMapTime))).Tracef("resource permission map creation")
-}
-
-type InputRequest struct {
-	Body       interface{}       `json:"body,omitempty"`
-	Headers    http.Header       `json:"headers,omitempty"`
-	Query      url.Values        `json:"query,omitempty"`
-	PathParams map[string]string `json:"pathParams,omitempty"`
-	Method     string            `json:"method"`
-	Path       string            `json:"path"`
-}
-
-type InputResponse struct {
-	Body interface{} `json:"body,omitempty"`
-}
-
-type InputUser struct {
-	Properties             map[string]interface{}   `json:"properties,omitempty"`
-	Groups                 []string                 `json:"groups,omitempty"`
-	Bindings               []types.Binding          `json:"bindings,omitempty"`
-	Roles                  []types.Role             `json:"roles,omitempty"`
-	ResourcePermissionsMap PermissionsOnResourceMap `json:"resourcePermissionsMap,omitempty"`
 }
 
 type PermissionOnResourceKey string
@@ -541,50 +447,5 @@ func LoadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 	return &OPAModuleConfig{
 		Name:    filepath.Base(regoModulePath),
 		Content: string(fileContent),
-	}, nil
-}
-
-func InputFromRequest(
-	req *http.Request,
-	user types.User,
-	clientTypeHeaderKey string,
-	pathParams map[string]string,
-	responseBody any,
-) (Input, error) {
-	shouldParseJSONBody := utils.HasApplicationJSONContentType(req.Header) &&
-		req.ContentLength > 0 &&
-		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete)
-
-	var requestBody any
-	if shouldParseJSONBody {
-		bodyBytes, err := io.ReadAll(req.Body)
-		if err != nil {
-			return Input{}, fmt.Errorf("failed request body parse: %s", err.Error())
-		}
-		if err := json.Unmarshal(bodyBytes, &requestBody); err != nil {
-			return Input{}, fmt.Errorf("failed request body deserialization: %s", err.Error())
-		}
-		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-	}
-
-	return Input{
-		ClientType: req.Header.Get(clientTypeHeaderKey),
-		Request: InputRequest{
-			Method:     req.Method,
-			Path:       req.URL.Path,
-			Headers:    req.Header,
-			Query:      req.URL.Query(),
-			PathParams: pathParams,
-			Body:       requestBody,
-		},
-		Response: InputResponse{
-			Body: responseBody,
-		},
-		User: InputUser{
-			Properties: user.Properties,
-			Groups:     user.UserGroups,
-			Bindings:   user.UserBindings,
-			Roles:      user.UserRoles,
-		},
 	}, nil
 }

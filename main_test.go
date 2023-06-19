@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/mia-platform/glogger/v2"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
@@ -86,7 +87,7 @@ func TestProxyOASPath(t *testing.T) {
 
 		resp, err := http.DefaultClient.Get("http://localhost:3000/custom/documentation/json")
 
-		require.Equal(t, nil, err, "error calling docs")
+		require.NoError(t, err, "error calling docs")
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.True(t, gock.IsDone(), "the proxy does not blocks the request for documentations path.")
 	})
@@ -1037,7 +1038,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
-			{name: "LOG_LEVEL", value: "trace"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
@@ -1792,10 +1793,12 @@ filter_policy {
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, nil)
+	registry := prometheus.NewRegistry()
+	logger, _ := test.NewNullLogger()
+	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), mongoClient, oas, opa, nil, registry, "")
 	require.NoError(t, err, "unexpected error")
 
-	router, err := service.SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("some eval API", func(t *testing.T) {
@@ -1947,10 +1950,12 @@ filter_policy {
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := core.SetupEvaluators(ctx, mongoClient, oas, opa, nil)
+	registry := prometheus.NewRegistry()
+	logger, _ := test.NewNullLogger()
+	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), mongoClient, oas, opa, nil, registry, "")
 	require.NoError(t, err, "unexpected error")
 
-	router, err := service.SetupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
+	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("metrics API exposed correctly", func(t *testing.T) {
