@@ -54,7 +54,7 @@ func OPAMiddleware(
 			logger := glogger.Get(r.Context())
 
 			evaluator, err := sdk.FindEvaluator(logger, r.Method, path)
-			permission := evaluator.Permission()
+			permission := evaluator.Config()
 			if r.Method == http.MethodGet && r.URL.Path == targetServiceOASPath && permission.RequestFlow.PolicyName == "" {
 				fields := logrus.Fields{}
 				if err != nil {

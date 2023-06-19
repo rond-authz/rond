@@ -44,7 +44,7 @@ type SDK interface {
 // Warning: This interface is experimental, and it could change with breaking also in rond patches.
 // Does not use outside this repository until it is not ready.
 type SDKEvaluator interface {
-	Permission() openapi.RondConfig
+	Config() openapi.RondConfig
 	PartialResultsEvaluators() PartialResultsEvaluators
 }
 
@@ -54,7 +54,7 @@ type evaluator struct {
 	rondConfig openapi.RondConfig
 }
 
-func (e evaluator) Permission() openapi.RondConfig {
+func (e evaluator) Config() openapi.RondConfig {
 	return e.rondConfig
 }
 
@@ -93,10 +93,6 @@ func (r rondImpl) EvaluatorFromConfig(logger *logrus.Entry, config openapi.RondC
 
 func (r rondImpl) Metrics() metrics.Metrics {
 	return r.metrics
-}
-
-func (r rondImpl) Registry() *prometheus.Registry {
-	return r.registry
 }
 
 func NewSDK(

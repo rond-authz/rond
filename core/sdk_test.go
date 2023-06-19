@@ -124,7 +124,7 @@ func TestSDK(t *testing.T) {
 					RequestFlow: openapi.RequestFlow{
 						PolicyName: "todo",
 					},
-				}, actual.Permission())
+				}, actual.Config())
 			})
 
 			t.Run("get partial evaluators", func(t *testing.T) {

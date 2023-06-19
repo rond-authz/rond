@@ -53,7 +53,7 @@ func (s SDKEvaluator) EvaluateRequestPolicy(req *http.Request, userInfo types.Us
 	return core.PolicyResult{}, s.requestPolicyEvaluatorResult.Err
 }
 
-func (s SDKEvaluator) Permission() openapi.RondConfig {
+func (s SDKEvaluator) Config() openapi.RondConfig {
 	return s.permission
 }
 

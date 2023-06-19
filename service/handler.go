@@ -46,7 +46,7 @@ func ReverseProxyOrResponse(
 	var permission openapi.RondConfig
 	var partialResultsEvaluators core.PartialResultsEvaluators
 	if evaluatorSdk != nil {
-		permission = evaluatorSdk.Permission()
+		permission = evaluatorSdk.Config()
 		partialResultsEvaluators = evaluatorSdk.PartialResultsEvaluators()
 	}
 
@@ -101,7 +101,7 @@ func EvaluateRequest(
 	requestContext := req.Context()
 	logger := glogger.Get(requestContext)
 
-	permission := evaluatorSdk.Permission()
+	permission := evaluatorSdk.Config()
 	partialResultsEvaluators := evaluatorSdk.PartialResultsEvaluators()
 
 	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(logger, req, types.UserHeadersKeys{
