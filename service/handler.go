@@ -116,7 +116,9 @@ func EvaluateRequest(
 	}
 
 	pathParams := mux.Vars(req)
-	input, err := core.InputFromRequest(req, userInfo, env.ClientTypeHeader, pathParams, nil)
+
+	rondReq := core.NewRondInput(req, env.ClientTypeHeader, pathParams)
+	input, err := rondReq.FromRequestInfo(userInfo, nil)
 	if err != nil {
 		return err
 	}

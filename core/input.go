@@ -16,6 +16,7 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -111,13 +112,19 @@ func CreateRegoQueryInput(
 	return inputBytes, nil
 }
 
-func InputFromRequest(
-	req *http.Request,
-	user types.User,
-	clientTypeHeaderKey string,
-	pathParams map[string]string,
-	responseBody any,
-) (Input, error) {
+type RondInput interface {
+	FromRequestInfo(user types.User, responseBody any) (Input, error)
+	Context() context.Context
+	OriginalRequest() *http.Request
+}
+
+type requestInfo struct {
+	*http.Request
+	clientTypeHeaderKey string
+	pathParams          map[string]string
+}
+
+func (req requestInfo) FromRequestInfo(user types.User, responseBody any) (Input, error) {
 	shouldParseJSONBody := utils.HasApplicationJSONContentType(req.Header) &&
 		req.ContentLength > 0 &&
 		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete)
@@ -135,13 +142,13 @@ func InputFromRequest(
 	}
 
 	return Input{
-		ClientType: req.Header.Get(clientTypeHeaderKey),
+		ClientType: req.Header.Get(req.clientTypeHeaderKey),
 		Request: InputRequest{
 			Method:     req.Method,
 			Path:       req.URL.Path,
 			Headers:    req.Header,
 			Query:      req.URL.Query(),
-			PathParams: pathParams,
+			PathParams: req.pathParams,
 			Body:       requestBody,
 		},
 		Response: InputResponse{
@@ -154,4 +161,20 @@ func InputFromRequest(
 			Roles:      user.UserRoles,
 		},
 	}, nil
+}
+
+func (r requestInfo) Context() context.Context {
+	return r.Context()
+}
+
+func (r requestInfo) OriginalRequest() *http.Request {
+	return r.Request
+}
+
+func NewRondInput(req *http.Request, clientTypeHeaderKey string, pathParams map[string]string) RondInput {
+	return requestInfo{
+		Request:             req,
+		clientTypeHeaderKey: clientTypeHeaderKey,
+		pathParams:          pathParams,
+	}
 }

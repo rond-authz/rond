@@ -16,9 +16,13 @@ package core
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/rond-authz/rond/internal/metrics"
+	"github.com/rond-authz/rond/internal/opatranslator"
+	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
@@ -46,6 +50,9 @@ type SDK interface {
 type SDKEvaluator interface {
 	Config() openapi.RondConfig
 	PartialResultsEvaluators() PartialResultsEvaluators
+
+	EvaluateRequestPolicy(req RondInput, userInfo types.User) (PolicyResult, error)
+	// EvaluateResponsePolicy(req *http.Request, userInfo types.User, permission *openapi.RondConfig) (PolicyResult, error)
 }
 
 type evaluator struct {
@@ -60,6 +67,62 @@ func (e evaluator) Config() openapi.RondConfig {
 
 func (e evaluator) PartialResultsEvaluators() PartialResultsEvaluators {
 	return e.rond.evaluator
+}
+
+func (e evaluator) EvaluateRequestPolicy(req RondInput, userInfo types.User) (PolicyResult, error) {
+	rondConfig := e.rondConfig
+	requestContext := req.Context()
+
+	input, err := req.FromRequestInfo(userInfo, nil)
+	if err != nil {
+		return PolicyResult{}, err
+	}
+
+	regoInput, err := CreateRegoQueryInput(e.logger, input, RegoInputOptions{
+		EnableResourcePermissionsMapOptimization: rondConfig.Options.EnableResourcePermissionsMapOptimization,
+	})
+	if err != nil {
+		return PolicyResult{}, nil
+	}
+
+	var evaluatorAllowPolicy *OPAEvaluator
+	if !rondConfig.RequestFlow.GenerateQuery {
+		evaluatorAllowPolicy, err = e.rond.evaluator.GetEvaluatorFromPolicy(requestContext, rondConfig.RequestFlow.PolicyName, regoInput, e.rond.evaluatorOptions)
+		if err != nil {
+			return PolicyResult{}, nil
+		}
+	} else {
+		evaluatorAllowPolicy, err = CreateQueryEvaluator(requestContext, e.logger, req.OriginalRequest(), rondConfig.RequestFlow.PolicyName, regoInput, nil, e.rond.evaluatorOptions)
+		if err != nil {
+			return PolicyResult{}, err
+		}
+	}
+
+	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(e.logger, &rondConfig)
+	if err != nil {
+		if errors.Is(err, opatranslator.ErrEmptyQuery) && utils.HasApplicationJSONContentType(req.OriginalRequest().Header) {
+			return PolicyResult{}, err
+		}
+
+		e.logger.WithField("error", logrus.Fields{
+			"policyName": rondConfig.RequestFlow.PolicyName,
+			"message":    err.Error(),
+		}).Error("RBAC policy evaluation failed")
+		return PolicyResult{}, err
+	}
+
+	var queryToProxy = []byte{}
+	if query != nil {
+		queryToProxy, err = json.Marshal(query)
+		if err != nil {
+			return PolicyResult{}, err
+		}
+	}
+
+	return PolicyResult{
+		Allowed:      true,
+		QueryToProxy: queryToProxy,
+	}, nil
 }
 
 type rondImpl struct {
