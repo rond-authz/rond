@@ -53,6 +53,10 @@ func (input *Input) buildOptimizedResourcePermissionsMap(logger *logrus.Entry, e
 	permissionsOnResourceMap := make(PermissionsOnResourceMap, 0)
 	rolesMap := buildRolesMap(user.Roles)
 	for _, binding := range user.Bindings {
+		if binding.Resource == nil {
+			continue
+		}
+
 		for _, role := range binding.Roles {
 			rolePermissions, ok := rolesMap[role]
 			if !ok {

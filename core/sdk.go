@@ -101,7 +101,10 @@ func NewSDK(
 
 	logger.WithField("policiesLength", len(evaluator)).Debug("policies evaluators partial results computed")
 
-	oasRouter := oas.PrepareOASRouter()
+	oasRouter, err := oas.PrepareOASRouter()
+	if err != nil {
+		return nil, fmt.Errorf("invalid OAS configuration: %s", err)
+	}
 
 	m := metrics.SetupMetrics("rond")
 	if registry != nil {

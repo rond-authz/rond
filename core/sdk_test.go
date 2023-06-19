@@ -36,6 +36,14 @@ func TestNewSDK(t *testing.T) {
 		require.Nil(t, sdk)
 	})
 
+	t.Run("fails if oas is invalid", func(t *testing.T) {
+		oas, err := openapi.LoadOASFile("../mocks/invalidOASConfiguration.json")
+		require.NoError(t, err)
+		sdk, err := NewSDK(context.Background(), logger, nil, oas, opaModule, nil, nil, "")
+		require.ErrorContains(t, err, "invalid OAS configuration:")
+		require.Nil(t, sdk)
+	})
+
 	t.Run("creates sdk correctly", func(t *testing.T) {
 		sdk, err := NewSDK(context.Background(), logger, nil, openAPISpec, opaModule, nil, nil, "")
 		require.NoError(t, err)

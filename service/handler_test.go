@@ -444,6 +444,123 @@ allow {
 		require.Equal(t, "Mocked Backend Body Example", string(buf), "Unexpected body response")
 	})
 
+	// https://github.com/rond-authz/rond/issues/161
+	t.Run("issue #161", func(t *testing.T) {
+
+		t.Run("issue repro", func(t *testing.T) {
+			policy := `package policies
+allow {
+	resource := data.resources[_]
+	print(resource)
+}
+	`
+
+			invoked := false
+			mockBodySting := "I am a body"
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				invoked = true
+				defer r.Body.Close()
+				buf, err := io.ReadAll(r.Body)
+				require.NoError(t, err, "Mocked backend: Unexpected error")
+				require.Equal(t, mockBodySting, string(buf), "Mocked backend: Unexpected Body received")
+				filterQuery := r.Header.Get("rowfilterquery")
+				expectedQuery := ``
+				require.Equal(t, expectedQuery, filterQuery)
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("Mocked Backend Body Example"))
+			}))
+			defer server.Close()
+
+			body := strings.NewReader(mockBodySting)
+
+			OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
+
+			evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter)
+			serverURL, _ := url.Parse(server.URL)
+			ctx := createContext(t,
+				context.Background(),
+				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
+				evaluator,
+				OPAModuleConfig,
+				nil,
+			)
+
+			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
+			require.NoError(t, err, "Unexpected error")
+			r.Header.Set("miauserproperties", `{"name":"gianni"}`)
+			r.Header.Set("examplekey", "value")
+			r.Header.Set(utils.ContentTypeHeaderKey, "text/plain")
+			w := httptest.NewRecorder()
+
+			rbacHandler(w, r)
+
+			require.True(t, invoked, "Handler was not invoked.")
+			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
+			buf, err := io.ReadAll(w.Body)
+			require.NoError(t, err, "Unexpected error to read body response")
+			require.Equal(t, "Mocked Backend Body Example", string(buf), "Unexpected body response")
+		})
+
+		t.Run("print statement support", func(t *testing.T) {
+			policy := `package policies
+allow {
+	employee := data.resources[_]
+	print("hi")
+	employee.manager == "manager_test"
+	print("hi")
+}
+	`
+
+			invoked := false
+			mockBodySting := "I am a body"
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				invoked = true
+				defer r.Body.Close()
+				buf, err := io.ReadAll(r.Body)
+				require.NoError(t, err, "Mocked backend: Unexpected error")
+				require.Equal(t, mockBodySting, string(buf), "Mocked backend: Unexpected Body received")
+				filterQuery := r.Header.Get("rowfilterquery")
+				expectedQuery := `{"$or":[{"$and":[{"manager":{"$eq":"manager_test"}}]}]}`
+				require.Equal(t, expectedQuery, filterQuery)
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("Mocked Backend Body Example"))
+			}))
+			defer server.Close()
+
+			body := strings.NewReader(mockBodySting)
+
+			OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
+
+			evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter)
+
+			serverURL, _ := url.Parse(server.URL)
+			ctx := createContext(t,
+				context.Background(),
+				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
+				evaluator,
+				OPAModuleConfig,
+				nil,
+			)
+
+			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
+			require.NoError(t, err, "Unexpected error")
+			r.Header.Set("miauserproperties", `{"name":"gianni"}`)
+			r.Header.Set("examplekey", "value")
+			r.Header.Set(utils.ContentTypeHeaderKey, "text/plain")
+			w := httptest.NewRecorder()
+
+			rbacHandler(w, r)
+
+			require.True(t, invoked, "Handler was not invoked.")
+			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
+			buf, err := io.ReadAll(w.Body)
+			require.NoError(t, err, "Unexpected error to read body response")
+			require.Equal(t, "Mocked Backend Body Example", string(buf), "Unexpected body response")
+		})
+	})
+
 	t.Run("sends empty filter query with application-json as content-type", func(t *testing.T) {
 		policy := `package policies
 allow {
