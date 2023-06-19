@@ -25,8 +25,8 @@ import (
 
 	"github.com/mia-platform/glogger/v2"
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/fake"
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/fake"
 	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/openapi"

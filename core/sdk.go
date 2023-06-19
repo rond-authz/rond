@@ -39,6 +39,7 @@ type PolicyResult struct {
 // Warning: This interface is experimental, and it could change with breaking also in rond patches.
 // Does not use outside this repository until it is not ready.
 type SDK interface {
+	// Warning: this method will be removed in the near future. Do not use it outside Rond.
 	Metrics() metrics.Metrics
 
 	FindEvaluator(logger *logrus.Entry, method, path string) (SDKEvaluator, error)
@@ -46,7 +47,7 @@ type SDK interface {
 }
 
 // Warning: This interface is experimental, and it could change with breaking also in rond patches.
-// Does not use outside this repository until it is not ready.
+// Do not use outside this repository until it is not ready.
 type SDKEvaluator interface {
 	Config() openapi.RondConfig
 	PartialResultsEvaluators() PartialResultsEvaluators
@@ -158,6 +159,9 @@ func (r rondImpl) Metrics() metrics.Metrics {
 	return r.metrics
 }
 
+// The SDK is now into core because there are coupled function here which should use the SDK itself
+// (which uses core, so it will result in a cyclic dependency). In the future, sdk should be in a
+// specific package.
 func NewSDK(
 	ctx context.Context,
 	logger *logrus.Entry,
