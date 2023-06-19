@@ -35,7 +35,7 @@ type PolicyResult struct {
 // Warning: This interface is experimental, and it could change with breaking also in rond patches.
 // Does not use outside this repository until it is not ready.
 type SDK interface {
-	// Warning: this method will be removed in the near future. Does not use it outside Rond.
+	// Warning: this method will be removed in the near future. Do not use it outside Rond.
 	Metrics() metrics.Metrics
 
 	FindEvaluator(logger *logrus.Entry, method, path string) (SDKEvaluator, error)
