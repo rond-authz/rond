@@ -986,7 +986,7 @@ allow {
 	employee := data.resources[_]
 	employee.salary > 0
 }
-	`
+`
 
 			mockBodySting := "I am a body"
 
@@ -1119,27 +1119,27 @@ allow {
 
 	t.Run("filter query return not allow", func(t *testing.T) {
 		policy := `package policies
-	allow {
-		get_header("examplekey", input.headers) == "test"
-		input.request.method == "DELETE"
-		employee := data.resources[_]
-		employee.name == "name_test"
-	}
+allow {
+	get_header("examplekey", input.headers) == "test"
+	input.request.method == "DELETE"
+	employee := data.resources[_]
+	employee.name == "name_test"
+}
 
-	allow {
-		input.request.method == "GET111"
+allow {
+	input.request.method == "GET111"
 
-		employee := data.resources[_]
-		employee.manager == "manager_test"
-	}
+	employee := data.resources[_]
+	employee.manager == "manager_test"
+}
 
-	allow {
-		input.request.method == "GETAAA"
-		input.request.path == "/api"
-		employee := data.resources[_]
-		employee.salary < 0
-	}
-	`
+allow {
+	input.request.method == "GETAAA"
+	input.request.path == "/api"
+	employee := data.resources[_]
+	employee.salary < 0
+}
+`
 
 		mockBodySting := "I am a body"
 		body := strings.NewReader(mockBodySting)
