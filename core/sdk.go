@@ -43,7 +43,7 @@ type SDK interface {
 }
 
 // Warning: This interface is experimental, and it could change with breaking also in rond patches.
-// Does not use outside this repository until it is not ready.
+// Do not use outside this repository until it is not ready.
 type SDKEvaluator interface {
 	Config() openapi.RondConfig
 	PartialResultsEvaluators() PartialResultsEvaluators
