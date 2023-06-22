@@ -116,8 +116,9 @@ func EvaluateRequest(
 	}
 
 	pathParams := mux.Vars(req)
+	matchedPath := openapi.GetPathTemplateOrDefaultToEmptyString(logger, req)
 
-	rondReq := core.NewRondInput(req, env.ClientTypeHeader, pathParams)
+	rondReq := core.NewRondInput(req, env.ClientTypeHeader, pathParams, matchedPath)
 	input, err := rondReq.FromRequestInfo(userInfo, nil)
 	if err != nil {
 		return err

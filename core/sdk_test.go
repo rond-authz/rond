@@ -17,9 +17,11 @@ package core
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/types"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
@@ -132,27 +134,53 @@ func TestSDK(t *testing.T) {
 			})
 		})
 	})
+}
 
-	t.Run("EvaluatorFromConfig", func(t *testing.T) {
-		rondConfig := openapi.RondConfig{
-			RequestFlow: openapi.RequestFlow{
-				PolicyName:    "todo",
-				GenerateQuery: true,
-			},
-			ResponseFlow: openapi.ResponseFlow{
-				PolicyName: "other",
-			},
-		}
+func TestEvaluateRequestPolicy(t *testing.T) {
+	// log, _ := test.NewNullLogger()
+	logger := logrus.NewEntry(logrus.New())
 
-		t.Run("returns evaluator passing RondConfig", func(t *testing.T) {
-			actual := sdk.EvaluatorFromConfig(logger, rondConfig)
-			require.Equal(t, evaluator{
-				rondConfig: rondConfig,
-				logger:     logger,
-				rond:       rond,
-			}, actual)
-		})
+	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
+	require.Nil(t, err)
+	opaModule := &OPAModuleConfig{
+		Name: "example.rego",
+		Content: `package policies
+		todo { true }`,
+	}
+	registry := prometheus.NewRegistry()
+	sdk, err := NewSDK(context.Background(), logger, nil, openAPISpec, opaModule, nil, registry, "")
+	require.NoError(t, err)
+
+	clientTypeHeaderKey := "client-header-key"
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rondInput := NewRondInput(req, clientTypeHeaderKey, nil, "")
+
+	t.Run("throws without RondInput", func(t *testing.T) {
+		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
+		require.NoError(t, err)
+
+		_, err = evaluator.EvaluateRequestPolicy(nil, types.User{})
+		require.EqualError(t, err, "RondInput cannot be empty")
 	})
+
+	t.Run("with empty user", func(t *testing.T) {
+		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
+		require.NoError(t, err)
+
+		actual, err := evaluator.EvaluateRequestPolicy(rondInput, types.User{})
+		require.NoError(t, err)
+		require.Equal(t, PolicyResult{
+			Allowed: true,
+		}, actual)
+	})
+
+	// t.Run("with RondInput empty returns error with path params", func(t *testing.T) {
+	// 	evaluator := sdk.EvaluatorFromConfig(logger, rondConfig)
+
+	// 	_, err := evaluator.EvaluateRequestPolicy(nil, types.User{})
+	// 	require.EqualError(t, err, "RondInput cannot be empty")
+	// })
 }
 
 func TestContext(t *testing.T) {

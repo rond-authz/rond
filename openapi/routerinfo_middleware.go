@@ -35,15 +35,15 @@ type RouterInfo struct {
 }
 
 func WithRouterInfo(logger *logrus.Entry, requestContext context.Context, req *http.Request) context.Context {
-	pathTemplate := getPathTemplateOrDefaultToEmptyString(logger, req)
+	pathTemplate := GetPathTemplateOrDefaultToEmptyString(logger, req)
 	return context.WithValue(requestContext, RouterInfoKey{}, RouterInfo{
-		MatchedPath:   utils.SanitizeString(pathTemplate),
+		MatchedPath:   pathTemplate,
 		RequestedPath: utils.SanitizeString(req.URL.Path),
 		Method:        utils.SanitizeString(req.Method),
 	})
 }
 
-func getPathTemplateOrDefaultToEmptyString(logger *logrus.Entry, req *http.Request) string {
+func GetPathTemplateOrDefaultToEmptyString(logger *logrus.Entry, req *http.Request) string {
 	var pathTemplate string
 	route := mux.CurrentRoute(req)
 	if route != nil {
@@ -53,7 +53,7 @@ func getPathTemplateOrDefaultToEmptyString(logger *logrus.Entry, req *http.Reque
 			return ""
 		}
 	}
-	return pathTemplate
+	return utils.SanitizeString(pathTemplate)
 }
 
 func GetRouterInfo(requestContext context.Context) (RouterInfo, error) {

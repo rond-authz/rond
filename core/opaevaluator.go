@@ -52,6 +52,9 @@ type OPAEvaluator struct {
 	PolicyEvaluator Evaluator
 	PolicyName      string
 	Context         context.Context
+
+	routerInfo openapi.RouterInfo
+	metrics    metrics.Metrics
 }
 type PartialResultsEvaluatorConfigKey struct{}
 

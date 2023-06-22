@@ -43,7 +43,6 @@ type SDK interface {
 	Metrics() metrics.Metrics
 
 	FindEvaluator(logger *logrus.Entry, method, path string) (SDKEvaluator, error)
-	EvaluatorFromConfig(logger *logrus.Entry, config openapi.RondConfig) SDKEvaluator
 }
 
 // Warning: This interface is experimental, and it could change with breaking also in rond patches.
@@ -71,6 +70,10 @@ func (e evaluator) PartialResultsEvaluators() PartialResultsEvaluators {
 }
 
 func (e evaluator) EvaluateRequestPolicy(req RondInput, userInfo types.User) (PolicyResult, error) {
+	if req == nil {
+		return PolicyResult{}, fmt.Errorf("RondInput cannot be empty")
+	}
+
 	rondConfig := e.rondConfig
 	requestContext := req.Context()
 
@@ -90,7 +93,7 @@ func (e evaluator) EvaluateRequestPolicy(req RondInput, userInfo types.User) (Po
 	if !rondConfig.RequestFlow.GenerateQuery {
 		evaluatorAllowPolicy, err = e.rond.evaluator.GetEvaluatorFromPolicy(requestContext, rondConfig.RequestFlow.PolicyName, regoInput, e.rond.evaluatorOptions)
 		if err != nil {
-			return PolicyResult{}, nil
+			return PolicyResult{}, err
 		}
 	} else {
 		evaluatorAllowPolicy, err = CreateQueryEvaluator(requestContext, e.logger, req.OriginalRequest(), rondConfig.RequestFlow.PolicyName, regoInput, nil, e.rond.evaluatorOptions)
@@ -145,14 +148,6 @@ func (r rondImpl) FindEvaluator(logger *logrus.Entry, method, path string) (SDKE
 		logger:     logger,
 		rond:       r,
 	}, err
-}
-
-func (r rondImpl) EvaluatorFromConfig(logger *logrus.Entry, config openapi.RondConfig) SDKEvaluator {
-	return evaluator{
-		rondConfig: config,
-		logger:     logger,
-		rond:       r,
-	}
 }
 
 func (r rondImpl) Metrics() metrics.Metrics {
