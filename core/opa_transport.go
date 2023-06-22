@@ -115,8 +115,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 	}
 
 	pathParams := mux.Vars(t.request)
-	matchedPath := openapi.GetPathTemplateOrDefaultToEmptyString(t.logger, req)
-	rondReq := NewRondInput(t.request, t.clientHeaderKey, pathParams, matchedPath)
+	rondReq := NewRondInput(t.request, t.clientHeaderKey, pathParams)
 	input, err := rondReq.FromRequestInfo(userInfo, decodedBody)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusInternalServerError)

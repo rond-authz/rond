@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/rond-authz/rond/internal/utils"
-	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/sirupsen/logrus"
@@ -118,15 +117,12 @@ type RondInput interface {
 	FromRequestInfo(user types.User, responseBody any) (Input, error)
 	Context() context.Context
 	OriginalRequest() *http.Request
-
-	RouterInfo() openapi.RouterInfo
 }
 
 type requestInfo struct {
 	*http.Request
 	clientTypeHeaderKey string
 	pathParams          map[string]string
-	matchedPath         string
 }
 
 func (req requestInfo) FromRequestInfo(user types.User, responseBody any) (Input, error) {
@@ -176,19 +172,10 @@ func (r requestInfo) OriginalRequest() *http.Request {
 	return r.Request
 }
 
-func (r requestInfo) RouterInfo() openapi.RouterInfo {
-	return openapi.RouterInfo{
-		RequestedPath: r.URL.Path,
-		Method:        r.Method,
-		MatchedPath:   r.matchedPath,
-	}
-}
-
-func NewRondInput(req *http.Request, clientTypeHeaderKey string, pathParams map[string]string, matchedPath string) RondInput {
+func NewRondInput(req *http.Request, clientTypeHeaderKey string, pathParams map[string]string) RondInput {
 	return requestInfo{
 		Request:             req,
 		clientTypeHeaderKey: clientTypeHeaderKey,
 		pathParams:          pathParams,
-		matchedPath:         matchedPath,
 	}
 }

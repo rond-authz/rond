@@ -129,6 +129,7 @@ column_policy{
 		},
 	}
 
+	opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 	ctx := createContext(t,
 		context.Background(),
 		config.EnvironmentVariables{TargetServiceHost: "test"},
@@ -137,8 +138,7 @@ column_policy{
 			RequestFlow:  openapi.RequestFlow{PolicyName: "allow"},
 			ResponseFlow: openapi.ResponseFlow{PolicyName: "column_policy"},
 		},
-
-		&OPAModuleConfig{Name: "mypolicy.rego", Content: policy},
+		opaModuleConfig,
 		nil,
 	)
 
@@ -150,14 +150,14 @@ column_policy{
 	input := Input{Request: InputRequest{}, Response: InputResponse{}}
 	inputBytes, _ := json.Marshal(input)
 
-	t.Run("create  evaluator with allowPolicy", func(t *testing.T) {
-		evaluator, err := CreateQueryEvaluator(context.Background(), logger, r, permission.AllowPermission, inputBytes, nil, nil)
+	t.Run("create evaluator with allowPolicy", func(t *testing.T) {
+		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, r, permission.AllowPermission, inputBytes, nil, nil)
 		require.True(t, evaluator != nil)
 		require.NoError(t, err, "Unexpected status code.")
 	})
 
 	t.Run("create  evaluator with policy for column filtering", func(t *testing.T) {
-		evaluator, err := CreateQueryEvaluator(context.Background(), logger, r, permission.ResponseFilter.Policy, inputBytes, nil, nil)
+		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, r, permission.ResponseFilter.Policy, inputBytes, nil, nil)
 		require.True(t, evaluator != nil)
 		require.NoError(t, err, "Unexpected status code.")
 	})
