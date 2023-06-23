@@ -60,7 +60,7 @@ type PartialEvaluator struct {
 	PartialEvaluator *rego.PartialResult
 }
 
-func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy string, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (*PartialEvaluator, error) {
+func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy string, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (*PartialEvaluator, error) {
 	logger.Infof("precomputing rego query for allow policy: %s", policy)
 
 	policyEvaluatorTime := time.Now()
@@ -74,7 +74,7 @@ func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy st
 	return nil, err
 }
 
-func SetupEvaluators(ctx context.Context, logger *logrus.Entry, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (PartialResultsEvaluators, error) {
+func SetupEvaluators(ctx context.Context, logger *logrus.Entry, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (PartialResultsEvaluators, error) {
 	if oas == nil {
 		return nil, fmt.Errorf("oas must not be nil")
 	}
@@ -95,7 +95,7 @@ func SetupEvaluators(ctx context.Context, logger *logrus.Entry, mongoClient type
 			}
 
 			if _, ok := policyEvaluators[allowPolicy]; !ok {
-				evaluator, err := createPartialEvaluator(ctx, logger, allowPolicy, mongoClient, oas, opaModuleConfig, options)
+				evaluator, err := createPartialEvaluator(ctx, logger, allowPolicy, oas, opaModuleConfig, options)
 
 				if err != nil {
 					return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
@@ -106,7 +106,7 @@ func SetupEvaluators(ctx context.Context, logger *logrus.Entry, mongoClient type
 
 			if responsePolicy != "" {
 				if _, ok := policyEvaluators[responsePolicy]; !ok {
-					evaluator, err := createPartialEvaluator(ctx, logger, responsePolicy, mongoClient, oas, opaModuleConfig, options)
+					evaluator, err := createPartialEvaluator(ctx, logger, responsePolicy, oas, opaModuleConfig, options)
 
 					if err != nil {
 						return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())

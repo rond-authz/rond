@@ -67,7 +67,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		opaModuleConfig, err := LoadRegoModule(opaModuleDirectory)
 		require.NoError(t, err, "unexpected error")
 
-		policyEvals, err := SetupEvaluators(ctx, logger, nil, openApiSpec, opaModuleConfig, nil)
+		policyEvals, err := SetupEvaluators(ctx, logger, openApiSpec, opaModuleConfig, nil)
 		require.NoError(t, err, "unexpected error creating evaluators")
 		require.Len(t, policyEvals, 4, "unexpected length")
 	})
@@ -88,7 +88,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		opaModuleConfig, err := LoadRegoModule(opaModulesDirectory)
 		require.NoError(t, err, "unexpected error")
 
-		policyEvals, err := SetupEvaluators(ctx, logger, nil, openApiSpec, opaModuleConfig, nil)
+		policyEvals, err := SetupEvaluators(ctx, logger, openApiSpec, opaModuleConfig, nil)
 		require.NoError(t, err, "unexpected error creating evaluators")
 		require.Len(t, policyEvals, 4, "unexpected length")
 	})

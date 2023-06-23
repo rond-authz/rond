@@ -184,14 +184,13 @@ func (r rondImpl) Metrics() metrics.Metrics {
 func NewSDK(
 	ctx context.Context,
 	logger *logrus.Entry,
-	mongoClient types.IMongoClient,
 	oas *openapi.OpenAPISpec,
 	opaModuleConfig *OPAModuleConfig,
 	evaluatorOptions *EvaluatorOptions,
 	registry *prometheus.Registry,
 	clientTypeHeaderKey string,
 ) (SDK, error) {
-	evaluator, err := SetupEvaluators(ctx, logger, mongoClient, oas, opaModuleConfig, evaluatorOptions)
+	evaluator, err := SetupEvaluators(ctx, logger, oas, opaModuleConfig, evaluatorOptions)
 	if err != nil {
 		return nil, err
 	}
