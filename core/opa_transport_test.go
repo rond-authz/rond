@@ -290,7 +290,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 
 		partialResult, err := NewPartialResultEvaluator(context.Background(), "my_policy", &OPAModuleConfig{
 			Content: "package policies my_policy [resources] { resources := input.response.body }",
-		}, nil, nil)
+		}, nil)
 		require.NoError(t, err)
 
 		transport := &OPATransport{

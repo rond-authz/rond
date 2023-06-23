@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
@@ -63,7 +64,7 @@ func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy st
 	logger.Infof("precomputing rego query for allow policy: %s", policy)
 
 	policyEvaluatorTime := time.Now()
-	partialResultEvaluator, err := NewPartialResultEvaluator(ctx, policy, opaModuleConfig, mongoClient, options)
+	partialResultEvaluator, err := NewPartialResultEvaluator(ctx, policy, opaModuleConfig, options)
 	if err == nil {
 		logger.Infof("computed rego query for policy: %s in %s", policy, time.Since(policyEvaluatorTime))
 		return &PartialEvaluator{
@@ -155,6 +156,7 @@ func (h printHook) Print(_ print.Context, message string) error {
 
 type EvaluatorOptions struct {
 	EnablePrintStatements bool
+	MongoClient           types.IMongoClient
 }
 
 func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte, options *EvaluatorOptions) (*OPAEvaluator, error) {
@@ -181,6 +183,8 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 		custom_builtins.MongoFindMany,
 	)
 
+	ctx = mongoclient.WithMongoClient(ctx, options.MongoClient)
+
 	return &OPAEvaluator{
 		PolicyEvaluator: query,
 		PolicyName:      policy,
@@ -204,7 +208,7 @@ func (config *OPAModuleConfig) CreateQueryEvaluator(ctx context.Context, logger 
 	return evaluator, nil
 }
 
-func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, mongoClient types.IMongoClient, evaluatorOptions *EvaluatorOptions) (*rego.PartialResult, error) {
+func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, evaluatorOptions *EvaluatorOptions) (*rego.PartialResult, error) {
 	if evaluatorOptions == nil {
 		evaluatorOptions = &EvaluatorOptions{}
 	}
@@ -224,7 +228,8 @@ func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
 		custom_builtins.GetHeaderFunction,
 	}
-	if mongoClient != nil {
+	if evaluatorOptions.MongoClient != nil {
+		ctx = mongoclient.WithMongoClient(ctx, evaluatorOptions.MongoClient)
 		options = append(options, custom_builtins.MongoFindOne, custom_builtins.MongoFindMany)
 	}
 	regoInstance := rego.New(options...)

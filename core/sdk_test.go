@@ -233,14 +233,13 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					"my-header-key": "ok",
 				},
 				opaModuleContent: `
-package policies
-generate_filter {
-	input.user.groups[0] == "my-group"
-	get_header("my-header-key", input.request.headers) == "ok"
+				package policies
+				generate_filter {
+					input.user.groups[0] == "my-group"
+					get_header("my-header-key", input.request.headers) == "ok"
 
-	query := data.resources[_]
-}
-`,
+					query := data.resources[_]
+				}`,
 				expectedPolicy: PolicyResult{
 					Allowed:      true,
 					QueryToProxy: []byte(""),
@@ -257,12 +256,11 @@ generate_filter {
 					"my-header-key": "ok",
 				},
 				opaModuleContent: `
-package policies
-generate_filter {
-	query := data.resources[_]
-	query.filterField == "my-filter-value"
-}
-`,
+				package policies
+				generate_filter {
+					query := data.resources[_]
+					query.filterField == "my-filter-value"
+				}`,
 				expectedPolicy: PolicyResult{
 					Allowed:      true,
 					QueryToProxy: []byte(`{"$or":[{"$and":[{"filterField":{"$eq":"my-filter-value"}}]}]}`),
@@ -290,62 +288,97 @@ generate_filter {
 					},
 				},
 				opaModuleContent: `package policies
-todo {
-	input.user.groups[0] == "my-group"
-	input.user.roles[0].roleId == "rid"
-	input.user.bindings[0].resource.resourceType == "my-resource"
-	input.user.properties.prop1 == "my-user-field"
-}`,
-
+				todo {
+					input.user.groups[0] == "my-group"
+					input.user.roles[0].roleId == "rid"
+					input.user.bindings[0].resource.resourceType == "my-resource"
+					input.user.properties.prop1 == "my-user-field"
+				}`,
 				expectedPolicy: PolicyResult{
 					Allowed:      true,
 					QueryToProxy: []byte(""),
 				},
 			},
-			// 			"allowed - with mongo client": {
-			// 				method: http.MethodGet,
-			// 				path:   "/users/",
-			// 				user: types.User{
-			// 					UserID: "my-user",
-			// 				},
-			// 				mongoClient: testmongoMock,
-			// 				opaModuleContent: `package policies
-			// todo {
-			// 	project := find_one("my-collection", {"myField": "1234"})
-			// 	project.myField == "1234"
-			// }
-			// `,
+			"with mongo client and find_one": {
+				method: http.MethodGet,
+				path:   "/users/",
+				user: types.User{
+					UserID: "my-user",
+				},
+				mongoClient: &mocks.MongoClientMock{
+					FindOneResult: map[string]string{"myField": "1234"},
+					FindOneExpectation: func(collectionName string, query interface{}) {
+						require.Equal(t, "my-collection", collectionName)
+						require.Equal(t, map[string]interface{}{"myField": "1234"}, query)
+					},
+				},
+				opaModuleContent: `package policies
+					todo {
+						project := find_one("my-collection", {"myField": "1234"})
+						project.myField == "1234"
+					}
+				`,
+				expectedPolicy: PolicyResult{
+					Allowed:      true,
+					QueryToProxy: []byte{},
+				},
+			},
+			"with mongo client and find_many": {
+				method: http.MethodGet,
+				path:   "/users/",
+				user: types.User{
+					UserID: "my-user",
+				},
+				mongoClient: &mocks.MongoClientMock{
+					FindManyResult: []interface{}{
+						map[string]interface{}{"myField": "1234"},
+					},
+					FindManyExpectation: func(collectionName string, query interface{}) {
+						require.Equal(t, "my-collection", collectionName)
+						require.Equal(t, map[string]interface{}{"myField": "1234"}, query)
+					},
+				},
+				opaModuleContent: `package policies
+					todo {
+						project := find_many("my-collection", {"myField": "1234"})
+						project[0].myField == "1234"
+					}
+				`,
+				expectedPolicy: PolicyResult{
+					Allowed:      true,
+					QueryToProxy: []byte{},
+				},
+			},
+			"with query and mongo client": {
+				method:      http.MethodGet,
+				path:        "/users/",
+				oasFilePath: "../mocks/rondOasConfig.json",
+				user: types.User{
+					UserGroups: []string{"my-group"},
+				},
+				reqHeaders: map[string]string{
+					"my-header-key": "ok",
+				},
+				mongoClient: &mocks.MongoClientMock{
+					FindOneResult: map[string]string{"myField": "1234"},
+					FindOneExpectation: func(collectionName string, query interface{}) {
+						require.Equal(t, "my-collection", collectionName)
+						require.Equal(t, map[string]interface{}{"myField": "1234"}, query)
+					},
+				},
+				opaModuleContent: `
+				package policies
+				generate_filter {
+					project := find_one("my-collection", {"myField": "1234"})
 
-			// 				expectedPolicy: PolicyResult{
-			// 					Allowed:      true,
-			// 					QueryToProxy: []byte{},
-			// 				},
-			// 			},
-			// 			"with query and mongo client": {
-			// 				method:      http.MethodGet,
-			// 				path:        "/users/",
-			// 				oasFilePath: "../mocks/rondOasConfig.json",
-			// 				user: types.User{
-			// 					UserGroups: []string{"my-group"},
-			// 				},
-			// 				reqHeaders: map[string]string{
-			// 					"my-header-key": "ok",
-			// 				},
-			// 				opaModuleContent: `
-			// package policies
-			// generate_filter {
-			// 	project := find_one("my-collection", {"myField": "1234"})
-			// 	project.myField == "1234"
-
-			// 	query := data.resources[_]
-			// 	query.filterField == "my-filter-value"
-			// }
-			// `,
-			// 				expectedPolicy: PolicyResult{
-			// 					Allowed:      true,
-			// 					QueryToProxy: []byte(`{"$or":[{"$and":[{"filterField":{"$eq":"my-filter-value"}}]}]}`),
-			// 				},
-			// 			},
+					query := data.resources[_]
+					query.filterField == "1234"
+				}`,
+				expectedPolicy: PolicyResult{
+					Allowed:      true,
+					QueryToProxy: []byte(`{"$or":[{"$and":[{"filterField":{"$eq":"1234"}}]}]}`),
+				},
+			},
 		}
 
 		for name, test := range testCases {
@@ -480,12 +513,9 @@ func getSdk(t require.TestingT, options *sdkOptions) SDK {
 	registry := prometheus.NewRegistry()
 	sdk, err := NewSDK(context.Background(), logger, options.mongoClient, openAPISpec, opaModule, &EvaluatorOptions{
 		EnablePrintStatements: true,
+		MongoClient:           options.mongoClient,
 	}, registry, "")
 	require.NoError(t, err)
 
 	return sdk
-}
-
-var testmongoMock = &mocks.MongoClientMock{
-	FindOneResult: map[string]interface{}{"myField": "1234"},
 }
