@@ -94,10 +94,6 @@ func TestSDK(t *testing.T) {
 	rond, ok := sdk.(rondImpl)
 	require.True(t, ok, "rondImpl is not sdk")
 
-	t.Run("metrics", func(t *testing.T) {
-		require.Equal(t, rond.metrics, sdk.Metrics())
-	})
-
 	t.Run("FindEvaluator", func(t *testing.T) {
 		t.Run("throws if path and method not found", func(t *testing.T) {
 			actual, err := sdk.FindEvaluator(logger, http.MethodGet, "/not-existent/path")
@@ -140,14 +136,11 @@ func TestSDK(t *testing.T) {
 					},
 				}, actual.Config())
 			})
-
-			t.Run("get partial evaluators", func(t *testing.T) {
-				require.Equal(t, rond.evaluator, actual.PartialResultsEvaluators())
-			})
 		})
 	})
 }
 
+// TODO: test metrics both in request and response
 func TestEvaluateRequestPolicy(t *testing.T) {
 	logger := logrus.NewEntry(logrus.New())
 

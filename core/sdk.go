@@ -37,9 +37,6 @@ type PolicyResult struct {
 // Warning: This interface is experimental, and it could change with breaking also in rond patches.
 // Does not use outside this repository until it is not ready.
 type SDK interface {
-	// Warning: this method will be removed in the near future. Do not use it outside Rond.
-	Metrics() metrics.Metrics
-
 	FindEvaluator(logger *logrus.Entry, method, path string) (SDKEvaluator, error)
 }
 
@@ -47,7 +44,6 @@ type SDK interface {
 // Do not use outside this repository until it is not ready.
 type SDKEvaluator interface {
 	Config() openapi.RondConfig
-	PartialResultsEvaluators() PartialResultsEvaluators
 
 	EvaluateRequestPolicy(ctx context.Context, req RondInput, userInfo types.User) (PolicyResult, error)
 	EvaluateResponsePolicy(ctx context.Context, rondInput RondInput, userInfo types.User, decodedBody any) ([]byte, error)
@@ -61,12 +57,16 @@ type evaluator struct {
 	routeInfo openapi.RouterInfo
 }
 
-func (e evaluator) Config() openapi.RondConfig {
-	return e.rondConfig
+func (e evaluator) metrics() metrics.Metrics {
+	return e.rond.metrics
 }
 
-func (e evaluator) PartialResultsEvaluators() PartialResultsEvaluators {
-	return e.rond.evaluator
+func (e evaluator) partialResultEvaluators() PartialResultsEvaluators {
+	return e.rond.partialResultEvaluators
+}
+
+func (e evaluator) Config() openapi.RondConfig {
+	return e.rondConfig
 }
 
 func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req RondInput, userInfo types.User) (PolicyResult, error) {
@@ -90,7 +90,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req RondInput, use
 
 	var evaluatorAllowPolicy *OPAEvaluator
 	if !rondConfig.RequestFlow.GenerateQuery {
-		evaluatorAllowPolicy, err = e.rond.evaluator.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, regoInput, e.rond.evaluatorOptions)
+		evaluatorAllowPolicy, err = e.partialResultEvaluators().GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, regoInput, e.rond.evaluatorOptions)
 		if err != nil {
 			return PolicyResult{}, err
 		}
@@ -107,7 +107,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req RondInput, use
 
 	policyName := rondConfig.RequestFlow.PolicyName
 	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
-	e.rond.Metrics().PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
+	e.metrics().PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
 		"policy_name": policyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
@@ -161,7 +161,26 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput RondInp
 		return nil, err
 	}
 
-	evaluator, err := e.PartialResultsEvaluators().GetEvaluatorFromPolicy(ctx, e.rondConfig.ResponseFlow.PolicyName, regoInput, e.rond.evaluatorOptions)
+	opaEvaluationTimeStart := time.Now()
+
+	evaluator, err := e.partialResultEvaluators().GetEvaluatorFromPolicy(ctx, e.rondConfig.ResponseFlow.PolicyName, regoInput, e.rond.evaluatorOptions)
+
+	policyName := rondConfig.ResponseFlow.PolicyName
+	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
+	e.metrics().PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
+		"policy_name": policyName,
+	}).Observe(float64(opaEvaluationTime.Milliseconds()))
+
+	e.logger.WithFields(logrus.Fields{
+		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
+		"policyName":                 policyName,
+		"partialEval":                false,
+		"allowed":                    err == nil,
+		"matchedPath":                e.routeInfo.MatchedPath,
+		"requestedPath":              e.routeInfo.RequestedPath,
+		"method":                     e.routeInfo.Method,
+	}).Debug("policy evaluation completed")
+
 	if err != nil {
 		return nil, err
 	}
@@ -180,14 +199,13 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput RondInp
 }
 
 type rondImpl struct {
-	evaluator        PartialResultsEvaluators
-	evaluatorOptions *EvaluatorOptions
-	oasRouter        *bunrouter.CompatRouter
-	oas              *openapi.OpenAPISpec
-	opaModuleConfig  *OPAModuleConfig
+	partialResultEvaluators PartialResultsEvaluators
+	evaluatorOptions        *EvaluatorOptions
+	oasRouter               *bunrouter.CompatRouter
+	oas                     *openapi.OpenAPISpec
+	opaModuleConfig         *OPAModuleConfig
 
-	metrics  metrics.Metrics
-	registry *prometheus.Registry
+	metrics metrics.Metrics
 
 	clientTypeHeaderKey string
 }
@@ -201,10 +219,6 @@ func (r rondImpl) FindEvaluator(logger *logrus.Entry, method, path string) (SDKE
 
 		routeInfo: routerInfo,
 	}, err
-}
-
-func (r rondImpl) Metrics() metrics.Metrics {
-	return r.metrics
 }
 
 // The SDK is now into core because there are coupled function here which should use the SDK itself
@@ -237,14 +251,13 @@ func NewSDK(
 	}
 
 	return rondImpl{
-		evaluator:        evaluator,
-		oasRouter:        oasRouter,
-		evaluatorOptions: evaluatorOptions,
-		oas:              oas,
-		opaModuleConfig:  opaModuleConfig,
+		partialResultEvaluators: evaluator,
+		oasRouter:               oasRouter,
+		evaluatorOptions:        evaluatorOptions,
+		oas:                     oas,
+		opaModuleConfig:         opaModuleConfig,
 
-		metrics:  m,
-		registry: registry,
+		metrics: m,
 
 		clientTypeHeaderKey: clientTypeHeaderKey,
 	}, nil

@@ -60,7 +60,3 @@ func (e SDKEvaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core
 func (s SDKEvaluator) Config() openapi.RondConfig {
 	return s.permission
 }
-
-func (s SDKEvaluator) PartialResultsEvaluators() core.PartialResultsEvaluators {
-	return s.partialEvaluator
-}
