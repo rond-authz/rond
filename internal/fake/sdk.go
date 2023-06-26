@@ -15,6 +15,8 @@
 package fake
 
 import (
+	"context"
+
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
@@ -49,6 +51,10 @@ func (s SDKEvaluator) EvaluateRequestPolicy(req core.RondInput, userInfo types.U
 		return core.PolicyResult{}, nil
 	}
 	return core.PolicyResult{}, s.requestPolicyEvaluatorResult.Err
+}
+
+func (e SDKEvaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.RondInput, userInfo types.User, decodedBody any) ([]byte, error) {
+	return nil, nil
 }
 
 func (s SDKEvaluator) Config() openapi.RondConfig {

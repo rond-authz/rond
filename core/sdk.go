@@ -17,13 +17,10 @@ package core
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/rond-authz/rond/internal/metrics"
-	"github.com/rond-authz/rond/internal/opatranslator"
-	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
@@ -53,7 +50,7 @@ type SDKEvaluator interface {
 	PartialResultsEvaluators() PartialResultsEvaluators
 
 	EvaluateRequestPolicy(req RondInput, userInfo types.User) (PolicyResult, error)
-	// EvaluateResponsePolicy(req *http.Request, userInfo types.User, permission *openapi.RondConfig) (PolicyResult, error)
+	EvaluateResponsePolicy(ctx context.Context, rondInput RondInput, userInfo types.User, decodedBody any) ([]byte, error)
 }
 
 type evaluator struct {
@@ -125,10 +122,6 @@ func (e evaluator) EvaluateRequestPolicy(req RondInput, userInfo types.User) (Po
 		"method":                     e.routeInfo.Method,
 	}).Debug("policy evaluation completed")
 	if err != nil {
-		if errors.Is(err, opatranslator.ErrEmptyQuery) && utils.HasApplicationJSONContentType(req.OriginalRequest().Header) {
-			return PolicyResult{}, err
-		}
-
 		e.logger.WithField("error", logrus.Fields{
 			"policyName": rondConfig.RequestFlow.PolicyName,
 			"message":    err.Error(),
@@ -148,6 +141,43 @@ func (e evaluator) EvaluateRequestPolicy(req RondInput, userInfo types.User) (Po
 		Allowed:      true,
 		QueryToProxy: queryToProxy,
 	}, nil
+}
+
+func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput RondInput, userInfo types.User, decodedBody any) ([]byte, error) {
+	if rondInput == nil {
+		return nil, fmt.Errorf("RondInput cannot be empty")
+	}
+
+	rondConfig := e.Config()
+
+	input, err := rondInput.FromRequestInfo(userInfo, decodedBody)
+	if err != nil {
+		return nil, err
+	}
+
+	regoInput, err := CreateRegoQueryInput(e.logger, input, RegoInputOptions{
+		EnableResourcePermissionsMapOptimization: rondConfig.Options.EnableResourcePermissionsMapOptimization,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	evaluator, err := e.PartialResultsEvaluators().GetEvaluatorFromPolicy(ctx, e.rondConfig.ResponseFlow.PolicyName, regoInput, e.rond.evaluatorOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	bodyToProxy, err := evaluator.Evaluate(e.logger)
+	if err != nil {
+		return nil, err
+	}
+
+	marshalledBody, err := json.Marshal(bodyToProxy)
+	if err != nil {
+		return nil, err
+	}
+
+	return marshalledBody, nil
 }
 
 type rondImpl struct {

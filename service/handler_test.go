@@ -107,7 +107,7 @@ func TestDirectProxyHandler(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -140,7 +140,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		defer server.Close()
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -178,7 +178,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		body := strings.NewReader(mockBodySting)
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -226,7 +226,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		serverURL, _ := url.Parse(server.URL)
 
 		rondConfig := openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, rondConfig, oas, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, rondConfig, oas, http.MethodGet, "/api", nil)
 
 		ctx := createContext(t,
 			context.Background(),
@@ -296,7 +296,7 @@ allow {
 		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -351,7 +351,7 @@ allow {
 		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -419,7 +419,7 @@ allow {
 
 		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -476,7 +476,7 @@ allow {
 
 			OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-			evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+			evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", nil)
 			serverURL, _ := url.Parse(server.URL)
 			ctx := createContext(t,
 				context.Background(),
@@ -533,7 +533,7 @@ allow {
 
 			OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-			evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+			evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", nil)
 
 			serverURL, _ := url.Parse(server.URL)
 			ctx := createContext(t,
@@ -583,7 +583,7 @@ allow {
 
 		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -629,7 +629,7 @@ allow {
 
 		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -696,7 +696,7 @@ allow {
 
 		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -733,7 +733,17 @@ allow {
 
 			serverURL, _ := url.Parse(server.URL)
 
-			evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/api")
+			log, hook := test.NewNullLogger()
+			log.Level = logrus.TraceLevel
+			logger := logrus.NewEntry(log)
+			ctx = glogger.WithLogger(ctx, logger)
+
+			registry := prometheus.NewRegistry()
+
+			evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/api", &evaluatorParams{
+				logger:   logger,
+				registry: registry,
+			})
 			ctx := createContext(t,
 				ctx,
 				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -741,10 +751,6 @@ allow {
 				mockOPAModule,
 				nil,
 			)
-
-			log, hook := test.NewNullLogger()
-			log.Level = logrus.TraceLevel
-			ctx = glogger.WithLogger(ctx, logrus.NewEntry(log))
 
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
 			require.NoError(t, err, "Unexpected error")
@@ -763,23 +769,18 @@ allow {
 				delete(actualLog[0].Data, "evaluationTimeMicroseconds")
 				require.Equal(t, logrus.Fields{
 					"allowed":       true,
-					"matchedPath":   "/matched/path",
+					"matchedPath":   "/api",
 					"method":        "GET",
 					"partialEval":   false,
 					"policyName":    "todo",
-					"requestedPath": "/requested/path",
+					"requestedPath": "/api",
 				}, actualLog[0].Data)
 			})
 
 			t.Run("metrics", func(t *testing.T) {
-				m, err := metrics.GetFromContext(ctx)
-				require.NoError(t, err)
-				registry := prometheus.NewPedanticRegistry()
-				m.MustRegister(registry)
-
-				problem, err := testutil.CollectAndLint(registry, "test_rond_policy_evaluation_duration_milliseconds")
+				problem, err := testutil.CollectAndLint(registry, "rond_policy_evaluation_duration_milliseconds")
 				require.NoError(t, err, problem)
-				require.Equal(t, 1, testutil.CollectAndCount(registry, "test_rond_policy_evaluation_duration_milliseconds"), "register")
+				require.Equal(t, 1, testutil.CollectAndCount(registry, "rond_policy_evaluation_duration_milliseconds"), "register")
 			})
 		})
 
@@ -807,7 +808,17 @@ allow {
 }`,
 			}
 
-			evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+			log, hook := test.NewNullLogger()
+			log.Level = logrus.TraceLevel
+			logger := logrus.NewEntry(log)
+			ctx = glogger.WithLogger(ctx, logger)
+
+			registry := prometheus.NewRegistry()
+
+			evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", &evaluatorParams{
+				logger:   logger,
+				registry: registry,
+			})
 			ctx := createContext(t,
 				ctx,
 				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -815,10 +826,6 @@ allow {
 				OPAModuleConfig,
 				nil,
 			)
-
-			log, hook := test.NewNullLogger()
-			log.Level = logrus.TraceLevel
-			ctx = glogger.WithLogger(ctx, logrus.NewEntry(log))
 
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
 			require.NoError(t, err, "Unexpected error")
@@ -837,23 +844,18 @@ allow {
 				delete(actualLog[0].Data, "evaluationTimeMicroseconds")
 				require.Equal(t, logrus.Fields{
 					"allowed":       true,
-					"matchedPath":   "/matched/path",
+					"matchedPath":   "/api",
 					"method":        "GET",
 					"partialEval":   true,
 					"policyName":    "allow",
-					"requestedPath": "/requested/path",
+					"requestedPath": "/api",
 				}, actualLog[0].Data)
 			})
 
 			t.Run("metrics", func(t *testing.T) {
-				m, err := metrics.GetFromContext(ctx)
-				require.NoError(t, err)
-				registry := prometheus.NewPedanticRegistry()
-				m.MustRegister(registry)
-
-				problem, err := testutil.CollectAndLint(registry, "test_rond_policy_evaluation_duration_milliseconds")
+				problem, err := testutil.CollectAndLint(registry, "rond_policy_evaluation_duration_milliseconds")
 				require.NoError(t, err, problem)
-				require.Equal(t, 1, testutil.CollectAndCount(registry, "test_rond_policy_evaluation_duration_milliseconds"), "register")
+				require.Equal(t, 1, testutil.CollectAndCount(registry, "rond_policy_evaluation_duration_milliseconds"), "register")
 			})
 		})
 	})
@@ -895,7 +897,7 @@ func TestStandaloneMode(t *testing.T) {
 	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
 	t.Run("ok", func(t *testing.T) {
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			env,
@@ -943,7 +945,7 @@ allow {
 		body := strings.NewReader(mockBodySting)
 
 		opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-		evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			env,
@@ -993,7 +995,7 @@ allow {
 			body := strings.NewReader(mockBodySting)
 
 			opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-			evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+			evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				env,
@@ -1043,7 +1045,7 @@ allow {
 			body := strings.NewReader(mockBodySting)
 
 			opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-			evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+			evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				env,
@@ -1093,7 +1095,7 @@ allow {
 		body := strings.NewReader(mockBodySting)
 
 		opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-		evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			env,
@@ -1145,7 +1147,7 @@ allow {
 		body := strings.NewReader(mockBodySting)
 
 		opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-		evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, mockRondConfigWithQueryGen, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			env,
@@ -1239,7 +1241,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				}
 
 				rondConfig := openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}
-				evaluator := getEvaluator(t, ctx, opaModule, nil, rondConfig, oas, http.MethodGet, "/api")
+				evaluator := getEvaluator(t, ctx, opaModule, nil, rondConfig, oas, http.MethodGet, "/api", nil)
 				ctx := createContext(t,
 					context.Background(),
 					config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -1280,7 +1282,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					todo { get_header("x-backdoor", input.request.headers) == "mocked value" }`,
 				}
 
-				evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api")
+				evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 				ctx := createContext(t,
 					context.Background(),
 					config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -1339,7 +1341,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				}`, mockedUserProperties["my"], mockedClientType),
 			}
 
-			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api")
+			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1421,7 +1423,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			}
 
 			rondConfig := &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}
-			evaluator := getEvaluator(t, ctx, opaModule, nil, *rondConfig, oas, http.MethodGet, "/api")
+			evaluator := getEvaluator(t, ctx, opaModule, nil, *rondConfig, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -1505,7 +1507,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			mongoclientMock := &mocks.MongoClientMock{UserBindingsError: errors.New("Something went wrong"), UserBindings: nil, UserRoles: nil, UserRolesError: errors.New("Something went wrong")}
 
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api")
+			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1550,7 +1552,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			mongoclientMock := &mocks.MongoClientMock{UserBindingsError: errors.New("MongoDB Error"), UserRolesError: errors.New("MongoDB Error")}
 
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api")
+			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1634,7 +1636,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
 
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api")
+			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1722,7 +1724,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			serverURL, _ := url.Parse(server.URL)
 			mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
 
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api")
+			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1822,7 +1824,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
 
 			serverURL, _ := url.Parse(server.URL)
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api")
+			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1873,7 +1875,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			mongoclientMock := &mocks.MongoClientMock{UserBindings: nil}
 
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api")
+			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1932,7 +1934,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
 
 			serverURL, _ := url.Parse(server.URL)
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api")
+			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -2019,7 +2021,7 @@ project.tenantId == "1234"
 		ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoMock), logrus.NewEntry(log))
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctxForPartial, mockOPAModule, mongoMock, mockXPermission, oas, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctxForPartial, mockOPAModule, mongoMock, mockXPermission, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -2062,7 +2064,7 @@ project.tenantId == "1234"
 		ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoMock), logrus.NewEntry(log))
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, ctxForPartial, mockOPAModule, mongoMock, mockXPermission, oas, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctxForPartial, mockOPAModule, mongoMock, mockXPermission, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -2105,7 +2107,7 @@ project.tenantId == "1234"
 		ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoMock), logrus.NewEntry(log))
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, ctxForPartial, mockOPAModule, mongoMock, mockXPermission, oas, http.MethodGet, "/api")
+		evaluator := getEvaluator(t, ctxForPartial, mockOPAModule, mongoMock, mockXPermission, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},

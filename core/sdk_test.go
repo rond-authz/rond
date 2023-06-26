@@ -412,6 +412,136 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 	})
 }
 
+func TestEvaluateResponsePolicy(t *testing.T) {
+	logger := logrus.NewEntry(logrus.New())
+
+	clientTypeHeaderKey := "client-header-key"
+
+	t.Run("throws without RondInput", func(t *testing.T) {
+		sdk := getSdk(t, nil)
+		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
+		require.NoError(t, err)
+
+		_, err = evaluator.EvaluateResponsePolicy(context.Background(), nil, types.User{}, nil)
+		require.EqualError(t, err, "RondInput cannot be empty")
+	})
+
+	type testCase struct {
+		method           string
+		path             string
+		opaModuleContent string
+		user             types.User
+		reqHeaders       map[string]string
+		mongoClient      types.IMongoClient
+
+		decodedBody any
+
+		expectedBody       string
+		expectedErr        bool
+		expectedErrMessage string
+	}
+
+	t.Run("evaluate response", func(t *testing.T) {
+		testCases := map[string]testCase{
+			"with empty user and empty object": {
+				method:      http.MethodGet,
+				path:        "/users/",
+				decodedBody: map[string]interface{}{},
+
+				expectedBody: "{}",
+			},
+			"with body unchanged": {
+				method: http.MethodGet,
+				path:   "/users/",
+
+				decodedBody: map[string]interface{}{"foo": "bar", "f1": "b1"},
+
+				expectedBody: `{"f1":"b1","foo":"bar"}`,
+			},
+			"with body changed": {
+				method: http.MethodGet,
+				path:   "/users/",
+				opaModuleContent: `
+				package policies
+				responsepolicy [body] {
+					originalBody := input.response.body
+
+					body := json.patch(originalBody, [{"op": "replace", "path": "f1", "value": "censored"}])
+				}`,
+
+				decodedBody: map[string]interface{}{"foo": "bar", "f1": "b1"},
+
+				expectedBody: `{"f1":"censored","foo":"bar"}`,
+			},
+			"with mongo query and body changed": {
+				method: http.MethodGet,
+				path:   "/users/",
+				opaModuleContent: `
+				package policies
+				responsepolicy [body] {
+					originalBody := input.response.body
+					project := find_one("my-collection", {"myField": "1234"})
+
+					body := json.patch(originalBody, [
+						{"op": "replace", "path": "f1", "value": "censored"},
+						{"op": "add", "path": "some", "value": project.myField}
+					])
+				}`,
+				mongoClient: &mocks.MongoClientMock{
+					FindOneResult: map[string]string{"myField": "1234"},
+					FindOneExpectation: func(collectionName string, query interface{}) {
+						require.Equal(t, "my-collection", collectionName)
+						require.Equal(t, map[string]interface{}{"myField": "1234"}, query)
+					},
+				},
+
+				decodedBody: map[string]interface{}{"foo": "bar", "f1": "b1"},
+
+				expectedBody: `{"f1":"censored","foo":"bar","some":"1234"}`,
+			},
+		}
+
+		for name, test := range testCases {
+			t.Run(name, func(t *testing.T) {
+				opaModuleContent := `
+				package policies
+				responsepolicy [body] {
+					body := input.response.body
+				}`
+
+				if test.opaModuleContent != "" {
+					opaModuleContent = test.opaModuleContent
+				}
+
+				sdk := getSdk(t, &sdkOptions{
+					opaModuleContent: opaModuleContent,
+					oasFilePath:      "../mocks/rondOasConfig.json",
+					mongoClient:      test.mongoClient,
+				})
+
+				evaluator, err := sdk.FindEvaluator(logger, test.method, test.path)
+				require.NoError(t, err)
+
+				req := httptest.NewRequest(test.method, test.path, nil)
+				if test.reqHeaders != nil {
+					for k, v := range test.reqHeaders {
+						req.Header.Set(k, v)
+					}
+				}
+				rondInput := NewRondInput(req, clientTypeHeaderKey, nil)
+
+				actual, err := evaluator.EvaluateResponsePolicy(context.Background(), rondInput, test.user, test.decodedBody)
+				if test.expectedErr {
+					require.EqualError(t, err, test.expectedErrMessage)
+				} else {
+					require.NoError(t, err)
+				}
+				require.JSONEq(t, test.expectedBody, string(actual))
+			})
+		}
+	})
+}
+
 func TestContext(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		ctx := context.Background()
@@ -443,36 +573,38 @@ func TestContext(t *testing.T) {
 	})
 }
 
-// func BenchmarkEvaluateRequest(b *testing.B) {
-// 	moduleConfig, err := LoadRegoModule("../mocks/bench-policies")
-// 	require.NoError(b, err, "Unexpected error")
+func BenchmarkEvaluateRequest(b *testing.B) {
+	moduleConfig, err := LoadRegoModule("../mocks/bench-policies")
+	require.NoError(b, err, "Unexpected error")
 
-// 	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
-// 	require.NoError(b, err)
+	openAPISpec, err := openapi.LoadOASFile("../mocks/bench.json")
+	require.NoError(b, err)
 
-// 	log, _ := test.NewNullLogger()
-// 	logger := logrus.NewEntry(log)
-// 	sdk, err := NewSDK(context.Background(), logger, nil, openAPISpec, moduleConfig, nil, nil, "")
-// 	require.NoError(b, err)
+	log, _ := test.NewNullLogger()
+	logger := logrus.NewEntry(log)
+	sdk, err := NewSDK(context.Background(), logger, openAPISpec, moduleConfig, &EvaluatorOptions{
+		MongoClient: testmongoMock,
+	}, nil, "")
+	require.NoError(b, err)
 
-// 	b.ResetTimer()
+	b.ResetTimer()
 
-// 	for n := 0; n < b.N; n++ {
-// 		b.StopTimer()
-// 		req := httptest.NewRequest(http.MethodGet, "/projects/project123", nil)
-// 		req.Header.Set("my-header", "value")
-// 		recorder := httptest.NewRecorder()
-// 		rondInput := NewRondInput(req, "", map[string]string{
-// 			"projectId": "project123",
-// 		})
-// 		b.StartTimer()
-// 		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/projects/project123")
-// 		require.NoError(b, err)
-// 		evaluator.EvaluateRequestPolicy(rondInput, types.User{})
-// 		b.StopTimer()
-// 		require.Equal(b, http.StatusOK, recorder.Code)
-// 	}
-// }
+	for n := 0; n < b.N; n++ {
+		b.StopTimer()
+		req := httptest.NewRequest(http.MethodGet, "/projects/project123", nil)
+		req.Header.Set("my-header", "value")
+		recorder := httptest.NewRecorder()
+		rondInput := NewRondInput(req, "", map[string]string{
+			"projectId": "project123",
+		})
+		b.StartTimer()
+		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/projects/project123")
+		require.NoError(b, err)
+		evaluator.EvaluateRequestPolicy(rondInput, types.User{})
+		b.StopTimer()
+		require.Equal(b, http.StatusOK, recorder.Code)
+	}
+}
 
 type sdkOptions struct {
 	opaModuleContent string
@@ -518,4 +650,104 @@ func getSdk(t require.TestingT, options *sdkOptions) SDK {
 	require.NoError(t, err)
 
 	return sdk
+}
+
+var testmongoMock = &mocks.MongoClientMock{
+	UserBindings: []types.Binding{
+		{
+			BindingID:   "binding1",
+			Subjects:    []string{"user1"},
+			Roles:       []string{"admin"},
+			Groups:      []string{"area_rocket"},
+			Permissions: []string{"permission4"},
+			Resource: &types.Resource{
+				ResourceType: "project",
+				ResourceID:   "project123",
+			},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "binding2",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group4"},
+			Permissions:       []string{"permission7"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "binding3",
+			Subjects:          []string{"user5"},
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group2"},
+			Permissions:       []string{"permission10", "permission4"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "binding4",
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group2"},
+			Permissions:       []string{"permission11"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "bindingForRowFiltering",
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group1"},
+			Permissions:       []string{"console.project.view"},
+			Resource:          &types.Resource{ResourceType: "custom", ResourceID: "9876"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "bindingForRowFilteringFromSubject",
+			Subjects:          []string{"filter_test"},
+			Roles:             []string{"role3", "role4"},
+			Groups:            []string{"group1"},
+			Permissions:       []string{"console.project.view"},
+			Resource:          &types.Resource{ResourceType: "custom", ResourceID: "12345"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "binding5",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role3", "role4"},
+			Permissions:       []string{"permission12"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "notUsedByAnyone",
+			Subjects:          []string{"user5"},
+			Roles:             []string{"role3", "role4"},
+			Permissions:       []string{"permissionNotUsed"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			BindingID:         "notUsedByAnyone2",
+			Subjects:          []string{"user1"},
+			Roles:             []string{"role3", "role6"},
+			Permissions:       []string{"permissionNotUsed"},
+			CRUDDocumentState: "PRIVATE",
+		},
+	},
+	UserRoles: []types.Role{
+		{
+			RoleID:            "admin",
+			Permissions:       []string{"console.project.view", "permission2", "foobar"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			RoleID:            "role3",
+			Permissions:       []string{"permission3", "permission5", "console.project.view"},
+			CRUDDocumentState: "PUBLIC",
+		},
+		{
+			RoleID:            "role6",
+			Permissions:       []string{"permission3", "permission5"},
+			CRUDDocumentState: "PRIVATE",
+		},
+		{
+			RoleID:            "notUsedByAnyone",
+			Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
+			CRUDDocumentState: "PUBLIC",
+		},
+	},
 }
