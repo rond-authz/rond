@@ -49,7 +49,7 @@ type SDKEvaluator interface {
 	Config() openapi.RondConfig
 	PartialResultsEvaluators() PartialResultsEvaluators
 
-	EvaluateRequestPolicy(req RondInput, userInfo types.User) (PolicyResult, error)
+	EvaluateRequestPolicy(ctx context.Context, req RondInput, userInfo types.User) (PolicyResult, error)
 	EvaluateResponsePolicy(ctx context.Context, rondInput RondInput, userInfo types.User, decodedBody any) ([]byte, error)
 }
 
@@ -69,13 +69,12 @@ func (e evaluator) PartialResultsEvaluators() PartialResultsEvaluators {
 	return e.rond.evaluator
 }
 
-func (e evaluator) EvaluateRequestPolicy(req RondInput, userInfo types.User) (PolicyResult, error) {
+func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req RondInput, userInfo types.User) (PolicyResult, error) {
 	if req == nil {
 		return PolicyResult{}, fmt.Errorf("RondInput cannot be empty")
 	}
 
 	rondConfig := e.Config()
-	requestContext := req.Context()
 
 	input, err := req.FromRequestInfo(userInfo, nil)
 	if err != nil {
@@ -91,12 +90,12 @@ func (e evaluator) EvaluateRequestPolicy(req RondInput, userInfo types.User) (Po
 
 	var evaluatorAllowPolicy *OPAEvaluator
 	if !rondConfig.RequestFlow.GenerateQuery {
-		evaluatorAllowPolicy, err = e.rond.evaluator.GetEvaluatorFromPolicy(requestContext, rondConfig.RequestFlow.PolicyName, regoInput, e.rond.evaluatorOptions)
+		evaluatorAllowPolicy, err = e.rond.evaluator.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, regoInput, e.rond.evaluatorOptions)
 		if err != nil {
 			return PolicyResult{}, err
 		}
 	} else {
-		evaluatorAllowPolicy, err = e.rond.opaModuleConfig.CreateQueryEvaluator(requestContext, e.logger, req.OriginalRequest(), rondConfig.RequestFlow.PolicyName, regoInput, nil, e.rond.evaluatorOptions)
+		evaluatorAllowPolicy, err = e.rond.opaModuleConfig.CreateQueryEvaluator(ctx, e.logger, rondConfig.RequestFlow.PolicyName, regoInput, e.rond.evaluatorOptions)
 		if err != nil {
 			return PolicyResult{}, err
 		}

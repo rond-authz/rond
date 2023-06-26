@@ -158,7 +158,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
 		require.NoError(t, err)
 
-		_, err = evaluator.EvaluateRequestPolicy(nil, types.User{})
+		_, err = evaluator.EvaluateRequestPolicy(context.Background(), nil, types.User{})
 		require.EqualError(t, err, "RondInput cannot be empty")
 	})
 
@@ -400,7 +400,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				}
 				rondInput := NewRondInput(req, clientTypeHeaderKey, nil)
 
-				actual, err := evaluator.EvaluateRequestPolicy(rondInput, test.user)
+				actual, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, test.user)
 				if test.expectedErr {
 					require.EqualError(t, err, test.expectedErrMessage)
 				} else {
@@ -600,7 +600,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 		b.StartTimer()
 		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/projects/project123")
 		require.NoError(b, err)
-		evaluator.EvaluateRequestPolicy(rondInput, types.User{})
+		evaluator.EvaluateRequestPolicy(context.Background(), rondInput, types.User{})
 		b.StopTimer()
 		require.Equal(b, http.StatusOK, recorder.Code)
 	}

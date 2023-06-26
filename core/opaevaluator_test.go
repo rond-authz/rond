@@ -127,8 +127,6 @@ column_policy{
 
 	opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-	r, err := http.NewRequestWithContext(context.Background(), "GET", "http://www.example.com:8080/api", nil)
-	require.NoError(t, err, "Unexpected error")
 	log, _ := test.NewNullLogger()
 	logger := logrus.NewEntry(log)
 
@@ -136,13 +134,13 @@ column_policy{
 	inputBytes, _ := json.Marshal(input)
 
 	t.Run("create evaluator with allowPolicy", func(t *testing.T) {
-		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, r, permission.AllowPermission, inputBytes, nil, nil)
+		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, permission.AllowPermission, inputBytes, nil)
 		require.True(t, evaluator != nil)
 		require.NoError(t, err, "Unexpected status code.")
 	})
 
 	t.Run("create  evaluator with policy for column filtering", func(t *testing.T) {
-		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, r, permission.ResponseFilter.Policy, inputBytes, nil, nil)
+		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, permission.ResponseFilter.Policy, inputBytes, nil)
 		require.True(t, evaluator != nil)
 		require.NoError(t, err, "Unexpected status code.")
 	})

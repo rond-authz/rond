@@ -46,7 +46,7 @@ func NewSDKEvaluator(
 	}
 }
 
-func (s SDKEvaluator) EvaluateRequestPolicy(req core.RondInput, userInfo types.User) (core.PolicyResult, error) {
+func (s SDKEvaluator) EvaluateRequestPolicy(ctx context.Context, req core.RondInput, userInfo types.User) (core.PolicyResult, error) {
 	if s.requestPolicyEvaluatorResult == nil {
 		return core.PolicyResult{}, nil
 	}

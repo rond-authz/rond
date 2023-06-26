@@ -320,21 +320,5 @@ func TestRondInput(t *testing.T) {
 			require.NoError(t, err, "Unexpected error")
 			require.Nil(t, input.Request.Body)
 		})
-
-		t.Run("get context", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-
-			rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
-			ctx := rondRequest.Context()
-			require.Equal(t, req.Context(), ctx)
-		})
-
-		t.Run("get original request", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-
-			rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
-			originalRequest := rondRequest.OriginalRequest()
-			require.Equal(t, req, originalRequest)
-		})
 	})
 }

@@ -16,7 +16,6 @@ package core
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -115,8 +114,6 @@ func CreateRegoQueryInput(
 
 type RondInput interface {
 	FromRequestInfo(user types.User, responseBody any) (Input, error)
-	Context() context.Context
-	OriginalRequest() *http.Request
 }
 
 type requestInfo struct {
@@ -162,14 +159,6 @@ func (req requestInfo) FromRequestInfo(user types.User, responseBody any) (Input
 			Roles:      user.UserRoles,
 		},
 	}, nil
-}
-
-func (r requestInfo) Context() context.Context {
-	return r.Request.Context()
-}
-
-func (r requestInfo) OriginalRequest() *http.Request {
-	return r.Request
 }
 
 func NewRondInput(req *http.Request, clientTypeHeaderKey string, pathParams map[string]string) RondInput {
