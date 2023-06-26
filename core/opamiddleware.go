@@ -87,15 +87,7 @@ func OPAMiddleware(
 				return
 			}
 
-			// TODO: remove me
-			ctx := openapi.WithXPermission(
-				WithOPAModuleConfig(
-					openapi.WithRouterInfo(logger, r.Context(), r),
-					opaModuleConfig,
-				),
-				&permission,
-			)
-			ctx = WithEvaluatorSKD(ctx, evaluator)
+			ctx := WithEvaluatorSKD(r.Context(), evaluator)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

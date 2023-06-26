@@ -22,13 +22,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/rond-authz/rond/internal/config"
-	"github.com/rond-authz/rond/internal/metrics"
-	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/mia-platform/glogger/v2"
 	"github.com/open-policy-agent/opa/topdown/print"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -130,19 +126,8 @@ column_policy{
 	}
 
 	opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-	ctx := createContext(t,
-		context.Background(),
-		config.EnvironmentVariables{TargetServiceHost: "test"},
-		nil,
-		&openapi.RondConfig{
-			RequestFlow:  openapi.RequestFlow{PolicyName: "allow"},
-			ResponseFlow: openapi.ResponseFlow{PolicyName: "column_policy"},
-		},
-		opaModuleConfig,
-		nil,
-	)
 
-	r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
+	r, err := http.NewRequestWithContext(context.Background(), "GET", "http://www.example.com:8080/api", nil)
 	require.NoError(t, err, "Unexpected error")
 	log, _ := test.NewNullLogger()
 	logger := logrus.NewEntry(log)
@@ -174,39 +159,6 @@ func TestPrint(t *testing.T) {
 	require.JSONEq(t, `{"level":10,"msg":"the print message","time":123,"policyName":"policy-name"}`, string(re.ReplaceAll(buf.Bytes(), []byte("\"time\":123"))))
 }
 
-func createContext(
-	t *testing.T,
-	originalCtx context.Context,
-	env config.EnvironmentVariables,
-	mongoClient *mocks.MongoClientMock,
-	permission *openapi.RondConfig,
-	opaModuleConfig *OPAModuleConfig,
-	partialResultEvaluators PartialResultsEvaluators,
-) context.Context {
-	t.Helper()
-
-	var partialContext context.Context
-	partialContext = context.WithValue(originalCtx, config.EnvKey{}, env)
-	partialContext = context.WithValue(partialContext, openapi.XPermissionKey{}, permission)
-	partialContext = context.WithValue(partialContext, OPAModuleConfigKey{}, opaModuleConfig)
-	if mongoClient != nil {
-		partialContext = context.WithValue(partialContext, types.MongoClientContextKey{}, mongoClient)
-	}
-	partialContext = context.WithValue(partialContext, PartialResultsEvaluatorConfigKey{}, partialResultEvaluators)
-
-	log, _ := test.NewNullLogger()
-	partialContext = glogger.WithLogger(partialContext, logrus.NewEntry(log))
-
-	partialContext = context.WithValue(partialContext, openapi.RouterInfoKey{}, openapi.RouterInfo{
-		MatchedPath:   "/matched/path",
-		RequestedPath: "/requested/path",
-		Method:        "GET",
-	})
-
-	partialContext = metrics.WithValue(partialContext, metrics.SetupMetrics("test_rond"))
-
-	return partialContext
-}
 func TestGetHeaderFunction(t *testing.T) {
 	headerKeyMocked := "exampleKey"
 	headerValueMocked := "value"
@@ -256,21 +208,5 @@ func TestGetHeaderFunction(t *testing.T) {
 		require.NoError(t, err, "Unexpected error during rego validation")
 
 		require.Len(t, partialResults.Queries, 0, "Rego policy allows illegal input")
-	})
-}
-
-func TestGetOPAModuleConfig(t *testing.T) {
-	t.Run(`GetOPAModuleConfig fails because no key has been passed`, func(t *testing.T) {
-		ctx := context.Background()
-		env, err := GetOPAModuleConfig(ctx)
-		require.True(t, err != nil, "An error was expected.")
-		t.Logf("Expected error: %s - env: %+v", err.Error(), env)
-	})
-
-	t.Run(`GetOPAModuleConfig returns OPAEvaluator from context`, func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), OPAModuleConfigKey{}, &OPAModuleConfig{})
-		opaEval, err := GetOPAModuleConfig(ctx)
-		require.True(t, err == nil, "Unexpected error.")
-		require.True(t, opaEval != nil, "OPA Module config not found.")
 	})
 }

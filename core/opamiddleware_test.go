@@ -182,19 +182,18 @@ foobar { true }`,
 		openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 		require.NoError(t, err)
 
-		t.Run(`rego package doesn't contain expected permission`, func(t *testing.T) {
+		t.Run(`rego package doesn't contain expected policy`, func(t *testing.T) {
 			opaModule := &OPAModuleConfig{
-				Name: "example.rego",
-				Content: `package policies
-todo { true }`,
+				Name:    "example.rego",
+				Content: `package policies another { true }`,
 			}
 			sdk := getSDK(t, openAPISpec, opaModule)
 
 			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				permission, err := openapi.GetXPermission(r.Context())
-				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, permission, &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}})
+				actual, err := GetEvaluatorSKD(r.Context())
+				require.NoError(t, err, "Unexpected error")
+				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -207,17 +206,16 @@ todo { true }`,
 
 		t.Run(`rego package contains expected permission`, func(t *testing.T) {
 			opaModule := &OPAModuleConfig{
-				Name: "example.rego",
-				Content: `package policies
-foobar { true }`,
+				Name:    "example.rego",
+				Content: `package policies todo { true }`,
 			}
 			sdk := getSDK(t, openAPISpec, opaModule)
 
 			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				permission, err := openapi.GetXPermission(r.Context())
-				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}, permission)
+				actual, err := GetEvaluatorSKD(r.Context())
+				require.NoError(t, err)
+				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -238,9 +236,9 @@ very_very_composed_permission { true }`,
 
 			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				permission, err := openapi.GetXPermission(r.Context())
-				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission"}}, permission)
+				actual, err := GetEvaluatorSKD(r.Context())
+				require.NoError(t, err)
+				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -266,9 +264,9 @@ very_very_composed_permission_with_eval { true }`,
 
 			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", options)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				permission, err := openapi.GetXPermission(r.Context())
-				require.True(t, err == nil, "Unexpected error")
-				require.Equal(t, &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, permission)
+				actual, err := GetEvaluatorSKD(r.Context())
+				require.NoError(t, err)
+				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -278,6 +276,21 @@ very_very_composed_permission_with_eval { true }`,
 
 			require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 		})
+	})
+
+	t.Run("with route to not proxy", func(t *testing.T) {
+		routesNotToProxy := []string{"/not/proxy"}
+		middleware := OPAMiddleware(nil, nil, routesNotToProxy, "", nil)
+		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, err := GetEvaluatorSKD(r.Context())
+			require.EqualError(t, err, "no SDKEvaluator found in request context")
+		}))
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodGet, "http://example.com/not/proxy", nil)
+		builtHandler.ServeHTTP(w, r)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 	})
 }
 
@@ -318,9 +331,9 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 		sdk := getSdk(t, opaModule)
 		middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", options)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			permission, err := openapi.GetXPermission(r.Context())
-			require.True(t, err == nil, "Unexpected error")
-			require.Equal(t, &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission"}}, permission)
+			actual, err := GetEvaluatorSKD(r.Context())
+			require.NoError(t, err)
+			require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission"}}, actual.Config())
 			w.WriteHeader(http.StatusOK)
 		}))
 
@@ -341,9 +354,9 @@ very_very_composed_permission_with_eval { true }`,
 		sdk := getSdk(t, opaModule)
 		middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", options)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			permission, err := openapi.GetXPermission(r.Context())
-			require.True(t, err == nil, "Unexpected error")
-			require.Equal(t, &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, permission)
+			actual, err := GetEvaluatorSKD(r.Context())
+			require.NoError(t, err)
+			require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, actual.Config())
 			w.WriteHeader(http.StatusOK)
 		}))
 

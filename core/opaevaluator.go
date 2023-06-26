@@ -337,26 +337,9 @@ func buildRolesMap(roles []types.Role) map[string][]string {
 	return rolesMap
 }
 
-// TODO: This should be made private in the future.
-type OPAModuleConfigKey struct{}
-
 type OPAModuleConfig struct {
 	Name    string
 	Content string
-}
-
-func WithOPAModuleConfig(requestContext context.Context, permission *OPAModuleConfig) context.Context {
-	return context.WithValue(requestContext, OPAModuleConfigKey{}, permission)
-}
-
-// GetOPAModuleConfig can be used by a request handler to get OPAModuleConfig instance from its context.
-func GetOPAModuleConfig(requestContext context.Context) (*OPAModuleConfig, error) {
-	permission, ok := requestContext.Value(OPAModuleConfigKey{}).(*OPAModuleConfig)
-	if !ok {
-		return nil, fmt.Errorf("no opa module config found in request context")
-	}
-
-	return permission, nil
 }
 
 type PermissionOnResourceKey string
