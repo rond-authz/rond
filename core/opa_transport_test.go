@@ -16,6 +16,7 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,11 +25,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
-	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -281,7 +280,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 		}
 
 		logEntry := logrus.NewEntry(logger)
-		req = req.Clone(metrics.WithValue(openapi.WithRouterInfo(logEntry, req.Context(), req), metrics.SetupMetrics("")))
+		req = req.Clone(context.Background())
 
 		evaluator := getSdk(t, &sdkOptions{
 			oasFilePath:      "../mocks/rondOasConfig.json",

@@ -51,6 +51,12 @@ var (
 
 var ErrNotFoundOASDefinition = errors.New("not found oas definition")
 
+type RouterInfo struct {
+	MatchedPath   string
+	RequestedPath string
+	Method        string
+}
+
 type XPermissionKey struct{}
 
 type PermissionOptions struct {
