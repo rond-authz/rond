@@ -25,7 +25,6 @@ import (
 
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
-	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
@@ -35,15 +34,13 @@ import (
 type OPATransport struct {
 	http.RoundTripper
 	// FIXME: this overlaps with the req.Context used during RoundTrip.
-	context                  context.Context
-	logger                   *logrus.Entry
-	request                  *http.Request
-	permission               *openapi.RondConfig
-	partialResultsEvaluators PartialResultsEvaluators
+	context context.Context
+	logger  *logrus.Entry
+	request *http.Request
 
-	clientHeaderKey  string
-	userHeaders      types.UserHeadersKeys
-	evaluatorOptions *EvaluatorOptions
+	clientHeaderKey string
+	userHeaders     types.UserHeadersKeys
+	evaluatorSDK    SDKEvaluator
 }
 
 func NewOPATransport(
@@ -51,23 +48,19 @@ func NewOPATransport(
 	context context.Context,
 	logger *logrus.Entry,
 	req *http.Request,
-	permission *openapi.RondConfig,
-	partialResultsEvaluators PartialResultsEvaluators,
 	clientHeaderKey string,
 	userHeadersKeys types.UserHeadersKeys,
-	evaluatorOptions *EvaluatorOptions,
+	evaluatorSDK SDKEvaluator,
 ) *OPATransport {
 	return &OPATransport{
-		RoundTripper:             transport,
-		context:                  req.Context(),
-		logger:                   logger,
-		request:                  req,
-		permission:               permission,
-		partialResultsEvaluators: partialResultsEvaluators,
+		RoundTripper: transport,
+		context:      req.Context(),
+		logger:       logger,
+		request:      req,
 
-		clientHeaderKey:  clientHeaderKey,
-		userHeaders:      userHeadersKeys,
-		evaluatorOptions: evaluatorOptions,
+		clientHeaderKey: clientHeaderKey,
+		userHeaders:     userHeadersKeys,
+		evaluatorSDK:    evaluatorSDK,
 	}
 }
 
@@ -116,42 +109,14 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 
 	pathParams := mux.Vars(t.request)
 	rondReq := NewRondInput(t.request, t.clientHeaderKey, pathParams)
-	input, err := rondReq.FromRequestInfo(userInfo, decodedBody)
-	if err != nil {
-		t.responseWithError(resp, err, http.StatusInternalServerError)
-		return resp, nil
-	}
 
-	regoInput, err := CreateRegoQueryInput(t.logger, input, RegoInputOptions{
-		EnableResourcePermissionsMapOptimization: t.permission.Options.EnableResourcePermissionsMapOptimization,
-	})
-	if err != nil {
-		t.responseWithError(resp, err, http.StatusInternalServerError)
-		return resp, nil
-	}
-
-	evaluator, err := t.partialResultsEvaluators.GetEvaluatorFromPolicy(t.context, t.permission.ResponseFlow.PolicyName, regoInput, t.evaluatorOptions)
-	if err != nil {
-		t.logger.WithField("error", logrus.Fields{
-			"policyName": t.permission.ResponseFlow.PolicyName,
-			"message":    err.Error(),
-		}).Error("RBAC policy evaluation on response failed")
-		t.responseWithError(resp, err, http.StatusInternalServerError)
-		return resp, nil
-	}
-
-	bodyToProxy, err := evaluator.Evaluate(t.logger)
+	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, rondReq, userInfo, decodedBody)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusForbidden)
 		return resp, nil
 	}
 
-	marshalledBody, err := json.Marshal(bodyToProxy)
-	if err != nil {
-		t.responseWithError(resp, err, http.StatusInternalServerError)
-		return resp, nil
-	}
-	overwriteResponse(resp, marshalledBody)
+	overwriteResponse(resp, responseBody)
 	return resp, nil
 }
 

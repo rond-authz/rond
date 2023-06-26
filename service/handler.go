@@ -43,10 +43,8 @@ func ReverseProxyOrResponse(
 	evaluatorSdk core.SDKEvaluator,
 ) {
 	var permission openapi.RondConfig
-	var partialResultsEvaluators core.PartialResultsEvaluators
 	if evaluatorSdk != nil {
 		permission = evaluatorSdk.Config()
-		partialResultsEvaluators = evaluatorSdk.PartialResultsEvaluators()
 	}
 
 	if env.Standalone {
@@ -64,7 +62,7 @@ func ReverseProxyOrResponse(
 		}
 		return
 	}
-	ReverseProxy(logger, env, w, req, &permission, partialResultsEvaluators)
+	ReverseProxy(logger, env, w, req, &permission, evaluatorSdk)
 }
 
 func rbacHandler(w http.ResponseWriter, req *http.Request) {
@@ -149,7 +147,7 @@ func ReverseProxy(
 	w http.ResponseWriter,
 	req *http.Request,
 	permission *openapi.RondConfig,
-	partialResultsEvaluators core.PartialResultsEvaluators,
+	evaluatorSdk core.SDKEvaluator,
 ) {
 	targetHostFromEnv := env.TargetServiceHost
 	proxy := httputil.ReverseProxy{
@@ -164,10 +162,6 @@ func ReverseProxy(
 		},
 	}
 
-	options := &core.EvaluatorOptions{
-		EnablePrintStatements: env.IsTraceLogLevel(),
-	}
-
 	// Check on nil is performed to proxy the oas documentation path
 	if permission == nil || permission.ResponseFlow.PolicyName == "" {
 		proxy.ServeHTTP(w, req)
@@ -178,8 +172,6 @@ func ReverseProxy(
 		req.Context(),
 		logger,
 		req,
-		permission,
-		partialResultsEvaluators,
 
 		env.ClientTypeHeader,
 		types.UserHeadersKeys{
@@ -187,7 +179,7 @@ func ReverseProxy(
 			GroupsHeaderKey:     env.UserGroupsHeader,
 			PropertiesHeaderKey: env.UserPropertiesHeader,
 		},
-		options,
+		evaluatorSdk,
 	)
 	proxy.ServeHTTP(w, req)
 }
