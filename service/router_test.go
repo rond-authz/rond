@@ -28,7 +28,6 @@ import (
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/fake"
-	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
@@ -233,7 +232,6 @@ func createContext(
 	originalCtx context.Context,
 	env config.EnvironmentVariables,
 	evaluator core.SDKEvaluator,
-	opaModuleConfig *core.OPAModuleConfig,
 	mongoClient *mocks.MongoClientMock,
 ) context.Context {
 	t.Helper()
@@ -243,23 +241,11 @@ func createContext(
 
 	partialContext = core.WithEvaluatorSKD(partialContext, evaluator)
 
-	// TODO: remove me
-	partialContext = context.WithValue(partialContext, core.OPAModuleConfigKey{}, opaModuleConfig)
-	// TODO: remove me
-	partialContext = context.WithValue(partialContext, openapi.RouterInfoKey{}, openapi.RouterInfo{
-		MatchedPath:   "/matched/path",
-		RequestedPath: "/requested/path",
-		Method:        "GET",
-	})
-
 	if mongoClient != nil {
 		partialContext = context.WithValue(partialContext, types.MongoClientContextKey{}, mongoClient)
 	}
 
 	partialContext = glogger.WithLogger(partialContext, logrus.NewEntry(logrus.New()))
-
-	// TODO: remove me
-	partialContext = metrics.WithValue(partialContext, metrics.SetupMetrics("test_rond"))
 
 	return partialContext
 }
@@ -346,7 +332,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
-			nil, nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
@@ -385,7 +371,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
-			nil, nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/unknown/path?foo=bar", nil)
@@ -417,7 +403,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{LogLevel: "silent", TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			evaluator,
-			nil, nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
@@ -445,7 +431,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{LogLevel: "silent", TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			evaluator,
-			nil, nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://my-service.com/users/?foo=bar", nil)
@@ -487,7 +473,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
-			mockOPAModule, nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://my-service.com/foo/route-not-registered-explicitly", nil)
@@ -530,7 +516,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
-			mockOPAModule, nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/foo/bar/nested", nil)
