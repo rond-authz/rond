@@ -239,7 +239,7 @@ func createContext(
 	var partialContext context.Context
 	partialContext = context.WithValue(originalCtx, config.EnvKey{}, env)
 
-	partialContext = core.WithEvaluatorSKD(partialContext, evaluator)
+	partialContext = core.WithEvaluatorSDK(partialContext, evaluator)
 
 	if mongoClient != nil {
 		partialContext = context.WithValue(partialContext, types.MongoClientContextKey{}, mongoClient)

@@ -76,7 +76,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req RondInput, use
 
 	rondConfig := e.Config()
 
-	input, err := req.FromRequestInfo(userInfo, nil)
+	input, err := req.Input(userInfo, nil)
 	if err != nil {
 		return PolicyResult{}, err
 	}
@@ -149,7 +149,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput RondInp
 
 	rondConfig := e.Config()
 
-	input, err := rondInput.FromRequestInfo(userInfo, decodedBody)
+	input, err := rondInput.Input(userInfo, decodedBody)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +265,7 @@ func NewSDK(
 
 type sdkKey struct{}
 
-func WithEvaluatorSKD(ctx context.Context, evaluator SDKEvaluator) context.Context {
+func WithEvaluatorSDK(ctx context.Context, evaluator SDKEvaluator) context.Context {
 	return context.WithValue(ctx, sdkKey{}, evaluator)
 }
 

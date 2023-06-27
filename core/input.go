@@ -113,7 +113,7 @@ func CreateRegoQueryInput(
 }
 
 type RondInput interface {
-	FromRequestInfo(user types.User, responseBody any) (Input, error)
+	Input(user types.User, responseBody any) (Input, error)
 }
 
 type requestInfo struct {
@@ -122,7 +122,7 @@ type requestInfo struct {
 	pathParams          map[string]string
 }
 
-func (req requestInfo) FromRequestInfo(user types.User, responseBody any) (Input, error) {
+func (req requestInfo) Input(user types.User, responseBody any) (Input, error) {
 	shouldParseJSONBody := utils.HasApplicationJSONContentType(req.Header) &&
 		req.ContentLength > 0 &&
 		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete)

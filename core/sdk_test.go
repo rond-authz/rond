@@ -647,7 +647,7 @@ func TestContext(t *testing.T) {
 			rondConfig: rondConfig,
 		}
 
-		ctx = WithEvaluatorSKD(ctx, expectedEvaluator)
+		ctx = WithEvaluatorSDK(ctx, expectedEvaluator)
 
 		actualEvaluator, err := GetEvaluatorSKD(ctx)
 		require.NoError(t, err)

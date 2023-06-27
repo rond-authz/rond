@@ -46,14 +46,14 @@ func NewSDKEvaluator(
 	}
 }
 
-func (s SDKEvaluator) EvaluateRequestPolicy(ctx context.Context, req core.RondInput, userInfo types.User) (core.PolicyResult, error) {
+func (s SDKEvaluator) EvaluateRequestPolicy(ctx context.Context, input core.RondInput, userInfo types.User) (core.PolicyResult, error) {
 	if s.requestPolicyEvaluatorResult == nil {
 		return core.PolicyResult{}, nil
 	}
 	return core.PolicyResult{}, s.requestPolicyEvaluatorResult.Err
 }
 
-func (e SDKEvaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.RondInput, userInfo types.User, decodedBody any) ([]byte, error) {
+func (e SDKEvaluator) EvaluateResponsePolicy(ctx context.Context, input core.RondInput, userInfo types.User, decodedBody any) ([]byte, error) {
 	return nil, nil
 }
 
