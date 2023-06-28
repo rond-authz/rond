@@ -609,7 +609,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					require.NotNil(t, actual)
 					delete(actual.Data, "evaluationTimeMicroseconds")
 					require.Equal(t, logrus.Fields{
-						"allowed":       false,
+						"allowed":       true,
 						"requestedPath": testCase.path,
 						"matchedPath":   evaluatorInfo.evaluatorOptions.RouterInfo.MatchedPath,
 						"method":        testCase.method,

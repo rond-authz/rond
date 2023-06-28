@@ -348,7 +348,7 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, erro
 		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                false,
-		"allowed":                    results.Allowed(),
+		"allowed":                    len(results) == 1 && len(results[0].Expressions) == 1,
 		"resultsLength":              len(results),
 		"matchedPath":                evaluator.routerInfo.MatchedPath,
 		"requestedPath":              evaluator.routerInfo.RequestedPath,
