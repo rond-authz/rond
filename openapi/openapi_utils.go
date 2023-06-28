@@ -51,6 +51,12 @@ var (
 
 var ErrNotFoundOASDefinition = errors.New("not found oas definition")
 
+type RouterInfo struct {
+	MatchedPath   string
+	RequestedPath string
+	Method        string
+}
+
 type XPermissionKey struct{}
 
 type PermissionOptions struct {
@@ -144,7 +150,7 @@ func (rMap RoutesMap) contains(path string, method string) bool {
 	return hasRoute
 }
 
-func createOasHandler(scopedMethodContent VerbConfig) func(http.ResponseWriter, *http.Request) {
+func createOasHandler(scopedMethodContent VerbConfig, oasPathCleaned string) func(http.ResponseWriter, *http.Request) {
 	permission := scopedMethodContent.PermissionV2
 	return func(w http.ResponseWriter, r *http.Request) {
 		header := w.Header()
@@ -154,6 +160,7 @@ func createOasHandler(scopedMethodContent VerbConfig) func(http.ResponseWriter, 
 		header.Set("responseFilter.policy", permission.ResponseFlow.PolicyName)
 		header.Set("options.enableResourcePermissionsMapOptimization", strconv.FormatBool(permission.Options.EnableResourcePermissionsMapOptimization))
 		header.Set("options.ignoreTrailingSlash", strconv.FormatBool(permission.Options.IgnoreTrailingSlash))
+		header.Set("pathTemplate", oasPathCleaned)
 	}
 }
 
@@ -167,10 +174,12 @@ func (oas *OpenAPISpec) PrepareOASRouter() (*bunrouter.CompatRouter, error) {
 	}
 
 	for OASPath, OASContent := range oas.Paths {
-		OASPathCleaned := ConvertPathVariablesToColons(cleanWildcard(OASPath))
+		pathWithPathVariablesToColons := ConvertPathVariablesToColons(OASPath)
+		OASPathCleaned := cleanWildcard(pathWithPathVariablesToColons)
+
 		for method, methodContent := range OASContent {
 			scopedMethod := strings.ToUpper(method)
-			handler := createOasHandler(methodContent)
+			handler := createOasHandler(methodContent, pathWithPathVariablesToColons)
 
 			if scopedMethod != strings.ToUpper(AllHTTPMethod) {
 				registerLaxPath(OASRouter, scopedMethod, methodContent, OASPathCleaned, handler)
@@ -202,28 +211,38 @@ func registerLaxPath(OASRouter *bunrouter.CompatRouter, method string, methodCon
 }
 
 // FIXME: This is not a logic method of OAS, but could be a method of OASRouter
-func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path string, method string) (RondConfig, error) {
+func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path string, method string) (RondConfig, RouterInfo, error) {
+	routerInfo := RouterInfo{
+		Method:        method,
+		RequestedPath: path,
+	}
+
 	recorder := httptest.NewRecorder()
 	responseReader := strings.NewReader("request-permissions")
-	request, _ := http.NewRequest(method, path, responseReader)
+	request, err := http.NewRequest(method, path, responseReader)
+	if err != nil {
+		return RondConfig{}, routerInfo, err
+	}
 	OASRouter.ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
-		return RondConfig{}, fmt.Errorf("%w: %s %s", ErrNotFoundOASDefinition, utils.SanitizeString(method), utils.SanitizeString(path))
+		return RondConfig{}, routerInfo, fmt.Errorf("%w: %s %s", ErrNotFoundOASDefinition, utils.SanitizeString(method), utils.SanitizeString(path))
 	}
 
 	recorderResult := recorder.Result()
+	pathTemplate := recorderResult.Header.Get("pathTemplate")
+	routerInfo.MatchedPath = pathTemplate
 	rowFilterEnabled, err := strconv.ParseBool(recorderResult.Header.Get("resourceFilter.rowFilter.enabled"))
 	if err != nil {
-		return RondConfig{}, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
+		return RondConfig{}, routerInfo, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
 	}
 	enableResourcePermissionsMapOptimization, err := strconv.ParseBool(recorderResult.Header.Get("options.enableResourcePermissionsMapOptimization"))
 	if err != nil {
-		return RondConfig{}, fmt.Errorf("error while parsing options.enableResourcePermissionsMapOptimization: %s", err)
+		return RondConfig{}, routerInfo, fmt.Errorf("error while parsing options.enableResourcePermissionsMapOptimization: %s", err)
 	}
 	ignoreTrailingSlash, err := strconv.ParseBool(recorderResult.Header.Get("options.ignoreTrailingSlash"))
 	if err != nil {
-		return RondConfig{}, fmt.Errorf("error while parsing options.ignoreTrailingSlash: %s", err)
+		return RondConfig{}, routerInfo, fmt.Errorf("error while parsing options.ignoreTrailingSlash: %s", err)
 	}
 	return RondConfig{
 		RequestFlow: RequestFlow{
@@ -240,7 +259,7 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 			EnableResourcePermissionsMapOptimization: enableResourcePermissionsMapOptimization,
 			IgnoreTrailingSlash:                      ignoreTrailingSlash,
 		},
-	}, nil
+	}, routerInfo, nil
 }
 
 func newRondConfigFromPermissionV1(v1Permission *XPermission) *RondConfig {

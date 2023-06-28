@@ -291,19 +291,39 @@ func TestFindPermission(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
 		OASRouter, _ := oas.PrepareOASRouter()
 
-		found, err := oas.FindPermission(OASRouter, "/not/existing/route", "GET")
+		found, matchedPath, err := oas.FindPermission(OASRouter, "/not/existing/route", "/invalid-method")
+		require.Empty(t, RondConfig{}, found)
+		require.EqualError(t, err, "net/http: invalid method \"/invalid-method\"")
+		require.Equal(t, RouterInfo{
+			Method:        "/invalid-method",
+			RequestedPath: "/not/existing/route",
+		}, matchedPath)
+
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/not/existing/route", "GET")
 		require.Empty(t, RondConfig{}, found)
 		require.EqualError(t, err, fmt.Sprintf("%s: GET /not/existing/route", ErrNotFoundOASDefinition))
+		require.Equal(t, RouterInfo{
+			Method:        "GET",
+			RequestedPath: "/not/existing/route",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/no/method", "PUT")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/no/method", "PUT")
 		require.Equal(t, RondConfig{}, found)
 		require.EqualError(t, err, fmt.Sprintf("%s: PUT /no/method", ErrNotFoundOASDefinition))
+		require.Equal(t, RouterInfo{
+			Method:        "PUT",
+			RequestedPath: "/no/method",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/use/method/that/not/existing/put", "PUT")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/use/method/that/not/existing/put", "PUT")
 		require.Equal(t, RondConfig{}, found)
 		require.EqualError(t, err, fmt.Sprintf("%s: PUT /use/method/that/not/existing/put", ErrNotFoundOASDefinition))
+		require.Equal(t, RouterInfo{
+			Method:        "PUT",
+			RequestedPath: "/use/method/that/not/existing/put",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/foo/bar/barId", "GET")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/foo/bar/barId", "GET")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{
@@ -314,8 +334,13 @@ func TestFindPermission(t *testing.T) {
 				},
 			},
 		}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/foo/bar/:params",
+			RequestedPath: "/foo/bar/barId",
+			Method:        "GET",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/foo/bar/barId/another-params-not-configured", "GET")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/foo/bar/barId/another-params-not-configured", "GET")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{
@@ -326,12 +351,22 @@ func TestFindPermission(t *testing.T) {
 				},
 			},
 		}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/foo/bar/*",
+			RequestedPath: "/foo/bar/barId/another-params-not-configured",
+			Method:        "GET",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/foo/bar/nested/case/really/nested", "GET")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/foo/bar/nested/case/really/nested", "GET")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "foo_bar_nested_case"}}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/foo/bar/nested/case/*",
+			RequestedPath: "/foo/bar/nested/case/really/nested",
+			Method:        "GET",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/foo/bar/nested", "GET")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/foo/bar/nested", "GET")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{
@@ -342,8 +377,13 @@ func TestFindPermission(t *testing.T) {
 				},
 			},
 		}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/foo/bar/nested",
+			RequestedPath: "/foo/bar/nested",
+			Method:        "GET",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/foo/simble", "PATCH")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/foo/simple", "PATCH")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{
@@ -354,89 +394,173 @@ func TestFindPermission(t *testing.T) {
 				},
 			},
 		}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/foo/*",
+			RequestedPath: "/foo/simple",
+			Method:        "PATCH",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/test/all", "GET")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all", "GET")
 		require.Equal(t, RondConfig{}, found)
 		require.EqualError(t, err, fmt.Sprintf("%s: GET /test/all", ErrNotFoundOASDefinition))
+		require.Equal(t, RouterInfo{
+			Method:        "GET",
+			RequestedPath: "/test/all",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/test/all/", "GET")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/", "GET")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/test/all/*",
+			RequestedPath: "/test/all/",
+			Method:        "GET",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "GET")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/verb", "GET")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/test/all/*",
+			RequestedPath: "/test/all/verb",
+			Method:        "GET",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "POST")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/verb", "POST")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_post"}}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/test/all/*",
+			RequestedPath: "/test/all/verb",
+			Method:        "POST",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "PUT")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/verb", "PUT")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/test/all/*",
+			RequestedPath: "/test/all/verb",
+			Method:        "PUT",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "PATCH")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/verb", "PATCH")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/test/all/*",
+			RequestedPath: "/test/all/verb",
+			Method:        "PATCH",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "DELETE")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/verb", "DELETE")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/test/all/*",
+			RequestedPath: "/test/all/verb",
+			Method:        "DELETE",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/test/all/verb", "HEAD")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/verb", "HEAD")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/test/all/*",
+			RequestedPath: "/test/all/verb",
+			Method:        "HEAD",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/projects/", "POST")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/projects/", "POST")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_all"}}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/projects/",
+			RequestedPath: "/projects/",
+			Method:        "POST",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/projects/", "GET")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/projects/", "GET")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_get"}}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/projects/",
+			RequestedPath: "/projects/",
+			Method:        "GET",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/with/trailing/slash/", "GET")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/with/trailing/slash/", "GET")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow:  RequestFlow{PolicyName: "foo_bar"},
 			ResponseFlow: ResponseFlow{PolicyName: "original_path"},
 			Options:      PermissionOptions{IgnoreTrailingSlash: true},
 		}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/with/trailing/slash/",
+			RequestedPath: "/with/trailing/slash/",
+			Method:        "GET",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/with/trailing/slash", "GET")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/with/trailing/slash", "GET")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow:  RequestFlow{PolicyName: "foo_bar"},
 			ResponseFlow: ResponseFlow{PolicyName: "original_path"},
 			Options:      PermissionOptions{IgnoreTrailingSlash: true},
 		}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/with/trailing/slash/",
+			RequestedPath: "/with/trailing/slash",
+			Method:        "GET",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/without/trailing/slash", "POST")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/without/trailing/slash", "POST")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{PolicyName: "foo_bar"},
 			Options:     PermissionOptions{IgnoreTrailingSlash: true},
 		}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/without/trailing/slash",
+			RequestedPath: "/without/trailing/slash",
+			Method:        "POST",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/without/trailing/slash/", "POST")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/without/trailing/slash/", "POST")
 		require.NoError(t, err)
 		require.Equal(t, RondConfig{
 			RequestFlow: RequestFlow{PolicyName: "foo_bar"},
 			Options:     PermissionOptions{IgnoreTrailingSlash: true},
 		}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/without/trailing/slash",
+			RequestedPath: "/without/trailing/slash/",
+			Method:        "POST",
+		}, matchedPath)
 	})
 
 	t.Run("encoded cases", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/mockForEncodedTest.json")
 		OASRouter, _ := oas.PrepareOASRouter()
 
-		found, err := oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%252Fcms-backend%252FcmsProperties.json", "POST")
+		found, matchedPath, err := oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%252Fcms-backend%252FcmsProperties.json", "POST")
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "allow_commit"}}, found)
 		require.NoError(t, err)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/api/backend/projects/:projectId/branches/:branchName/files/:filePath",
+			Method:        "POST",
+			RequestedPath: "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%252Fcms-backend%252FcmsProperties.json",
+		}, matchedPath)
 
-		found, err = oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%2Fcms-backend%2FcmsProperties.json", "POST")
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%2Fcms-backend%2FcmsProperties.json", "POST")
 		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "allow_commit"}}, found)
 		require.NoError(t, err)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/api/backend/projects/:projectId/branches/:branchName/files/:filePath",
+			Method:        "POST",
+			RequestedPath: "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%2Fcms-backend%2FcmsProperties.json",
+		}, matchedPath)
 	})
 }
 

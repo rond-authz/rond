@@ -61,6 +61,9 @@ func (mongoClient MongoClientMock) RetrieveUserRolesByRolesID(ctx context.Contex
 }
 
 func (mongoClient MongoClientMock) FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error) {
+	if mongoClient.FindOneExpectation == nil {
+		panic("FindOneExpectation is required")
+	}
 	mongoClient.FindOneExpectation(collectionName, query)
 	if mongoClient.FindOneError != nil {
 		return nil, mongoClient.FindOneError
@@ -70,6 +73,9 @@ func (mongoClient MongoClientMock) FindOne(ctx context.Context, collectionName s
 }
 
 func (mongoClient MongoClientMock) FindMany(ctx context.Context, collectionName string, query map[string]interface{}) ([]interface{}, error) {
+	if mongoClient.FindManyExpectation == nil {
+		panic("FindManyExpectation is required")
+	}
 	mongoClient.FindManyExpectation(collectionName, query)
 	if mongoClient.FindManyError != nil {
 		return nil, mongoClient.FindManyError

@@ -99,8 +99,9 @@ func entrypoint(shutdown chan os.Signal) {
 	)
 
 	registry := prometheus.NewRegistry()
-	sdk, err := core.NewSDK(ctx, logrus.NewEntry(log), mongoClient, oas, opaModuleConfig, &core.EvaluatorOptions{
+	sdk, err := core.NewSDK(ctx, logrus.NewEntry(log), oas, opaModuleConfig, &core.EvaluatorOptions{
 		EnablePrintStatements: env.IsTraceLogLevel(),
+		MongoClient:           mongoClient,
 	}, registry, env.ClientTypeHeader)
 	if err != nil {
 		log.WithFields(logrus.Fields{

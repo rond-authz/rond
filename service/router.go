@@ -111,7 +111,6 @@ func SetupRouter(
 	StatusRoutes(router, serviceName, env.ServiceVersion)
 
 	metrics.MetricsRoute(router, registry)
-	router.Use(metrics.RequestMiddleware(sdk.Metrics()))
 
 	router.Use(config.RequestMiddlewareEnvironments(env))
 

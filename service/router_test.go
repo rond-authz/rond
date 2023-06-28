@@ -24,10 +24,10 @@ import (
 	"testing"
 
 	"github.com/mia-platform/glogger/v2"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/fake"
-	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
@@ -232,7 +232,6 @@ func createContext(
 	originalCtx context.Context,
 	env config.EnvironmentVariables,
 	evaluator core.SDKEvaluator,
-	opaModuleConfig *core.OPAModuleConfig,
 	mongoClient *mocks.MongoClientMock,
 ) context.Context {
 	t.Helper()
@@ -240,25 +239,13 @@ func createContext(
 	var partialContext context.Context
 	partialContext = context.WithValue(originalCtx, config.EnvKey{}, env)
 
-	partialContext = core.WithEvaluatorSKD(partialContext, evaluator)
-
-	// TODO: remove me
-	partialContext = context.WithValue(partialContext, core.OPAModuleConfigKey{}, opaModuleConfig)
-	// TODO: remove me
-	partialContext = context.WithValue(partialContext, openapi.RouterInfoKey{}, openapi.RouterInfo{
-		MatchedPath:   "/matched/path",
-		RequestedPath: "/requested/path",
-		Method:        "GET",
-	})
+	partialContext = core.WithEvaluatorSDK(partialContext, evaluator)
 
 	if mongoClient != nil {
 		partialContext = context.WithValue(partialContext, types.MongoClientContextKey{}, mongoClient)
 	}
 
 	partialContext = glogger.WithLogger(partialContext, logrus.NewEntry(logrus.New()))
-
-	// TODO: remove me
-	partialContext = metrics.WithValue(partialContext, metrics.SetupMetrics("test_rond"))
 
 	return partialContext
 }
@@ -270,6 +257,11 @@ todo { true }`,
 }
 var mockXPermission = openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}
 
+type evaluatorParams struct {
+	logger   *logrus.Entry
+	registry *prometheus.Registry
+}
+
 func getEvaluator(
 	t *testing.T,
 	ctx context.Context,
@@ -277,25 +269,38 @@ func getEvaluator(
 	mongoClient *mocks.MongoClientMock,
 	rondConfig openapi.RondConfig,
 	oas *openapi.OpenAPISpec,
+	method, path string,
+	options *evaluatorParams,
 ) core.SDKEvaluator {
 	t.Helper()
 
-	log, _ := test.NewNullLogger()
-	logger := logrus.NewEntry(log)
+	if options == nil {
+		options = &evaluatorParams{}
+	}
+
+	logger := options.logger
+	if logger == nil {
+		log, _ := test.NewNullLogger()
+		logger = logrus.NewEntry(log)
+	}
 
 	sdk, err := core.NewSDK(
 		ctx,
 		logger,
-		mongoClient,
 		oas,
 		opaModule,
-		&core.EvaluatorOptions{},
-		nil,
+		&core.EvaluatorOptions{
+			MongoClient: mongoClient,
+		},
+		options.registry,
 		"",
 	)
 	require.NoError(t, err)
 
-	return sdk.EvaluatorFromConfig(logger, rondConfig)
+	evaluator, err := sdk.FindEvaluator(logger, method, path)
+	require.NoError(t, err)
+
+	return evaluator
 }
 
 func TestSetupRoutesIntegration(t *testing.T) {
@@ -321,13 +326,13 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas)
+		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/users/", nil)
 
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
-			nil, nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
@@ -358,13 +363,15 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		router := mux.NewRouter()
 		setupRoutes(router, oas, envs)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas)
+		eval, err := core.SetupEvaluators(ctx, logger, oas, mockOPAModule, nil)
+		require.NoError(t, err)
+		evaluator := fake.NewSDKEvaluator(eval, mockXPermission, nil)
 
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
-			nil, nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/unknown/path?foo=bar", nil)
@@ -390,13 +397,13 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		router := mux.NewRouter()
 		setupRoutes(router, oas, envs)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas)
+		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/users/", nil)
 
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{LogLevel: "silent", TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			evaluator,
-			nil, nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
@@ -424,7 +431,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{LogLevel: "silent", TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			evaluator,
-			nil, nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://my-service.com/users/?foo=bar", nil)
@@ -437,7 +444,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		w := httptest.NewRecorder()
 		matchedRouted.Handler.ServeHTTP(w, req)
 
-		require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+		require.Equal(t, http.StatusForbidden, w.Result().StatusCode)
 	})
 
 	t.Run("invokes the API not explicitly set in the oas file", func(t *testing.T) {
@@ -461,12 +468,12 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, rondConfig, oas)
+		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, rondConfig, oas, http.MethodGet, "/foo/route-not-registered-explicitly", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
-			nil, nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://my-service.com/foo/route-not-registered-explicitly", nil)
@@ -489,7 +496,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		var mockOPAModule = &core.OPAModuleConfig{
 			Name: "example.rego",
 			Content: `package policies
-		foo { true }`,
+		foo_bar_nested { true }`,
 		}
 
 		var invoked bool
@@ -504,12 +511,12 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, rondConfig, oas)
+		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, rondConfig, oas, http.MethodGet, "/foo/bar/nested", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
-			nil, nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/foo/bar/nested", nil)

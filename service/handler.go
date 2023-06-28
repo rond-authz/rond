@@ -15,7 +15,6 @@
 package service
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httputil"
@@ -44,10 +43,8 @@ func ReverseProxyOrResponse(
 	evaluatorSdk core.SDKEvaluator,
 ) {
 	var permission openapi.RondConfig
-	var partialResultsEvaluators core.PartialResultsEvaluators
 	if evaluatorSdk != nil {
 		permission = evaluatorSdk.Config()
-		partialResultsEvaluators = evaluatorSdk.PartialResultsEvaluators()
 	}
 
 	if env.Standalone {
@@ -65,7 +62,7 @@ func ReverseProxyOrResponse(
 		}
 		return
 	}
-	ReverseProxy(logger, env, w, req, &permission, partialResultsEvaluators)
+	ReverseProxy(logger, env, w, req, &permission, evaluatorSdk)
 }
 
 func rbacHandler(w http.ResponseWriter, req *http.Request) {
@@ -102,7 +99,6 @@ func EvaluateRequest(
 	logger := glogger.Get(requestContext)
 
 	permission := evaluatorSdk.Config()
-	partialResultsEvaluators := evaluatorSdk.PartialResultsEvaluators()
 
 	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(logger, req, types.UserHeadersKeys{
 		IDHeaderKey:         env.UserIdHeader,
@@ -115,43 +111,8 @@ func EvaluateRequest(
 		return err
 	}
 
-	pathParams := mux.Vars(req)
-	input, err := core.InputFromRequest(req, userInfo, env.ClientTypeHeader, pathParams, nil)
-	if err != nil {
-		return err
-	}
-
-	regoInput, err := core.CreateRegoQueryInput(logger, input, core.RegoInputOptions{
-		EnableResourcePermissionsMapOptimization: permission.Options.EnableResourcePermissionsMapOptimization,
-	})
-	if err != nil {
-		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed rego query input creation")
-		utils.FailResponseWithCode(w, http.StatusInternalServerError, "RBAC input creation failed", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
-		return err
-	}
-
-	evaluatorOptions := &core.EvaluatorOptions{
-		EnablePrintStatements: env.IsTraceLogLevel(),
-	}
-
-	var evaluatorAllowPolicy *core.OPAEvaluator
-	if !permission.RequestFlow.GenerateQuery {
-		evaluatorAllowPolicy, err = partialResultsEvaluators.GetEvaluatorFromPolicy(requestContext, permission.RequestFlow.PolicyName, regoInput, evaluatorOptions)
-		if err != nil {
-			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("cannot find policy evaluator")
-			utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed partial evaluator retrieval", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
-			return err
-		}
-	} else {
-		evaluatorAllowPolicy, err = core.CreateQueryEvaluator(requestContext, logger, req, permission.RequestFlow.PolicyName, regoInput, nil, evaluatorOptions)
-		if err != nil {
-			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("cannot create evaluator")
-			utils.FailResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluator creation failed", utils.NO_PERMISSIONS_ERROR_MESSAGE)
-			return err
-		}
-	}
-
-	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(logger, &permission)
+	rondInput := core.NewRondInput(req, env.ClientTypeHeader, mux.Vars(req))
+	result, err := evaluatorSdk.EvaluateRequestPolicy(req.Context(), rondInput, userInfo)
 	if err != nil {
 		if errors.Is(err, opatranslator.ErrEmptyQuery) && utils.HasApplicationJSONContentType(req.Header) {
 			w.Header().Set(utils.ContentTypeHeaderKey, utils.JSONContentTypeHeader)
@@ -164,28 +125,18 @@ func EvaluateRequest(
 		}
 
 		logger.WithField("error", logrus.Fields{
-			"policyName": permission.RequestFlow.PolicyName,
-			"message":    err.Error(),
+			"message": err.Error(),
 		}).Error("RBAC policy evaluation failed")
 		utils.FailResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed", utils.NO_PERMISSIONS_ERROR_MESSAGE)
 		return err
-	}
-	var queryToProxy = []byte{}
-	if query != nil {
-		queryToProxy, err = json.Marshal(query)
-		if err != nil {
-			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("Error while marshaling row filter query")
-			utils.FailResponseWithCode(w, http.StatusForbidden, "Error while marshaling row filter query", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
-			return err
-		}
 	}
 
 	queryHeaderKey := BASE_ROW_FILTER_HEADER_KEY
 	if permission.RequestFlow.QueryOptions.HeaderName != "" {
 		queryHeaderKey = permission.RequestFlow.QueryOptions.HeaderName
 	}
-	if query != nil {
-		req.Header.Set(queryHeaderKey, string(queryToProxy))
+	if result.QueryToProxy != nil {
+		req.Header.Set(queryHeaderKey, string(result.QueryToProxy))
 	}
 	return nil
 }
@@ -196,7 +147,7 @@ func ReverseProxy(
 	w http.ResponseWriter,
 	req *http.Request,
 	permission *openapi.RondConfig,
-	partialResultsEvaluators core.PartialResultsEvaluators,
+	evaluatorSdk core.SDKEvaluator,
 ) {
 	targetHostFromEnv := env.TargetServiceHost
 	proxy := httputil.ReverseProxy{
@@ -211,10 +162,6 @@ func ReverseProxy(
 		},
 	}
 
-	options := &core.EvaluatorOptions{
-		EnablePrintStatements: env.IsTraceLogLevel(),
-	}
-
 	// Check on nil is performed to proxy the oas documentation path
 	if permission == nil || permission.ResponseFlow.PolicyName == "" {
 		proxy.ServeHTTP(w, req)
@@ -225,8 +172,6 @@ func ReverseProxy(
 		req.Context(),
 		logger,
 		req,
-		permission,
-		partialResultsEvaluators,
 
 		env.ClientTypeHeader,
 		types.UserHeadersKeys{
@@ -234,7 +179,7 @@ func ReverseProxy(
 			GroupsHeaderKey:     env.UserGroupsHeader,
 			PropertiesHeaderKey: env.UserPropertiesHeader,
 		},
-		options,
+		evaluatorSdk,
 	)
 	proxy.ServeHTTP(w, req)
 }

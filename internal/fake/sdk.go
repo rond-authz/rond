@@ -15,7 +15,7 @@
 package fake
 
 import (
-	"net/http"
+	"context"
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/openapi"
@@ -46,17 +46,17 @@ func NewSDKEvaluator(
 	}
 }
 
-func (s SDKEvaluator) EvaluateRequestPolicy(req *http.Request, userInfo types.User, permission *openapi.RondConfig) (core.PolicyResult, error) {
+func (s SDKEvaluator) EvaluateRequestPolicy(ctx context.Context, input core.RondInput, userInfo types.User) (core.PolicyResult, error) {
 	if s.requestPolicyEvaluatorResult == nil {
 		return core.PolicyResult{}, nil
 	}
 	return core.PolicyResult{}, s.requestPolicyEvaluatorResult.Err
 }
 
-func (s SDKEvaluator) Config() openapi.RondConfig {
-	return s.permission
+func (e SDKEvaluator) EvaluateResponsePolicy(ctx context.Context, input core.RondInput, userInfo types.User, decodedBody any) ([]byte, error) {
+	return nil, nil
 }
 
-func (s SDKEvaluator) PartialResultsEvaluators() core.PartialResultsEvaluators {
-	return s.partialEvaluator
+func (s SDKEvaluator) Config() openapi.RondConfig {
+	return s.permission
 }
