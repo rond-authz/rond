@@ -756,6 +756,7 @@ allow {
 					"partialEval":   false,
 					"policyName":    "todo",
 					"requestedPath": "/api",
+					"resultsLength": 1,
 				}, actualLog[0].Data)
 			})
 

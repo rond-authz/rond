@@ -100,35 +100,30 @@ func TestSDK(t *testing.T) {
 		t.Run("throws if path and method not found", func(t *testing.T) {
 			actual, err := sdk.FindEvaluator(logger, http.MethodGet, "/not-existent/path")
 			require.ErrorContains(t, err, "not found oas definition: GET /not-existent/path")
-			require.Equal(t, evaluator{
-				rondConfig: openapi.RondConfig{},
-				logger:     logger,
-				rond:       rond,
-
-				routeInfo: openapi.RouterInfo{
-					RequestedPath: "/not-existent/path",
-					Method:        "GET",
-				},
-			}, actual)
+			require.Nil(t, actual)
 		})
 
 		t.Run("returns correct evaluator", func(t *testing.T) {
 			actual, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
 			require.NoError(t, err)
+			evaluatorOptions := &EvaluatorOptions{
+				Metrics: rond.evaluatorOptions.Metrics,
+				RouterInfo: openapi.RouterInfo{
+					MatchedPath:   "/users/",
+					RequestedPath: "/users/",
+					Method:        http.MethodGet,
+				},
+			}
 			require.Equal(t, evaluator{
 				rondConfig: openapi.RondConfig{
 					RequestFlow: openapi.RequestFlow{
 						PolicyName: "todo",
 					},
 				},
-				logger: logger,
-				rond:   rond,
-
-				routeInfo: openapi.RouterInfo{
-					RequestedPath: "/users/",
-					Method:        "GET",
-					MatchedPath:   "/users/",
-				},
+				opaModuleConfig:         opaModule,
+				partialResultEvaluators: rond.partialResultEvaluators,
+				logger:                  logger,
+				evaluatorOptions:        evaluatorOptions,
 			}, actual)
 
 			t.Run("get permissions", func(t *testing.T) {
@@ -418,14 +413,26 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 
 					require.NotNil(t, actual)
 					delete(actualEntry.Data, "evaluationTimeMicroseconds")
-					require.Equal(t, logrus.Fields{
+
+					resultLength := 1
+					if !actual.Allowed {
+						resultLength = 0
+					}
+
+					fields := logrus.Fields{
 						"allowed":       actual.Allowed,
 						"requestedPath": testCase.path,
-						"matchedPath":   evaluatorInfo.routeInfo.MatchedPath,
+						"matchedPath":   evaluatorInfo.evaluatorOptions.RouterInfo.MatchedPath,
 						"method":        testCase.method,
 						"partialEval":   evaluate.Config().RequestFlow.GenerateQuery,
 						"policyName":    evaluate.Config().RequestFlow.PolicyName,
-					}, actualEntry.Data)
+					}
+
+					if !evaluate.Config().RequestFlow.GenerateQuery {
+						fields["resultsLength"] = resultLength
+					}
+
+					require.Equal(t, fields, actualEntry.Data)
 				})
 
 				t.Run("metrics", func(t *testing.T) {
@@ -596,12 +603,13 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					require.NotNil(t, actual)
 					delete(actual.Data, "evaluationTimeMicroseconds")
 					require.Equal(t, logrus.Fields{
-						"allowed":       true,
+						"allowed":       false,
 						"requestedPath": testCase.path,
-						"matchedPath":   evaluatorInfo.routeInfo.MatchedPath,
+						"matchedPath":   evaluatorInfo.evaluatorOptions.RouterInfo.MatchedPath,
 						"method":        testCase.method,
 						"partialEval":   false,
 						"policyName":    evaluate.Config().ResponseFlow.PolicyName,
+						"resultsLength": 1,
 					}, actual.Data)
 				})
 
