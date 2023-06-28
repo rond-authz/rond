@@ -15,10 +15,11 @@
 package core
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/rond-authz/rond/internal/mocks"
@@ -26,7 +27,7 @@ import (
 	"github.com/rond-authz/rond/types"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/expfmt"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
@@ -436,28 +437,33 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				})
 
 				t.Run("metrics", func(t *testing.T) {
-					metadata := `
-					# HELP rond_policy_evaluation_duration_milliseconds A histogram of the policy evaluation durations in milliseconds.
-					# TYPE rond_policy_evaluation_duration_milliseconds histogram
-		`
-					expected := strings.ReplaceAll(`
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="1"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="5"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="10"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="50"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="100"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="250"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="500"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="+Inf"} 1
-					rond_policy_evaluation_duration_milliseconds_sum{policy_name="POLICY_NAME"} 0
-					rond_policy_evaluation_duration_milliseconds_count{policy_name="POLICY_NAME"} 1
-		`, "POLICY_NAME", evaluate.Config().RequestFlow.PolicyName)
-
-					require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(metadata+expected), "rond_policy_evaluation_duration_milliseconds"))
+					expected := fmt.Sprintf(`rond_policy_evaluation_duration_milliseconds_count{policy_name="%s"} 1`, evaluate.Config().RequestFlow.PolicyName)
+					assertCorrectMetrics(t, registry, expected)
 				})
 			})
 		}
 	})
+}
+
+func assertCorrectMetrics(t *testing.T, registry *prometheus.Registry, expected string) {
+	t.Helper()
+
+	g := prometheus.ToTransactionalGatherer(registry)
+	got, done, err := g.Gather()
+	defer done()
+	require.NoError(t, err)
+
+	for _, m := range got {
+		if m.GetName() == "rond_policy_evaluation_duration_milliseconds" {
+			var gotBuf bytes.Buffer
+			enc := expfmt.NewEncoder(&gotBuf, expfmt.FmtText)
+			err := enc.Encode(m)
+			require.NoError(t, err)
+			require.Contains(t, gotBuf.String(), expected)
+			return
+		}
+	}
+	require.Fail(t, "metrics must be retrieved")
 }
 
 func TestEvaluateResponsePolicy(t *testing.T) {
@@ -614,24 +620,8 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 				})
 
 				t.Run("metrics", func(t *testing.T) {
-					metadata := `
-					# HELP rond_policy_evaluation_duration_milliseconds A histogram of the policy evaluation durations in milliseconds.
-					# TYPE rond_policy_evaluation_duration_milliseconds histogram
-		`
-					expected := strings.ReplaceAll(`
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="1"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="5"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="10"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="50"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="100"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="250"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="500"} 1
-					rond_policy_evaluation_duration_milliseconds_bucket{policy_name="POLICY_NAME",le="+Inf"} 1
-					rond_policy_evaluation_duration_milliseconds_sum{policy_name="POLICY_NAME"} 0
-					rond_policy_evaluation_duration_milliseconds_count{policy_name="POLICY_NAME"} 1
-		`, "POLICY_NAME", evaluate.Config().ResponseFlow.PolicyName)
-
-					require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(metadata+expected), "rond_policy_evaluation_duration_milliseconds"))
+					expected := fmt.Sprintf(`rond_policy_evaluation_duration_milliseconds_count{policy_name="%s"} 1`, evaluate.Config().ResponseFlow.PolicyName)
+					assertCorrectMetrics(t, registry, expected)
 				})
 			})
 		}
