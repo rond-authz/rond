@@ -449,10 +449,15 @@ func LoadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 	}, nil
 }
 
-// verifyAllowed replicates the ResultSet.Allowed function with a sligth difference
-// since we allow for non boolean return values we use the type assertion to understand
-// whether the returned value is an actual boolean and use it, otherwise we assume this
-// is a custom payload for a response policy and return true regardless.
+// verifyAllowed replicates the ResultSet.Allowed function with some slight differences.
+// Since we allow for non boolean return values we use the type assertion to understand
+// whether the returned value is an actual boolean and use it, otherwise we verify the
+// returned value is at least a set containing something, if that's the case we assume
+// this is a custom payload for a response policy and return true regardless.
+//
+// NOTE: do not rely on this function for decision-making conditions; use it only for
+// debugging and informative logging!
+//
 // cfr: https://pkg.go.dev/github.com/open-policy-agent/opa/rego#ResultSet.Allowed
 func verifyAllowed(rs rego.ResultSet) bool {
 	if len(rs) == 1 && len(rs[0].Bindings) == 0 {
