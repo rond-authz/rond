@@ -44,8 +44,8 @@ type SDK interface {
 type SDKEvaluator interface {
 	Config() openapi.RondConfig
 
-	EvaluateRequestPolicy(ctx context.Context, req RondInput, userInfo types.User) (PolicyResult, error)
-	EvaluateResponsePolicy(ctx context.Context, rondInput RondInput, userInfo types.User, decodedBody any) ([]byte, error)
+	EvaluateRequestPolicy(ctx context.Context, input RondInput, userInfo types.User) (PolicyResult, error)
+	EvaluateResponsePolicy(ctx context.Context, input RondInput, userInfo types.User, decodedBody any) ([]byte, error)
 }
 
 type evaluator struct {
