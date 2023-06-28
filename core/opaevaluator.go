@@ -348,7 +348,7 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, erro
 		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                false,
-		"allowed":                    len(results) == 1 && len(results[0].Expressions) == 1,
+		"allowed":                    verifyAllowed(results),
 		"resultsLength":              len(results),
 		"matchedPath":                evaluator.routerInfo.MatchedPath,
 		"requestedPath":              evaluator.routerInfo.RequestedPath,
@@ -443,4 +443,21 @@ func LoadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 		Name:    filepath.Base(regoModulePath),
 		Content: string(fileContent),
 	}, nil
+}
+
+// verifyAllowed replicates the ResultSet.Allowed function with a sligth difference
+// since we allow for non boolean return values we use the type assertion to understand
+// whether the returned value is an actual boolean and use it, otherwise we assume this
+// is a custom payload for a response policy and return true regardless.
+// cfr: https://pkg.go.dev/github.com/open-policy-agent/opa/rego#ResultSet.Allowed
+func verifyAllowed(rs rego.ResultSet) bool {
+	if len(rs) == 1 && len(rs[0].Bindings) == 0 {
+		if exprs := rs[0].Expressions; len(exprs) == 1 {
+			if b, ok := exprs[0].Value.(bool); ok {
+				return b
+			}
+			return true
+		}
+	}
+	return false
 }
