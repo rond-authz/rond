@@ -493,6 +493,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 		expectedBody       string
 		expectedErr        bool
 		expectedErrMessage string
+		notAllowed         bool
 	}
 
 	t.Run("evaluate response", func(t *testing.T) {
@@ -526,6 +527,20 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 				decodedBody: map[string]interface{}{"foo": "bar", "f1": "b1"},
 
 				expectedBody: `{"f1":"censored","foo":"bar"}`,
+			},
+			"with policy failure": {
+				method: http.MethodGet,
+				path:   "/users/",
+				opaModuleContent: `
+				package policies
+				responsepolicy [body] {
+					false
+					body := input.response.body
+				}`,
+				expectedErr:        true,
+				expectedErrMessage: "RBAC policy evaluation failed, user is not allowed",
+				expectedBody:       "",
+				notAllowed:         true,
 			},
 			"with mongo query and body changed": {
 				method: http.MethodGet,
@@ -595,7 +610,12 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 				} else {
 					require.NoError(t, err)
 				}
-				require.JSONEq(t, testCase.expectedBody, string(actual))
+
+				if testCase.expectedBody == "" {
+					require.Equal(t, testCase.expectedBody, string(actual))
+				} else {
+					require.JSONEq(t, testCase.expectedBody, string(actual))
+				}
 
 				t.Run("logger", func(t *testing.T) {
 					var actual *logrus.Entry
@@ -609,7 +629,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					require.NotNil(t, actual)
 					delete(actual.Data, "evaluationTimeMicroseconds")
 					require.Equal(t, logrus.Fields{
-						"allowed":       true,
+						"allowed":       !testCase.notAllowed,
 						"requestedPath": testCase.path,
 						"matchedPath":   evaluatorInfo.evaluatorOptions.RouterInfo.MatchedPath,
 						"method":        testCase.method,

@@ -344,17 +344,21 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, erro
 		"policy_name": evaluator.PolicyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
+	laxAllowed := verifyAllowed(results)
+	fmt.Printf("AAAAA %t %t %+v\n\n", laxAllowed, results.Allowed(), results)
+
 	logger.WithFields(logrus.Fields{
 		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                false,
-		"allowed":                    verifyAllowed(results),
+		"allowed":                    laxAllowed,
 		"resultsLength":              len(results),
 		"matchedPath":                evaluator.routerInfo.MatchedPath,
 		"requestedPath":              evaluator.routerInfo.RequestedPath,
 		"method":                     evaluator.routerInfo.Method,
 	}).Debug("policy evaluation completed")
 
+	// Use strict allowed check for basic request flow allow policies.
 	if results.Allowed() {
 		logger.WithFields(logrus.Fields{
 			"policyName":    evaluator.PolicyName,
@@ -363,6 +367,8 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, erro
 		}).Tracef("policy results")
 		return nil, nil
 	}
+
+	// Here extract first result set to get the response body for the response policy evaluation.
 	// The results returned by OPA are a list of Results object with fields:
 	// - Expressions: list of list
 	// - Bindings: object
@@ -375,6 +381,7 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, erro
 			}
 		}
 	}
+
 	logger.WithFields(logrus.Fields{
 		"policyName": evaluator.PolicyName,
 	}).Error("policy resulted in not allowed")
@@ -453,8 +460,15 @@ func LoadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 func verifyAllowed(rs rego.ResultSet) bool {
 	if len(rs) == 1 && len(rs[0].Bindings) == 0 {
 		if exprs := rs[0].Expressions; len(exprs) == 1 {
+			// Check if there is a single boolean expression.
 			if b, ok := exprs[0].Value.(bool); ok {
 				return b
+			}
+
+			// Check if there is at least a value in the returned set,
+			// if an empty set is returned the policy must have failed.
+			if expressionList, isExpressionList := exprs[0].Value.([]interface{}); len(expressionList) == 0 || !isExpressionList {
+				return false
 			}
 			return true
 		}
