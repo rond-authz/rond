@@ -344,14 +344,11 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, erro
 		"policy_name": evaluator.PolicyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
-	laxAllowed := verifyAllowed(results)
-	fmt.Printf("AAAAA %t %t %+v\n\n", laxAllowed, results.Allowed(), results)
-
 	logger.WithFields(logrus.Fields{
 		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                false,
-		"allowed":                    laxAllowed,
+		"allowed":                    verifyAllowed(results),
 		"resultsLength":              len(results),
 		"matchedPath":                evaluator.routerInfo.MatchedPath,
 		"requestedPath":              evaluator.routerInfo.RequestedPath,
