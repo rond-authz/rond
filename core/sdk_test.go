@@ -141,8 +141,6 @@ func TestSDK(t *testing.T) {
 func TestEvaluateRequestPolicy(t *testing.T) {
 	logger := logrus.NewEntry(logrus.New())
 
-	clientTypeHeaderKey := "client-header-key"
-
 	t.Run("throws without RondInput", func(t *testing.T) {
 		sdk := getSdk(t, nil)
 		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
@@ -387,13 +385,17 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				evaluate, err := sdk.FindEvaluator(logger, testCase.method, testCase.path)
 				require.NoError(t, err)
 
-				req := httptest.NewRequest(testCase.method, testCase.path, nil)
+				headers := http.Header{}
 				if testCase.reqHeaders != nil {
 					for k, v := range testCase.reqHeaders {
-						req.Header.Set(k, v)
+						headers.Set(k, v)
 					}
 				}
-				rondInput := NewRondInput(req, clientTypeHeaderKey, nil)
+				rondInput := getFakeInput(t, InputRequest{
+					Headers: headers,
+					Path:    testCase.path,
+					Method:  testCase.method,
+				}, "")
 
 				actual, err := evaluate.EvaluateRequestPolicy(context.Background(), rondInput, testCase.user)
 				if testCase.expectedErr {
@@ -468,8 +470,6 @@ func assertCorrectMetrics(t *testing.T, registry *prometheus.Registry, expected 
 
 func TestEvaluateResponsePolicy(t *testing.T) {
 	logger := logrus.NewEntry(logrus.New())
-
-	clientTypeHeaderKey := "client-header-key"
 
 	t.Run("throws without RondInput", func(t *testing.T) {
 		sdk := getSdk(t, nil)
@@ -587,7 +587,17 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 						req.Header.Set(k, v)
 					}
 				}
-				rondInput := NewRondInput(req, clientTypeHeaderKey, nil)
+				headers := http.Header{}
+				if testCase.reqHeaders != nil {
+					for k, v := range testCase.reqHeaders {
+						headers.Set(k, v)
+					}
+				}
+				rondInput := getFakeInput(t, InputRequest{
+					Headers: headers,
+					Path:    testCase.path,
+					Method:  testCase.method,
+				}, "")
 
 				actual, err := evaluate.EvaluateResponsePolicy(context.Background(), rondInput, testCase.user, testCase.decodedBody)
 				if testCase.expectedErr {
@@ -677,12 +687,18 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		b.StopTimer()
-		req := httptest.NewRequest(http.MethodGet, "/projects/project123", nil)
-		req.Header.Set("my-header", "value")
+		headers := http.Header{}
+		headers.Set("my-header", "value")
 		recorder := httptest.NewRecorder()
-		rondInput := NewRondInput(req, "", map[string]string{
-			"projectId": "project123",
-		})
+
+		rondInput := getFakeInput(b, InputRequest{
+			Path:    "/projects/project123",
+			Headers: headers,
+			Method:  http.MethodGet,
+			PathParams: map[string]string{
+				"projectId": "project123",
+			},
+		}, "")
 		b.StartTimer()
 		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/projects/project123")
 		require.NoError(b, err)

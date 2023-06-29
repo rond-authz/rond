@@ -15,14 +15,9 @@
 package core
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/sirupsen/logrus"
@@ -247,78 +242,34 @@ func BenchmarkBuildOptimizedResourcePermissionsMap(b *testing.B) {
 	}
 }
 
-func TestRondInput(t *testing.T) {
-	user := types.User{}
-	clientTypeHeaderKey := "clienttypeheader"
-	pathParams := map[string]string{}
+type FakeInput struct {
+	request    InputRequest
+	clientType string
+}
 
-	t.Run("request body integration", func(t *testing.T) {
-		expectedRequestBody := map[string]interface{}{
-			"Key": float64(42),
-		}
-		reqBody := struct{ Key int }{
-			Key: 42,
-		}
-		reqBodyBytes, err := json.Marshal(reqBody)
-		require.Nil(t, err, "Unexpected error")
+func (i FakeInput) Input(user types.User, responseBody any) (Input, error) {
+	return Input{
+		User: InputUser{
+			Properties: user.Properties,
+			Groups:     user.UserGroups,
+			Bindings:   user.UserBindings,
+			Roles:      user.UserRoles,
+		},
+		Request: i.request,
+		Response: InputResponse{
+			Body: responseBody,
+		},
+		ClientType: i.clientType,
+	}, nil
+}
 
-		t.Run("ignored on method GET", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/", bytes.NewReader(reqBodyBytes))
+func getFakeInput(t require.TestingT, request InputRequest, clientType string) RondInput {
+	if h, ok := t.(tHelper); ok {
+		h.Helper()
+	}
 
-			rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
-			input, err := rondRequest.Input(user, nil)
-			require.NoError(t, err, "Unexpected error")
-			require.Nil(t, input.Request.Body)
-		})
-
-		t.Run("ignore nil body on method POST", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/", nil)
-			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
-
-			rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
-			input, err := rondRequest.Input(user, nil)
-			require.NoError(t, err, "Unexpected error")
-			require.Nil(t, input.Request.Body)
-		})
-
-		t.Run("added on accepted methods", func(t *testing.T) {
-			acceptedMethods := []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
-
-			for _, method := range acceptedMethods {
-				req := httptest.NewRequest(method, "/", bytes.NewReader(reqBodyBytes))
-				req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
-				rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
-				input, err := rondRequest.Input(user, nil)
-				require.NoError(t, err, "Unexpected error")
-				require.Equal(t, expectedRequestBody, input.Request.Body)
-			}
-		})
-
-		t.Run("added with content-type specifying charset", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(reqBodyBytes))
-			req.Header.Set(utils.ContentTypeHeaderKey, "application/json;charset=UTF-8")
-			rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
-			input, err := rondRequest.Input(user, nil)
-			require.NoError(t, err, "Unexpected error")
-			require.Equal(t, expectedRequestBody, input.Request.Body)
-		})
-
-		t.Run("reject on method POST but with invalid body", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
-			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
-			rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
-			_, err := rondRequest.Input(user, nil)
-			require.ErrorContains(t, err, "failed request body deserialization:")
-		})
-
-		t.Run("ignore body on method POST but with another content type", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
-			req.Header.Set(utils.ContentTypeHeaderKey, "multipart/form-data")
-
-			rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
-			input, err := rondRequest.Input(user, nil)
-			require.NoError(t, err, "Unexpected error")
-			require.Nil(t, input.Request.Body)
-		})
-	})
+	return FakeInput{
+		request:    request,
+		clientType: clientType,
+	}
 }

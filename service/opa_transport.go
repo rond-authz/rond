@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package core
+package service
 
 import (
 	"bytes"
@@ -23,8 +23,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
+	rondmux "github.com/rond-authz/rond/routers/mux"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
@@ -40,7 +42,7 @@ type OPATransport struct {
 
 	clientHeaderKey string
 	userHeaders     types.UserHeadersKeys
-	evaluatorSDK    SDKEvaluator
+	evaluatorSDK    core.SDKEvaluator
 }
 
 func NewOPATransport(
@@ -50,7 +52,7 @@ func NewOPATransport(
 	req *http.Request,
 	clientHeaderKey string,
 	userHeadersKeys types.UserHeadersKeys,
-	evaluatorSDK SDKEvaluator,
+	evaluatorSDK core.SDKEvaluator,
 ) *OPATransport {
 	return &OPATransport{
 		RoundTripper: transport,
@@ -108,7 +110,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 	}
 
 	pathParams := mux.Vars(t.request)
-	input := NewRondInput(t.request, t.clientHeaderKey, pathParams)
+	input := rondmux.NewRondInput(t.request, t.clientHeaderKey, pathParams)
 
 	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, input, userInfo, decodedBody)
 	if err != nil {

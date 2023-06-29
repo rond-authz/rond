@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package core
+package rondmux
 
 import (
 	"context"
@@ -23,6 +23,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
@@ -33,11 +34,11 @@ import (
 )
 
 func TestOPAMiddleware(t *testing.T) {
-	getSDK := func(t *testing.T, oas *openapi.OpenAPISpec, opaModule *OPAModuleConfig) SDK {
+	getSDK := func(t *testing.T, oas *openapi.OpenAPISpec, opaModule *core.OPAModuleConfig) core.SDK {
 		t.Helper()
 
 		logger, _ := test.NewNullLogger()
-		sdk, err := NewSDK(
+		sdk, err := core.NewSDK(
 			context.Background(),
 			logrus.NewEntry(logger),
 			oas,
@@ -53,13 +54,13 @@ func TestOPAMiddleware(t *testing.T) {
 	routesNotToProxy := make([]string, 0)
 
 	t.Run(`strict mode failure`, func(t *testing.T) {
-		opaModule := &OPAModuleConfig{
+		opaModule := &core.OPAModuleConfig{
 			Name: "example.rego",
 			Content: `package policies
 todo { true }`,
 		}
 		var openAPISpec *openapi.OpenAPISpec
-		openAPISpecContent, err := os.ReadFile("../mocks/simplifiedMock.json")
+		openAPISpecContent, err := os.ReadFile("../../mocks/simplifiedMock.json")
 		require.NoError(t, err)
 		err = json.Unmarshal(openAPISpecContent, &openAPISpec)
 		require.NoError(t, err)
@@ -117,14 +118,14 @@ todo { true }`,
 	})
 
 	t.Run(`documentation request`, func(t *testing.T) {
-		opaModule := &OPAModuleConfig{
+		opaModule := &core.OPAModuleConfig{
 			Name: "example.rego",
 			Content: `package policies
 foobar { true }`,
 		}
 
 		t.Run(`ok - path is known on oas with no permission declared`, func(t *testing.T) {
-			openAPISpec, err := openapi.LoadOASFile("../mocks/documentationPathMock.json")
+			openAPISpec, err := openapi.LoadOASFile("../../mocks/documentationPathMock.json")
 			require.NoError(t, err)
 			targetServiceOASPath := "/documentation/json"
 			sdk := getSDK(t, openAPISpec, opaModule)
@@ -142,7 +143,7 @@ foobar { true }`,
 		})
 
 		t.Run(`ok - path is missing on oas and request is equal to serviceTargetOASPath`, func(t *testing.T) {
-			openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
+			openAPISpec, err := openapi.LoadOASFile("../../mocks/simplifiedMock.json")
 			require.NoError(t, err)
 			targetServiceOASPath := "/documentation/json"
 			sdk := getSDK(t, openAPISpec, opaModule)
@@ -160,7 +161,7 @@ foobar { true }`,
 		})
 
 		t.Run(`ok - path is NOT known on oas but is proxied anyway`, func(t *testing.T) {
-			openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
+			openAPISpec, err := openapi.LoadOASFile("../../mocks/simplifiedMock.json")
 			require.NoError(t, err)
 			targetServiceOASPath := "/documentation/custom/json"
 			sdk := getSDK(t, openAPISpec, opaModule)
@@ -179,11 +180,11 @@ foobar { true }`,
 	})
 
 	t.Run(`injects opa instance with correct query`, func(t *testing.T) {
-		openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
+		openAPISpec, err := openapi.LoadOASFile("../../mocks/simplifiedMock.json")
 		require.NoError(t, err)
 
 		t.Run(`rego package doesn't contain expected policy`, func(t *testing.T) {
-			opaModule := &OPAModuleConfig{
+			opaModule := &core.OPAModuleConfig{
 				Name:    "example.rego",
 				Content: `package policies another { true }`,
 			}
@@ -191,7 +192,7 @@ foobar { true }`,
 
 			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				actual, err := GetEvaluatorSKD(r.Context())
+				actual, err := core.GetEvaluatorSKD(r.Context())
 				require.NoError(t, err, "Unexpected error")
 				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
@@ -205,7 +206,7 @@ foobar { true }`,
 		})
 
 		t.Run(`rego package contains expected permission`, func(t *testing.T) {
-			opaModule := &OPAModuleConfig{
+			opaModule := &core.OPAModuleConfig{
 				Name:    "example.rego",
 				Content: `package policies todo { true }`,
 			}
@@ -213,7 +214,7 @@ foobar { true }`,
 
 			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				actual, err := GetEvaluatorSKD(r.Context())
+				actual, err := core.GetEvaluatorSKD(r.Context())
 				require.NoError(t, err)
 				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
@@ -227,7 +228,7 @@ foobar { true }`,
 		})
 
 		t.Run(`rego package contains composed permission`, func(t *testing.T) {
-			opaModule := &OPAModuleConfig{
+			opaModule := &core.OPAModuleConfig{
 				Name: "example.rego",
 				Content: `package policies
 very_very_composed_permission { true }`,
@@ -236,7 +237,7 @@ very_very_composed_permission { true }`,
 
 			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				actual, err := GetEvaluatorSKD(r.Context())
+				actual, err := core.GetEvaluatorSKD(r.Context())
 				require.NoError(t, err)
 				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
@@ -250,7 +251,7 @@ very_very_composed_permission { true }`,
 		})
 
 		t.Run("injects correct permission", func(t *testing.T) {
-			opaModule := &OPAModuleConfig{
+			opaModule := &core.OPAModuleConfig{
 				Name: "example.rego",
 				Content: `package policies
 very_very_composed_permission_with_eval { true }`,
@@ -264,7 +265,7 @@ very_very_composed_permission_with_eval { true }`,
 
 			middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", options)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				actual, err := GetEvaluatorSKD(r.Context())
+				actual, err := core.GetEvaluatorSKD(r.Context())
 				require.NoError(t, err)
 				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
@@ -282,7 +283,7 @@ very_very_composed_permission_with_eval { true }`,
 		routesNotToProxy := []string{"/not/proxy"}
 		middleware := OPAMiddleware(nil, nil, routesNotToProxy, "", nil)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, err := GetEvaluatorSKD(r.Context())
+			_, err := core.GetEvaluatorSKD(r.Context())
 			require.EqualError(t, err, "no SDKEvaluator found in request context")
 		}))
 
@@ -297,18 +298,18 @@ very_very_composed_permission_with_eval { true }`,
 func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 	var routesNotToProxy = []string{}
 
-	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
+	openAPISpec, err := openapi.LoadOASFile("../../mocks/simplifiedMock.json")
 	require.Nil(t, err)
 	options := &OPAMiddlewareOptions{
 		IsStandalone:         true,
 		PathPrefixStandalone: "/eval",
 	}
-	getSdk := func(t *testing.T, opaModule *OPAModuleConfig) SDK {
+	getSdk := func(t *testing.T, opaModule *core.OPAModuleConfig) core.SDK {
 		t.Helper()
 
 		log, _ := test.NewNullLogger()
 		logger := logrus.NewEntry(log)
-		sdk, err := NewSDK(
+		sdk, err := core.NewSDK(
 			context.Background(),
 			logger,
 			openAPISpec,
@@ -322,7 +323,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 	}
 
 	t.Run("injects correct path removing prefix", func(t *testing.T) {
-		opaModule := &OPAModuleConfig{
+		opaModule := &core.OPAModuleConfig{
 			Name: "example.rego",
 			Content: `package policies
 			very_very_composed_permission { true }`,
@@ -331,7 +332,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 		sdk := getSdk(t, opaModule)
 		middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", options)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			actual, err := GetEvaluatorSKD(r.Context())
+			actual, err := core.GetEvaluatorSKD(r.Context())
 			require.NoError(t, err)
 			require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission"}}, actual.Config())
 			w.WriteHeader(http.StatusOK)
@@ -345,7 +346,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 	})
 
 	t.Run("injects correct path removing only one prefix", func(t *testing.T) {
-		opaModule := &OPAModuleConfig{
+		opaModule := &core.OPAModuleConfig{
 			Name: "example.rego",
 			Content: `package policies
 very_very_composed_permission_with_eval { true }`,
@@ -354,7 +355,7 @@ very_very_composed_permission_with_eval { true }`,
 		sdk := getSdk(t, opaModule)
 		middleware := OPAMiddleware(opaModule, sdk, routesNotToProxy, "", options)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			actual, err := GetEvaluatorSKD(r.Context())
+			actual, err := core.GetEvaluatorSKD(r.Context())
 			require.NoError(t, err)
 			require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, actual.Config())
 			w.WriteHeader(http.StatusOK)

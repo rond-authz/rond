@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package core
+package rondmux
 
 import (
 	"errors"
 	"net/http"
 	"strings"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 
@@ -33,8 +34,8 @@ type OPAMiddlewareOptions struct {
 }
 
 func OPAMiddleware(
-	opaModuleConfig *OPAModuleConfig,
-	sdk SDK,
+	opaModuleConfig *core.OPAModuleConfig,
+	sdk core.SDK,
 	routesToNotProxy []string,
 	targetServiceOASPath string,
 	options *OPAMiddlewareOptions,
@@ -91,7 +92,7 @@ func OPAMiddleware(
 				return
 			}
 
-			ctx := WithEvaluatorSDK(r.Context(), evaluator)
+			ctx := core.WithEvaluatorSDK(r.Context(), evaluator)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

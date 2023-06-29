@@ -33,6 +33,7 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
+	rondmux "github.com/rond-authz/rond/routers/mux"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
@@ -152,7 +153,7 @@ func SetupRouter(
 		}
 	}
 
-	evalRouter.Use(core.OPAMiddleware(opaModuleConfig, sdk, routesToNotProxy, env.TargetServiceOASPath, &core.OPAMiddlewareOptions{
+	evalRouter.Use(rondmux.OPAMiddleware(opaModuleConfig, sdk, routesToNotProxy, env.TargetServiceOASPath, &rondmux.OPAMiddlewareOptions{
 		IsStandalone:         env.Standalone,
 		PathPrefixStandalone: env.PathPrefixStandalone,
 	}))
