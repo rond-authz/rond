@@ -110,7 +110,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 	}
 
 	pathParams := mux.Vars(t.request)
-	input := rondmux.NewRondInput(t.request, t.clientHeaderKey, pathParams)
+	input := rondmux.NewInput(t.request, t.clientHeaderKey, pathParams)
 
 	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, input, userInfo, decodedBody)
 	if err != nil {

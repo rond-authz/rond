@@ -112,7 +112,7 @@ func EvaluateRequest(
 		return err
 	}
 
-	rondInput := rondmux.NewRondInput(req, env.ClientTypeHeader, mux.Vars(req))
+	rondInput := rondmux.NewInput(req, env.ClientTypeHeader, mux.Vars(req))
 	result, err := evaluatorSdk.EvaluateRequestPolicy(req.Context(), rondInput, userInfo)
 	if err != nil {
 		if errors.Is(err, opatranslator.ErrEmptyQuery) && utils.HasApplicationJSONContentType(req.Header) {

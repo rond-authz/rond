@@ -71,7 +71,7 @@ func (req requestInfo) Input(user types.User, responseBody any) (core.Input, err
 	}, nil
 }
 
-func NewRondInput(req *http.Request, clientTypeHeaderKey string, pathParams map[string]string) core.RondInput {
+func NewInput(req *http.Request, clientTypeHeaderKey string, pathParams map[string]string) core.RondInput {
 	return requestInfo{
 		Request:             req,
 		clientTypeHeaderKey: clientTypeHeaderKey,
