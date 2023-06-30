@@ -159,9 +159,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 		reqHeaders       map[string]string
 		mongoClient      types.IMongoClient
 
-		expectedPolicy     PolicyResult
-		expectedErr        bool
-		expectedErrMessage string
+		expectedPolicy PolicyResult
+		expectedErr    error
 	}
 
 	t.Run("evaluate request", func(t *testing.T) {
@@ -194,9 +193,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					UserID: "my-user",
 				},
 
-				expectedPolicy:     PolicyResult{},
-				expectedErr:        true,
-				expectedErrMessage: "RBAC policy evaluation failed, user is not allowed",
+				expectedPolicy: PolicyResult{},
+				expectedErr:    ErrPolicyEvalFailed,
 			},
 			"not allowed policy result": {
 				method: http.MethodGet,
@@ -206,9 +204,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				},
 				opaModuleContent: `package policies todo { false }`,
 
-				expectedPolicy:     PolicyResult{},
-				expectedErr:        true,
-				expectedErrMessage: "RBAC policy evaluation failed, user is not allowed",
+				expectedPolicy: PolicyResult{},
+				expectedErr:    ErrPolicyEvalFailed,
 			},
 			"with empty filter query": {
 				method:      http.MethodGet,
@@ -398,8 +395,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				}, "")
 
 				actual, err := evaluate.EvaluateRequestPolicy(context.Background(), rondInput, testCase.user)
-				if testCase.expectedErr {
-					require.EqualError(t, err, testCase.expectedErrMessage)
+				if testCase.expectedErr != nil {
+					require.EqualError(t, err, testCase.expectedErr.Error())
 				} else {
 					require.NoError(t, err)
 				}
@@ -490,9 +487,9 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 
 		decodedBody any
 
-		expectedBody       string
-		expectedErr        bool
-		expectedErrMessage string
+		expectedBody string
+		expectedErr  error
+		notAllowed   bool
 	}
 
 	t.Run("evaluate response", func(t *testing.T) {
@@ -526,6 +523,19 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 				decodedBody: map[string]interface{}{"foo": "bar", "f1": "b1"},
 
 				expectedBody: `{"f1":"censored","foo":"bar"}`,
+			},
+			"with policy failure": {
+				method: http.MethodGet,
+				path:   "/users/",
+				opaModuleContent: `
+				package policies
+				responsepolicy [body] {
+					false
+					body := input.response.body
+				}`,
+				expectedErr:  ErrPolicyEvalFailed,
+				expectedBody: "",
+				notAllowed:   true,
 			},
 			"with mongo query and body changed": {
 				method: http.MethodGet,
@@ -600,12 +610,17 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 				}, "")
 
 				actual, err := evaluate.EvaluateResponsePolicy(context.Background(), rondInput, testCase.user, testCase.decodedBody)
-				if testCase.expectedErr {
-					require.EqualError(t, err, testCase.expectedErrMessage)
+				if testCase.expectedErr != nil {
+					require.EqualError(t, err, testCase.expectedErr.Error())
 				} else {
 					require.NoError(t, err)
 				}
-				require.JSONEq(t, testCase.expectedBody, string(actual))
+
+				if testCase.expectedBody == "" {
+					require.Empty(t, string(actual))
+				} else {
+					require.JSONEq(t, testCase.expectedBody, string(actual))
+				}
 
 				t.Run("logger", func(t *testing.T) {
 					var actual *logrus.Entry
@@ -619,7 +634,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					require.NotNil(t, actual)
 					delete(actual.Data, "evaluationTimeMicroseconds")
 					require.Equal(t, logrus.Fields{
-						"allowed":       false,
+						"allowed":       !testCase.notAllowed,
 						"requestedPath": testCase.path,
 						"matchedPath":   evaluatorInfo.evaluatorOptions.RouterInfo.MatchedPath,
 						"method":        testCase.method,

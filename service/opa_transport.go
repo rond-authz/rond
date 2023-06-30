@@ -33,6 +33,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var (
+	ErrUnexepectedContentType          = fmt.Errorf("unexpected content type")
+	ErrOPATransportInvalidResponseBody = fmt.Errorf("response body is not valid")
+)
+
 type OPATransport struct {
 	http.RoundTripper
 	// FIXME: this overlaps with the req.Context used during RoundTrip.
@@ -94,13 +99,13 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 
 	if !utils.HasApplicationJSONContentType(resp.Header) {
 		t.logger.WithField("foundContentType", resp.Header.Get(utils.ContentTypeHeaderKey)).Debug("found content type")
-		t.responseWithError(resp, fmt.Errorf("content-type is not application/json"), http.StatusInternalServerError)
+		t.responseWithError(resp, fmt.Errorf("%w: response content-type is not application/json", ErrUnexepectedContentType), http.StatusInternalServerError)
 		return resp, nil
 	}
 
 	var decodedBody interface{}
 	if err := json.Unmarshal(b, &decodedBody); err != nil {
-		return nil, fmt.Errorf("response body is not valid: %s", err.Error())
+		return nil, fmt.Errorf("%w: %s", ErrOPATransportInvalidResponseBody, err.Error())
 	}
 
 	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(t.logger, t.request, t.userHeaders)
@@ -123,7 +128,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 }
 
 func (t *OPATransport) responseWithError(resp *http.Response, err error, statusCode int) {
-	t.logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("error while evaluating column filter query")
+	t.logger.WithField("error", logrus.Fields{"message": err.Error()}).Error(core.ErrResponsePolicyEvalFailed)
 	message := utils.NO_PERMISSIONS_ERROR_MESSAGE
 	if statusCode != http.StatusForbidden {
 		message = utils.GENERIC_BUSINESS_ERROR_MESSAGE

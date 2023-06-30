@@ -103,9 +103,11 @@ func CreateRegoQueryInput(
 
 	inputBytes, err := json.Marshal(input)
 	if err != nil {
-		return nil, fmt.Errorf("failed input JSON encode: %v", err)
+		return nil, fmt.Errorf("%w: %v", ErrFailedInputEncode, err)
 	}
-	logger.Tracef("OPA input rego creation in: %+v", time.Since(opaInputCreationTime))
+	logger.
+		WithField("inputCreationTimeMicroseconds", time.Since(opaInputCreationTime).Microseconds()).
+		Tracef("input creation time")
 	return inputBytes, nil
 }
 
