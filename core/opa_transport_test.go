@@ -343,7 +343,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 		bodyBytes, err := io.ReadAll(resp.Body)
 		require.Nil(t, err)
-		require.Contains(t, string(bodyBytes), "content-type should be application/json")
+		require.Contains(t, string(bodyBytes), "content-type is not application/json")
 	})
 
 	t.Run("failure on non-json response even with json content-type", func(t *testing.T) {
