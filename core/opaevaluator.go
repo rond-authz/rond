@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
@@ -32,11 +32,10 @@ import (
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/rond-authz/rond/custom_builtins"
-
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/topdown/print"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -65,23 +64,29 @@ type PartialEvaluator struct {
 }
 
 func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy string, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (*PartialEvaluator, error) {
-	logger.Infof("precomputing rego query for allow policy: %s", policy)
+	logger.WithField("policyName", policy).Info("precomputing rego policy")
 
 	policyEvaluatorTime := time.Now()
 	partialResultEvaluator, err := NewPartialResultEvaluator(ctx, policy, opaModuleConfig, options)
-	if err == nil {
-		logger.Infof("computed rego query for policy: %s in %s", policy, time.Since(policyEvaluatorTime))
-		return &PartialEvaluator{
-			PartialEvaluator: partialResultEvaluator,
-		}, nil
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+
+	logger.
+		WithFields(logrus.Fields{
+			"policyName":                   policy,
+			"computationTimeMicroserconds": time.Since(policyEvaluatorTime).Microseconds,
+		}).
+		Info("precomputation time")
+
+	return &PartialEvaluator{PartialEvaluator: partialResultEvaluator}, nil
 }
 
 func SetupEvaluators(ctx context.Context, logger *logrus.Entry, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (PartialResultsEvaluators, error) {
 	if oas == nil {
 		return nil, fmt.Errorf("oas must not be nil")
 	}
+
 	policyEvaluators := PartialResultsEvaluators{}
 	for path, OASContent := range oas.Paths {
 		for verb, verbConfig := range OASContent {
@@ -92,7 +97,15 @@ func SetupEvaluators(ctx context.Context, logger *logrus.Entry, oas *openapi.Ope
 			allowPolicy := verbConfig.PermissionV2.RequestFlow.PolicyName
 			responsePolicy := verbConfig.PermissionV2.ResponseFlow.PolicyName
 
-			logger.Infof("precomputing rego queries for API: %s %s. Allow policy: %s. Response policy: %s.", verb, path, allowPolicy, responsePolicy)
+			logger.
+				WithFields(logrus.Fields{
+					"verb":               verb,
+					"policyName":         allowPolicy,
+					"path":               path,
+					"responsePolicyName": responsePolicy,
+				}).
+				Info("precomputing rego queries for API")
+
 			if allowPolicy == "" {
 				// allow policy is required, if missing assume the API has no valid x-rond configuration.
 				continue
@@ -100,9 +113,8 @@ func SetupEvaluators(ctx context.Context, logger *logrus.Entry, oas *openapi.Ope
 
 			if _, ok := policyEvaluators[allowPolicy]; !ok {
 				evaluator, err := createPartialEvaluator(ctx, logger, allowPolicy, oas, opaModuleConfig, options)
-
 				if err != nil {
-					return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
+					return nil, fmt.Errorf("%w: %s", ErrEvaluatorCreationFailed, err.Error())
 				}
 
 				policyEvaluators[allowPolicy] = *evaluator
@@ -111,9 +123,8 @@ func SetupEvaluators(ctx context.Context, logger *logrus.Entry, oas *openapi.Ope
 			if responsePolicy != "" {
 				if _, ok := policyEvaluators[responsePolicy]; !ok {
 					evaluator, err := createPartialEvaluator(ctx, logger, responsePolicy, oas, opaModuleConfig, options)
-
 					if err != nil {
-						return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
+						return nil, fmt.Errorf("%w: %s", ErrEvaluatorCreationFailed, err.Error())
 					}
 
 					policyEvaluators[responsePolicy] = *evaluator
@@ -182,7 +193,7 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 	}
 	inputTerm, err := ast.ParseTerm(string(input))
 	if err != nil {
-		return nil, fmt.Errorf("failed input parse: %v", err)
+		return nil, fmt.Errorf("%w: %v", ErrFailedInputParse, err)
 	}
 
 	sanitizedPolicy := strings.Replace(policy, ".", "_", -1)
@@ -221,10 +232,12 @@ func (config *OPAModuleConfig) CreateQueryEvaluator(ctx context.Context, logger 
 	opaEvaluatorInstanceTime := time.Now()
 	evaluator, err := NewOPAEvaluator(ctx, policy, config, input, options)
 	if err != nil {
-		logger.WithError(err).Error("failed RBAC policy creation")
+		logger.WithError(err).Error(ErrEvaluatorCreationFailed)
 		return nil, err
 	}
-	logger.Tracef("OPA evaluator instantiated in: %+v", time.Since(opaEvaluatorInstanceTime))
+	logger.
+		WithField("evaluatorCreationTimeMicroseconds", time.Since(opaEvaluatorInstanceTime).Microseconds()).
+		Trace("evaluator creation time")
 	return evaluator, nil
 }
 
@@ -266,7 +279,7 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 	if eval, ok := partialEvaluators[policy]; ok {
 		inputTerm, err := ast.ParseTerm(string(input))
 		if err != nil {
-			return nil, fmt.Errorf("failed input parse: %v", err)
+			return nil, fmt.Errorf("%w: %v", ErrFailedInputParse, err)
 		}
 
 		evaluator := eval.PartialEvaluator.Rego(
@@ -284,7 +297,7 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 			routerInfo: options.RouterInfo,
 		}, nil
 	}
-	return nil, fmt.Errorf("policy evaluator not found: %s", policy)
+	return nil, fmt.Errorf("%w: %s", ErrEvaluatorNotFound, policy)
 }
 
 func (evaluator *OPAEvaluator) metrics() metrics.Metrics {
@@ -298,7 +311,7 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 	opaEvaluationTimeStart := time.Now()
 	partialResults, err := evaluator.PolicyEvaluator.Partial(evaluator.Context)
 	if err != nil {
-		return nil, fmt.Errorf("policy Evaluation has failed when partially evaluating the query: %s", err.Error())
+		return nil, fmt.Errorf("%w: %s", ErrPartialPolicyEvalFailed, err.Error())
 	}
 
 	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
@@ -336,7 +349,7 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, erro
 
 	results, err := evaluator.PolicyEvaluator.Eval(evaluator.Context)
 	if err != nil {
-		return nil, fmt.Errorf("policy Evaluation has failed when evaluating the query: %s", err.Error())
+		return nil, fmt.Errorf("%w: %s", ErrPolicyEvalFailed, err.Error())
 	}
 
 	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
@@ -364,7 +377,7 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, erro
 	if allowed {
 		return responseBodyOverwriter, nil
 	}
-	return nil, fmt.Errorf("RBAC policy evaluation failed, user is not allowed")
+	return nil, ErrPolicyEvalFailed
 }
 
 func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission *openapi.RondConfig) (interface{}, primitive.M, error) {
@@ -418,11 +431,11 @@ func LoadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 	})
 
 	if regoModulePath == "" {
-		return nil, fmt.Errorf("no rego module found in directory")
+		return nil, ErrMissingRegoModules
 	}
 	fileContent, err := utils.ReadFile(regoModulePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed rego file read: %s", err.Error())
+		return nil, fmt.Errorf("%w: %s", ErrRegoModuleReadFailed, err.Error())
 	}
 
 	return &OPAModuleConfig{
