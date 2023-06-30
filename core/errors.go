@@ -17,6 +17,9 @@ package core
 import "fmt"
 
 var (
+	ErrMissingRegoModules   = fmt.Errorf("no rego module found in directory")
+	ErrRegoModuleReadFailed = fmt.Errorf("failed rego file read")
+
 	ErrEvaluatorCreationFailed = fmt.Errorf("error during evaluator creation")
 	ErrEvaluatorNotFound       = fmt.Errorf("evaluator not found")
 
