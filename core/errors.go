@@ -17,5 +17,19 @@ package core
 import "fmt"
 
 var (
-	ErrPolicyEvalFailed = fmt.Errorf("policy evaluation failed")
+	ErrEvaluatorCreationFailed = fmt.Errorf("error during evaluator creation")
+	ErrEvaluatorNotFound       = fmt.Errorf("evaluator not found")
+
+	ErrPolicyEvalFailed         = fmt.Errorf("policy evaluation failed")
+	ErrPartialPolicyEvalFailed  = fmt.Errorf("partial %w", ErrPolicyEvalFailed)
+	ErrResponsePolicyEvalFailed = fmt.Errorf("response %w", ErrPolicyEvalFailed)
+
+	ErrFailedInputParse                  = fmt.Errorf("failed input parse")
+	ErrFailedInputEncode                 = fmt.Errorf("failed input encode")
+	ErrFailedInputRequestParse           = fmt.Errorf("failed request body parse")
+	ErrFailedInputRequestDeserialization = fmt.Errorf("failed request body deserialization")
+
+	ErrUnexepectedContentType = fmt.Errorf("unexpected content type")
+
+	ErrOPATransportInvalidResponseBody = fmt.Errorf("response body is not valid")
 )

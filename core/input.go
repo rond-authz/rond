@@ -106,9 +106,11 @@ func CreateRegoQueryInput(
 
 	inputBytes, err := json.Marshal(input)
 	if err != nil {
-		return nil, fmt.Errorf("failed input JSON encode: %v", err)
+		return nil, fmt.Errorf("%w: %v", ErrFailedInputEncode, err)
 	}
-	logger.Tracef("OPA input rego creation in: %+v", time.Since(opaInputCreationTime))
+	logger.
+		WithField("inputCreationTimeMicroseconds", time.Since(opaInputCreationTime).Microseconds()).
+		Tracef("input creation time")
 	return inputBytes, nil
 }
 
@@ -131,10 +133,10 @@ func (req requestInfo) Input(user types.User, responseBody any) (Input, error) {
 	if shouldParseJSONBody {
 		bodyBytes, err := io.ReadAll(req.Body)
 		if err != nil {
-			return Input{}, fmt.Errorf("failed request body parse: %s", err.Error())
+			return Input{}, fmt.Errorf("%w: %s", ErrFailedInputRequestParse, err.Error())
 		}
 		if err := json.Unmarshal(bodyBytes, &requestBody); err != nil {
-			return Input{}, fmt.Errorf("failed request body deserialization: %s", err.Error())
+			return Input{}, fmt.Errorf("%w: %s", ErrFailedInputRequestDeserialization, err.Error())
 		}
 		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 	}

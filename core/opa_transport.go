@@ -92,13 +92,13 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 
 	if !utils.HasApplicationJSONContentType(resp.Header) {
 		t.logger.WithField("foundContentType", resp.Header.Get(utils.ContentTypeHeaderKey)).Debug("found content type")
-		t.responseWithError(resp, fmt.Errorf("content-type is not application/json"), http.StatusInternalServerError)
+		t.responseWithError(resp, fmt.Errorf("%w: response content-type should be application/json", ErrUnexepectedContentType), http.StatusInternalServerError)
 		return resp, nil
 	}
 
 	var decodedBody interface{}
 	if err := json.Unmarshal(b, &decodedBody); err != nil {
-		return nil, fmt.Errorf("response body is not valid: %s", err.Error())
+		return nil, fmt.Errorf("%w: %s", ErrOPATransportInvalidResponseBody, err.Error())
 	}
 
 	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(t.logger, t.request, t.userHeaders)
@@ -121,7 +121,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 }
 
 func (t *OPATransport) responseWithError(resp *http.Response, err error, statusCode int) {
-	t.logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("error while evaluating column filter query")
+	t.logger.WithField("error", logrus.Fields{"message": err.Error()}).Error(ErrResponsePolicyEvalFailed)
 	message := utils.NO_PERMISSIONS_ERROR_MESSAGE
 	if statusCode != http.StatusForbidden {
 		message = utils.GENERIC_BUSINESS_ERROR_MESSAGE
