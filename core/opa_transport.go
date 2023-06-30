@@ -92,7 +92,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 
 	if !utils.HasApplicationJSONContentType(resp.Header) {
 		t.logger.WithField("foundContentType", resp.Header.Get(utils.ContentTypeHeaderKey)).Debug("found content type")
-		t.responseWithError(resp, fmt.Errorf("%w: response content-type should be application/json", ErrUnexepectedContentType), http.StatusInternalServerError)
+		t.responseWithError(resp, fmt.Errorf("%w: response content-type is not application/json", ErrUnexepectedContentType), http.StatusInternalServerError)
 		return resp, nil
 	}
 
