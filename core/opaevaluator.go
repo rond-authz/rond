@@ -344,44 +344,26 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, erro
 		"policy_name": evaluator.PolicyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
+	allowed, responseBodyOverwriter := processResults(results)
 	logger.WithFields(logrus.Fields{
 		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                false,
-		"allowed":                    verifyAllowed(results),
+		"allowed":                    allowed,
 		"resultsLength":              len(results),
 		"matchedPath":                evaluator.routerInfo.MatchedPath,
 		"requestedPath":              evaluator.routerInfo.RequestedPath,
 		"method":                     evaluator.routerInfo.Method,
 	}).Debug("policy evaluation completed")
 
-	// Use strict allowed check for basic request flow allow policies.
-	if results.Allowed() {
-		logger.WithFields(logrus.Fields{
-			"policyName":    evaluator.PolicyName,
-			"allowed":       results.Allowed(),
-			"resultsLength": len(results),
-		}).Tracef("policy results")
-		return nil, nil
-	}
-
-	// Here extract first result set to get the response body for the response policy evaluation.
-	// The results returned by OPA are a list of Results object with fields:
-	// - Expressions: list of list
-	// - Bindings: object
-	// e.g. [{Expressions:[[map["element": true]]] Bindings:map[]}]
-	// Since we are ALWAYS querying ONE specific policy the result length could not be greater than 1
-	if len(results) == 1 {
-		if exprs := results[0].Expressions; len(exprs) == 1 {
-			if value, ok := exprs[0].Value.([]interface{}); ok && value != nil && len(value) != 0 {
-				return value[0], nil
-			}
-		}
-	}
-
 	logger.WithFields(logrus.Fields{
 		"policyName": evaluator.PolicyName,
-	}).Error("policy resulted in not allowed")
+		"allowed":    allowed,
+	}).Info("policy result")
+
+	if allowed {
+		return responseBodyOverwriter, nil
+	}
 	return nil, fmt.Errorf("RBAC policy evaluation failed, user is not allowed")
 }
 
@@ -449,31 +431,28 @@ func LoadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 	}, nil
 }
 
-// verifyAllowed replicates the ResultSet.Allowed function with some slight differences.
-// Since we allow for non boolean return values we use the type assertion to understand
-// whether the returned value is an actual boolean and use it, otherwise we verify the
-// returned value is at least a set containing something, if that's the case we assume
-// this is a custom payload for a response policy and return true regardless.
-//
-// NOTE: do not rely on this function for decision-making conditions; use it only for
-// debugging and informative logging!
-//
-// cfr: https://pkg.go.dev/github.com/open-policy-agent/opa/rego#ResultSet.Allowed
-func verifyAllowed(rs rego.ResultSet) bool {
-	if len(rs) == 1 && len(rs[0].Bindings) == 0 {
-		if exprs := rs[0].Expressions; len(exprs) == 1 {
-			// Check if there is a single boolean expression.
-			if b, ok := exprs[0].Value.(bool); ok {
-				return b
-			}
+func processResults(results rego.ResultSet) (allowed bool, responseBodyOverwriter any) {
+	// Use strict allowed check for basic request flow allow policies.
+	if results.Allowed() {
+		allowed = true
+		return
+	}
 
-			// Check if there is at least a value in the returned set,
-			// if an empty set is returned the policy must have failed.
-			if expressionList, isExpressionList := exprs[0].Value.([]interface{}); len(expressionList) == 0 || !isExpressionList {
-				return false
+	// Here extract first result set to get the response body for the response policy evaluation.
+	// The results returned by OPA are a list of Results object with fields:
+	// - Expressions: list of list
+	// - Bindings: object
+	// e.g. [{Expressions:[[map["element": true]]] Bindings:map[]}]
+	// Since we are ALWAYS querying ONE specific policy the result length could not be greater than 1
+	if len(results) == 1 {
+		if exprs := results[0].Expressions; len(exprs) == 1 {
+			if value, ok := exprs[0].Value.([]interface{}); ok && value != nil && len(value) != 0 {
+				allowed = true
+				responseBodyOverwriter = value[0]
+				return
 			}
-			return true
 		}
 	}
-	return false
+
+	return
 }
