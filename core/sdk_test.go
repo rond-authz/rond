@@ -612,7 +612,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 				}
 
 				if testCase.expectedBody == "" {
-					require.Equal(t, testCase.expectedBody, string(actual))
+					require.Empty(t, string(actual))
 				} else {
 					require.JSONEq(t, testCase.expectedBody, string(actual))
 				}
