@@ -36,6 +36,7 @@ import (
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/service"
 	"github.com/rond-authz/rond/types"
 
@@ -1795,7 +1796,7 @@ filter_policy {
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
+	sdk, err := sdk.New(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
 		MongoClient: mongoClient,
 	}, registry, "")
 	require.NoError(t, err, "unexpected error")
@@ -1954,7 +1955,7 @@ filter_policy {
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
+	sdk, err := sdk.New(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
 		MongoClient: mongoClient,
 	}, registry, "")
 	require.NoError(t, err, "unexpected error")

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package core
+package sdk
 
 import (
 	"bytes"
@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
@@ -39,20 +40,20 @@ func TestNewSDK(t *testing.T) {
 
 	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 	require.Nil(t, err)
-	opaModule := &OPAModuleConfig{
+	opaModule := &core.OPAModuleConfig{
 		Name: "example.rego",
 		Content: `package policies
 		very_very_composed_permission { true }`,
 	}
 
 	t.Run("fails if oas is nil", func(t *testing.T) {
-		sdk, err := NewSDK(context.Background(), logger, nil, nil, nil, nil, "")
+		sdk, err := New(context.Background(), logger, nil, nil, nil, nil, "")
 		require.ErrorContains(t, err, "oas must not be nil")
 		require.Nil(t, sdk)
 	})
 
 	t.Run("fails if opaModuleConfig is nil", func(t *testing.T) {
-		sdk, err := NewSDK(context.Background(), logger, openAPISpec, nil, nil, nil, "")
+		sdk, err := New(context.Background(), logger, openAPISpec, nil, nil, nil, "")
 		require.ErrorContains(t, err, "OPAModuleConfig must not be nil")
 		require.Nil(t, sdk)
 	})
@@ -60,20 +61,20 @@ func TestNewSDK(t *testing.T) {
 	t.Run("fails if oas is invalid", func(t *testing.T) {
 		oas, err := openapi.LoadOASFile("../mocks/invalidOASConfiguration.json")
 		require.NoError(t, err)
-		sdk, err := NewSDK(context.Background(), logger, oas, opaModule, nil, nil, "")
+		sdk, err := New(context.Background(), logger, oas, opaModule, nil, nil, "")
 		require.ErrorContains(t, err, "invalid OAS configuration:")
 		require.Nil(t, sdk)
 	})
 
 	t.Run("creates sdk correctly", func(t *testing.T) {
-		sdk, err := NewSDK(context.Background(), logger, openAPISpec, opaModule, nil, nil, "")
+		sdk, err := New(context.Background(), logger, openAPISpec, opaModule, nil, nil, "")
 		require.NoError(t, err)
 		require.NotEmpty(t, sdk)
 	})
 
 	t.Run("if registry is passed, setup metrics", func(t *testing.T) {
 		registry := prometheus.NewRegistry()
-		sdk, err := NewSDK(context.Background(), logger, openAPISpec, opaModule, nil, registry, "")
+		sdk, err := New(context.Background(), logger, openAPISpec, opaModule, nil, registry, "")
 		require.NoError(t, err)
 		require.NotEmpty(t, sdk)
 	})
@@ -85,13 +86,13 @@ func TestSDK(t *testing.T) {
 
 	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 	require.Nil(t, err)
-	opaModule := &OPAModuleConfig{
+	opaModule := &core.OPAModuleConfig{
 		Name: "example.rego",
 		Content: `package policies
 		very_very_composed_permission { true }`,
 	}
 	registry := prometheus.NewRegistry()
-	sdk, err := NewSDK(context.Background(), logger, openAPISpec, opaModule, nil, registry, "")
+	sdk, err := New(context.Background(), logger, openAPISpec, opaModule, nil, registry, "")
 	require.NoError(t, err)
 
 	rond, ok := sdk.(rondImpl)
@@ -107,7 +108,7 @@ func TestSDK(t *testing.T) {
 		t.Run("returns correct evaluator", func(t *testing.T) {
 			actual, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
 			require.NoError(t, err)
-			evaluatorOptions := &EvaluatorOptions{
+			evaluatorOptions := &core.EvaluatorOptions{
 				Metrics: rond.evaluatorOptions.Metrics,
 				RouterInfo: openapi.RouterInfo{
 					MatchedPath:   "/users/",
@@ -194,7 +195,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				},
 
 				expectedPolicy: PolicyResult{},
-				expectedErr:    ErrPolicyEvalFailed,
+				expectedErr:    core.ErrPolicyEvalFailed,
 			},
 			"not allowed policy result": {
 				method: http.MethodGet,
@@ -205,7 +206,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				opaModuleContent: `package policies todo { false }`,
 
 				expectedPolicy: PolicyResult{},
-				expectedErr:    ErrPolicyEvalFailed,
+				expectedErr:    core.ErrPolicyEvalFailed,
 			},
 			"with empty filter query": {
 				method:      http.MethodGet,
@@ -388,7 +389,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 						headers.Set(k, v)
 					}
 				}
-				rondInput := getFakeInput(t, InputRequest{
+				rondInput := getFakeInput(t, core.InputRequest{
 					Headers: headers,
 					Path:    testCase.path,
 					Method:  testCase.method,
@@ -533,7 +534,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					false
 					body := input.response.body
 				}`,
-				expectedErr:  ErrPolicyEvalFailed,
+				expectedErr:  core.ErrPolicyEvalFailed,
 				expectedBody: "",
 				notAllowed:   true,
 			},
@@ -603,7 +604,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 						headers.Set(k, v)
 					}
 				}
-				rondInput := getFakeInput(t, InputRequest{
+				rondInput := getFakeInput(t, core.InputRequest{
 					Headers: headers,
 					Path:    testCase.path,
 					Method:  testCase.method,
@@ -685,7 +686,7 @@ func TestContext(t *testing.T) {
 }
 
 func BenchmarkEvaluateRequest(b *testing.B) {
-	moduleConfig, err := LoadRegoModule("../mocks/bench-policies")
+	moduleConfig, err := core.LoadRegoModule("../mocks/bench-policies")
 	require.NoError(b, err, "Unexpected error")
 
 	openAPISpec, err := openapi.LoadOASFile("../mocks/bench.json")
@@ -693,7 +694,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 
 	log, _ := test.NewNullLogger()
 	logger := logrus.NewEntry(log)
-	sdk, err := NewSDK(context.Background(), logger, openAPISpec, moduleConfig, &EvaluatorOptions{
+	sdk, err := New(context.Background(), logger, openAPISpec, moduleConfig, &core.EvaluatorOptions{
 		MongoClient: testmongoMock,
 	}, nil, "")
 	require.NoError(b, err)
@@ -706,7 +707,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 		headers.Set("my-header", "value")
 		recorder := httptest.NewRecorder()
 
-		rondInput := getFakeInput(b, InputRequest{
+		rondInput := getFakeInput(b, core.InputRequest{
 			Path:    "/projects/project123",
 			Headers: headers,
 			Method:  http.MethodGet,
@@ -735,7 +736,7 @@ type tHelper interface {
 	Helper()
 }
 
-func getSdk(t require.TestingT, options *sdkOptions) SDK {
+func getSdk(t require.TestingT, options *sdkOptions) Rond {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
 	}
@@ -752,7 +753,7 @@ func getSdk(t require.TestingT, options *sdkOptions) SDK {
 
 	openAPISpec, err := openapi.LoadOASFile(oasFilePath)
 	require.NoError(t, err)
-	opaModule := &OPAModuleConfig{
+	opaModule := &core.OPAModuleConfig{
 		Name: "example.rego",
 		Content: `package policies
 		todo { true }`,
@@ -760,7 +761,7 @@ func getSdk(t require.TestingT, options *sdkOptions) SDK {
 	if options.opaModuleContent != "" {
 		opaModule.Content = options.opaModuleContent
 	}
-	sdk, err := NewSDK(context.Background(), logger, openAPISpec, opaModule, &EvaluatorOptions{
+	sdk, err := New(context.Background(), logger, openAPISpec, opaModule, &core.EvaluatorOptions{
 		EnablePrintStatements: true,
 		MongoClient:           options.mongoClient,
 	}, options.registry, "")
@@ -867,4 +868,36 @@ var testmongoMock = &mocks.MongoClientMock{
 			CRUDDocumentState: "PUBLIC",
 		},
 	},
+}
+
+type FakeInput struct {
+	request    core.InputRequest
+	clientType string
+}
+
+func (i FakeInput) Input(user types.User, responseBody any) (core.Input, error) {
+	return core.Input{
+		User: core.InputUser{
+			Properties: user.Properties,
+			Groups:     user.UserGroups,
+			Bindings:   user.UserBindings,
+			Roles:      user.UserRoles,
+		},
+		Request: i.request,
+		Response: core.InputResponse{
+			Body: responseBody,
+		},
+		ClientType: i.clientType,
+	}, nil
+}
+
+func getFakeInput(t require.TestingT, request core.InputRequest, clientType string) core.RondInput {
+	if h, ok := t.(tHelper); ok {
+		h.Helper()
+	}
+
+	return FakeInput{
+		request:    request,
+		clientType: clientType,
+	}
 }

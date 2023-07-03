@@ -19,13 +19,13 @@ import (
 	"net/http"
 	"net/http/httputil"
 
-	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 	rondmux "github.com/rond-authz/rond/routers/mux"
+	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
@@ -41,7 +41,7 @@ func ReverseProxyOrResponse(
 	env config.EnvironmentVariables,
 	w http.ResponseWriter,
 	req *http.Request,
-	evaluatorSdk core.SDKEvaluator,
+	evaluatorSdk sdk.Evaluator,
 ) {
 	var permission openapi.RondConfig
 	if evaluatorSdk != nil {
@@ -77,7 +77,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	evaluatorSdk, err := core.GetEvaluatorSKD(requestContext)
+	evaluatorSdk, err := sdk.GetEvaluatorSKD(requestContext)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no evaluatorSdk found in context")
 		utils.FailResponse(w, "no evaluators sdk found in context", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
@@ -94,7 +94,7 @@ func EvaluateRequest(
 	req *http.Request,
 	env config.EnvironmentVariables,
 	w http.ResponseWriter,
-	evaluatorSdk core.SDKEvaluator,
+	evaluatorSdk sdk.Evaluator,
 ) error {
 	requestContext := req.Context()
 	logger := glogger.Get(requestContext)
@@ -148,7 +148,7 @@ func ReverseProxy(
 	w http.ResponseWriter,
 	req *http.Request,
 	permission *openapi.RondConfig,
-	evaluatorSdk core.SDKEvaluator,
+	evaluatorSdk sdk.Evaluator,
 ) {
 	targetHostFromEnv := env.TargetServiceHost
 	proxy := httputil.ReverseProxy{

@@ -28,6 +28,7 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -115,7 +116,7 @@ test_policy { true }
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
+	sdk, err := sdk.New(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
 		MongoClient: mongoClient,
 	}, registry, "")
 	require.NoError(t, err, "unexpected error")

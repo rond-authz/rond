@@ -241,35 +241,3 @@ func BenchmarkBuildOptimizedResourcePermissionsMap(b *testing.B) {
 		b.StopTimer()
 	}
 }
-
-type FakeInput struct {
-	request    InputRequest
-	clientType string
-}
-
-func (i FakeInput) Input(user types.User, responseBody any) (Input, error) {
-	return Input{
-		User: InputUser{
-			Properties: user.Properties,
-			Groups:     user.UserGroups,
-			Bindings:   user.UserBindings,
-			Roles:      user.UserRoles,
-		},
-		Request: i.request,
-		Response: InputResponse{
-			Body: responseBody,
-		},
-		ClientType: i.clientType,
-	}, nil
-}
-
-func getFakeInput(t require.TestingT, request InputRequest, clientType string) RondInput {
-	if h, ok := t.(tHelper); ok {
-		h.Helper()
-	}
-
-	return FakeInput{
-		request:    request,
-		clientType: clientType,
-	}
-}

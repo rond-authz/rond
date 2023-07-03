@@ -22,6 +22,7 @@ import (
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
@@ -35,7 +36,7 @@ type OPAMiddlewareOptions struct {
 
 func OPAMiddleware(
 	opaModuleConfig *core.OPAModuleConfig,
-	sdk core.SDK,
+	rondSDK sdk.Rond,
 	routesToNotProxy []string,
 	targetServiceOASPath string,
 	options *OPAMiddlewareOptions,
@@ -54,7 +55,7 @@ func OPAMiddleware(
 
 			logger := glogger.Get(r.Context())
 
-			evaluator, err := sdk.FindEvaluator(logger, r.Method, path)
+			evaluator, err := rondSDK.FindEvaluator(logger, r.Method, path)
 			rondConfig := openapi.RondConfig{}
 			if err == nil {
 				rondConfig = evaluator.Config()
@@ -92,7 +93,7 @@ func OPAMiddleware(
 				return
 			}
 
-			ctx := core.WithEvaluatorSDK(r.Context(), evaluator)
+			ctx := sdk.WithEvaluatorSDK(r.Context(), evaluator)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

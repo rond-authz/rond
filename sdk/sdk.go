@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package core
+package sdk
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
@@ -35,33 +36,33 @@ type PolicyResult struct {
 
 // Warning: This interface is experimental, and it could change with breaking also in rond patches.
 // Does not use outside this repository until it is not ready.
-type SDK interface {
-	FindEvaluator(logger *logrus.Entry, method, path string) (SDKEvaluator, error)
+type Rond interface {
+	FindEvaluator(logger *logrus.Entry, method, path string) (Evaluator, error)
 }
 
 // Warning: This interface is experimental, and it could change with breaking also in rond patches.
 // Do not use outside this repository until it is not ready.
-type SDKEvaluator interface {
+type Evaluator interface {
 	Config() openapi.RondConfig
 
-	EvaluateRequestPolicy(ctx context.Context, input RondInput, userInfo types.User) (PolicyResult, error)
-	EvaluateResponsePolicy(ctx context.Context, input RondInput, userInfo types.User, decodedBody any) ([]byte, error)
+	EvaluateRequestPolicy(ctx context.Context, input core.RondInput, userInfo types.User) (PolicyResult, error)
+	EvaluateResponsePolicy(ctx context.Context, input core.RondInput, userInfo types.User, decodedBody any) ([]byte, error)
 }
 
 type evaluator struct {
 	logger                  *logrus.Entry
 	rondConfig              openapi.RondConfig
-	opaModuleConfig         *OPAModuleConfig
-	partialResultEvaluators PartialResultsEvaluators
+	opaModuleConfig         *core.OPAModuleConfig
+	partialResultEvaluators core.PartialResultsEvaluators
 
-	evaluatorOptions *EvaluatorOptions
+	evaluatorOptions *core.EvaluatorOptions
 }
 
 func (e evaluator) Config() openapi.RondConfig {
 	return e.rondConfig
 }
 
-func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req RondInput, userInfo types.User) (PolicyResult, error) {
+func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req core.RondInput, userInfo types.User) (PolicyResult, error) {
 	if req == nil {
 		return PolicyResult{}, fmt.Errorf("RondInput cannot be empty")
 	}
@@ -73,14 +74,14 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req RondInput, use
 		return PolicyResult{}, err
 	}
 
-	regoInput, err := CreateRegoQueryInput(e.logger, input, RegoInputOptions{
+	regoInput, err := core.CreateRegoQueryInput(e.logger, input, core.RegoInputOptions{
 		EnableResourcePermissionsMapOptimization: rondConfig.Options.EnableResourcePermissionsMapOptimization,
 	})
 	if err != nil {
 		return PolicyResult{}, nil
 	}
 
-	var evaluatorAllowPolicy *OPAEvaluator
+	var evaluatorAllowPolicy *core.OPAEvaluator
 	if !rondConfig.RequestFlow.GenerateQuery {
 		evaluatorAllowPolicy, err = e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, regoInput, e.evaluatorOptions)
 		if err != nil {
@@ -117,7 +118,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req RondInput, use
 	}, nil
 }
 
-func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput RondInput, userInfo types.User, decodedBody any) ([]byte, error) {
+func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.RondInput, userInfo types.User, decodedBody any) ([]byte, error) {
 	if rondInput == nil {
 		return nil, fmt.Errorf("RondInput cannot be empty")
 	}
@@ -129,7 +130,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput RondInp
 		return nil, err
 	}
 
-	regoInput, err := CreateRegoQueryInput(e.logger, input, RegoInputOptions{
+	regoInput, err := core.CreateRegoQueryInput(e.logger, input, core.RegoInputOptions{
 		EnableResourcePermissionsMapOptimization: rondConfig.Options.EnableResourcePermissionsMapOptimization,
 	})
 	if err != nil {
@@ -155,16 +156,16 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput RondInp
 }
 
 type rondImpl struct {
-	partialResultEvaluators PartialResultsEvaluators
-	evaluatorOptions        *EvaluatorOptions
+	partialResultEvaluators core.PartialResultsEvaluators
+	evaluatorOptions        *core.EvaluatorOptions
 	oasRouter               *bunrouter.CompatRouter
 	oas                     *openapi.OpenAPISpec
-	opaModuleConfig         *OPAModuleConfig
+	opaModuleConfig         *core.OPAModuleConfig
 
 	clientTypeHeaderKey string
 }
 
-func (r rondImpl) FindEvaluator(logger *logrus.Entry, method, path string) (SDKEvaluator, error) {
+func (r rondImpl) FindEvaluator(logger *logrus.Entry, method, path string) (Evaluator, error) {
 	permission, routerInfo, err := r.oas.FindPermission(r.oasRouter, path, method)
 	if err != nil {
 		return nil, err
@@ -181,16 +182,16 @@ func (r rondImpl) FindEvaluator(logger *logrus.Entry, method, path string) (SDKE
 // The SDK is now into core because there are coupled function here which should use the SDK itself
 // (which uses core, so it will result in a cyclic dependency). In the future, sdk should be in a
 // specific package.
-func NewSDK(
+func New(
 	ctx context.Context,
 	logger *logrus.Entry,
 	oas *openapi.OpenAPISpec,
-	opaModuleConfig *OPAModuleConfig,
-	evaluatorOptions *EvaluatorOptions,
+	opaModuleConfig *core.OPAModuleConfig,
+	evaluatorOptions *core.EvaluatorOptions,
 	registry *prometheus.Registry,
 	clientTypeHeaderKey string,
-) (SDK, error) {
-	evaluator, err := SetupEvaluators(ctx, logger, oas, opaModuleConfig, evaluatorOptions)
+) (Rond, error) {
+	evaluator, err := core.SetupEvaluators(ctx, logger, oas, opaModuleConfig, evaluatorOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +208,7 @@ func NewSDK(
 		m.MustRegister(registry)
 	}
 	if evaluatorOptions == nil {
-		evaluatorOptions = &EvaluatorOptions{}
+		evaluatorOptions = &core.EvaluatorOptions{}
 	}
 	evaluatorOptions.WithMetrics(m)
 
@@ -224,12 +225,12 @@ func NewSDK(
 
 type sdkKey struct{}
 
-func WithEvaluatorSDK(ctx context.Context, evaluator SDKEvaluator) context.Context {
+func WithEvaluatorSDK(ctx context.Context, evaluator Evaluator) context.Context {
 	return context.WithValue(ctx, sdkKey{}, evaluator)
 }
 
-func GetEvaluatorSKD(ctx context.Context) (SDKEvaluator, error) {
-	sdk, ok := ctx.Value(sdkKey{}).(SDKEvaluator)
+func GetEvaluatorSKD(ctx context.Context) (Evaluator, error) {
+	sdk, ok := ctx.Value(sdkKey{}).(Evaluator)
 	if !ok {
 		return nil, fmt.Errorf("no SDKEvaluator found in request context")
 	}

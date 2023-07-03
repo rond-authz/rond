@@ -34,6 +34,7 @@ import (
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 	rondmux "github.com/rond-authz/rond/routers/mux"
+	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
@@ -102,7 +103,7 @@ func SetupRouter(
 	env config.EnvironmentVariables,
 	opaModuleConfig *core.OPAModuleConfig,
 	oas *openapi.OpenAPISpec,
-	sdk core.SDK,
+	sdk sdk.Rond,
 	mongoClient *mongoclient.MongoClient,
 	registry *prometheus.Registry,
 ) (*mux.Router, error) {

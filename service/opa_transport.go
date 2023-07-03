@@ -27,6 +27,7 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
 	rondmux "github.com/rond-authz/rond/routers/mux"
+	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
@@ -47,7 +48,7 @@ type OPATransport struct {
 
 	clientHeaderKey string
 	userHeaders     types.UserHeadersKeys
-	evaluatorSDK    core.SDKEvaluator
+	evaluatorSDK    sdk.Evaluator
 }
 
 func NewOPATransport(
@@ -57,7 +58,7 @@ func NewOPATransport(
 	req *http.Request,
 	clientHeaderKey string,
 	userHeadersKeys types.UserHeadersKeys,
-	evaluatorSDK core.SDKEvaluator,
+	evaluatorSDK sdk.Evaluator,
 ) *OPATransport {
 	return &OPATransport{
 		RoundTripper: transport,

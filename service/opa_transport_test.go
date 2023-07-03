@@ -31,6 +31,7 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -481,7 +482,7 @@ type tHelper interface {
 	Helper()
 }
 
-func getSdk(t require.TestingT, options *sdkOptions) core.SDK {
+func getSdk(t require.TestingT, options *sdkOptions) sdk.Rond {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
 	}
@@ -506,7 +507,7 @@ func getSdk(t require.TestingT, options *sdkOptions) core.SDK {
 	if options.opaModuleContent != "" {
 		opaModule.Content = options.opaModuleContent
 	}
-	sdk, err := core.NewSDK(context.Background(), logger, openAPISpec, opaModule, &core.EvaluatorOptions{
+	sdk, err := sdk.New(context.Background(), logger, openAPISpec, opaModule, &core.EvaluatorOptions{
 		EnablePrintStatements: true,
 		MongoClient:           options.mongoClient,
 	}, options.registry, "")
