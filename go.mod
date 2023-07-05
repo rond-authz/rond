@@ -10,6 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/mia-platform/configlib v1.0.0
 	github.com/mia-platform/glogger/v2 v2.1.3
+	github.com/mia-platform/go-crud-service-client v0.10.0
 	github.com/open-policy-agent/opa v0.54.0
 	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/common v0.44.0

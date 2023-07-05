@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/crudclient"
 	"github.com/rond-authz/rond/internal/utils"
@@ -27,6 +28,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
+	"github.com/mia-platform/go-crud-service-client"
 	"github.com/sirupsen/logrus"
 )
 
@@ -67,23 +69,24 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bindings := make([]types.Binding, 0)
-
-	client, err := crudclient.New(env.BindingsCrudServiceURL)
+	client, err := crud.NewClient[types.Binding](crud.ClientOptions{
+		BaseURL: env.BindingsCrudServiceURL,
+		Headers: helpers.GetHeadersToProxy(r, env.GetAdditionalHeadersToProxy()),
+	})
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud setup")
 		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
-	query, err := buildQuery(resourceType, reqBody.ResourceIDs, reqBody.Subjects, reqBody.Groups)
+	query := buildQuery(resourceType, reqBody.ResourceIDs, reqBody.Subjects, reqBody.Groups)
+	bindings, err := client.List(r.Context(), crud.Options{
+		Filter: crud.Filter{
+			MongoQuery: query,
+			Limit:      BINDINGS_MAX_PAGE_SIZE,
+		},
+	})
 	if err != nil {
-		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed find query crud setup")
-		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed find query crud setup", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
-		return
-	}
-
-	if err := client.Get(r.Context(), fmt.Sprintf("_q=%s&_l=%d", string(query), BINDINGS_MAX_PAGE_SIZE), &bindings); err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud request")
 		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed crud request for finding bindings", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
@@ -95,7 +98,7 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 	var patchCrudResponse int
 
 	if len(bindingsToDelete) > 0 {
-		query, err := buildQueryForBindingsToDelete(bindingsToDelete)
+		query := buildQueryForBindingsToDelete(bindingsToDelete)
 		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed delete query crud setup")
 			utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed delete query crud setup", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
@@ -107,7 +110,8 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 			"bindingsToDelete":      len(bindingsToDelete),
 		}).Debug("generated query for bindings to delete")
 
-		if err := client.Delete(r.Context(), fmt.Sprintf("_q=%s", string(query)), &deleteCrudResponse); err != nil {
+		deleteCrudResponse, err = client.DeleteMany(r.Context(), crud.Options{Filter: crud.Filter{MongoQuery: query}})
+		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud request")
 			utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed crud request for deleting unused bindings", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 			return
@@ -118,7 +122,8 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 	if len(bindingsToPatch) > 0 {
 		body := buildRequestBodyForBindingsToPatch(bindingsToPatch)
 
-		if err := client.PatchBulk(r.Context(), body, &patchCrudResponse); err != nil {
+		patchCrudResponse, err = client.PatchBulk(r.Context(), body, crud.Options{})
+		if err != nil {
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud request")
 			utils.FailResponseWithCode(
 				w,
@@ -238,7 +243,7 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func buildQuery(resourceType string, resourceIDs []string, subjects []string, groups []string) ([]byte, error) {
+func buildQuery(resourceType string, resourceIDs []string, subjects []string, groups []string) map[string]interface{} {
 	queryPartForSubjectOrGroups := map[string]interface{}{
 		"$or": []map[string]interface{}{},
 	}
@@ -255,7 +260,7 @@ func buildQuery(resourceType string, resourceIDs []string, subjects []string, gr
 	}
 
 	if resourceType == "" {
-		return json.Marshal(queryPartForSubjectOrGroups)
+		return queryPartForSubjectOrGroups
 	}
 
 	query := map[string]interface{}{
@@ -268,10 +273,10 @@ func buildQuery(resourceType string, resourceIDs []string, subjects []string, gr
 		},
 	}
 
-	return json.Marshal(query)
+	return query
 }
 
-func buildQueryForBindingsToDelete(bindingsToDelete []types.Binding) ([]byte, error) {
+func buildQueryForBindingsToDelete(bindingsToDelete []types.Binding) map[string]interface{} {
 	bindingsIds := make([]string, len(bindingsToDelete))
 	for i := 0; i < len(bindingsToDelete); i++ {
 		bindingsIds[i] = bindingsToDelete[i].BindingID
@@ -282,25 +287,21 @@ func buildQueryForBindingsToDelete(bindingsToDelete []types.Binding) ([]byte, er
 			"$in": bindingsIds,
 		},
 	}
-	return json.Marshal(query)
+	return query
 }
 
-type UpdateCommand struct {
-	SetCommand types.BindingUpdate `json:"$set"`
-}
-type PatchItem struct {
-	Filter types.BindingFilter `json:"filter"`
-	Update UpdateCommand       `json:"update"`
-}
-
-func buildRequestBodyForBindingsToPatch(bindingsToPatch []types.Binding) []PatchItem {
-	patches := make([]PatchItem, len(bindingsToPatch))
+func buildRequestBodyForBindingsToPatch(bindingsToPatch []types.Binding) crud.PatchBulkBody {
+	patches := make(crud.PatchBulkBody, len(bindingsToPatch))
 	for i := 0; i < len(bindingsToPatch); i++ {
 		currentBinding := bindingsToPatch[i]
-		patches[i] = PatchItem{
-			Filter: types.BindingFilter{BindingID: currentBinding.BindingID},
-			Update: UpdateCommand{
-				SetCommand: types.BindingUpdate{
+		patches[i] = crud.PatchBulkItem{
+			Filter: crud.PatchBulkFilter{
+				Fields: map[string]string{
+					"bindingId": currentBinding.BindingID,
+				},
+			},
+			Update: crud.PatchBody{
+				Set: types.BindingUpdate{
 					Subjects: currentBinding.Subjects,
 					Groups:   currentBinding.Groups,
 				},

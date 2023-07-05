@@ -49,10 +49,6 @@ type Binding struct {
 	Roles             []string  `bson:"roles" json:"roles,omitempty"`
 }
 
-type BindingFilter struct {
-	BindingID string `bson:"bindingId" json:"bindingId"`
-}
-
 type BindingUpdate struct {
 	Groups   []string `bson:"groups" json:"groups"`
 	Subjects []string `bson:"subjects" json:"subjects"`

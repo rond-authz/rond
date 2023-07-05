@@ -53,3 +53,22 @@ func AddHeadersToProxyMiddleware(logger *logrus.Logger, headerNamesToAdd []strin
 func AddHeadersToProxyToContext(ctx context.Context, value http.Header) context.Context {
 	return context.WithValue(ctx, requestHeadersToProxy{}, value)
 }
+
+func GetHeadersToProxyFromContext(ctx context.Context) http.Header {
+	reqHeadersToProxy, ok := ctx.Value(requestHeadersToProxy{}).(http.Header)
+	if ok && len(reqHeadersToProxy) != 0 {
+		return reqHeadersToProxy
+	}
+	return nil
+}
+
+func GetHeadersToProxy(r *http.Request, headerNamesToAdd []string) http.Header {
+	headersToProxy := http.Header{}
+	for _, headerNameToAdd := range headerNamesToAdd {
+		headerValue := r.Header.Get(headerNameToAdd)
+		if len(headerValue) > 0 {
+			headersToProxy.Set(headerNameToAdd, headerValue)
+		}
+	}
+	return headersToProxy
+}
