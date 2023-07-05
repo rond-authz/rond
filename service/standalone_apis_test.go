@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -26,8 +27,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/mia-platform/go-crud-service-client"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
 )
@@ -82,8 +85,7 @@ func TestRevokeHandler(t *testing.T) {
 
 		responseBody := map[string]interface{}{"answer": float64(42)}
 		gock.DisableNetworking()
-		gock.New("http://crud-service").
-			Get("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodGet, "/bindings/").
 			Reply(http.StatusBadRequest).
 			JSON(responseBody)
 
@@ -109,13 +111,11 @@ func TestRevokeHandler(t *testing.T) {
 			},
 		}
 		gock.DisableNetworking()
-		gock.New("http://crud-service").
-			Get("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodGet, "/bindings/").
 			Reply(http.StatusOK).
 			JSON(bindingsFromCrud)
 
-		gock.New("http://crud-service").
-			Delete("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodDelete, "/bindings/").
 			Reply(http.StatusInternalServerError).
 			JSON(map[string]interface{}{"statusCode": "500", "error": "InternalServerError", "message": "some message"})
 
@@ -136,7 +136,6 @@ func TestRevokeHandler(t *testing.T) {
 
 	t.Run("does not invoke delete API if not necessary", func(t *testing.T) {
 		defer gock.Flush()
-
 		bindingsFromCrud := []types.Binding{
 			{
 				BindingID: "bindingToDelete",
@@ -149,21 +148,18 @@ func TestRevokeHandler(t *testing.T) {
 		}
 
 		gock.DisableNetworking()
-		gock.New("http://crud-service").
-			Get("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodGet, "/bindings/").
 			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
 				mongoQueryString := req.URL.Query().Get("_q")
-				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"project"},{"$or":[{"subjects":{"$in":["piero"]}}]}]}`
-
 				limit := req.URL.Query().Get("_l")
-				matchLimit := limit == "200"
+				matchLimit := assert.Equal(t, "200", limit)
+				match := assert.Equal(t, `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"project"},{"$or":[{"subjects":{"$in":["piero"]}}]}]}`, mongoQueryString)
 				return match && matchLimit, nil
 			}).
 			Reply(http.StatusOK).
 			JSON(bindingsFromCrud)
 
-		gock.New("http://crud-service").
-			Patch("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodPatch, "/bindings/bulk").
 			Reply(http.StatusOK)
 
 		reqBody := setupRevokeRequestBody(t, RevokeRequestBody{
@@ -195,8 +191,7 @@ func TestRevokeHandler(t *testing.T) {
 			},
 		}
 		gock.DisableNetworking()
-		gock.New("http://crud-service").
-			Get("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodGet, "/bindings/").
 			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
 				mongoQueryString := req.URL.Query().Get("_q")
 				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"myResource"},{"$or":[{"subjects":{"$in":["piero"]}}]}]}`
@@ -205,8 +200,7 @@ func TestRevokeHandler(t *testing.T) {
 			Reply(http.StatusOK).
 			JSON(bindingsFromCrud)
 
-		gock.New("http://crud-service").
-			Delete("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodDelete, "/bindings/").
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
 				mongoQuery := req.URL.Query().Get("_q")
 				match := mongoQuery == `{"bindingId":{"$in":["bindingToDelete"]}}`
@@ -244,8 +238,8 @@ func TestRevokeHandler(t *testing.T) {
 			},
 		}
 		gock.DisableNetworking()
-		gock.New("http://crud-service").
-			Get("/bindings/").
+
+		newGockScope(t, "http://crud-service", http.MethodGet, "/bindings/").
 			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
 				mongoQueryString := req.URL.Query().Get("_q")
 				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"some-resource"},{"$or":[{"groups":{"$in":["litfiba"]}}]}]}`
@@ -254,8 +248,7 @@ func TestRevokeHandler(t *testing.T) {
 			Reply(http.StatusOK).
 			JSON(bindingsFromCrud)
 
-		gock.New("http://crud-service").
-			Delete("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodDelete, "/bindings/").
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
 				mongoQuery := req.URL.Query().Get("_q")
 				match := mongoQuery == `{"bindingId":{"$in":["bindingToDelete"]}}`
@@ -293,8 +286,7 @@ func TestRevokeHandler(t *testing.T) {
 			},
 		}
 		gock.DisableNetworking()
-		gock.New("http://crud-service").
-			Get("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodGet, "/bindings/").
 			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
 				mongoQueryString := req.URL.Query().Get("_q")
 				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"some-resource"},{"$or":[{"subjects":{"$in":["piero"]}}]}]}`
@@ -303,20 +295,23 @@ func TestRevokeHandler(t *testing.T) {
 			Reply(http.StatusOK).
 			JSON(bindingsFromCrud)
 
-		gock.New("http://crud-service").
-			Patch("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodPatch, "/bindings/bulk").
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
-				var body []PatchItem
+				var body crud.PatchBulkBody
 				err := json.NewDecoder(req.Body).Decode(&body)
 				require.NoError(t, err, "unxpected error parsing body in matcher")
 
-				require.Equal(t, []PatchItem{
+				require.Equal(t, crud.PatchBulkBody{
 					{
-						Filter: types.BindingFilter{BindingID: "litfiba"},
-						Update: UpdateCommand{
-							SetCommand: types.BindingUpdate{
-								Subjects: []string{"ghigo"},
-								Groups:   []string{},
+						Filter: crud.PatchBulkFilter{
+							Fields: map[string]string{
+								"bindingId": "litfiba",
+							},
+						},
+						Update: crud.PatchBody{
+							Set: map[string]interface{}{
+								"subjects": []any{"ghigo"},
+								"groups":   []any{},
 							},
 						},
 					},
@@ -365,8 +360,7 @@ func TestRevokeHandler(t *testing.T) {
 			},
 		}
 		gock.DisableNetworking()
-		gock.New("http://crud-service").
-			Get("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodGet, "/bindings/").
 			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
 				mongoQueryString := req.URL.Query().Get("_q")
 				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"resource"},{"$or":[{"subjects":{"$in":["piero","liam","noel"]}},{"groups":{"$in":["brutte_band"]}}]}]}`
@@ -375,8 +369,7 @@ func TestRevokeHandler(t *testing.T) {
 			Reply(http.StatusOK).
 			JSON(bindingsFromCrud)
 
-		gock.New("http://crud-service").
-			Delete("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodDelete, "/bindings/").
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
 				mongoQuery := req.URL.Query().Get("_q")
 				match := mongoQuery == `{"bindingId":{"$in":["oasis"]}}`
@@ -385,21 +378,24 @@ func TestRevokeHandler(t *testing.T) {
 			Reply(http.StatusOK).
 			BodyString("1")
 
-		gock.New("http://crud-service").
-			Patch("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodPatch, "/bindings/bulk").
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
-				var body []PatchItem
+				var body crud.PatchBulkBody
 
 				err := json.NewDecoder(req.Body).Decode(&body)
 				require.NoError(t, err, "unxpected error parsing body in matcher")
 
-				require.Equal(t, []PatchItem{
+				require.Equal(t, crud.PatchBulkBody{
 					{
-						Filter: types.BindingFilter{BindingID: "litfiba"},
-						Update: UpdateCommand{
-							SetCommand: types.BindingUpdate{
-								Subjects: []string{"ghigo"},
-								Groups:   []string{},
+						Filter: crud.PatchBulkFilter{
+							Fields: map[string]string{
+								"bindingId": "litfiba",
+							},
+						},
+						Update: crud.PatchBody{
+							Set: map[string]any{
+								"subjects": []any{"ghigo"},
+								"groups":   []any{},
 							},
 						},
 					},
@@ -445,8 +441,8 @@ func TestRevokeHandler(t *testing.T) {
 			},
 		}
 		gock.DisableNetworking()
-		gock.New("http://crud-service").
-			Get("/bindings/").
+
+		newGockScope(t, "http://crud-service", http.MethodGet, "/bindings/").
 			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
 				mongoQueryString := req.URL.Query().Get("_q")
 				match := mongoQueryString == `{"$or":[{"subjects":{"$in":["piero","liam","noel"]}},{"groups":{"$in":["brutte_band"]}}]}`
@@ -455,8 +451,7 @@ func TestRevokeHandler(t *testing.T) {
 			Reply(http.StatusOK).
 			JSON(bindingsFromCrud)
 
-		gock.New("http://crud-service").
-			Delete("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodDelete, "/bindings/").
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
 				mongoQuery := req.URL.Query().Get("_q")
 				match := mongoQuery == `{"bindingId":{"$in":["oasis"]}}`
@@ -465,21 +460,24 @@ func TestRevokeHandler(t *testing.T) {
 			Reply(http.StatusOK).
 			BodyString("1")
 
-		gock.New("http://crud-service").
-			Patch("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodPatch, "/bindings/bulk").
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
-				var body []PatchItem
+				var body crud.PatchBulkBody
 
 				err := json.NewDecoder(req.Body).Decode(&body)
 				require.NoError(t, err, "unxpected error parsing body in matcher")
 
-				require.Equal(t, []PatchItem{
+				require.Equal(t, crud.PatchBulkBody{
 					{
-						Filter: types.BindingFilter{BindingID: "litfiba"},
-						Update: UpdateCommand{
-							SetCommand: types.BindingUpdate{
-								Subjects: []string{"ghigo"},
-								Groups:   []string{},
+						Filter: crud.PatchBulkFilter{
+							Fields: map[string]string{
+								"bindingId": "litfiba",
+							},
+						},
+						Update: crud.PatchBody{
+							Set: map[string]any{
+								"subjects": []any{"ghigo"},
+								"groups":   []any{},
 							},
 						},
 					},
@@ -559,8 +557,7 @@ func TestGrantHandler(t *testing.T) {
 		})
 
 		gock.DisableNetworking()
-		gock.New("http://crud-service").
-			Post("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodPost, "/bindings/").
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
 				var body types.Binding
 				bodyBytes, err := io.ReadAll(req.Body)
@@ -616,8 +613,7 @@ func TestGrantHandler(t *testing.T) {
 		})
 
 		gock.DisableNetworking()
-		gock.New("http://crud-service").
-			Post("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodPost, "/bindings/").
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
 				var body types.Binding
 				bodyBytes, err := io.ReadAll(req.Body)
@@ -670,8 +666,7 @@ func TestGrantHandler(t *testing.T) {
 		})
 
 		gock.DisableNetworking()
-		gock.New("http://crud-service").
-			Post("/bindings/").
+		newGockScope(t, "http://crud-service", http.MethodPost, "/bindings/").
 			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
 				var body types.Binding
 				err := json.NewDecoder(req.Body).Decode(&body)
@@ -842,4 +837,19 @@ func requestWithParams(
 		req = mux.SetURLVars(req, params)
 	}
 	return req
+}
+
+func newGockScope(t *testing.T, baseURL, method, path string) *gock.Request {
+	t.Helper()
+
+	scope := gock.New(baseURL)
+	scope.Method = strings.ToUpper(method)
+	scope.Path(fmt.Sprintf("%s$", path))
+
+	t.Cleanup(func() {
+		require.True(t, gock.IsDone())
+		gock.OffAll()
+	})
+
+	return scope
 }

@@ -3,13 +3,13 @@ module github.com/rond-authz/rond
 go 1.18
 
 require (
-	github.com/davidebianchi/go-jsonclient v1.5.0
 	github.com/davidebianchi/gswagger v0.9.0
 	github.com/getkin/kin-openapi v0.118.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/mia-platform/configlib v1.0.0
 	github.com/mia-platform/glogger/v2 v2.1.3
+	github.com/mia-platform/go-crud-service-client v0.10.0
 	github.com/open-policy-agent/opa v0.54.0
 	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/common v0.44.0
@@ -27,6 +27,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/davidebianchi/go-jsonclient v1.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
