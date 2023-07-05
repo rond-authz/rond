@@ -26,8 +26,8 @@ import (
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
-	rondmux "github.com/rond-authz/rond/routers/mux"
 	"github.com/rond-authz/rond/sdk"
+	rondhttp "github.com/rond-authz/rond/sdk/rondinput/http"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
@@ -116,7 +116,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 	}
 
 	pathParams := mux.Vars(t.request)
-	input := rondmux.NewInput(t.request, t.clientHeaderKey, pathParams)
+	input := rondhttp.NewInput(t.request, t.clientHeaderKey, pathParams)
 
 	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, input, userInfo, decodedBody)
 	if err != nil {

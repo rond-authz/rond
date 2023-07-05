@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package rondmux
+package service
 
 import (
 	"context"
@@ -61,7 +61,7 @@ func TestOPAMiddleware(t *testing.T) {
 todo { true }`,
 		}
 		var openAPISpec *openapi.OpenAPISpec
-		openAPISpecContent, err := os.ReadFile("../../mocks/simplifiedMock.json")
+		openAPISpecContent, err := os.ReadFile("../mocks/simplifiedMock.json")
 		require.NoError(t, err)
 		err = json.Unmarshal(openAPISpecContent, &openAPISpec)
 		require.NoError(t, err)
@@ -126,7 +126,7 @@ foobar { true }`,
 		}
 
 		t.Run(`ok - path is known on oas with no permission declared`, func(t *testing.T) {
-			openAPISpec, err := openapi.LoadOASFile("../../mocks/documentationPathMock.json")
+			openAPISpec, err := openapi.LoadOASFile("../mocks/documentationPathMock.json")
 			require.NoError(t, err)
 			targetServiceOASPath := "/documentation/json"
 			sdk := getSDK(t, openAPISpec, opaModule)
@@ -144,7 +144,7 @@ foobar { true }`,
 		})
 
 		t.Run(`ok - path is missing on oas and request is equal to serviceTargetOASPath`, func(t *testing.T) {
-			openAPISpec, err := openapi.LoadOASFile("../../mocks/simplifiedMock.json")
+			openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 			require.NoError(t, err)
 			targetServiceOASPath := "/documentation/json"
 			sdk := getSDK(t, openAPISpec, opaModule)
@@ -162,7 +162,7 @@ foobar { true }`,
 		})
 
 		t.Run(`ok - path is NOT known on oas but is proxied anyway`, func(t *testing.T) {
-			openAPISpec, err := openapi.LoadOASFile("../../mocks/simplifiedMock.json")
+			openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 			require.NoError(t, err)
 			targetServiceOASPath := "/documentation/custom/json"
 			sdk := getSDK(t, openAPISpec, opaModule)
@@ -181,7 +181,7 @@ foobar { true }`,
 	})
 
 	t.Run(`injects opa instance with correct query`, func(t *testing.T) {
-		openAPISpec, err := openapi.LoadOASFile("../../mocks/simplifiedMock.json")
+		openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 		require.NoError(t, err)
 
 		t.Run(`rego package doesn't contain expected policy`, func(t *testing.T) {
@@ -299,7 +299,7 @@ very_very_composed_permission_with_eval { true }`,
 func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 	var routesNotToProxy = []string{}
 
-	openAPISpec, err := openapi.LoadOASFile("../../mocks/simplifiedMock.json")
+	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 	require.Nil(t, err)
 	options := &OPAMiddlewareOptions{
 		IsStandalone:         true,

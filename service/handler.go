@@ -24,8 +24,8 @@ import (
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
-	rondmux "github.com/rond-authz/rond/routers/mux"
 	"github.com/rond-authz/rond/sdk"
+	rondhttp "github.com/rond-authz/rond/sdk/rondinput/http"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
@@ -112,7 +112,7 @@ func EvaluateRequest(
 		return err
 	}
 
-	rondInput := rondmux.NewInput(req, env.ClientTypeHeader, mux.Vars(req))
+	rondInput := rondhttp.NewInput(req, env.ClientTypeHeader, mux.Vars(req))
 	result, err := evaluatorSdk.EvaluateRequestPolicy(req.Context(), rondInput, userInfo)
 	if err != nil {
 		if errors.Is(err, opatranslator.ErrEmptyQuery) && utils.HasApplicationJSONContentType(req.Header) {
