@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/helpers"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/types"
 
