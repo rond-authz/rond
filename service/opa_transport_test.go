@@ -510,7 +510,7 @@ func getSdk(t require.TestingT, options *sdkOptions) sdk.Rond {
 	sdk, err := sdk.New(context.Background(), logger, openAPISpec, opaModule, &core.EvaluatorOptions{
 		EnablePrintStatements: true,
 		MongoClient:           options.mongoClient,
-	}, options.registry, "")
+	}, options.registry)
 	require.NoError(t, err)
 
 	return sdk

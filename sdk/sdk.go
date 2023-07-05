@@ -161,8 +161,6 @@ type rondImpl struct {
 	oasRouter               *bunrouter.CompatRouter
 	oas                     *openapi.OpenAPISpec
 	opaModuleConfig         *core.OPAModuleConfig
-
-	clientTypeHeaderKey string
 }
 
 func (r rondImpl) FindEvaluator(logger *logrus.Entry, method, path string) (Evaluator, error) {
@@ -189,7 +187,6 @@ func New(
 	opaModuleConfig *core.OPAModuleConfig,
 	evaluatorOptions *core.EvaluatorOptions,
 	registry *prometheus.Registry,
-	clientTypeHeaderKey string,
 ) (Rond, error) {
 	evaluator, err := core.SetupEvaluators(ctx, logger, oas, opaModuleConfig, evaluatorOptions)
 	if err != nil {
@@ -218,8 +215,6 @@ func New(
 		evaluatorOptions:        evaluatorOptions,
 		oas:                     oas,
 		opaModuleConfig:         opaModuleConfig,
-
-		clientTypeHeaderKey: clientTypeHeaderKey,
 	}, nil
 }
 

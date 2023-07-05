@@ -46,7 +46,6 @@ func TestOPAMiddleware(t *testing.T) {
 			opaModule,
 			nil,
 			nil,
-			"",
 		)
 		require.NoError(t, err)
 
@@ -317,7 +316,6 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 			opaModule,
 			nil,
 			nil,
-			"",
 		)
 		require.NoError(t, err)
 		return sdk

@@ -118,7 +118,7 @@ test_policy { true }
 	logger, _ := test.NewNullLogger()
 	sdk, err := sdk.New(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
 		MongoClient: mongoClient,
-	}, registry, "")
+	}, registry)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("non standalone", func(t *testing.T) {

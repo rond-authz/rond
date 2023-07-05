@@ -103,7 +103,7 @@ func entrypoint(shutdown chan os.Signal) {
 	sdk, err := sdk.New(ctx, logrus.NewEntry(log), oas, opaModuleConfig, &core.EvaluatorOptions{
 		EnablePrintStatements: env.IsTraceLogLevel(),
 		MongoClient:           mongoClient,
-	}, registry, env.ClientTypeHeader)
+	}, registry)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},

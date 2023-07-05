@@ -47,13 +47,13 @@ func TestNewSDK(t *testing.T) {
 	}
 
 	t.Run("fails if oas is nil", func(t *testing.T) {
-		sdk, err := New(context.Background(), logger, nil, nil, nil, nil, "")
+		sdk, err := New(context.Background(), logger, nil, nil, nil, nil)
 		require.ErrorContains(t, err, "oas must not be nil")
 		require.Nil(t, sdk)
 	})
 
 	t.Run("fails if opaModuleConfig is nil", func(t *testing.T) {
-		sdk, err := New(context.Background(), logger, openAPISpec, nil, nil, nil, "")
+		sdk, err := New(context.Background(), logger, openAPISpec, nil, nil, nil)
 		require.ErrorContains(t, err, "OPAModuleConfig must not be nil")
 		require.Nil(t, sdk)
 	})
@@ -61,20 +61,20 @@ func TestNewSDK(t *testing.T) {
 	t.Run("fails if oas is invalid", func(t *testing.T) {
 		oas, err := openapi.LoadOASFile("../mocks/invalidOASConfiguration.json")
 		require.NoError(t, err)
-		sdk, err := New(context.Background(), logger, oas, opaModule, nil, nil, "")
+		sdk, err := New(context.Background(), logger, oas, opaModule, nil, nil)
 		require.ErrorContains(t, err, "invalid OAS configuration:")
 		require.Nil(t, sdk)
 	})
 
 	t.Run("creates sdk correctly", func(t *testing.T) {
-		sdk, err := New(context.Background(), logger, openAPISpec, opaModule, nil, nil, "")
+		sdk, err := New(context.Background(), logger, openAPISpec, opaModule, nil, nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, sdk)
 	})
 
 	t.Run("if registry is passed, setup metrics", func(t *testing.T) {
 		registry := prometheus.NewRegistry()
-		sdk, err := New(context.Background(), logger, openAPISpec, opaModule, nil, registry, "")
+		sdk, err := New(context.Background(), logger, openAPISpec, opaModule, nil, registry)
 		require.NoError(t, err)
 		require.NotEmpty(t, sdk)
 	})
@@ -92,7 +92,7 @@ func TestSDK(t *testing.T) {
 		very_very_composed_permission { true }`,
 	}
 	registry := prometheus.NewRegistry()
-	sdk, err := New(context.Background(), logger, openAPISpec, opaModule, nil, registry, "")
+	sdk, err := New(context.Background(), logger, openAPISpec, opaModule, nil, registry)
 	require.NoError(t, err)
 
 	rond, ok := sdk.(rondImpl)
@@ -696,7 +696,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	logger := logrus.NewEntry(log)
 	sdk, err := New(context.Background(), logger, openAPISpec, moduleConfig, &core.EvaluatorOptions{
 		MongoClient: testmongoMock,
-	}, nil, "")
+	}, nil)
 	require.NoError(b, err)
 
 	b.ResetTimer()
@@ -764,7 +764,7 @@ func getSdk(t require.TestingT, options *sdkOptions) Rond {
 	sdk, err := New(context.Background(), logger, openAPISpec, opaModule, &core.EvaluatorOptions{
 		EnablePrintStatements: true,
 		MongoClient:           options.mongoClient,
-	}, options.registry, "")
+	}, options.registry)
 	require.NoError(t, err)
 
 	return sdk

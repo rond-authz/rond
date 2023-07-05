@@ -294,7 +294,6 @@ func getEvaluator(
 			MongoClient: mongoClient,
 		},
 		options.registry,
-		"",
 	)
 	require.NoError(t, err)
 

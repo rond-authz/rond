@@ -1798,7 +1798,7 @@ filter_policy {
 	logger, _ := test.NewNullLogger()
 	sdk, err := sdk.New(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
 		MongoClient: mongoClient,
-	}, registry, "")
+	}, registry)
 	require.NoError(t, err, "unexpected error")
 
 	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
@@ -1957,7 +1957,7 @@ filter_policy {
 	logger, _ := test.NewNullLogger()
 	sdk, err := sdk.New(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
 		MongoClient: mongoClient,
-	}, registry, "")
+	}, registry)
 	require.NoError(t, err, "unexpected error")
 
 	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
