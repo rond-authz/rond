@@ -27,7 +27,6 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mongoclient"
@@ -118,8 +117,6 @@ func SetupRouter(
 
 	evalRouter := router.NewRoute().Subrouter()
 	if env.Standalone {
-		router.Use(helpers.AddHeadersToProxyMiddleware(log, env.GetAdditionalHeadersToProxy()))
-
 		swaggerRouter, err := swagger.NewRouter(gorilla.NewRouter(router), swagger.Options{
 			Context: context.Background(),
 			Openapi: &openapi3.T{

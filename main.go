@@ -25,8 +25,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/helpers"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
