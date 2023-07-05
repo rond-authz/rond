@@ -21,7 +21,6 @@ import (
 
 	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
-	"github.com/rond-authz/rond/internal/crudclient"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/types"
 
@@ -191,7 +190,10 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := crudclient.New(env.BindingsCrudServiceURL)
+	client, err := crud.NewClient[types.Binding](crud.ClientOptions{
+		BaseURL: env.BindingsCrudServiceURL,
+		Headers: helpers.GetHeadersToProxy(r, env.GetAdditionalHeadersToProxy()),
+	})
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud setup")
 		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), utils.GENERIC_BUSINESS_ERROR_MESSAGE)
@@ -213,14 +215,14 @@ func grantHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var bindingIDCreated types.BindingCreateResponse
-	if err := client.Post(r.Context(), &bindingToCreate, &bindingIDCreated); err != nil {
+	bindingIDCreated, err := client.Create(r.Context(), bindingToCreate, crud.Options{})
+	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed crud request")
 		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed crud request for creating bindings", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 	logger.WithFields(logrus.Fields{
-		"createdBindingObjectId": utils.SanitizeString(bindingIDCreated.ObjectID),
+		"createdBindingObjectId": utils.SanitizeString(bindingIDCreated),
 		"createdBindingId":       utils.SanitizeString(bindingToCreate.BindingID),
 		"resourceId":             utils.SanitizeString(reqBody.ResourceID),
 		"resourceType":           utils.SanitizeString(resourceType),
