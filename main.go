@@ -100,26 +100,18 @@ func entrypoint(shutdown chan os.Signal) {
 	)
 
 	registry := prometheus.NewRegistry()
-	rondSDK, err := sdk.New(opaModuleConfig, &sdk.Options{
+	sdk, err := sdk.NewFromOAS(ctx, opaModuleConfig, oas, &sdk.FromOASOptions{
 		Registry: registry,
 		EvaluatorOptions: &core.EvaluatorOptions{
 			EnablePrintStatements: env.IsTraceLogLevel(),
 			MongoClient:           mongoClient,
 		},
-	})
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("failed to create sdk")
-		return
-	}
-	sdk, err := rondSDK.FromOAS(ctx, oas, &sdk.FromOASOptions{
 		Logger: logrus.NewEntry(log),
 	})
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("failed to create sdk from oas")
+		}).Errorf("failed to create sdk")
 		return
 	}
 

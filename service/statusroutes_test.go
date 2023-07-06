@@ -114,16 +114,12 @@ test_policy { true }
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	rondSDK, err := sdk.New(opa, &sdk.Options{
-		Registry: registry,
+	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.FromOASOptions{
 		EvaluatorOptions: &core.EvaluatorOptions{
 			MongoClient: mongoClient,
 		},
-	})
-	require.NoError(t, err, "unexpected error")
-
-	sdk, err := rondSDK.FromOAS(context.Background(), oas, &sdk.FromOASOptions{
-		Logger: logrus.NewEntry(logger),
+		Registry: registry,
+		Logger:   logrus.NewEntry(logger),
 	})
 	require.NoError(t, err, "unexpected error")
 

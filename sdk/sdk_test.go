@@ -30,50 +30,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNew(t *testing.T) {
+func TestNewFromOas(t *testing.T) {
 	opaModule := &core.OPAModuleConfig{
 		Name: "example.rego",
 		Content: `package policies
 		very_very_composed_permission { true }`,
 	}
+	ctx := context.Background()
 
-	t.Run("fails if opaModuleConfig is nil", func(t *testing.T) {
-		sdk, err := New(nil, nil)
-		require.EqualError(t, err, "OPAModuleConfig must not be nil")
-		require.Nil(t, sdk)
-	})
+	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
+	require.NoError(t, err)
 
-	t.Run("creates sdk correctly if options is nil", func(t *testing.T) {
-		sdk, err := New(opaModule, nil)
-		require.NoError(t, err)
-		require.NotNil(t, sdk)
-	})
-
-	t.Run("if registry is passed, setup metrics", func(t *testing.T) {
-		registry := prometheus.NewRegistry()
-		sdk, err := New(opaModule, &Options{
-			Registry: registry,
-		})
-		require.NoError(t, err)
-		require.NotEmpty(t, sdk)
-	})
-
-	t.Run("if registry is passed, passes EvaluatorOptions", func(t *testing.T) {
-		evalOpts := &core.EvaluatorOptions{
-			EnablePrintStatements: true,
-		}
-		sdk, err := New(opaModule, &Options{
-			EvaluatorOptions: evalOpts,
-		})
-		require.NoError(t, err)
-		require.NotEmpty(t, sdk)
-		r, ok := sdk.(rondImpl)
-		require.True(t, ok)
-		require.Equal(t, evalOpts, r.evaluatorOptions)
-	})
-}
-
-func TestFromOAS(t *testing.T) {
 	log, _ := test.NewNullLogger()
 	logger := logrus.NewEntry(log)
 
@@ -81,57 +48,70 @@ func TestFromOAS(t *testing.T) {
 		Logger: logger,
 	}
 
-	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
-	require.NoError(t, err)
-	opaModule := &core.OPAModuleConfig{
-		Name: "example.rego",
-		Content: `package policies
-		very_very_composed_permission { true }`,
-	}
-
-	t.Run("fails without options", func(t *testing.T) {
-		sdk, err := New(opaModule, nil)
-		require.NoError(t, err)
-		oasSDK, err := sdk.FromOAS(context.Background(), nil, nil)
+	t.Run("throws if options is nil", func(t *testing.T) {
+		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, nil)
 		require.EqualError(t, err, "logger is required inside options")
-		require.Nil(t, oasSDK)
+		require.Nil(t, sdk)
 	})
 
-	t.Run("fails without logger", func(t *testing.T) {
-		sdk, err := New(opaModule, nil)
-		require.NoError(t, err)
-		oasSDK, err := sdk.FromOAS(context.Background(), nil, &FromOASOptions{})
+	t.Run("throws if logger is nil", func(t *testing.T) {
+		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &FromOASOptions{})
 		require.EqualError(t, err, "logger is required inside options")
-		require.Nil(t, oasSDK)
+		require.Nil(t, sdk)
 	})
 
-	t.Run("fails if oas is nil", func(t *testing.T) {
-		sdk, err := New(opaModule, nil)
-		require.NoError(t, err)
-		oasSDK, err := sdk.FromOAS(context.Background(), nil, options)
-		require.ErrorContains(t, err, "oas must not be nil")
-		require.Nil(t, oasSDK)
+	t.Run("throws if opaModuleConfig is nil", func(t *testing.T) {
+		sdk, err := NewFromOAS(ctx, nil, nil, options)
+		require.EqualError(t, err, "OPAModuleConfig must not be nil")
+		require.Nil(t, sdk)
 	})
 
-	t.Run("fails if oas is invalid", func(t *testing.T) {
+	t.Run("throws if oas is nil", func(t *testing.T) {
+		sdk, err := NewFromOAS(ctx, opaModule, nil, options)
+		require.EqualError(t, err, "oas must not be nil")
+		require.Nil(t, sdk)
+	})
+
+	t.Run("throws if oas is invalid", func(t *testing.T) {
 		oas, err := openapi.LoadOASFile("../mocks/invalidOASConfiguration.json")
 		require.NoError(t, err)
-		sdk, err := New(opaModule, nil)
-		require.NoError(t, err)
-		oasSDK, err := sdk.FromOAS(context.Background(), oas, options)
+		sdk, err := NewFromOAS(ctx, opaModule, oas, options)
 		require.ErrorContains(t, err, "invalid OAS configuration:")
-		require.Nil(t, oasSDK)
+		require.Nil(t, sdk)
+	})
+
+	t.Run("if registry is passed, setup metrics", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &FromOASOptions{
+			Registry: registry,
+			Logger:   logger,
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, sdk)
+	})
+
+	t.Run("passes EvaluatorOptions and set metrics correctly", func(t *testing.T) {
+		evalOpts := &core.EvaluatorOptions{
+			EnablePrintStatements: true,
+		}
+		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &FromOASOptions{
+			EvaluatorOptions: evalOpts,
+			Logger:           logger,
+			Registry:         prometheus.NewRegistry(),
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, sdk)
+		r, ok := sdk.(oasImpl)
+		require.True(t, ok)
+		require.Equal(t, evalOpts, r.evaluatorOptions)
 	})
 
 	t.Run("creates OAS sdk correctly", func(t *testing.T) {
-		sdk, err := New(opaModule, nil)
+		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, options)
 		require.NoError(t, err)
-		oasSDK, err := sdk.FromOAS(context.Background(), openAPISpec, options)
-		require.NoError(t, err)
-		require.NotNil(t, oasSDK)
 
 		t.Run("and find evaluators", func(t *testing.T) {
-			evaluator, err := oasSDK.FindEvaluator(logger, http.MethodGet, "/users/")
+			evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
 			require.NoError(t, err)
 			require.NotNil(t, evaluator)
 		})

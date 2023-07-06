@@ -558,15 +558,10 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 
 	log, _ := test.NewNullLogger()
 	logger := logrus.NewEntry(log)
-	sdkBuilder, err := New(moduleConfig, &Options{
+	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &FromOASOptions{
 		EvaluatorOptions: &core.EvaluatorOptions{
 			MongoClient: testmongoMock,
 		},
-	})
-	require.NoError(b, err)
-
-	oasSDK, err := sdkBuilder.FromOAS(context.Background(), openAPISpec, &FromOASOptions{
-		Logger: logger,
 	})
 	require.NoError(b, err)
 
@@ -587,7 +582,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 			},
 		}, "")
 		b.StartTimer()
-		evaluator, err := oasSDK.FindEvaluator(logger, http.MethodGet, "/projects/project123")
+		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/projects/project123")
 		require.NoError(b, err)
 		evaluator.EvaluateRequestPolicy(context.Background(), rondInput, types.User{})
 		b.StopTimer()
@@ -620,19 +615,15 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OpenAPI {
 	if options.opaModuleContent != "" {
 		opaModule.Content = options.opaModuleContent
 	}
-	sdk, err := New(opaModule, &Options{
+	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &FromOASOptions{
 		Registry: options.registry,
 		EvaluatorOptions: &core.EvaluatorOptions{
 			EnablePrintStatements: true,
 			MongoClient:           options.mongoClient,
 		},
-	})
-	require.NoError(t, err)
-
-	oasSDK, err := sdk.FromOAS(context.Background(), openAPISpec, &FromOASOptions{
 		Logger: logger,
 	})
 	require.NoError(t, err)
 
-	return oasSDK
+	return sdk
 }

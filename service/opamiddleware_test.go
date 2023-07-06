@@ -39,13 +39,10 @@ func TestOPAMiddleware(t *testing.T) {
 		t.Helper()
 
 		logger, _ := test.NewNullLogger()
-		rondSDK, err := sdk.New(opaModule, nil)
-		require.NoError(t, err, "unexpected error")
-
-		sdk, err := rondSDK.FromOAS(context.Background(), oas, &sdk.FromOASOptions{
+		sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.FromOASOptions{
 			Logger: logrus.NewEntry(logger),
 		})
-		require.NoError(t, err)
+		require.NoError(t, err, "unexpected error")
 
 		return sdk
 	}
@@ -307,13 +304,11 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 
 		log, _ := test.NewNullLogger()
 		logger := logrus.NewEntry(log)
-		rondSDK, err := sdk.New(opaModule, nil)
-		require.NoError(t, err, "unexpected error")
-
-		sdk, err := rondSDK.FromOAS(context.Background(), openAPISpec, &sdk.FromOASOptions{
+		sdk, err := sdk.NewFromOAS(context.Background(), opaModule, openAPISpec, &sdk.FromOASOptions{
 			Logger: logger,
 		})
-		require.NoError(t, err)
+		require.NoError(t, err, "unexpected error")
+
 		return sdk
 	}
 

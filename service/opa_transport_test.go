@@ -507,17 +507,14 @@ func getSdk(t require.TestingT, options *sdkOptions) sdk.OpenAPI {
 	if options.opaModuleContent != "" {
 		opaModule.Content = options.opaModuleContent
 	}
-	rondSDK, err := sdk.New(opaModule, &sdk.Options{
+
+	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, openAPISpec, &sdk.FromOASOptions{
 		EvaluatorOptions: &core.EvaluatorOptions{
 			MongoClient:           options.mongoClient,
 			EnablePrintStatements: true,
 		},
 		Registry: options.registry,
-	})
-	require.NoError(t, err, "unexpected error")
-
-	sdk, err := rondSDK.FromOAS(context.Background(), openAPISpec, &sdk.FromOASOptions{
-		Logger: logger,
+		Logger:   logger,
 	})
 	require.NoError(t, err)
 

@@ -1794,18 +1794,14 @@ filter_policy {
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	rondSDK, err := sdk.New(opa, &sdk.Options{
+	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.FromOASOptions{
 		EvaluatorOptions: &core.EvaluatorOptions{
 			MongoClient: mongoClient,
 		},
 		Registry: registry,
+		Logger:   logrus.NewEntry(logger),
 	})
 	require.NoError(t, err, "unexpected error")
-
-	sdk, err := rondSDK.FromOAS(context.Background(), oas, &sdk.FromOASOptions{
-		Logger: logrus.NewEntry(logger),
-	})
-	require.NoError(t, err)
 
 	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
 	require.NoError(t, err, "unexpected error")
@@ -1960,18 +1956,14 @@ filter_policy {
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	rondSDK, err := sdk.New(opa, &sdk.Options{
+	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.FromOASOptions{
 		EvaluatorOptions: &core.EvaluatorOptions{
 			MongoClient: mongoClient,
 		},
 		Registry: registry,
+		Logger:   logrus.NewEntry(logger),
 	})
 	require.NoError(t, err, "unexpected error")
-
-	sdk, err := rondSDK.FromOAS(context.Background(), oas, &sdk.FromOASOptions{
-		Logger: logrus.NewEntry(logger),
-	})
-	require.NoError(t, err)
 
 	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
 	require.NoError(t, err, "unexpected error")

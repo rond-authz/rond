@@ -39,15 +39,10 @@ func TestOasSDK(t *testing.T) {
 		very_very_composed_permission { true }`,
 	}
 	registry := prometheus.NewRegistry()
-	rondSDK, err := New(opaModule, &Options{
+	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &FromOASOptions{
 		Registry: registry,
+		Logger:   logger,
 	})
-	require.NoError(t, err)
-
-	options := &FromOASOptions{
-		Logger: logger,
-	}
-	sdk, err := rondSDK.FromOAS(context.Background(), openAPISpec, options)
 	require.NoError(t, err)
 
 	oas, ok := sdk.(oasImpl)

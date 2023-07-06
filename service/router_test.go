@@ -285,18 +285,14 @@ func getEvaluator(
 		logger = logrus.NewEntry(log)
 	}
 
-	rondSDK, err := sdk.New(opaModule, &sdk.Options{
-		Registry: options.registry,
+	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.FromOASOptions{
 		EvaluatorOptions: &core.EvaluatorOptions{
 			MongoClient: mongoClient,
 		},
+		Registry: options.registry,
+		Logger:   logger,
 	})
 	require.NoError(t, err, "unexpected error")
-
-	sdk, err := rondSDK.FromOAS(context.Background(), oas, &sdk.FromOASOptions{
-		Logger: logger,
-	})
-	require.NoError(t, err)
 
 	evaluator, err := sdk.FindEvaluator(logger, method, path)
 	require.NoError(t, err)

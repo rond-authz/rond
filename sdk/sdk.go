@@ -26,21 +26,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type rondImpl struct {
-	evaluatorOptions *core.EvaluatorOptions
-	opaModuleConfig  *core.OPAModuleConfig
-}
-
-type Options struct {
-	Registry         *prometheus.Registry
-	EvaluatorOptions *core.EvaluatorOptions
-}
-
-type Rond interface {
-	// WithConfig(rondConfig openapi.RondConfig, options *WithConfigOptions) Evaluator
-	FromOAS(ctx context.Context, oas *openapi.OpenAPISpec, options *FromOASOptions) (OpenAPI, error)
-}
-
 type WithConfigOptions struct {
 	Logger           *logrus.Entry
 	EvaluatorOptions core.EvaluatorOptions
@@ -63,16 +48,35 @@ type WithConfigOptions struct {
 // }
 
 type FromOASOptions struct {
-	Logger *logrus.Entry
+	Registry         *prometheus.Registry
+	EvaluatorOptions *core.EvaluatorOptions
+	Logger           *logrus.Entry
 }
 
-func (r rondImpl) FromOAS(ctx context.Context, oas *openapi.OpenAPISpec, options *FromOASOptions) (OpenAPI, error) {
-	if options == nil || options.Logger == nil {
+// The SDK is now into core because there are coupled function here which should use the SDK itself
+// (which uses core, so it will result in a cyclic dependency). In the future, sdk should be in a
+// specific package.
+func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas *openapi.OpenAPISpec, options *FromOASOptions) (OpenAPI, error) {
+	if opaModuleConfig == nil {
+		return nil, fmt.Errorf("OPAModuleConfig must not be nil")
+	}
+
+	if options == nil {
+		options = &FromOASOptions{}
+	}
+	if options.Logger == nil {
 		// TODO: default to a logger instead of return error
 		return nil, fmt.Errorf("logger is required inside options")
 	}
+
+	evaluatorOptions := &core.EvaluatorOptions{}
+	if options.EvaluatorOptions != nil {
+		evaluatorOptions = options.EvaluatorOptions
+	}
+	setupMetrics(options.Registry, evaluatorOptions)
+
 	logger := options.Logger
-	evaluator, err := core.SetupEvaluators(ctx, logger, oas, r.opaModuleConfig, r.evaluatorOptions)
+	evaluator, err := core.SetupEvaluators(ctx, logger, oas, opaModuleConfig, evaluatorOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -88,35 +92,16 @@ func (r rondImpl) FromOAS(ctx context.Context, oas *openapi.OpenAPISpec, options
 		oas:       oas,
 		oasRouter: oasRouter,
 
-		opaModuleConfig:         r.opaModuleConfig,
+		opaModuleConfig:         opaModuleConfig,
 		partialResultEvaluators: evaluator,
-		evaluatorOptions:        r.evaluatorOptions,
+		evaluatorOptions:        evaluatorOptions,
 	}, nil
 }
 
-// The SDK is now into core because there are coupled function here which should use the SDK itself
-// (which uses core, so it will result in a cyclic dependency). In the future, sdk should be in a
-// specific package.
-func New(opaModuleConfig *core.OPAModuleConfig, options *Options) (Rond, error) {
-	if opaModuleConfig == nil {
-		return nil, fmt.Errorf("OPAModuleConfig must not be nil")
-	}
-
-	if options == nil {
-		options = &Options{}
-	}
+func setupMetrics(registry *prometheus.Registry, evaluatorOptions *core.EvaluatorOptions) {
 	m := metrics.SetupMetrics("rond")
-	if options.Registry != nil {
-		m.MustRegister(options.Registry)
-	}
-	evaluatorOptions := &core.EvaluatorOptions{}
-	if options.EvaluatorOptions != nil {
-		evaluatorOptions = options.EvaluatorOptions
+	if registry != nil {
+		m.MustRegister(registry)
 	}
 	evaluatorOptions.WithMetrics(m)
-
-	return rondImpl{
-		evaluatorOptions: evaluatorOptions,
-		opaModuleConfig:  opaModuleConfig,
-	}, nil
 }
