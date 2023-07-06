@@ -26,27 +26,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type WithConfigOptions struct {
-	Logger           *logrus.Entry
-	EvaluatorOptions core.EvaluatorOptions
-}
-
-// func (r rondImpl) WithConfig(rondConfig openapi.RondConfig, options *WithConfigOptions) Evaluator {
-// 	if options == nil {
-// 		options = &WithConfigOptions{}
-// 	}
-// 	// TODO: default to a logger instead of panic
-// 	if options.Logger == nil {
-// 		panic(fmt.Errorf("logger must be set in config options"))
-// 	}
-// 	return evaluator{
-// 		rondConfig:       rondConfig,
-// 		logger:           options.Logger,
-// 		opaModuleConfig:  r.opaModuleConfig,
-// 		evaluatorOptions: &options.EvaluatorOptions,
-// 	}
-// }
-
 type FromOASOptions struct {
 	Registry         *prometheus.Registry
 	EvaluatorOptions *core.EvaluatorOptions

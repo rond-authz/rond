@@ -118,48 +118,6 @@ func TestNewFromOas(t *testing.T) {
 	})
 }
 
-// func TestWithConfig(t *testing.T) {
-// 	log, _ := test.NewNullLogger()
-// 	logger := logrus.NewEntry(log)
-
-// 	opaModule := &core.OPAModuleConfig{
-// 		Name: "example.rego",
-// 		Content: `package policies
-// 		very_very_composed_permission { true }`,
-// 	}
-
-// 	config := openapi.RondConfig{
-// 		ResponseFlow: openapi.ResponseFlow{
-// 			PolicyName: "very_very_composed_permission",
-// 		},
-// 	}
-
-// 	options := &WithConfigOptions{Logger: logger}
-
-// 	t.Run("panic if no logger passed", func(t *testing.T) {
-// 		sdk, err := New(opaModule, nil)
-// 		require.NoError(t, err)
-// 		require.PanicsWithError(t, "logger must be set in config options", func() { sdk.WithConfig(config, nil) })
-// 	})
-
-// 	t.Run("ok - without options", func(t *testing.T) {
-// 		sdk, err := New(opaModule, nil)
-// 		require.NoError(t, err)
-// 		evaluator := sdk.WithConfig(config, options)
-// 		require.NotNil(t, evaluator)
-
-// 		t.Run("evaluate request", func(t *testing.T) {
-// 			input := getFakeInput(t, core.InputRequest{}, "")
-// 			actual, err := evaluator.EvaluateRequestPolicy(context.Background(), input, types.User{})
-// 			require.NoError(t, err)
-// 			require.Equal(t, PolicyResult{
-// 				Allowed:      true,
-// 				QueryToProxy: []byte{},
-// 			}, actual)
-// 		})
-// 	})
-// }
-
 type sdkOptions struct {
 	opaModuleContent string
 	oasFilePath      string
