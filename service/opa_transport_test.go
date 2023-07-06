@@ -482,7 +482,7 @@ type tHelper interface {
 	Helper()
 }
 
-func getSdk(t require.TestingT, options *sdkOptions) sdk.Rond {
+func getSdk(t require.TestingT, options *sdkOptions) sdk.OpenAPI {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
 	}
@@ -507,10 +507,18 @@ func getSdk(t require.TestingT, options *sdkOptions) sdk.Rond {
 	if options.opaModuleContent != "" {
 		opaModule.Content = options.opaModuleContent
 	}
-	sdk, err := sdk.New(context.Background(), logger, openAPISpec, opaModule, &core.EvaluatorOptions{
-		EnablePrintStatements: true,
-		MongoClient:           options.mongoClient,
-	}, options.registry)
+	rondSDK, err := sdk.New(opaModule, &sdk.Options{
+		EvaluatorOptions: &core.EvaluatorOptions{
+			MongoClient:           options.mongoClient,
+			EnablePrintStatements: true,
+		},
+		Registry: options.registry,
+	})
+	require.NoError(t, err, "unexpected error")
+
+	sdk, err := rondSDK.FromOAS(context.Background(), openAPISpec, &sdk.FromOASOptions{
+		Logger: logger,
+	})
 	require.NoError(t, err)
 
 	return sdk

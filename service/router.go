@@ -101,7 +101,7 @@ func SetupRouter(
 	env config.EnvironmentVariables,
 	opaModuleConfig *core.OPAModuleConfig,
 	oas *openapi.OpenAPISpec,
-	sdk sdk.Rond,
+	sdk sdk.OpenAPI,
 	mongoClient *mongoclient.MongoClient,
 	registry *prometheus.Registry,
 ) (*mux.Router, error) {

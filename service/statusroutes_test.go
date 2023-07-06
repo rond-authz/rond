@@ -22,7 +22,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mia-platform/glogger/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
@@ -93,7 +92,6 @@ func TestStatusRoutes(testCase *testing.T) {
 
 func TestStatusRoutesIntegration(t *testing.T) {
 	log, _ := test.NewNullLogger()
-	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
 	opa := &core.OPAModuleConfig{
 		Name: "policies",
@@ -116,9 +114,17 @@ test_policy { true }
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	sdk, err := sdk.New(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
-		MongoClient: mongoClient,
-	}, registry)
+	rondSDK, err := sdk.New(opa, &sdk.Options{
+		Registry: registry,
+		EvaluatorOptions: &core.EvaluatorOptions{
+			MongoClient: mongoClient,
+		},
+	})
+	require.NoError(t, err, "unexpected error")
+
+	sdk, err := rondSDK.FromOAS(context.Background(), oas, &sdk.FromOASOptions{
+		Logger: logrus.NewEntry(logger),
+	})
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("non standalone", func(t *testing.T) {

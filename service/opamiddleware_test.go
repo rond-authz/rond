@@ -35,18 +35,16 @@ import (
 )
 
 func TestOPAMiddleware(t *testing.T) {
-	getSDK := func(t *testing.T, oas *openapi.OpenAPISpec, opaModule *core.OPAModuleConfig) sdk.Rond {
+	getSDK := func(t *testing.T, oas *openapi.OpenAPISpec, opaModule *core.OPAModuleConfig) sdk.OpenAPI {
 		t.Helper()
 
 		logger, _ := test.NewNullLogger()
-		sdk, err := sdk.New(
-			context.Background(),
-			logrus.NewEntry(logger),
-			oas,
-			opaModule,
-			nil,
-			nil,
-		)
+		rondSDK, err := sdk.New(opaModule, nil)
+		require.NoError(t, err, "unexpected error")
+
+		sdk, err := rondSDK.FromOAS(context.Background(), oas, &sdk.FromOASOptions{
+			Logger: logrus.NewEntry(logger),
+		})
 		require.NoError(t, err)
 
 		return sdk
@@ -304,19 +302,17 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 		IsStandalone:         true,
 		PathPrefixStandalone: "/eval",
 	}
-	getSdk := func(t *testing.T, opaModule *core.OPAModuleConfig) sdk.Rond {
+	getSdk := func(t *testing.T, opaModule *core.OPAModuleConfig) sdk.OpenAPI {
 		t.Helper()
 
 		log, _ := test.NewNullLogger()
 		logger := logrus.NewEntry(log)
-		sdk, err := sdk.New(
-			context.Background(),
-			logger,
-			openAPISpec,
-			opaModule,
-			nil,
-			nil,
-		)
+		rondSDK, err := sdk.New(opaModule, nil)
+		require.NoError(t, err, "unexpected error")
+
+		sdk, err := rondSDK.FromOAS(context.Background(), openAPISpec, &sdk.FromOASOptions{
+			Logger: logger,
+		})
 		require.NoError(t, err)
 		return sdk
 	}
