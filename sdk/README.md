@@ -1,4 +1,4 @@
 # SDK
 
-The Rönd SDK is actually experimental and it could change with breaking changes without major release.
+The Rönd SDK API is experimental and currently under heavy development; for this reason it could undergo breaking changes regardless of the rönd package version.
 
