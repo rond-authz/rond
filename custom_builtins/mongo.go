@@ -15,6 +15,8 @@
 package custom_builtins
 
 import (
+	"fmt"
+
 	"github.com/rond-authz/rond/internal/mongoclient"
 
 	"github.com/open-policy-agent/opa/ast"
@@ -42,6 +44,9 @@ var MongoFindOne = rego.Function2(
 		mongoClient, err := mongoclient.GetMongoClientFromContext(ctx.Context)
 		if err != nil {
 			return nil, err
+		}
+		if mongoClient == nil {
+			return nil, fmt.Errorf("mongo client not set")
 		}
 
 		var collectionName string
@@ -88,6 +93,9 @@ var MongoFindMany = rego.Function2(
 		mongoClient, err := mongoclient.GetMongoClientFromContext(ctx.Context)
 		if err != nil {
 			return nil, err
+		}
+		if mongoClient == nil {
+			return nil, fmt.Errorf("mongo client not set")
 		}
 
 		var collectionName string

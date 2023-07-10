@@ -54,8 +54,12 @@ func OPAMiddleware(
 			logger := glogger.Get(r.Context())
 
 			evaluator, err := sdk.FindEvaluator(logger, r.Method, path)
-			permission := evaluator.Config()
-			if r.Method == http.MethodGet && r.URL.Path == targetServiceOASPath && permission.RequestFlow.PolicyName == "" {
+			rondConfig := openapi.RondConfig{}
+			if err == nil {
+				rondConfig = evaluator.Config()
+			}
+
+			if r.Method == http.MethodGet && r.URL.Path == targetServiceOASPath && rondConfig.RequestFlow.PolicyName == "" {
 				fields := logrus.Fields{}
 				if err != nil {
 					fields["error"] = logrus.Fields{"message": err.Error()}
@@ -65,13 +69,13 @@ func OPAMiddleware(
 				return
 			}
 
-			if err != nil || permission.RequestFlow.PolicyName == "" {
+			if err != nil || rondConfig.RequestFlow.PolicyName == "" {
 				errorMessage := "User is not allowed to request the API"
 				statusCode := http.StatusForbidden
 				fields := logrus.Fields{
 					"originalRequestPath": utils.SanitizeString(r.URL.Path),
 					"method":              utils.SanitizeString(r.Method),
-					"allowPermission":     utils.SanitizeString(permission.RequestFlow.PolicyName),
+					"allowPermission":     utils.SanitizeString(rondConfig.RequestFlow.PolicyName),
 				}
 				technicalError := ""
 				if err != nil {
@@ -87,15 +91,7 @@ func OPAMiddleware(
 				return
 			}
 
-			// TODO: remove me
-			ctx := openapi.WithXPermission(
-				WithOPAModuleConfig(
-					openapi.WithRouterInfo(logger, r.Context(), r),
-					opaModuleConfig,
-				),
-				&permission,
-			)
-			ctx = WithEvaluatorSKD(ctx, evaluator)
+			ctx := WithEvaluatorSDK(r.Context(), evaluator)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

@@ -1795,7 +1795,9 @@ filter_policy {
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), mongoClient, oas, opa, nil, registry, "")
+	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
+		MongoClient: mongoClient,
+	}, registry, "")
 	require.NoError(t, err, "unexpected error")
 
 	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
@@ -1952,7 +1954,9 @@ filter_policy {
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), mongoClient, oas, opa, nil, registry, "")
+	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
+		MongoClient: mongoClient,
+	}, registry, "")
 	require.NoError(t, err, "unexpected error")
 
 	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
