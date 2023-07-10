@@ -49,7 +49,7 @@ func TestContext(t *testing.T) {
 
 	t.Run("throws if not in context", func(t *testing.T) {
 		actualEvaluator, err := GetEvaluator(context.Background())
-		require.EqualError(t, err, "no SDKEvaluator found in request context")
+		require.EqualError(t, err, ErrGetEvaluator.Error())
 		require.Nil(t, actualEvaluator)
 	})
 }

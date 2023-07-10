@@ -279,7 +279,7 @@ very_very_composed_permission_with_eval { true }`,
 		middleware := OPAMiddleware(nil, nil, routesNotToProxy, "", nil)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, err := sdk.GetEvaluator(r.Context())
-			require.EqualError(t, err, "no SDKEvaluator found in request context")
+			require.EqualError(t, err, sdk.ErrGetEvaluator.Error())
 		}))
 
 		w := httptest.NewRecorder()
