@@ -44,7 +44,7 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 		options = &FromOASOptions{}
 	}
 	if options.Logger == nil {
-		// TODO: default to a logger instead of return error
+		// TODO: default to a fake silent logger instead of return error
 		return nil, fmt.Errorf("logger is required inside options")
 	}
 

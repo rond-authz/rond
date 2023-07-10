@@ -22,6 +22,7 @@ import (
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -31,8 +32,9 @@ type PolicyResult struct {
 }
 
 // Warning: This interface is experimental, and it could change with breaking also in rond patches.
-// Do not use outside this repository until it is not ready.
+// Do not use outside this repository until it is ready.
 type Evaluator interface {
+	// retrieve the RondConfig used to generate the evaluator
 	Config() openapi.RondConfig
 
 	EvaluateRequestPolicy(ctx context.Context, input core.RondInput, userInfo types.User) (PolicyResult, error)

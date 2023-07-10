@@ -93,7 +93,7 @@ func OPAMiddleware(
 				return
 			}
 
-			ctx := sdk.WithEvaluatorSDK(r.Context(), evaluator)
+			ctx := sdk.WithEvaluator(r.Context(), evaluator)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

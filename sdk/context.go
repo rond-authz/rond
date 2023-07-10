@@ -16,19 +16,23 @@ package sdk
 
 import (
 	"context"
-	"fmt"
+	"errors"
+)
+
+var (
+	ErrGetEvaluator = errors.New("no Evaluator found in request context")
 )
 
 type sdkKey struct{}
 
-func WithEvaluatorSDK(ctx context.Context, evaluator Evaluator) context.Context {
+func WithEvaluator(ctx context.Context, evaluator Evaluator) context.Context {
 	return context.WithValue(ctx, sdkKey{}, evaluator)
 }
 
-func GetEvaluatorSKD(ctx context.Context) (Evaluator, error) {
+func GetEvaluator(ctx context.Context) (Evaluator, error) {
 	sdk, ok := ctx.Value(sdkKey{}).(Evaluator)
 	if !ok {
-		return nil, fmt.Errorf("no SDKEvaluator found in request context")
+		return nil, ErrGetEvaluator
 	}
 
 	return sdk, nil

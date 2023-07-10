@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/openapi"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,15 +40,15 @@ func TestContext(t *testing.T) {
 			rondConfig: rondConfig,
 		}
 
-		ctx = WithEvaluatorSDK(ctx, expectedEvaluator)
+		ctx = WithEvaluator(ctx, expectedEvaluator)
 
-		actualEvaluator, err := GetEvaluatorSKD(ctx)
+		actualEvaluator, err := GetEvaluator(ctx)
 		require.NoError(t, err)
 		require.Equal(t, expectedEvaluator, actualEvaluator)
 	})
 
 	t.Run("throws if not in context", func(t *testing.T) {
-		actualEvaluator, err := GetEvaluatorSKD(context.Background())
+		actualEvaluator, err := GetEvaluator(context.Background())
 		require.EqualError(t, err, "no SDKEvaluator found in request context")
 		require.Nil(t, actualEvaluator)
 	})

@@ -17,6 +17,7 @@ package sdk
 import (
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/openapi"
+
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bunrouter"
 )

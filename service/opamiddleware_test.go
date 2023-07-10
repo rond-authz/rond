@@ -187,7 +187,7 @@ foobar { true }`,
 
 			middleware := OPAMiddleware(opaModule, rondSDK, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				actual, err := sdk.GetEvaluatorSKD(r.Context())
+				actual, err := sdk.GetEvaluator(r.Context())
 				require.NoError(t, err, "Unexpected error")
 				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
@@ -209,7 +209,7 @@ foobar { true }`,
 
 			middleware := OPAMiddleware(opaModule, rondSDK, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				actual, err := sdk.GetEvaluatorSKD(r.Context())
+				actual, err := sdk.GetEvaluator(r.Context())
 				require.NoError(t, err)
 				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
@@ -232,7 +232,7 @@ very_very_composed_permission { true }`,
 
 			middleware := OPAMiddleware(opaModule, rondSDK, routesNotToProxy, "", nil)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				actual, err := sdk.GetEvaluatorSKD(r.Context())
+				actual, err := sdk.GetEvaluator(r.Context())
 				require.NoError(t, err)
 				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
@@ -260,7 +260,7 @@ very_very_composed_permission_with_eval { true }`,
 
 			middleware := OPAMiddleware(opaModule, rondSDK, routesNotToProxy, "", options)
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				actual, err := sdk.GetEvaluatorSKD(r.Context())
+				actual, err := sdk.GetEvaluator(r.Context())
 				require.NoError(t, err)
 				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
@@ -278,7 +278,7 @@ very_very_composed_permission_with_eval { true }`,
 		routesNotToProxy := []string{"/not/proxy"}
 		middleware := OPAMiddleware(nil, nil, routesNotToProxy, "", nil)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, err := sdk.GetEvaluatorSKD(r.Context())
+			_, err := sdk.GetEvaluator(r.Context())
 			require.EqualError(t, err, "no SDKEvaluator found in request context")
 		}))
 
@@ -322,7 +322,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 		rondSDK := getSdk(t, opaModule)
 		middleware := OPAMiddleware(opaModule, rondSDK, routesNotToProxy, "", options)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			actual, err := sdk.GetEvaluatorSKD(r.Context())
+			actual, err := sdk.GetEvaluator(r.Context())
 			require.NoError(t, err)
 			require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission"}}, actual.Config())
 			w.WriteHeader(http.StatusOK)
@@ -345,7 +345,7 @@ very_very_composed_permission_with_eval { true }`,
 		rondSDK := getSdk(t, opaModule)
 		middleware := OPAMiddleware(opaModule, rondSDK, routesNotToProxy, "", options)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			actual, err := sdk.GetEvaluatorSKD(r.Context())
+			actual, err := sdk.GetEvaluator(r.Context())
 			require.NoError(t, err)
 			require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, actual.Config())
 			w.WriteHeader(http.StatusOK)

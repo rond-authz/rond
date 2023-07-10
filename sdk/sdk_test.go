@@ -23,10 +23,10 @@ import (
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 

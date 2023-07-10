@@ -23,6 +23,7 @@ import (
 
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/types"
+
 	"github.com/stretchr/testify/require"
 )
 

@@ -77,7 +77,7 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	evaluatorSdk, err := sdk.GetEvaluatorSKD(requestContext)
+	evaluatorSdk, err := sdk.GetEvaluator(requestContext)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no evaluatorSdk found in context")
 		utils.FailResponse(w, "no evaluators sdk found in context", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
