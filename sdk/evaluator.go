@@ -37,7 +37,12 @@ type Evaluator interface {
 	// retrieve the RondConfig used to generate the evaluator
 	Config() openapi.RondConfig
 
+	// EvaluateResponsePolicy evaluate request policy. In the response, it is specified if the
+	// request is allowed and the request query (if filter generation is requested)
 	EvaluateRequestPolicy(ctx context.Context, input core.RondInput, userInfo types.User) (PolicyResult, error)
+	// EvaluateResponsePolicy evaluate response policy, take as input the decodedBody body from response
+	// (unmarshalled) and it is usable as `input.response.body` in the policy. The response is the response
+	// value returned by the policy.
 	EvaluateResponsePolicy(ctx context.Context, input core.RondInput, userInfo types.User, decodedBody any) ([]byte, error)
 }
 
