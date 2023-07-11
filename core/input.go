@@ -50,11 +50,7 @@ type InputResponse struct {
 }
 
 type InputUser struct {
-<<<<<<< HEAD
 	UserID                 string					`json:"id,omitempty"`
-=======
-	userId                 string			`json:"roles,omitempty"`
->>>>>>> 5e04fe06453dc2df9e4bfa0d98a8adbbfa8b8060
 	Properties             map[string]interface{}   `json:"properties,omitempty"`
 	Groups                 []string                 `json:"groups,omitempty"`
 	Bindings               []types.Binding          `json:"bindings,omitempty"`
@@ -160,7 +156,7 @@ func (req requestInfo) Input(user types.User, responseBody any) (Input, error) {
 			Body: responseBody,
 		},
 		User: InputUser{
-			UserID:		user.id,
+			UserID:		user.UserID,
 			Properties: user.Properties,
 			Groups:     user.UserGroups,
 			Bindings:   user.UserBindings,
