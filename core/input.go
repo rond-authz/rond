@@ -50,7 +50,7 @@ type InputResponse struct {
 }
 
 type InputUser struct {
-	userId                 string					`json:"roles,omitempty"`
+	UserID                 string					`json:"id,omitempty"`
 	Properties             map[string]interface{}   `json:"properties,omitempty"`
 	Groups                 []string                 `json:"groups,omitempty"`
 	Bindings               []types.Binding          `json:"bindings,omitempty"`
@@ -150,6 +150,7 @@ func InputFromRequest(
 			Body: responseBody,
 		},
 		User: InputUser{
+			UserID:		user.id,
 			Properties: user.Properties,
 			Groups:     user.UserGroups,
 			Bindings:   user.UserBindings,
