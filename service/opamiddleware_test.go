@@ -35,7 +35,7 @@ import (
 )
 
 func TestOPAMiddleware(t *testing.T) {
-	getSDK := func(t *testing.T, oas *openapi.OpenAPISpec, opaModule *core.OPAModuleConfig) sdk.OpenAPI {
+	getSDK := func(t *testing.T, oas *openapi.OpenAPISpec, opaModule *core.OPAModuleConfig) sdk.OASEvaluatorFinder {
 		t.Helper()
 
 		logger, _ := test.NewNullLogger()
@@ -299,7 +299,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 		IsStandalone:         true,
 		PathPrefixStandalone: "/eval",
 	}
-	getSdk := func(t *testing.T, opaModule *core.OPAModuleConfig) sdk.OpenAPI {
+	getSdk := func(t *testing.T, opaModule *core.OPAModuleConfig) sdk.OASEvaluatorFinder {
 		t.Helper()
 
 		log, _ := test.NewNullLogger()

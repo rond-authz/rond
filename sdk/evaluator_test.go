@@ -590,7 +590,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	}
 }
 
-func getOASSdk(t require.TestingT, options *sdkOptions) OpenAPI {
+func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
 	}

@@ -36,7 +36,7 @@ type OPAMiddlewareOptions struct {
 
 func OPAMiddleware(
 	opaModuleConfig *core.OPAModuleConfig,
-	rondSDK sdk.OpenAPI,
+	rondSDK sdk.OASEvaluatorFinder,
 	routesToNotProxy []string,
 	targetServiceOASPath string,
 	options *OPAMiddlewareOptions,

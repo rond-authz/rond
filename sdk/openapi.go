@@ -45,6 +45,6 @@ func (r oasImpl) FindEvaluator(logger *logrus.Entry, method, path string) (Evalu
 	}, err
 }
 
-type OpenAPI interface {
+type OASEvaluatorFinder interface {
 	FindEvaluator(logger *logrus.Entry, method, path string) (Evaluator, error)
 }

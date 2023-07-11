@@ -35,7 +35,7 @@ type FromOASOptions struct {
 // The SDK is now into core because there are coupled function here which should use the SDK itself
 // (which uses core, so it will result in a cyclic dependency). In the future, sdk should be in a
 // specific package.
-func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas *openapi.OpenAPISpec, options *FromOASOptions) (OpenAPI, error) {
+func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas *openapi.OpenAPISpec, options *FromOASOptions) (OASEvaluatorFinder, error) {
 	if opaModuleConfig == nil {
 		return nil, fmt.Errorf("OPAModuleConfig must not be nil")
 	}

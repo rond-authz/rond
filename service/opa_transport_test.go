@@ -483,7 +483,7 @@ type tHelper interface {
 	Helper()
 }
 
-func getSdk(t require.TestingT, options *sdkOptions) sdk.OpenAPI {
+func getSdk(t require.TestingT, options *sdkOptions) sdk.OASEvaluatorFinder {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
 	}
