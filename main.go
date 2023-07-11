@@ -25,8 +25,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/helpers"
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/helpers"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/service"
@@ -99,8 +99,9 @@ func entrypoint(shutdown chan os.Signal) {
 	)
 
 	registry := prometheus.NewRegistry()
-	sdk, err := core.NewSDK(ctx, logrus.NewEntry(log), mongoClient, oas, opaModuleConfig, &core.EvaluatorOptions{
+	sdk, err := core.NewSDK(ctx, logrus.NewEntry(log), oas, opaModuleConfig, &core.EvaluatorOptions{
 		EnablePrintStatements: env.IsTraceLogLevel(),
+		MongoClient:           mongoClient,
 	}, registry, env.ClientTypeHeader)
 	if err != nil {
 		log.WithFields(logrus.Fields{

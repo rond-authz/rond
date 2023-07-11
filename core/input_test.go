@@ -247,7 +247,7 @@ func BenchmarkBuildOptimizedResourcePermissionsMap(b *testing.B) {
 	}
 }
 
-func TestInputFromRequest(t *testing.T) {
+func TestRondInput(t *testing.T) {
 	user := types.User{}
 	clientTypeHeaderKey := "clienttypeheader"
 	pathParams := map[string]string{}
@@ -265,7 +265,8 @@ func TestInputFromRequest(t *testing.T) {
 		t.Run("ignored on method GET", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", bytes.NewReader(reqBodyBytes))
 
-			input, err := InputFromRequest(req, user, clientTypeHeaderKey, pathParams, nil)
+			rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
+			input, err := rondRequest.Input(user, nil)
 			require.NoError(t, err, "Unexpected error")
 			require.Nil(t, input.Request.Body)
 		})
@@ -274,7 +275,8 @@ func TestInputFromRequest(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", nil)
 			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
 
-			input, err := InputFromRequest(req, user, clientTypeHeaderKey, pathParams, nil)
+			rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
+			input, err := rondRequest.Input(user, nil)
 			require.NoError(t, err, "Unexpected error")
 			require.Nil(t, input.Request.Body)
 		})
@@ -285,7 +287,8 @@ func TestInputFromRequest(t *testing.T) {
 			for _, method := range acceptedMethods {
 				req := httptest.NewRequest(method, "/", bytes.NewReader(reqBodyBytes))
 				req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
-				input, err := InputFromRequest(req, user, clientTypeHeaderKey, pathParams, nil)
+				rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
+				input, err := rondRequest.Input(user, nil)
 				require.NoError(t, err, "Unexpected error")
 				require.Equal(t, expectedRequestBody, input.Request.Body)
 			}
@@ -294,7 +297,8 @@ func TestInputFromRequest(t *testing.T) {
 		t.Run("added with content-type specifying charset", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(reqBodyBytes))
 			req.Header.Set(utils.ContentTypeHeaderKey, "application/json;charset=UTF-8")
-			input, err := InputFromRequest(req, user, clientTypeHeaderKey, pathParams, nil)
+			rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
+			input, err := rondRequest.Input(user, nil)
 			require.NoError(t, err, "Unexpected error")
 			require.Equal(t, expectedRequestBody, input.Request.Body)
 		})
@@ -302,7 +306,8 @@ func TestInputFromRequest(t *testing.T) {
 		t.Run("reject on method POST but with invalid body", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
 			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
-			_, err := InputFromRequest(req, user, clientTypeHeaderKey, pathParams, nil)
+			rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
+			_, err := rondRequest.Input(user, nil)
 			require.ErrorContains(t, err, "failed request body deserialization:")
 		})
 
@@ -310,7 +315,8 @@ func TestInputFromRequest(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte("{notajson}")))
 			req.Header.Set(utils.ContentTypeHeaderKey, "multipart/form-data")
 
-			input, err := InputFromRequest(req, user, clientTypeHeaderKey, pathParams, nil)
+			rondRequest := NewRondInput(req, clientTypeHeaderKey, pathParams)
+			input, err := rondRequest.Input(user, nil)
 			require.NoError(t, err, "Unexpected error")
 			require.Nil(t, input.Request.Body)
 		})

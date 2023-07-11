@@ -12,29 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metrics
+package helpers
 
 import (
 	"net/http"
-	"net/http/httptest"
-	"testing"
-
-	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/require"
 )
 
-func TestMetricsRoute(t *testing.T) {
-	t.Run("exposes metrics route", func(t *testing.T) {
-		router := mux.NewRouter()
-		registry := prometheus.NewRegistry()
-		MetricsRoute(router, registry)
-
-		req := httptest.NewRequest(http.MethodGet, MetricsRoutePath, nil)
-		w := httptest.NewRecorder()
-
-		router.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusOK, w.Result().StatusCode)
-	})
+func GetHeadersToProxy(r *http.Request, headerNamesToAdd []string) http.Header {
+	headersToProxy := http.Header{}
+	for _, headerNameToAdd := range headerNamesToAdd {
+		headerValue := r.Header.Get(headerNameToAdd)
+		if len(headerValue) > 0 {
+			headersToProxy.Set(headerNameToAdd, headerValue)
+		}
+	}
+	return headersToProxy
 }

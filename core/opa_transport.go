@@ -25,7 +25,6 @@ import (
 
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
-	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
@@ -35,15 +34,13 @@ import (
 type OPATransport struct {
 	http.RoundTripper
 	// FIXME: this overlaps with the req.Context used during RoundTrip.
-	context                  context.Context
-	logger                   *logrus.Entry
-	request                  *http.Request
-	permission               *openapi.RondConfig
-	partialResultsEvaluators PartialResultsEvaluators
+	context context.Context
+	logger  *logrus.Entry
+	request *http.Request
 
-	clientHeaderKey  string
-	userHeaders      types.UserHeadersKeys
-	evaluatorOptions *EvaluatorOptions
+	clientHeaderKey string
+	userHeaders     types.UserHeadersKeys
+	evaluatorSDK    SDKEvaluator
 }
 
 func NewOPATransport(
@@ -51,23 +48,19 @@ func NewOPATransport(
 	context context.Context,
 	logger *logrus.Entry,
 	req *http.Request,
-	permission *openapi.RondConfig,
-	partialResultsEvaluators PartialResultsEvaluators,
 	clientHeaderKey string,
 	userHeadersKeys types.UserHeadersKeys,
-	evaluatorOptions *EvaluatorOptions,
+	evaluatorSDK SDKEvaluator,
 ) *OPATransport {
 	return &OPATransport{
-		RoundTripper:             transport,
-		context:                  req.Context(),
-		logger:                   logger,
-		request:                  req,
-		permission:               permission,
-		partialResultsEvaluators: partialResultsEvaluators,
+		RoundTripper: transport,
+		context:      req.Context(),
+		logger:       logger,
+		request:      req,
 
-		clientHeaderKey:  clientHeaderKey,
-		userHeaders:      userHeadersKeys,
-		evaluatorOptions: evaluatorOptions,
+		clientHeaderKey: clientHeaderKey,
+		userHeaders:     userHeadersKeys,
+		evaluatorSDK:    evaluatorSDK,
 	}
 }
 
@@ -99,13 +92,13 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 
 	if !utils.HasApplicationJSONContentType(resp.Header) {
 		t.logger.WithField("foundContentType", resp.Header.Get(utils.ContentTypeHeaderKey)).Debug("found content type")
-		t.responseWithError(resp, fmt.Errorf("content-type is not application/json"), http.StatusInternalServerError)
+		t.responseWithError(resp, fmt.Errorf("%w: response content-type is not application/json", ErrUnexepectedContentType), http.StatusInternalServerError)
 		return resp, nil
 	}
 
 	var decodedBody interface{}
 	if err := json.Unmarshal(b, &decodedBody); err != nil {
-		return nil, fmt.Errorf("response body is not valid: %s", err.Error())
+		return nil, fmt.Errorf("%w: %s", ErrOPATransportInvalidResponseBody, err.Error())
 	}
 
 	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(t.logger, t.request, t.userHeaders)
@@ -115,47 +108,20 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 	}
 
 	pathParams := mux.Vars(t.request)
-	input, err := InputFromRequest(t.request, userInfo, t.clientHeaderKey, pathParams, decodedBody)
-	if err != nil {
-		t.responseWithError(resp, err, http.StatusInternalServerError)
-		return resp, nil
-	}
+	input := NewRondInput(t.request, t.clientHeaderKey, pathParams)
 
-	regoInput, err := CreateRegoQueryInput(t.logger, input, RegoInputOptions{
-		EnableResourcePermissionsMapOptimization: t.permission.Options.EnableResourcePermissionsMapOptimization,
-	})
-	if err != nil {
-		t.responseWithError(resp, err, http.StatusInternalServerError)
-		return resp, nil
-	}
-
-	evaluator, err := t.partialResultsEvaluators.GetEvaluatorFromPolicy(t.context, t.permission.ResponseFlow.PolicyName, regoInput, t.evaluatorOptions)
-	if err != nil {
-		t.logger.WithField("error", logrus.Fields{
-			"policyName": t.permission.ResponseFlow.PolicyName,
-			"message":    err.Error(),
-		}).Error("RBAC policy evaluation on response failed")
-		t.responseWithError(resp, err, http.StatusInternalServerError)
-		return resp, nil
-	}
-
-	bodyToProxy, err := evaluator.Evaluate(t.logger)
+	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, input, userInfo, decodedBody)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusForbidden)
 		return resp, nil
 	}
 
-	marshalledBody, err := json.Marshal(bodyToProxy)
-	if err != nil {
-		t.responseWithError(resp, err, http.StatusInternalServerError)
-		return resp, nil
-	}
-	overwriteResponse(resp, marshalledBody)
+	overwriteResponse(resp, responseBody)
 	return resp, nil
 }
 
 func (t *OPATransport) responseWithError(resp *http.Response, err error, statusCode int) {
-	t.logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("error while evaluating column filter query")
+	t.logger.WithField("error", logrus.Fields{"message": err.Error()}).Error(ErrResponsePolicyEvalFailed)
 	message := utils.NO_PERMISSIONS_ERROR_MESSAGE
 	if statusCode != http.StatusForbidden {
 		message = utils.GENERIC_BUSINESS_ERROR_MESSAGE

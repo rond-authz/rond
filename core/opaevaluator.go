@@ -19,24 +19,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/metrics"
+	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/rond-authz/rond/custom_builtins"
-
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/topdown/print"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -52,6 +51,9 @@ type OPAEvaluator struct {
 	PolicyEvaluator Evaluator
 	PolicyName      string
 	Context         context.Context
+
+	m          *metrics.Metrics
+	routerInfo openapi.RouterInfo
 }
 type PartialResultsEvaluatorConfigKey struct{}
 
@@ -61,24 +63,30 @@ type PartialEvaluator struct {
 	PartialEvaluator *rego.PartialResult
 }
 
-func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy string, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (*PartialEvaluator, error) {
-	logger.Infof("precomputing rego query for allow policy: %s", policy)
+func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy string, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (*PartialEvaluator, error) {
+	logger.WithField("policyName", policy).Info("precomputing rego policy")
 
 	policyEvaluatorTime := time.Now()
-	partialResultEvaluator, err := NewPartialResultEvaluator(ctx, policy, opaModuleConfig, mongoClient, options)
-	if err == nil {
-		logger.Infof("computed rego query for policy: %s in %s", policy, time.Since(policyEvaluatorTime))
-		return &PartialEvaluator{
-			PartialEvaluator: partialResultEvaluator,
-		}, nil
+	partialResultEvaluator, err := NewPartialResultEvaluator(ctx, policy, opaModuleConfig, options)
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+
+	logger.
+		WithFields(logrus.Fields{
+			"policyName":                   policy,
+			"computationTimeMicroserconds": time.Since(policyEvaluatorTime).Microseconds,
+		}).
+		Info("precomputation time")
+
+	return &PartialEvaluator{PartialEvaluator: partialResultEvaluator}, nil
 }
 
-func SetupEvaluators(ctx context.Context, logger *logrus.Entry, mongoClient types.IMongoClient, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (PartialResultsEvaluators, error) {
+func SetupEvaluators(ctx context.Context, logger *logrus.Entry, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (PartialResultsEvaluators, error) {
 	if oas == nil {
 		return nil, fmt.Errorf("oas must not be nil")
 	}
+
 	policyEvaluators := PartialResultsEvaluators{}
 	for path, OASContent := range oas.Paths {
 		for verb, verbConfig := range OASContent {
@@ -89,17 +97,24 @@ func SetupEvaluators(ctx context.Context, logger *logrus.Entry, mongoClient type
 			allowPolicy := verbConfig.PermissionV2.RequestFlow.PolicyName
 			responsePolicy := verbConfig.PermissionV2.ResponseFlow.PolicyName
 
-			logger.Infof("precomputing rego queries for API: %s %s. Allow policy: %s. Response policy: %s.", verb, path, allowPolicy, responsePolicy)
+			logger.
+				WithFields(logrus.Fields{
+					"verb":               verb,
+					"policyName":         allowPolicy,
+					"path":               path,
+					"responsePolicyName": responsePolicy,
+				}).
+				Info("precomputing rego queries for API")
+
 			if allowPolicy == "" {
 				// allow policy is required, if missing assume the API has no valid x-rond configuration.
 				continue
 			}
 
 			if _, ok := policyEvaluators[allowPolicy]; !ok {
-				evaluator, err := createPartialEvaluator(ctx, logger, allowPolicy, mongoClient, oas, opaModuleConfig, options)
-
+				evaluator, err := createPartialEvaluator(ctx, logger, allowPolicy, oas, opaModuleConfig, options)
 				if err != nil {
-					return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
+					return nil, fmt.Errorf("%w: %s", ErrEvaluatorCreationFailed, err.Error())
 				}
 
 				policyEvaluators[allowPolicy] = *evaluator
@@ -107,10 +122,9 @@ func SetupEvaluators(ctx context.Context, logger *logrus.Entry, mongoClient type
 
 			if responsePolicy != "" {
 				if _, ok := policyEvaluators[responsePolicy]; !ok {
-					evaluator, err := createPartialEvaluator(ctx, logger, responsePolicy, mongoClient, oas, opaModuleConfig, options)
-
+					evaluator, err := createPartialEvaluator(ctx, logger, responsePolicy, oas, opaModuleConfig, options)
 					if err != nil {
-						return nil, fmt.Errorf("error during evaluator creation: %s", err.Error())
+						return nil, fmt.Errorf("%w: %s", ErrEvaluatorCreationFailed, err.Error())
 					}
 
 					policyEvaluators[responsePolicy] = *evaluator
@@ -157,6 +171,20 @@ func (h printHook) Print(_ print.Context, message string) error {
 
 type EvaluatorOptions struct {
 	EnablePrintStatements bool
+	MongoClient           types.IMongoClient
+
+	Metrics    *metrics.Metrics
+	RouterInfo openapi.RouterInfo
+}
+
+func (e *EvaluatorOptions) WithMetrics(metrics metrics.Metrics) *EvaluatorOptions {
+	e.Metrics = &metrics
+	return e
+}
+
+func (e *EvaluatorOptions) WithRouterInfo(routerInfo openapi.RouterInfo) *EvaluatorOptions {
+	e.RouterInfo = routerInfo
+	return e
 }
 
 func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte, options *EvaluatorOptions) (*OPAEvaluator, error) {
@@ -165,7 +193,7 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 	}
 	inputTerm, err := ast.ParseTerm(string(input))
 	if err != nil {
-		return nil, fmt.Errorf("failed input parse: %v", err)
+		return nil, fmt.Errorf("%w: %v", ErrFailedInputParse, err)
 	}
 
 	sanitizedPolicy := strings.Replace(policy, ".", "_", -1)
@@ -183,35 +211,37 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 		custom_builtins.MongoFindMany,
 	)
 
+	ctx = mongoclient.WithMongoClient(ctx, options.MongoClient)
+
 	return &OPAEvaluator{
 		PolicyEvaluator: query,
 		PolicyName:      policy,
 		Context:         ctx,
+
+		m:          options.Metrics,
+		routerInfo: options.RouterInfo,
 	}, nil
 }
 
-func CreateQueryEvaluator(ctx context.Context, logger *logrus.Entry, req *http.Request, policy string, input []byte, responseBody interface{}, options *EvaluatorOptions) (*OPAEvaluator, error) {
-	opaModuleConfig, err := GetOPAModuleConfig(req.Context())
-	if err != nil {
-		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("no OPA module configuration found in context")
-		return nil, fmt.Errorf("no OPA module configuration found in context")
-	}
-
+func (config *OPAModuleConfig) CreateQueryEvaluator(ctx context.Context, logger *logrus.Entry, policy string, input []byte, options *EvaluatorOptions) (*OPAEvaluator, error) {
+	// TODO: remove logger and set in sdk
 	logger.WithFields(logrus.Fields{
 		"policyName": policy,
 	}).Info("Policy to be evaluated")
 
 	opaEvaluatorInstanceTime := time.Now()
-	evaluator, err := NewOPAEvaluator(ctx, policy, opaModuleConfig, input, options)
+	evaluator, err := NewOPAEvaluator(ctx, policy, config, input, options)
 	if err != nil {
-		logger.WithError(err).Error("failed RBAC policy creation")
+		logger.WithError(err).Error(ErrEvaluatorCreationFailed)
 		return nil, err
 	}
-	logger.Tracef("OPA evaluator instantiated in: %+v", time.Since(opaEvaluatorInstanceTime))
+	logger.
+		WithField("evaluatorCreationTimeMicroseconds", time.Since(opaEvaluatorInstanceTime).Microseconds()).
+		Trace("evaluator creation time")
 	return evaluator, nil
 }
 
-func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, mongoClient types.IMongoClient, evaluatorOptions *EvaluatorOptions) (*rego.PartialResult, error) {
+func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, evaluatorOptions *EvaluatorOptions) (*rego.PartialResult, error) {
 	if evaluatorOptions == nil {
 		evaluatorOptions = &EvaluatorOptions{}
 	}
@@ -231,7 +261,8 @@ func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
 		custom_builtins.GetHeaderFunction,
 	}
-	if mongoClient != nil {
+	if evaluatorOptions.MongoClient != nil {
+		ctx = mongoclient.WithMongoClient(ctx, evaluatorOptions.MongoClient)
 		options = append(options, custom_builtins.MongoFindOne, custom_builtins.MongoFindMany)
 	}
 	regoInstance := rego.New(options...)
@@ -248,7 +279,7 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 	if eval, ok := partialEvaluators[policy]; ok {
 		inputTerm, err := ast.ParseTerm(string(input))
 		if err != nil {
-			return nil, fmt.Errorf("failed input parse: %v", err)
+			return nil, fmt.Errorf("%w: %v", ErrFailedInputParse, err)
 		}
 
 		evaluator := eval.PartialEvaluator.Rego(
@@ -261,29 +292,31 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 			PolicyName:      policy,
 			PolicyEvaluator: evaluator,
 			Context:         ctx,
+
+			m:          options.Metrics,
+			routerInfo: options.RouterInfo,
 		}, nil
 	}
-	return nil, fmt.Errorf("policy evaluator not found: %s", policy)
+	return nil, fmt.Errorf("%w: %s", ErrEvaluatorNotFound, policy)
+}
+
+func (evaluator *OPAEvaluator) metrics() metrics.Metrics {
+	if evaluator.m != nil {
+		return *evaluator.m
+	}
+	return metrics.SetupMetrics("rond")
 }
 
 func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitive.M, error) {
 	opaEvaluationTimeStart := time.Now()
 	partialResults, err := evaluator.PolicyEvaluator.Partial(evaluator.Context)
 	if err != nil {
-		return nil, fmt.Errorf("policy Evaluation has failed when partially evaluating the query: %s", err.Error())
-	}
-	routerInfo, err := openapi.GetRouterInfo(evaluator.Context)
-	if err != nil {
-		return nil, err
-	}
-	m, err := metrics.GetFromContext(evaluator.Context)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", ErrPartialPolicyEvalFailed, err.Error())
 	}
 
 	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
 
-	m.PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
+	evaluator.metrics().PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
 		"policy_name": evaluator.PolicyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
@@ -292,9 +325,9 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                true,
 		"allowed":                    true,
-		"matchedPath":                routerInfo.MatchedPath,
-		"requestedPath":              routerInfo.RequestedPath,
-		"method":                     routerInfo.Method,
+		"matchedPath":                evaluator.routerInfo.MatchedPath,
+		"requestedPath":              evaluator.routerInfo.RequestedPath,
+		"method":                     evaluator.routerInfo.Method,
 	}).Debug("policy evaluation completed")
 
 	client := opatranslator.OPAClient{}
@@ -313,60 +346,38 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 
 func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, error) {
 	opaEvaluationTimeStart := time.Now()
+
 	results, err := evaluator.PolicyEvaluator.Eval(evaluator.Context)
 	if err != nil {
-		return nil, fmt.Errorf("policy Evaluation has failed when evaluating the query: %s", err.Error())
-	}
-	routerInfo, err := openapi.GetRouterInfo(evaluator.Context)
-	if err != nil {
-		return nil, err
-	}
-	m, err := metrics.GetFromContext(evaluator.Context)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", ErrPolicyEvalFailed, err.Error())
 	}
 
 	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
-
-	m.PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
+	evaluator.metrics().PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
 		"policy_name": evaluator.PolicyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
+	allowed, responseBodyOverwriter := processResults(results)
 	logger.WithFields(logrus.Fields{
 		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                false,
-		"allowed":                    results.Allowed(),
-		"matchedPath":                routerInfo.MatchedPath,
-		"requestedPath":              routerInfo.RequestedPath,
-		"method":                     routerInfo.Method,
+		"allowed":                    allowed,
+		"resultsLength":              len(results),
+		"matchedPath":                evaluator.routerInfo.MatchedPath,
+		"requestedPath":              evaluator.routerInfo.RequestedPath,
+		"method":                     evaluator.routerInfo.Method,
 	}).Debug("policy evaluation completed")
 
-	if results.Allowed() {
-		logger.WithFields(logrus.Fields{
-			"policyName":    evaluator.PolicyName,
-			"allowed":       results.Allowed(),
-			"resultsLength": len(results),
-		}).Tracef("policy results")
-		return nil, nil
-	}
-
-	// The results returned by OPA are a list of Results object with fields:
-	// - Expressions: list of list
-	// - Bindings: object
-	// e.g. [{Expressions:[[map["element": true]]] Bindings:map[]}]
-	// Since we are ALWAYS querying ONE specific policy the result length could not be greater than 1
-	if len(results) == 1 {
-		if exprs := results[0].Expressions; len(exprs) == 1 {
-			if value, ok := exprs[0].Value.([]interface{}); ok && value != nil && len(value) != 0 {
-				return value[0], nil
-			}
-		}
-	}
 	logger.WithFields(logrus.Fields{
 		"policyName": evaluator.PolicyName,
-	}).Error("policy resulted in not allowed")
-	return nil, fmt.Errorf("RBAC policy evaluation failed, user is not allowed")
+		"allowed":    allowed,
+	}).Info("policy result")
+
+	if allowed {
+		return responseBodyOverwriter, nil
+	}
+	return nil, ErrPolicyEvalFailed
 }
 
 func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission *openapi.RondConfig) (interface{}, primitive.M, error) {
@@ -389,26 +400,9 @@ func buildRolesMap(roles []types.Role) map[string][]string {
 	return rolesMap
 }
 
-// TODO: This should be made private in the future.
-type OPAModuleConfigKey struct{}
-
 type OPAModuleConfig struct {
 	Name    string
 	Content string
-}
-
-func WithOPAModuleConfig(requestContext context.Context, permission *OPAModuleConfig) context.Context {
-	return context.WithValue(requestContext, OPAModuleConfigKey{}, permission)
-}
-
-// GetOPAModuleConfig can be used by a request handler to get OPAModuleConfig instance from its context.
-func GetOPAModuleConfig(requestContext context.Context) (*OPAModuleConfig, error) {
-	permission, ok := requestContext.Value(OPAModuleConfigKey{}).(*OPAModuleConfig)
-	if !ok {
-		return nil, fmt.Errorf("no opa module config found in request context")
-	}
-
-	return permission, nil
 }
 
 type PermissionOnResourceKey string
@@ -437,15 +431,41 @@ func LoadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 	})
 
 	if regoModulePath == "" {
-		return nil, fmt.Errorf("no rego module found in directory")
+		return nil, ErrMissingRegoModules
 	}
 	fileContent, err := utils.ReadFile(regoModulePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed rego file read: %s", err.Error())
+		return nil, fmt.Errorf("%w: %s", ErrRegoModuleReadFailed, err.Error())
 	}
 
 	return &OPAModuleConfig{
 		Name:    filepath.Base(regoModulePath),
 		Content: string(fileContent),
 	}, nil
+}
+
+func processResults(results rego.ResultSet) (allowed bool, responseBodyOverwriter any) {
+	// Use strict allowed check for basic request flow allow policies.
+	if results.Allowed() {
+		allowed = true
+		return
+	}
+
+	// Here extract first result set to get the response body for the response policy evaluation.
+	// The results returned by OPA are a list of Results object with fields:
+	// - Expressions: list of list
+	// - Bindings: object
+	// e.g. [{Expressions:[[map["element": true]]] Bindings:map[]}]
+	// Since we are ALWAYS querying ONE specific policy the result length could not be greater than 1
+	if len(results) == 1 {
+		if exprs := results[0].Expressions; len(exprs) == 1 {
+			if value, ok := exprs[0].Value.([]interface{}); ok && value != nil && len(value) != 0 {
+				allowed = true
+				responseBodyOverwriter = value[0]
+				return
+			}
+		}
+	}
+
+	return
 }

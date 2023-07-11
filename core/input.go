@@ -50,7 +50,11 @@ type InputResponse struct {
 }
 
 type InputUser struct {
+<<<<<<< HEAD
 	UserID                 string					`json:"id,omitempty"`
+=======
+	userId                 string			`json:"roles,omitempty"`
+>>>>>>> 5e04fe06453dc2df9e4bfa0d98a8adbbfa8b8060
 	Properties             map[string]interface{}   `json:"properties,omitempty"`
 	Groups                 []string                 `json:"groups,omitempty"`
 	Bindings               []types.Binding          `json:"bindings,omitempty"`
@@ -107,19 +111,25 @@ func CreateRegoQueryInput(
 
 	inputBytes, err := json.Marshal(input)
 	if err != nil {
-		return nil, fmt.Errorf("failed input JSON encode: %v", err)
+		return nil, fmt.Errorf("%w: %v", ErrFailedInputEncode, err)
 	}
-	logger.Tracef("OPA input rego creation in: %+v", time.Since(opaInputCreationTime))
+	logger.
+		WithField("inputCreationTimeMicroseconds", time.Since(opaInputCreationTime).Microseconds()).
+		Tracef("input creation time")
 	return inputBytes, nil
 }
 
-func InputFromRequest(
-	req *http.Request,
-	user types.User,
-	clientTypeHeaderKey string,
-	pathParams map[string]string,
-	responseBody any,
-) (Input, error) {
+type RondInput interface {
+	Input(user types.User, responseBody any) (Input, error)
+}
+
+type requestInfo struct {
+	*http.Request
+	clientTypeHeaderKey string
+	pathParams          map[string]string
+}
+
+func (req requestInfo) Input(user types.User, responseBody any) (Input, error) {
 	shouldParseJSONBody := utils.HasApplicationJSONContentType(req.Header) &&
 		req.ContentLength > 0 &&
 		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete)
@@ -128,22 +138,22 @@ func InputFromRequest(
 	if shouldParseJSONBody {
 		bodyBytes, err := io.ReadAll(req.Body)
 		if err != nil {
-			return Input{}, fmt.Errorf("failed request body parse: %s", err.Error())
+			return Input{}, fmt.Errorf("%w: %s", ErrFailedInputRequestParse, err.Error())
 		}
 		if err := json.Unmarshal(bodyBytes, &requestBody); err != nil {
-			return Input{}, fmt.Errorf("failed request body deserialization: %s", err.Error())
+			return Input{}, fmt.Errorf("%w: %s", ErrFailedInputRequestDeserialization, err.Error())
 		}
 		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
 
 	return Input{
-		ClientType: req.Header.Get(clientTypeHeaderKey),
+		ClientType: req.Header.Get(req.clientTypeHeaderKey),
 		Request: InputRequest{
 			Method:     req.Method,
 			Path:       req.URL.Path,
 			Headers:    req.Header,
 			Query:      req.URL.Query(),
-			PathParams: pathParams,
+			PathParams: req.pathParams,
 			Body:       requestBody,
 		},
 		Response: InputResponse{
@@ -157,4 +167,12 @@ func InputFromRequest(
 			Roles:      user.UserRoles,
 		},
 	}, nil
+}
+
+func NewRondInput(req *http.Request, clientTypeHeaderKey string, pathParams map[string]string) RondInput {
+	return requestInfo{
+		Request:             req,
+		clientTypeHeaderKey: clientTypeHeaderKey,
+		pathParams:          pathParams,
+	}
 }
