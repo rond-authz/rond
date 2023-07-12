@@ -19,6 +19,7 @@ import "fmt"
 var (
 	ErrMissingRegoModules   = fmt.Errorf("no rego module found in directory")
 	ErrRegoModuleReadFailed = fmt.Errorf("failed rego file read")
+	ErrInvalidConfig        = fmt.Errorf("invalid rond configuration")
 
 	ErrEvaluatorCreationFailed = fmt.Errorf("error during evaluator creation")
 	ErrEvaluatorNotFound       = fmt.Errorf("evaluator not found")
@@ -31,4 +32,5 @@ var (
 	ErrFailedInputEncode                 = fmt.Errorf("failed input encode")
 	ErrFailedInputRequestParse           = fmt.Errorf("failed request body parse")
 	ErrFailedInputRequestDeserialization = fmt.Errorf("failed request body deserialization")
+	ErrRondConfigNotExists               = fmt.Errorf("rond config not exists")
 )

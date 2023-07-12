@@ -18,11 +18,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 	"testing"
 
-	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/internal/metrics"
+	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/open-policy-agent/opa/topdown/print"
@@ -44,49 +46,6 @@ func TestNewOPAEvaluator(t *testing.T) {
 		parialResult, err := evaluator.PolicyEvaluator.Partial(context.TODO())
 		require.Nil(t, err, "unexpected error")
 		require.Equal(t, 1, len(parialResult.Queries), "Unexpected failing policy")
-	})
-}
-
-func TestCreatePolicyEvaluators(t *testing.T) {
-	t.Run("with simplified mock", func(t *testing.T) {
-		log, _ := test.NewNullLogger()
-		logger := logrus.NewEntry(log)
-		ctx := context.Background()
-
-		opaModuleDirectory := "../mocks/rego-policies"
-		loadOptions := openapi.LoadOptions{
-			APIPermissionsFilePath: "../mocks/simplifiedMock.json",
-		}
-		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, loadOptions)
-		require.NoError(t, err, "unexpected error")
-
-		opaModuleConfig, err := LoadRegoModule(opaModuleDirectory)
-		require.NoError(t, err, "unexpected error")
-
-		policyEvals, err := SetupEvaluators(ctx, logger, openApiSpec, opaModuleConfig, nil)
-		require.NoError(t, err, "unexpected error creating evaluators")
-		require.Len(t, policyEvals, 4, "unexpected length")
-	})
-
-	t.Run("with complete oas mock", func(t *testing.T) {
-		log, _ := test.NewNullLogger()
-		logger := logrus.NewEntry(log)
-		ctx := context.Background()
-
-		opaModulesDirectory := "../mocks/rego-policies"
-
-		loadOptions := openapi.LoadOptions{
-			APIPermissionsFilePath: "../mocks/pathsConfigAllInclusive.json",
-		}
-		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, loadOptions)
-		require.NoError(t, err, "unexpected error")
-
-		opaModuleConfig, err := LoadRegoModule(opaModulesDirectory)
-		require.NoError(t, err, "unexpected error")
-
-		policyEvals, err := SetupEvaluators(ctx, logger, openApiSpec, opaModuleConfig, nil)
-		require.NoError(t, err, "unexpected error creating evaluators")
-		require.Len(t, policyEvals, 4, "unexpected length")
 	})
 }
 
@@ -118,10 +77,12 @@ column_policy{
 	false
 }
 `
-	permission := openapi.XPermission{
-		AllowPermission: "allow",
-		ResponseFilter: openapi.ResponseFilterConfiguration{
-			Policy: "column_policy",
+	permission := RondConfig{
+		RequestFlow: RequestFlow{
+			PolicyName: "allow",
+		},
+		ResponseFlow: ResponseFlow{
+			PolicyName: "column_policy",
 		},
 	}
 
@@ -134,13 +95,13 @@ column_policy{
 	inputBytes, _ := json.Marshal(input)
 
 	t.Run("create evaluator with allowPolicy", func(t *testing.T) {
-		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, permission.AllowPermission, inputBytes, nil)
+		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, permission.RequestFlow.PolicyName, inputBytes, nil)
 		require.True(t, evaluator != nil)
 		require.NoError(t, err, "Unexpected status code.")
 	})
 
 	t.Run("create  evaluator with policy for column filtering", func(t *testing.T) {
-		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, permission.ResponseFilter.Policy, inputBytes, nil)
+		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, permission.ResponseFlow.PolicyName, inputBytes, nil)
 		require.True(t, evaluator != nil)
 		require.NoError(t, err, "Unexpected status code.")
 	})
@@ -206,5 +167,279 @@ func TestGetHeaderFunction(t *testing.T) {
 		require.NoError(t, err, "Unexpected error during rego validation")
 
 		require.Len(t, partialResults.Queries, 0, "Rego policy allows illegal input")
+	})
+}
+
+func TestPartialResultEvaluators(t *testing.T) {
+	// log, _ := test.NewNullLogger()
+	logger := logrus.NewEntry(logrus.New())
+
+	opaModule := &OPAModuleConfig{
+		Content: `package policies
+		allow {
+			true
+		}
+		column_policy{
+			false
+		}
+		`,
+		Name: "policies",
+	}
+	rondInput := Input{
+		Request:    InputRequest{},
+		Response:   InputResponse{},
+		User:       InputUser{},
+		ClientType: "client-type",
+	}
+
+	t.Run("throws if request policy is empty", func(t *testing.T) {
+		partialEvaluators := PartialResultsEvaluators{}
+		rondConfig := &RondConfig{
+			RequestFlow: RequestFlow{
+				PolicyName: "",
+			},
+		}
+
+		err := partialEvaluators.AddFromConfig(context.Background(), logger, opaModule, rondConfig, nil)
+		require.EqualError(t, err, fmt.Sprintf("%s: allow policy is required", ErrInvalidConfig))
+	})
+
+	t.Run("throws if OpaModuleConfig is nil", func(t *testing.T) {
+		partialEvaluators := PartialResultsEvaluators{}
+		rondConfig := &RondConfig{
+			RequestFlow: RequestFlow{
+				PolicyName: "not_exist",
+			},
+		}
+
+		err := partialEvaluators.AddFromConfig(context.Background(), logger, nil, rondConfig, nil)
+		require.EqualError(t, err, fmt.Sprintf("%s: OPAModuleConfig must not be nil", ErrEvaluatorCreationFailed))
+	})
+
+	t.Run("correctly create partial evaluator", func(t *testing.T) {
+		partialEvaluators := PartialResultsEvaluators{}
+		rondConfig := &RondConfig{
+			RequestFlow: RequestFlow{
+				PolicyName: "allow",
+			},
+			ResponseFlow: ResponseFlow{
+				PolicyName: "column_policy",
+			},
+		}
+		ctx := context.Background()
+
+		err := partialEvaluators.AddFromConfig(ctx, logger, opaModule, rondConfig, nil)
+		require.NoError(t, err)
+		require.NotNil(t, partialEvaluators["allow"])
+		require.NotNil(t, partialEvaluators["column_policy"])
+
+		t.Run("find and evaluate policy - request", func(t *testing.T) {
+			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
+			require.NoError(t, err)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(ctx, "allow", input, nil)
+			require.NoError(t, err)
+			res, err := evaluator.Evaluate(logger, nil)
+			require.NoError(t, err)
+			require.Nil(t, res)
+		})
+
+		t.Run("find and evaluate policy - response fails", func(t *testing.T) {
+			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
+			require.NoError(t, err)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(ctx, "column_policy", input, nil)
+			require.NoError(t, err)
+			_, err = evaluator.Evaluate(logger, nil)
+			require.EqualError(t, err, ErrPolicyEvalFailed.Error())
+		})
+	})
+
+	t.Run("correctly create with mongo client", func(t *testing.T) {
+		partialEvaluators := PartialResultsEvaluators{}
+		rondConfig := &RondConfig{
+			RequestFlow: RequestFlow{
+				PolicyName: "allow_with_find_one",
+			},
+		}
+
+		opaModule, err := LoadRegoModule("../mocks/rego-policies-with-mongo-builtins")
+		require.NoError(t, err)
+
+		evalOpts := OPAEvaluatorOptions{
+			MongoClient: mocks.MongoClientMock{
+				FindOneExpectation: func(collectionName string, query interface{}) {
+					require.Equal(t, "projects", collectionName)
+					require.Equal(t, map[string]interface{}{"projectId": "1234"}, query)
+				},
+				FindOneResult: map[string]string{
+					"tenantId": "some-tenant",
+				},
+			},
+		}
+
+		err = partialEvaluators.AddFromConfig(context.Background(), logger, opaModule, rondConfig, &evalOpts)
+		require.NoError(t, err)
+		require.NotNil(t, partialEvaluators["allow_with_find_one"])
+
+		rondInput := Input{
+			Request: InputRequest{
+				PathParams: map[string]string{
+					"projectId": "1234",
+				},
+			},
+			Response:   InputResponse{},
+			User:       InputUser{},
+			ClientType: "client-type",
+		}
+
+		t.Run("find and evaluate policy", func(t *testing.T) {
+			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
+			require.NoError(t, err)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "allow_with_find_one", input, &evalOpts)
+			require.NoError(t, err)
+			res, query, err := evaluator.PolicyEvaluation(logger, rondConfig, nil)
+			require.NoError(t, err)
+			require.Empty(t, query)
+			require.Empty(t, res)
+		})
+	})
+
+	t.Run("correctly create with mongo client with query generation", func(t *testing.T) {
+		partialEvaluators := PartialResultsEvaluators{}
+		rondConfig := &RondConfig{
+			RequestFlow: RequestFlow{
+				PolicyName:    "filter_projects",
+				GenerateQuery: true,
+			},
+		}
+
+		opaModule := &OPAModuleConfig{
+			Name: "example.rego",
+			Content: `
+			package policies
+			filter_projects {
+				field := input.user.properties.field
+				field == "1234"
+				myCollDoc := find_one("my-collection", {"myField": field})
+				myCollDoc
+
+				query := data.resources[_]
+				query.filterField == myCollDoc.filterField
+			}
+			`,
+		}
+
+		evalOpts := OPAEvaluatorOptions{
+			MongoClient: mocks.MongoClientMock{
+				FindOneExpectation: func(collectionName string, query interface{}) {
+					require.Equal(t, "my-collection", collectionName)
+					require.Equal(t, map[string]interface{}{"myField": "1234"}, query)
+				},
+				FindOneResult: map[string]string{
+					"filterField": "something",
+				},
+			},
+		}
+
+		err := partialEvaluators.AddFromConfig(context.Background(), logger, opaModule, rondConfig, &evalOpts)
+		require.NoError(t, err)
+		require.NotNil(t, partialEvaluators["filter_projects"])
+
+		rondInput := Input{
+			Request:  InputRequest{},
+			Response: InputResponse{},
+			User: InputUser{
+				Properties: map[string]interface{}{
+					"field": "1234",
+				},
+			},
+			ClientType: "client-type",
+		}
+
+		t.Run("find and evaluate policy", func(t *testing.T) {
+			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
+			require.NoError(t, err)
+			evaluator, err := opaModule.CreateQueryEvaluator(context.Background(), logger, "filter_projects", input, &evalOpts)
+			require.NoError(t, err)
+			res, query, err := evaluator.PolicyEvaluation(logger, rondConfig, nil)
+			require.NoError(t, err)
+			require.Empty(t, res)
+
+			var actualQuery = []byte{}
+			actualQuery, err = json.Marshal(query)
+			require.NoError(t, err)
+			require.JSONEq(t, `{"$or":[{"$and":[{"filterField":{"$eq":"something"}}]}]}`, string(actualQuery))
+		})
+	})
+
+	t.Run("with passed metrics", func(t *testing.T) {
+		partialEvaluators := PartialResultsEvaluators{}
+		rondConfig := &RondConfig{
+			RequestFlow: RequestFlow{
+				PolicyName:    "filter_projects",
+				GenerateQuery: true,
+			},
+		}
+
+		opaModule := &OPAModuleConfig{
+			Name: "example.rego",
+			Content: `
+			package policies
+			filter_projects {
+				field := input.user.properties.field
+				field == "1234"
+				myCollDoc := find_one("my-collection", {"myField": field})
+				myCollDoc
+
+				query := data.resources[_]
+				query.filterField == myCollDoc.filterField
+			}
+			`,
+		}
+
+		evalOpts := OPAEvaluatorOptions{
+			MongoClient: mocks.MongoClientMock{
+				FindOneExpectation: func(collectionName string, query interface{}) {
+					require.Equal(t, "my-collection", collectionName)
+					require.Equal(t, map[string]interface{}{"myField": "1234"}, query)
+				},
+				FindOneResult: map[string]string{
+					"filterField": "something",
+				},
+			},
+		}
+
+		err := partialEvaluators.AddFromConfig(context.Background(), logger, opaModule, rondConfig, &evalOpts)
+		require.NoError(t, err)
+		require.NotNil(t, partialEvaluators["filter_projects"])
+
+		rondInput := Input{
+			Request:  InputRequest{},
+			Response: InputResponse{},
+			User: InputUser{
+				Properties: map[string]interface{}{
+					"field": "1234",
+				},
+			},
+			ClientType: "client-type",
+		}
+
+		t.Run("find and evaluate policy", func(t *testing.T) {
+			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
+			require.NoError(t, err)
+			evaluator, err := opaModule.CreateQueryEvaluator(context.Background(), logger, "filter_projects", input, &evalOpts)
+			require.NoError(t, err)
+			metrics := metrics.SetupMetrics("rond")
+			opts := PolicyEvaluationOptions{
+				Metrics: &metrics,
+			}
+			res, query, err := evaluator.PolicyEvaluation(logger, rondConfig, &opts)
+			require.NoError(t, err)
+			require.Empty(t, res)
+
+			var actualQuery = []byte{}
+			actualQuery, err = json.Marshal(query)
+			require.NoError(t, err)
+			require.JSONEq(t, `{"$or":[{"$and":[{"filterField":{"$eq":"something"}}]}]}`, string(actualQuery))
+		})
 	})
 }

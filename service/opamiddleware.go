@@ -56,7 +56,7 @@ func OPAMiddleware(
 			logger := glogger.Get(r.Context())
 
 			evaluator, err := rondSDK.FindEvaluator(logger, r.Method, path)
-			rondConfig := openapi.RondConfig{}
+			rondConfig := core.RondConfig{}
 			if err == nil {
 				rondConfig = evaluator.Config()
 			}

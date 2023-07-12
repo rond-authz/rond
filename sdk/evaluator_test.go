@@ -311,7 +311,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					project := find_one("my-collection", {"myField": field})
 
 					query := data.resources[_]
-					query.filterField == "1234"
+					query.filterField == project.myField
 				}`,
 				expectedPolicy: PolicyResult{
 					Allowed:      true,
@@ -376,7 +376,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					fields := logrus.Fields{
 						"allowed":       actual.Allowed,
 						"requestedPath": testCase.path,
-						"matchedPath":   evaluatorInfo.policyEvaluationOptions.RouterInfo.MatchedPath,
+						"matchedPath":   evaluatorInfo.policyEvaluationOptions.AdditionalLogFields["matchedPath"],
 						"method":        testCase.method,
 						"partialEval":   evaluate.Config().RequestFlow.GenerateQuery,
 						"policyName":    evaluate.Config().RequestFlow.PolicyName,
@@ -590,7 +590,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					require.Equal(t, logrus.Fields{
 						"allowed":       !testCase.notAllowed,
 						"requestedPath": testCase.path,
-						"matchedPath":   evaluatorInfo.policyEvaluationOptions.RouterInfo.MatchedPath,
+						"matchedPath":   evaluatorInfo.policyEvaluationOptions.AdditionalLogFields["matchedPath"],
 						"method":        testCase.method,
 						"partialEval":   false,
 						"policyName":    evaluate.Config().ResponseFlow.PolicyName,

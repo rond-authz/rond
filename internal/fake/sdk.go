@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
 )
@@ -29,14 +28,14 @@ type RequestPolicyEvaluatorResult struct {
 
 type SDKEvaluator struct {
 	partialEvaluator core.PartialResultsEvaluators
-	permission       openapi.RondConfig
+	permission       core.RondConfig
 
 	requestPolicyEvaluatorResult *RequestPolicyEvaluatorResult
 }
 
 func NewSDKEvaluator(
 	partialEvaluator core.PartialResultsEvaluators,
-	permission openapi.RondConfig,
+	permission core.RondConfig,
 	requestPolicyEvaluatorResult *RequestPolicyEvaluatorResult,
 ) sdk.Evaluator {
 	return SDKEvaluator{
@@ -58,6 +57,6 @@ func (e SDKEvaluator) EvaluateResponsePolicy(ctx context.Context, input core.Ron
 	return nil, nil
 }
 
-func (s SDKEvaluator) Config() openapi.RondConfig {
+func (s SDKEvaluator) Config() core.RondConfig {
 	return s.permission
 }

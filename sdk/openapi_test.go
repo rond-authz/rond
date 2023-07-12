@@ -61,15 +61,15 @@ func TestOasSDK(t *testing.T) {
 			require.NoError(t, err)
 			evaluatorOptions := &core.PolicyEvaluationOptions{
 				Metrics: oas.metrics,
-				RouterInfo: openapi.RouterInfo{
-					MatchedPath:   "/users/",
-					RequestedPath: "/users/",
-					Method:        http.MethodGet,
+				AdditionalLogFields: map[string]string{
+					"matchedPath":   "/users/",
+					"requestedPath": "/users/",
+					"method":        http.MethodGet,
 				},
 			}
 			require.Equal(t, evaluator{
-				rondConfig: openapi.RondConfig{
-					RequestFlow: openapi.RequestFlow{
+				rondConfig: core.RondConfig{
+					RequestFlow: core.RequestFlow{
 						PolicyName: "todo",
 					},
 				},
@@ -80,8 +80,8 @@ func TestOasSDK(t *testing.T) {
 			}, actual)
 
 			t.Run("get permissions", func(t *testing.T) {
-				require.Equal(t, openapi.RondConfig{
-					RequestFlow: openapi.RequestFlow{
+				require.Equal(t, core.RondConfig{
+					RequestFlow: core.RequestFlow{
 						PolicyName: "todo",
 					},
 				}, actual.Config())

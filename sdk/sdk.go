@@ -55,7 +55,7 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 	metrics := setupMetrics(options.Registry)
 
 	logger := options.Logger
-	evaluator, err := core.SetupEvaluators(ctx, logger, oas, opaModuleConfig, evaluatorOptions)
+	evaluator, err := openapi.SetupEvaluators(ctx, logger, oas, opaModuleConfig, evaluatorOptions)
 	if err != nil {
 		return nil, err
 	}

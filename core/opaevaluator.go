@@ -29,7 +29,6 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
-	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/open-policy-agent/opa/ast"
@@ -39,6 +38,31 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+type RondConfig struct {
+	RequestFlow  RequestFlow       `json:"requestFlow"`
+	ResponseFlow ResponseFlow      `json:"responseFlow"`
+	Options      PermissionOptions `json:"options"`
+}
+
+type QueryOptions struct {
+	HeaderName string `json:"headerName"`
+}
+
+type RequestFlow struct {
+	PolicyName    string       `json:"policyName"`
+	GenerateQuery bool         `json:"generateQuery"`
+	QueryOptions  QueryOptions `json:"queryOptions"`
+}
+
+type ResponseFlow struct {
+	PolicyName string `json:"policyName"`
+}
+
+type PermissionOptions struct {
+	EnableResourcePermissionsMapOptimization bool `json:"enableResourcePermissionsMapOptimization"`
+	IgnoreTrailingSlash                      bool `json:"ignoreTrailingSlash,omitempty"`
+}
 
 type Evaluator interface {
 	Eval(ctx context.Context) (rego.ResultSet, error)
@@ -62,7 +86,7 @@ type PartialEvaluator struct {
 	PartialEvaluator *rego.PartialResult
 }
 
-func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy string, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *OPAEvaluatorOptions) (*PartialEvaluator, error) {
+func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy string, opaModuleConfig *OPAModuleConfig, options *OPAEvaluatorOptions) (*PartialEvaluator, error) {
 	logger.WithField("policyName", policy).Info("precomputing rego policy")
 
 	policyEvaluatorTime := time.Now()
@@ -81,57 +105,42 @@ func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy st
 	return &PartialEvaluator{PartialEvaluator: partialResultEvaluator}, nil
 }
 
-func SetupEvaluators(ctx context.Context, logger *logrus.Entry, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *OPAEvaluatorOptions) (PartialResultsEvaluators, error) {
-	if oas == nil {
-		return nil, fmt.Errorf("oas must not be nil")
+func (policyEvaluators PartialResultsEvaluators) AddFromConfig(ctx context.Context, logger *logrus.Entry, opaModuleConfig *OPAModuleConfig, rondConfig *RondConfig, options *OPAEvaluatorOptions) error {
+	allowPolicy := rondConfig.RequestFlow.PolicyName
+	responsePolicy := rondConfig.ResponseFlow.PolicyName
+
+	logger.
+		WithFields(logrus.Fields{
+			"policyName":         allowPolicy,
+			"responsePolicyName": responsePolicy,
+		}).
+		Info("precomputing rego queries")
+
+	if allowPolicy == "" {
+		return fmt.Errorf("%w: allow policy is required", ErrInvalidConfig)
 	}
 
-	policyEvaluators := PartialResultsEvaluators{}
-	for path, OASContent := range oas.Paths {
-		for verb, verbConfig := range OASContent {
-			if verbConfig.PermissionV2 == nil {
-				continue
+	if _, ok := policyEvaluators[allowPolicy]; !ok {
+		evaluator, err := createPartialEvaluator(ctx, logger, allowPolicy, opaModuleConfig, options)
+		if err != nil {
+			return fmt.Errorf("%w: %s", ErrEvaluatorCreationFailed, err.Error())
+		}
+
+		policyEvaluators[allowPolicy] = *evaluator
+	}
+
+	if responsePolicy != "" {
+		if _, ok := policyEvaluators[responsePolicy]; !ok {
+			evaluator, err := createPartialEvaluator(ctx, logger, responsePolicy, opaModuleConfig, options)
+			if err != nil {
+				return fmt.Errorf("%w: %s", ErrEvaluatorCreationFailed, err.Error())
 			}
 
-			allowPolicy := verbConfig.PermissionV2.RequestFlow.PolicyName
-			responsePolicy := verbConfig.PermissionV2.ResponseFlow.PolicyName
-
-			logger.
-				WithFields(logrus.Fields{
-					"verb":               verb,
-					"policyName":         allowPolicy,
-					"path":               path,
-					"responsePolicyName": responsePolicy,
-				}).
-				Info("precomputing rego queries for API")
-
-			if allowPolicy == "" {
-				// allow policy is required, if missing assume the API has no valid x-rond configuration.
-				continue
-			}
-
-			if _, ok := policyEvaluators[allowPolicy]; !ok {
-				evaluator, err := createPartialEvaluator(ctx, logger, allowPolicy, oas, opaModuleConfig, options)
-				if err != nil {
-					return nil, fmt.Errorf("%w: %s", ErrEvaluatorCreationFailed, err.Error())
-				}
-
-				policyEvaluators[allowPolicy] = *evaluator
-			}
-
-			if responsePolicy != "" {
-				if _, ok := policyEvaluators[responsePolicy]; !ok {
-					evaluator, err := createPartialEvaluator(ctx, logger, responsePolicy, oas, opaModuleConfig, options)
-					if err != nil {
-						return nil, fmt.Errorf("%w: %s", ErrEvaluatorCreationFailed, err.Error())
-					}
-
-					policyEvaluators[responsePolicy] = *evaluator
-				}
-			}
+			policyEvaluators[responsePolicy] = *evaluator
 		}
 	}
-	return policyEvaluators, nil
+
+	return nil
 }
 
 func NewPrintHook(w io.Writer, policy string) print.Hook {
@@ -283,6 +292,9 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 }
 
 func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry, options *PolicyEvaluationOptions) (primitive.M, error) {
+	if options == nil {
+		options = &PolicyEvaluationOptions{}
+	}
 	opaEvaluationTimeStart := time.Now()
 	partialResults, err := evaluator.PolicyEvaluator.Partial(evaluator.getContext())
 	if err != nil {
@@ -295,15 +307,15 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry, options *
 		"policy_name": evaluator.PolicyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
-	logger.WithFields(logrus.Fields{
+	fields := logrus.Fields{
 		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                true,
 		"allowed":                    true,
-		"matchedPath":                options.RouterInfo.MatchedPath,
-		"requestedPath":              options.RouterInfo.RequestedPath,
-		"method":                     options.RouterInfo.Method,
-	}).Debug("policy evaluation completed")
+	}
+	addDataToLogFields(fields, options.AdditionalLogFields)
+
+	logger.WithFields(fields).Debug("policy evaluation completed")
 
 	client := opatranslator.OPAClient{}
 	q, err := client.ProcessQuery(partialResults)
@@ -320,6 +332,10 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry, options *
 }
 
 func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry, options *PolicyEvaluationOptions) (interface{}, error) {
+	if options == nil {
+		options = &PolicyEvaluationOptions{}
+	}
+
 	opaEvaluationTimeStart := time.Now()
 
 	results, err := evaluator.PolicyEvaluator.Eval(evaluator.getContext())
@@ -333,16 +349,16 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry, options *PolicyEva
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
 	allowed, responseBodyOverwriter := processResults(results)
-	logger.WithFields(logrus.Fields{
+	fields := logrus.Fields{
 		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                false,
 		"allowed":                    allowed,
 		"resultsLength":              len(results),
-		"matchedPath":                options.RouterInfo.MatchedPath,
-		"requestedPath":              options.RouterInfo.RequestedPath,
-		"method":                     options.RouterInfo.Method,
-	}).Debug("policy evaluation completed")
+	}
+	addDataToLogFields(fields, options.AdditionalLogFields)
+
+	logger.WithFields(fields).Debug("policy evaluation completed")
 
 	logger.WithFields(logrus.Fields{
 		"policyName": evaluator.PolicyName,
@@ -367,8 +383,8 @@ func (evaluator *OPAEvaluator) getContext() context.Context {
 }
 
 type PolicyEvaluationOptions struct {
-	Metrics    *metrics.Metrics
-	RouterInfo openapi.RouterInfo
+	Metrics             *metrics.Metrics
+	AdditionalLogFields map[string]string
 }
 
 func (evaluator *PolicyEvaluationOptions) metrics() metrics.Metrics {
@@ -378,7 +394,11 @@ func (evaluator *PolicyEvaluationOptions) metrics() metrics.Metrics {
 	return metrics.SetupMetrics("rond")
 }
 
-func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission *openapi.RondConfig, options *PolicyEvaluationOptions) (interface{}, primitive.M, error) {
+// TODO: here permission is required? We could remove it?
+func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission *RondConfig, options *PolicyEvaluationOptions) (interface{}, primitive.M, error) {
+	if permission == nil {
+		return nil, nil, ErrRondConfigNotExists
+	}
 	if permission.RequestFlow.GenerateQuery {
 		query, err := evaluator.partiallyEvaluate(logger, options)
 		return nil, query, err

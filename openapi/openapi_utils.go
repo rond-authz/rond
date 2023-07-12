@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/utils"
 
 	"github.com/sirupsen/logrus"
@@ -59,11 +60,6 @@ type RouterInfo struct {
 
 type XPermissionKey struct{}
 
-type PermissionOptions struct {
-	EnableResourcePermissionsMapOptimization bool `json:"enableResourcePermissionsMapOptimization"`
-	IgnoreTrailingSlash                      bool `json:"ignoreTrailingSlash,omitempty"`
-}
-
 // Config v1 //
 type ResourceFilter struct {
 	RowFilter RowFilterConfiguration `json:"rowFilter"`
@@ -82,37 +78,14 @@ type XPermission struct {
 	AllowPermission string                      `json:"allow"`
 	ResponseFilter  ResponseFilterConfiguration `json:"responseFilter"`
 	ResourceFilter  ResourceFilter              `json:"resourceFilter"`
-	Options         PermissionOptions           `json:"options"`
+	Options         core.PermissionOptions      `json:"options"`
 }
 
-// END Config v1 //
-
-// Config v2 //
-type QueryOptions struct {
-	HeaderName string `json:"headerName"`
-}
-
-type RequestFlow struct {
-	PolicyName    string       `json:"policyName"`
-	GenerateQuery bool         `json:"generateQuery"`
-	QueryOptions  QueryOptions `json:"queryOptions"`
-}
-
-type ResponseFlow struct {
-	PolicyName string `json:"policyName"`
-}
-
-type RondConfig struct {
-	RequestFlow  RequestFlow       `json:"requestFlow"`
-	ResponseFlow ResponseFlow      `json:"responseFlow"`
-	Options      PermissionOptions `json:"options"`
-}
-
-// END Config v2 //
+// END Config v1 //,
 
 type VerbConfig struct {
-	PermissionV1 *XPermission `json:"x-permission"`
-	PermissionV2 *RondConfig  `json:"x-rond"`
+	PermissionV1 *XPermission     `json:"x-permission"`
+	PermissionV2 *core.RondConfig `json:"x-rond"`
 }
 
 type PathVerbs map[string]VerbConfig
@@ -211,7 +184,7 @@ func registerLaxPath(OASRouter *bunrouter.CompatRouter, method string, methodCon
 }
 
 // FIXME: This is not a logic method of OAS, but could be a method of OASRouter
-func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path string, method string) (RondConfig, RouterInfo, error) {
+func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path string, method string) (core.RondConfig, RouterInfo, error) {
 	routerInfo := RouterInfo{
 		Method:        method,
 		RequestedPath: path,
@@ -221,12 +194,12 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 	responseReader := strings.NewReader("request-permissions")
 	request, err := http.NewRequest(method, path, responseReader)
 	if err != nil {
-		return RondConfig{}, routerInfo, err
+		return core.RondConfig{}, routerInfo, err
 	}
 	OASRouter.ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusOK {
-		return RondConfig{}, routerInfo, fmt.Errorf("%w: %s %s", ErrNotFoundOASDefinition, utils.SanitizeString(method), utils.SanitizeString(path))
+		return core.RondConfig{}, routerInfo, fmt.Errorf("%w: %s %s", ErrNotFoundOASDefinition, utils.SanitizeString(method), utils.SanitizeString(path))
 	}
 
 	recorderResult := recorder.Result()
@@ -234,47 +207,47 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 	routerInfo.MatchedPath = pathTemplate
 	rowFilterEnabled, err := strconv.ParseBool(recorderResult.Header.Get("resourceFilter.rowFilter.enabled"))
 	if err != nil {
-		return RondConfig{}, routerInfo, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
+		return core.RondConfig{}, routerInfo, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
 	}
 	enableResourcePermissionsMapOptimization, err := strconv.ParseBool(recorderResult.Header.Get("options.enableResourcePermissionsMapOptimization"))
 	if err != nil {
-		return RondConfig{}, routerInfo, fmt.Errorf("error while parsing options.enableResourcePermissionsMapOptimization: %s", err)
+		return core.RondConfig{}, routerInfo, fmt.Errorf("error while parsing options.enableResourcePermissionsMapOptimization: %s", err)
 	}
 	ignoreTrailingSlash, err := strconv.ParseBool(recorderResult.Header.Get("options.ignoreTrailingSlash"))
 	if err != nil {
-		return RondConfig{}, routerInfo, fmt.Errorf("error while parsing options.ignoreTrailingSlash: %s", err)
+		return core.RondConfig{}, routerInfo, fmt.Errorf("error while parsing options.ignoreTrailingSlash: %s", err)
 	}
-	return RondConfig{
-		RequestFlow: RequestFlow{
+	return core.RondConfig{
+		RequestFlow: core.RequestFlow{
 			PolicyName:    recorderResult.Header.Get("allow"),
 			GenerateQuery: rowFilterEnabled,
-			QueryOptions: QueryOptions{
+			QueryOptions: core.QueryOptions{
 				HeaderName: recorderResult.Header.Get("resourceFilter.rowFilter.headerKey"),
 			},
 		},
-		ResponseFlow: ResponseFlow{
+		ResponseFlow: core.ResponseFlow{
 			PolicyName: recorderResult.Header.Get("responseFilter.policy"),
 		},
-		Options: PermissionOptions{
+		Options: core.PermissionOptions{
 			EnableResourcePermissionsMapOptimization: enableResourcePermissionsMapOptimization,
 			IgnoreTrailingSlash:                      ignoreTrailingSlash,
 		},
 	}, routerInfo, nil
 }
 
-func newRondConfigFromPermissionV1(v1Permission *XPermission) *RondConfig {
-	return &RondConfig{
-		RequestFlow: RequestFlow{
+func newRondConfigFromPermissionV1(v1Permission *XPermission) *core.RondConfig {
+	return &core.RondConfig{
+		RequestFlow: core.RequestFlow{
 			PolicyName:    v1Permission.AllowPermission,
 			GenerateQuery: v1Permission.ResourceFilter.RowFilter.Enabled,
-			QueryOptions: QueryOptions{
+			QueryOptions: core.QueryOptions{
 				HeaderName: v1Permission.ResourceFilter.RowFilter.HeaderKey,
 			},
 		},
-		ResponseFlow: ResponseFlow{
+		ResponseFlow: core.ResponseFlow{
 			PolicyName: v1Permission.ResponseFilter.Policy,
 		},
-		Options: PermissionOptions{
+		Options: core.PermissionOptions{
 			EnableResourcePermissionsMapOptimization: v1Permission.Options.EnableResourcePermissionsMapOptimization,
 			IgnoreTrailingSlash:                      v1Permission.Options.IgnoreTrailingSlash,
 		},
@@ -385,13 +358,13 @@ func LoadOASFromFileOrNetwork(log *logrus.Logger, config LoadOptions) (*OpenAPIS
 	return nil, fmt.Errorf("missing openapi config: one of TargetServiceOASPath or APIPermissionsFilePath is required")
 }
 
-func WithXPermission(requestContext context.Context, permission *RondConfig) context.Context {
+func WithXPermission(requestContext context.Context, permission *core.RondConfig) context.Context {
 	return context.WithValue(requestContext, XPermissionKey{}, permission)
 }
 
 // GetXPermission can be used by a request handler to get XPermission instance from its context.
-func GetXPermission(requestContext context.Context) (*RondConfig, error) {
-	permission, ok := requestContext.Value(XPermissionKey{}).(*RondConfig)
+func GetXPermission(requestContext context.Context) (*core.RondConfig, error) {
+	permission, ok := requestContext.Value(XPermissionKey{}).(*core.RondConfig)
 	if !ok {
 		return nil, fmt.Errorf("no permission configuration found in request context")
 	}
