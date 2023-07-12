@@ -59,8 +59,8 @@ func TestOasSDK(t *testing.T) {
 		t.Run("returns correct evaluator", func(t *testing.T) {
 			actual, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
 			require.NoError(t, err)
-			evaluatorOptions := &core.EvaluatorOptions{
-				Metrics: oas.evaluatorOptions.Metrics,
+			evaluatorOptions := &core.PolicyEvaluationOptions{
+				Metrics: oas.metrics,
 				RouterInfo: openapi.RouterInfo{
 					MatchedPath:   "/users/",
 					RequestedPath: "/users/",
@@ -76,7 +76,7 @@ func TestOasSDK(t *testing.T) {
 				opaModuleConfig:         opaModule,
 				partialResultEvaluators: oas.partialResultEvaluators,
 				logger:                  logger,
-				evaluatorOptions:        evaluatorOptions,
+				policyEvaluationOptions: evaluatorOptions,
 			}, actual)
 
 			t.Run("get permissions", func(t *testing.T) {

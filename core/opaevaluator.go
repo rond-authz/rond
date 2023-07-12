@@ -50,10 +50,9 @@ var Unknowns = []string{"data.resources"}
 type OPAEvaluator struct {
 	PolicyEvaluator Evaluator
 	PolicyName      string
-	Context         context.Context
 
-	m          *metrics.Metrics
-	routerInfo openapi.RouterInfo
+	context     context.Context
+	mongoClient types.IMongoClient
 }
 type PartialResultsEvaluatorConfigKey struct{}
 
@@ -63,11 +62,11 @@ type PartialEvaluator struct {
 	PartialEvaluator *rego.PartialResult
 }
 
-func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy string, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (*PartialEvaluator, error) {
+func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy string, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *OPAEvaluatorOptions) (*PartialEvaluator, error) {
 	logger.WithField("policyName", policy).Info("precomputing rego policy")
 
 	policyEvaluatorTime := time.Now()
-	partialResultEvaluator, err := NewPartialResultEvaluator(ctx, policy, opaModuleConfig, options)
+	partialResultEvaluator, err := newPartialResultEvaluator(ctx, policy, opaModuleConfig, options)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +81,7 @@ func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy st
 	return &PartialEvaluator{PartialEvaluator: partialResultEvaluator}, nil
 }
 
-func SetupEvaluators(ctx context.Context, logger *logrus.Entry, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *EvaluatorOptions) (PartialResultsEvaluators, error) {
+func SetupEvaluators(ctx context.Context, logger *logrus.Entry, oas *openapi.OpenAPISpec, opaModuleConfig *OPAModuleConfig, options *OPAEvaluatorOptions) (PartialResultsEvaluators, error) {
 	if oas == nil {
 		return nil, fmt.Errorf("oas must not be nil")
 	}
@@ -169,27 +168,14 @@ func (h printHook) Print(_ print.Context, message string) error {
 	return err
 }
 
-type EvaluatorOptions struct {
+type OPAEvaluatorOptions struct {
 	EnablePrintStatements bool
 	MongoClient           types.IMongoClient
-
-	Metrics    *metrics.Metrics
-	RouterInfo openapi.RouterInfo
 }
 
-func (e *EvaluatorOptions) WithMetrics(metrics metrics.Metrics) *EvaluatorOptions {
-	e.Metrics = &metrics
-	return e
-}
-
-func (e *EvaluatorOptions) WithRouterInfo(routerInfo openapi.RouterInfo) *EvaluatorOptions {
-	e.RouterInfo = routerInfo
-	return e
-}
-
-func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte, options *EvaluatorOptions) (*OPAEvaluator, error) {
+func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte, options *OPAEvaluatorOptions) (*OPAEvaluator, error) {
 	if options == nil {
-		options = &EvaluatorOptions{}
+		options = &OPAEvaluatorOptions{}
 	}
 	inputTerm, err := ast.ParseTerm(string(input))
 	if err != nil {
@@ -211,19 +197,16 @@ func NewOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAMod
 		custom_builtins.MongoFindMany,
 	)
 
-	ctx = mongoclient.WithMongoClient(ctx, options.MongoClient)
-
 	return &OPAEvaluator{
 		PolicyEvaluator: query,
 		PolicyName:      policy,
-		Context:         ctx,
 
-		m:          options.Metrics,
-		routerInfo: options.RouterInfo,
+		context:     ctx,
+		mongoClient: options.MongoClient,
 	}, nil
 }
 
-func (config *OPAModuleConfig) CreateQueryEvaluator(ctx context.Context, logger *logrus.Entry, policy string, input []byte, options *EvaluatorOptions) (*OPAEvaluator, error) {
+func (config *OPAModuleConfig) CreateQueryEvaluator(ctx context.Context, logger *logrus.Entry, policy string, input []byte, options *OPAEvaluatorOptions) (*OPAEvaluator, error) {
 	// TODO: remove logger and set in sdk
 	logger.WithFields(logrus.Fields{
 		"policyName": policy,
@@ -241,9 +224,9 @@ func (config *OPAModuleConfig) CreateQueryEvaluator(ctx context.Context, logger 
 	return evaluator, nil
 }
 
-func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, evaluatorOptions *EvaluatorOptions) (*rego.PartialResult, error) {
+func newPartialResultEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, evaluatorOptions *OPAEvaluatorOptions) (*rego.PartialResult, error) {
 	if evaluatorOptions == nil {
-		evaluatorOptions = &EvaluatorOptions{}
+		evaluatorOptions = &OPAEvaluatorOptions{}
 	}
 	if opaModuleConfig == nil {
 		return nil, fmt.Errorf("OPAModuleConfig must not be nil")
@@ -271,9 +254,9 @@ func NewPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 	return &results, err
 }
 
-func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx context.Context, policy string, input []byte, options *EvaluatorOptions) (*OPAEvaluator, error) {
+func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx context.Context, policy string, input []byte, options *OPAEvaluatorOptions) (*OPAEvaluator, error) {
 	if options == nil {
-		options = &EvaluatorOptions{}
+		options = &OPAEvaluatorOptions{}
 	}
 
 	if eval, ok := partialEvaluators[policy]; ok {
@@ -291,32 +274,24 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 		return &OPAEvaluator{
 			PolicyName:      policy,
 			PolicyEvaluator: evaluator,
-			Context:         ctx,
 
-			m:          options.Metrics,
-			routerInfo: options.RouterInfo,
+			context:     ctx,
+			mongoClient: options.MongoClient,
 		}, nil
 	}
 	return nil, fmt.Errorf("%w: %s", ErrEvaluatorNotFound, policy)
 }
 
-func (evaluator *OPAEvaluator) metrics() metrics.Metrics {
-	if evaluator.m != nil {
-		return *evaluator.m
-	}
-	return metrics.SetupMetrics("rond")
-}
-
-func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitive.M, error) {
+func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry, options *PolicyEvaluationOptions) (primitive.M, error) {
 	opaEvaluationTimeStart := time.Now()
-	partialResults, err := evaluator.PolicyEvaluator.Partial(evaluator.Context)
+	partialResults, err := evaluator.PolicyEvaluator.Partial(evaluator.getContext())
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrPartialPolicyEvalFailed, err.Error())
 	}
 
 	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
 
-	evaluator.metrics().PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
+	options.metrics().PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
 		"policy_name": evaluator.PolicyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
@@ -325,9 +300,9 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                true,
 		"allowed":                    true,
-		"matchedPath":                evaluator.routerInfo.MatchedPath,
-		"requestedPath":              evaluator.routerInfo.RequestedPath,
-		"method":                     evaluator.routerInfo.Method,
+		"matchedPath":                options.RouterInfo.MatchedPath,
+		"requestedPath":              options.RouterInfo.RequestedPath,
+		"method":                     options.RouterInfo.Method,
 	}).Debug("policy evaluation completed")
 
 	client := opatranslator.OPAClient{}
@@ -344,16 +319,16 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry) (primitiv
 	return q, nil
 }
 
-func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, error) {
+func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry, options *PolicyEvaluationOptions) (interface{}, error) {
 	opaEvaluationTimeStart := time.Now()
 
-	results, err := evaluator.PolicyEvaluator.Eval(evaluator.Context)
+	results, err := evaluator.PolicyEvaluator.Eval(evaluator.getContext())
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrPolicyEvalFailed, err.Error())
 	}
 
 	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
-	evaluator.metrics().PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
+	options.metrics().PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
 		"policy_name": evaluator.PolicyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
@@ -364,9 +339,9 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, erro
 		"partialEval":                false,
 		"allowed":                    allowed,
 		"resultsLength":              len(results),
-		"matchedPath":                evaluator.routerInfo.MatchedPath,
-		"requestedPath":              evaluator.routerInfo.RequestedPath,
-		"method":                     evaluator.routerInfo.Method,
+		"matchedPath":                options.RouterInfo.MatchedPath,
+		"requestedPath":              options.RouterInfo.RequestedPath,
+		"method":                     options.RouterInfo.Method,
 	}).Debug("policy evaluation completed")
 
 	logger.WithFields(logrus.Fields{
@@ -380,12 +355,35 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry) (interface{}, erro
 	return nil, ErrPolicyEvalFailed
 }
 
-func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission *openapi.RondConfig) (interface{}, primitive.M, error) {
+func (evaluator *OPAEvaluator) getContext() context.Context {
+	ctx := evaluator.context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if evaluator.mongoClient != nil {
+		return mongoclient.WithMongoClient(ctx, evaluator.mongoClient)
+	}
+	return ctx
+}
+
+type PolicyEvaluationOptions struct {
+	Metrics    *metrics.Metrics
+	RouterInfo openapi.RouterInfo
+}
+
+func (evaluator *PolicyEvaluationOptions) metrics() metrics.Metrics {
+	if evaluator.Metrics != nil {
+		return *evaluator.Metrics
+	}
+	return metrics.SetupMetrics("rond")
+}
+
+func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, permission *openapi.RondConfig, options *PolicyEvaluationOptions) (interface{}, primitive.M, error) {
 	if permission.RequestFlow.GenerateQuery {
-		query, err := evaluator.partiallyEvaluate(logger)
+		query, err := evaluator.partiallyEvaluate(logger, options)
 		return nil, query, err
 	}
-	dataFromEvaluation, err := evaluator.Evaluate(logger)
+	dataFromEvaluation, err := evaluator.Evaluate(logger, options)
 	if err != nil {
 		return nil, nil, err
 	}

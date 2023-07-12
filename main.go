@@ -102,7 +102,7 @@ func entrypoint(shutdown chan os.Signal) {
 	registry := prometheus.NewRegistry()
 	sdk, err := sdk.NewFromOAS(ctx, opaModuleConfig, oas, &sdk.FromOASOptions{
 		Registry: registry,
-		EvaluatorOptions: &core.EvaluatorOptions{
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			EnablePrintStatements: env.IsTraceLogLevel(),
 			MongoClient:           mongoClient,
 		},

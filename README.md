@@ -61,6 +61,14 @@ make test
 
 Please note that in order to run tests you need Docker to be installed; tests need a local instance of MongoDB to be up and running, the `make test` command will take care of it by creating a new `mongodb` container. The container is auomatically removed at the end of tests; if it remains leaked simply run `make clean`.
 
+#### With coverage
+
+To run test with coverage file in output, run
+
+```sh
+make coverage
+```
+
 ### Contributing
 
 Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for further details about the process for submitting pull requests.

@@ -16,6 +16,7 @@ package sdk
 
 import (
 	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/openapi"
 
 	"github.com/sirupsen/logrus"
@@ -28,7 +29,8 @@ type oasImpl struct {
 
 	opaModuleConfig         *core.OPAModuleConfig
 	partialResultEvaluators core.PartialResultsEvaluators
-	evaluatorOptions        *core.EvaluatorOptions
+	opaEvaluatorOptions     *core.OPAEvaluatorOptions
+	metrics                 *metrics.Metrics
 }
 
 func (r oasImpl) FindEvaluator(logger *logrus.Entry, method, path string) (Evaluator, error) {
@@ -41,7 +43,12 @@ func (r oasImpl) FindEvaluator(logger *logrus.Entry, method, path string) (Evalu
 		logger:                  logger,
 		opaModuleConfig:         r.opaModuleConfig,
 		partialResultEvaluators: r.partialResultEvaluators,
-		evaluatorOptions:        r.evaluatorOptions.WithRouterInfo(routerInfo),
+
+		opaEvaluatorOptions: r.opaEvaluatorOptions,
+		policyEvaluationOptions: &core.PolicyEvaluationOptions{
+			Metrics:    r.metrics,
+			RouterInfo: routerInfo,
+		},
 	}, err
 }
 

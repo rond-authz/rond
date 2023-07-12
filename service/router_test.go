@@ -286,7 +286,7 @@ func getEvaluator(
 	}
 
 	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.FromOASOptions{
-		EvaluatorOptions: &core.EvaluatorOptions{
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},
 		Registry: options.registry,

@@ -28,7 +28,7 @@ import (
 
 type FromOASOptions struct {
 	Registry         *prometheus.Registry
-	EvaluatorOptions *core.EvaluatorOptions
+	EvaluatorOptions *core.OPAEvaluatorOptions
 	Logger           *logrus.Entry
 }
 
@@ -48,11 +48,11 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 		return nil, fmt.Errorf("logger is required inside options")
 	}
 
-	evaluatorOptions := &core.EvaluatorOptions{}
+	var evaluatorOptions *core.OPAEvaluatorOptions
 	if options.EvaluatorOptions != nil {
 		evaluatorOptions = options.EvaluatorOptions
 	}
-	setupMetrics(options.Registry, evaluatorOptions)
+	metrics := setupMetrics(options.Registry)
 
 	logger := options.Logger
 	evaluator, err := core.SetupEvaluators(ctx, logger, oas, opaModuleConfig, evaluatorOptions)
@@ -73,14 +73,15 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 
 		opaModuleConfig:         opaModuleConfig,
 		partialResultEvaluators: evaluator,
-		evaluatorOptions:        evaluatorOptions,
+		opaEvaluatorOptions:     evaluatorOptions,
+		metrics:                 metrics,
 	}, nil
 }
 
-func setupMetrics(registry *prometheus.Registry, evaluatorOptions *core.EvaluatorOptions) {
+func setupMetrics(registry *prometheus.Registry) *metrics.Metrics {
 	m := metrics.SetupMetrics("rond")
 	if registry != nil {
 		m.MustRegister(registry)
 	}
-	evaluatorOptions.WithMetrics(m)
+	return &m
 }

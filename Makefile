@@ -16,6 +16,11 @@ mongo-start:
 
 .PHONY: test
 test: clean mongo-start
+	go test ./... -cover
+	$(MAKE) clean
+
+.PHONY: coverage
+coverage: clean mongo-start
 	go test ./... -coverprofile coverage.out
 	$(MAKE) clean
 

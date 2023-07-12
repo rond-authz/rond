@@ -1795,7 +1795,7 @@ filter_policy {
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
 	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.FromOASOptions{
-		EvaluatorOptions: &core.EvaluatorOptions{
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},
 		Registry: registry,
@@ -1957,7 +1957,7 @@ filter_policy {
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
 	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.FromOASOptions{
-		EvaluatorOptions: &core.EvaluatorOptions{
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},
 		Registry: registry,

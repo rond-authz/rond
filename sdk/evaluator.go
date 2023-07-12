@@ -52,7 +52,8 @@ type evaluator struct {
 	opaModuleConfig         *core.OPAModuleConfig
 	partialResultEvaluators core.PartialResultsEvaluators
 
-	evaluatorOptions *core.EvaluatorOptions
+	opaEvaluatorOptions     *core.OPAEvaluatorOptions
+	policyEvaluationOptions *core.PolicyEvaluationOptions
 }
 
 func (e evaluator) Config() openapi.RondConfig {
@@ -80,18 +81,18 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req core.RondInput
 
 	var evaluatorAllowPolicy *core.OPAEvaluator
 	if !rondConfig.RequestFlow.GenerateQuery {
-		evaluatorAllowPolicy, err = e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, regoInput, e.evaluatorOptions)
+		evaluatorAllowPolicy, err = e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, regoInput, e.opaEvaluatorOptions)
 		if err != nil {
 			return PolicyResult{}, err
 		}
 	} else {
-		evaluatorAllowPolicy, err = e.opaModuleConfig.CreateQueryEvaluator(ctx, e.logger, rondConfig.RequestFlow.PolicyName, regoInput, e.evaluatorOptions)
+		evaluatorAllowPolicy, err = e.opaModuleConfig.CreateQueryEvaluator(ctx, e.logger, rondConfig.RequestFlow.PolicyName, regoInput, e.opaEvaluatorOptions)
 		if err != nil {
 			return PolicyResult{}, err
 		}
 	}
 
-	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(e.logger, &rondConfig)
+	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(e.logger, &rondConfig, e.policyEvaluationOptions)
 
 	if err != nil {
 		e.logger.WithField("error", logrus.Fields{
@@ -134,12 +135,12 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.Ro
 		return nil, err
 	}
 
-	evaluator, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, e.rondConfig.ResponseFlow.PolicyName, regoInput, e.evaluatorOptions)
+	evaluator, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, e.rondConfig.ResponseFlow.PolicyName, regoInput, e.opaEvaluatorOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	bodyToProxy, err := evaluator.Evaluate(e.logger)
+	bodyToProxy, err := evaluator.Evaluate(e.logger, e.policyEvaluationOptions)
 	if err != nil {
 		return nil, err
 	}

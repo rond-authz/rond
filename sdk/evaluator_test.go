@@ -186,6 +186,33 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				user: types.User{
 					UserID: "my-user",
 				},
+				opaModuleContent: `package policies
+				todo {
+					project := find_one("my-collection", {"myField": "1234"})
+					project.myField == "1234"
+				}
+				`,
+				mongoClient: &mocks.MongoClientMock{
+					FindOneResult: map[string]string{"myField": "1234"},
+					FindOneExpectation: func(collectionName string, query interface{}) {
+						require.Equal(t, "my-collection", collectionName)
+						require.Equal(t, map[string]interface{}{"myField": "1234"}, query)
+					},
+				},
+				expectedPolicy: PolicyResult{
+					Allowed:      true,
+					QueryToProxy: []byte{},
+				},
+			},
+			"with mongo client and find_one with dynamic find_one query": {
+				method: http.MethodGet,
+				path:   "/users/",
+				user: types.User{
+					UserID: "my-user",
+					Properties: map[string]any{
+						"field": "1234",
+					},
+				},
 				mongoClient: &mocks.MongoClientMock{
 					FindOneResult: map[string]string{"myField": "1234"},
 					FindOneExpectation: func(collectionName string, query interface{}) {
@@ -194,10 +221,12 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					},
 				},
 				opaModuleContent: `package policies
-					todo {
-						project := find_one("my-collection", {"myField": "1234"})
-						project.myField == "1234"
-					}
+				todo {
+					field := input.user.properties.field
+					field == "1234"
+					project := find_one("my-collection", {"myField": field})
+					project.myField == "1234"
+				}
 				`,
 				expectedPolicy: PolicyResult{
 					Allowed:      true,
@@ -237,9 +266,6 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				user: types.User{
 					UserGroups: []string{"my-group"},
 				},
-				reqHeaders: map[string]string{
-					"my-header-key": "ok",
-				},
 				mongoClient: &mocks.MongoClientMock{
 					FindOneResult: map[string]string{"myField": "1234"},
 					FindOneExpectation: func(collectionName string, query interface{}) {
@@ -251,6 +277,38 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				package policies
 				generate_filter {
 					project := find_one("my-collection", {"myField": "1234"})
+
+					query := data.resources[_]
+					query.filterField == "1234"
+				}`,
+				expectedPolicy: PolicyResult{
+					Allowed:      true,
+					QueryToProxy: []byte(`{"$or":[{"$and":[{"filterField":{"$eq":"1234"}}]}]}`),
+				},
+			},
+			"with query and mongo client with dynamic find_one query": {
+				method:      http.MethodGet,
+				path:        "/users/",
+				oasFilePath: "../mocks/rondOasConfig.json",
+				user: types.User{
+					UserID: "my-user",
+					Properties: map[string]any{
+						"field": "1234",
+					},
+				},
+				mongoClient: &mocks.MongoClientMock{
+					FindOneResult: map[string]string{"myField": "1234"},
+					FindOneExpectation: func(collectionName string, query interface{}) {
+						require.Equal(t, "my-collection", collectionName)
+						require.Equal(t, map[string]interface{}{"myField": "1234"}, query)
+					},
+				},
+				opaModuleContent: `
+				package policies
+				generate_filter {
+					field := input.user.properties.field
+					field == "1234"
+					project := find_one("my-collection", {"myField": field})
 
 					query := data.resources[_]
 					query.filterField == "1234"
@@ -318,7 +376,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					fields := logrus.Fields{
 						"allowed":       actual.Allowed,
 						"requestedPath": testCase.path,
-						"matchedPath":   evaluatorInfo.evaluatorOptions.RouterInfo.MatchedPath,
+						"matchedPath":   evaluatorInfo.policyEvaluationOptions.RouterInfo.MatchedPath,
 						"method":        testCase.method,
 						"partialEval":   evaluate.Config().RequestFlow.GenerateQuery,
 						"policyName":    evaluate.Config().RequestFlow.PolicyName,
@@ -532,7 +590,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					require.Equal(t, logrus.Fields{
 						"allowed":       !testCase.notAllowed,
 						"requestedPath": testCase.path,
-						"matchedPath":   evaluatorInfo.evaluatorOptions.RouterInfo.MatchedPath,
+						"matchedPath":   evaluatorInfo.policyEvaluationOptions.RouterInfo.MatchedPath,
 						"method":        testCase.method,
 						"partialEval":   false,
 						"policyName":    evaluate.Config().ResponseFlow.PolicyName,
@@ -559,7 +617,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	log, _ := test.NewNullLogger()
 	logger := logrus.NewEntry(log)
 	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &FromOASOptions{
-		EvaluatorOptions: &core.EvaluatorOptions{
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: testmongoMock,
 		},
 	})
@@ -617,7 +675,7 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 	}
 	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &FromOASOptions{
 		Registry: options.registry,
-		EvaluatorOptions: &core.EvaluatorOptions{
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			EnablePrintStatements: true,
 			MongoClient:           options.mongoClient,
 		},

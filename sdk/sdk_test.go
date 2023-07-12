@@ -91,7 +91,7 @@ func TestNewFromOas(t *testing.T) {
 	})
 
 	t.Run("passes EvaluatorOptions and set metrics correctly", func(t *testing.T) {
-		evalOpts := &core.EvaluatorOptions{
+		evalOpts := &core.OPAEvaluatorOptions{
 			EnablePrintStatements: true,
 		}
 		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &FromOASOptions{
@@ -103,7 +103,7 @@ func TestNewFromOas(t *testing.T) {
 		require.NotEmpty(t, sdk)
 		r, ok := sdk.(oasImpl)
 		require.True(t, ok)
-		require.Equal(t, evalOpts, r.evaluatorOptions)
+		require.Equal(t, evalOpts, r.opaEvaluatorOptions)
 	})
 
 	t.Run("creates OAS sdk correctly", func(t *testing.T) {
