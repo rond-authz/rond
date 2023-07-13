@@ -91,7 +91,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req core.RondInput
 		}
 	}
 
-	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(e.logger, &rondConfig, e.policyEvaluationOptions)
+	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(e.logger, e.policyEvaluationOptions)
 
 	if err != nil {
 		e.logger.WithField("error", logrus.Fields{
