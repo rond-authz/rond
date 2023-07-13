@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package core
+package service
 
 import (
 	"bytes"
@@ -25,10 +25,15 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
+
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
@@ -464,4 +469,55 @@ func (m *MockReader) Read(p []byte) (n int, err error) {
 
 func (m *MockReader) Close() error {
 	return m.CloseError
+}
+
+type sdkOptions struct {
+	opaModuleContent string
+	oasFilePath      string
+
+	mongoClient types.IMongoClient
+	registry    *prometheus.Registry
+}
+
+type tHelper interface {
+	Helper()
+}
+
+func getSdk(t require.TestingT, options *sdkOptions) sdk.OASEvaluatorFinder {
+	if h, ok := t.(tHelper); ok {
+		h.Helper()
+	}
+
+	logger := logrus.NewEntry(logrus.New())
+	if options == nil {
+		options = &sdkOptions{}
+	}
+
+	var oasFilePath = "../mocks/simplifiedMock.json"
+	if options.oasFilePath != "" {
+		oasFilePath = options.oasFilePath
+	}
+
+	openAPISpec, err := openapi.LoadOASFile(oasFilePath)
+	require.NoError(t, err)
+	opaModule := &core.OPAModuleConfig{
+		Name: "example.rego",
+		Content: `package policies
+		todo { true }`,
+	}
+	if options.opaModuleContent != "" {
+		opaModule.Content = options.opaModuleContent
+	}
+
+	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, openAPISpec, &sdk.FromOASOptions{
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
+			MongoClient:           options.mongoClient,
+			EnablePrintStatements: true,
+		},
+		Registry: options.registry,
+		Logger:   logger,
+	})
+	require.NoError(t, err)
+
+	return sdk
 }

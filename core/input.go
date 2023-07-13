@@ -15,15 +15,12 @@
 package core
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"time"
 
-	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/sirupsen/logrus"
@@ -116,57 +113,4 @@ func CreateRegoQueryInput(
 
 type RondInput interface {
 	Input(user types.User, responseBody any) (Input, error)
-}
-
-type requestInfo struct {
-	*http.Request
-	clientTypeHeaderKey string
-	pathParams          map[string]string
-}
-
-func (req requestInfo) Input(user types.User, responseBody any) (Input, error) {
-	shouldParseJSONBody := utils.HasApplicationJSONContentType(req.Header) &&
-		req.ContentLength > 0 &&
-		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete)
-
-	var requestBody any
-	if shouldParseJSONBody {
-		bodyBytes, err := io.ReadAll(req.Body)
-		if err != nil {
-			return Input{}, fmt.Errorf("%w: %s", ErrFailedInputRequestParse, err.Error())
-		}
-		if err := json.Unmarshal(bodyBytes, &requestBody); err != nil {
-			return Input{}, fmt.Errorf("%w: %s", ErrFailedInputRequestDeserialization, err.Error())
-		}
-		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-	}
-
-	return Input{
-		ClientType: req.Header.Get(req.clientTypeHeaderKey),
-		Request: InputRequest{
-			Method:     req.Method,
-			Path:       req.URL.Path,
-			Headers:    req.Header,
-			Query:      req.URL.Query(),
-			PathParams: req.pathParams,
-			Body:       requestBody,
-		},
-		Response: InputResponse{
-			Body: responseBody,
-		},
-		User: InputUser{
-			Properties: user.Properties,
-			Groups:     user.UserGroups,
-			Bindings:   user.UserBindings,
-			Roles:      user.UserRoles,
-		},
-	}, nil
-}
-
-func NewRondInput(req *http.Request, clientTypeHeaderKey string, pathParams map[string]string) RondInput {
-	return requestInfo{
-		Request:             req,
-		clientTypeHeaderKey: clientTypeHeaderKey,
-		pathParams:          pathParams,
-	}
 }

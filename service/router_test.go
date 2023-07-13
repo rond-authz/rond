@@ -30,6 +30,7 @@ import (
 	"github.com/rond-authz/rond/internal/fake"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -231,7 +232,7 @@ func createContext(
 	t *testing.T,
 	originalCtx context.Context,
 	env config.EnvironmentVariables,
-	evaluator core.SDKEvaluator,
+	evaluator sdk.Evaluator,
 	mongoClient *mocks.MongoClientMock,
 ) context.Context {
 	t.Helper()
@@ -239,7 +240,7 @@ func createContext(
 	var partialContext context.Context
 	partialContext = context.WithValue(originalCtx, config.EnvKey{}, env)
 
-	partialContext = core.WithEvaluatorSDK(partialContext, evaluator)
+	partialContext = sdk.WithEvaluator(partialContext, evaluator)
 
 	if mongoClient != nil {
 		partialContext = context.WithValue(partialContext, types.MongoClientContextKey{}, mongoClient)
@@ -271,7 +272,7 @@ func getEvaluator(
 	oas *openapi.OpenAPISpec,
 	method, path string,
 	options *evaluatorParams,
-) core.SDKEvaluator {
+) sdk.Evaluator {
 	t.Helper()
 
 	if options == nil {
@@ -284,18 +285,14 @@ func getEvaluator(
 		logger = logrus.NewEntry(log)
 	}
 
-	sdk, err := core.NewSDK(
-		ctx,
-		logger,
-		oas,
-		opaModule,
-		&core.EvaluatorOptions{
+	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.FromOASOptions{
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},
-		options.registry,
-		"",
-	)
-	require.NoError(t, err)
+		Registry: options.registry,
+		Logger:   logger,
+	})
+	require.NoError(t, err, "unexpected error")
 
 	evaluator, err := sdk.FindEvaluator(logger, method, path)
 	require.NoError(t, err)

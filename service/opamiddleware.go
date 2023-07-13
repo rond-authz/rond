@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package core
+package service
 
 import (
 	"errors"
 	"net/http"
 	"strings"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/glogger/v2"
@@ -33,8 +35,8 @@ type OPAMiddlewareOptions struct {
 }
 
 func OPAMiddleware(
-	opaModuleConfig *OPAModuleConfig,
-	sdk SDK,
+	opaModuleConfig *core.OPAModuleConfig,
+	rondSDK sdk.OASEvaluatorFinder,
 	routesToNotProxy []string,
 	targetServiceOASPath string,
 	options *OPAMiddlewareOptions,
@@ -53,7 +55,7 @@ func OPAMiddleware(
 
 			logger := glogger.Get(r.Context())
 
-			evaluator, err := sdk.FindEvaluator(logger, r.Method, path)
+			evaluator, err := rondSDK.FindEvaluator(logger, r.Method, path)
 			rondConfig := openapi.RondConfig{}
 			if err == nil {
 				rondConfig = evaluator.Config()
@@ -91,7 +93,7 @@ func OPAMiddleware(
 				return
 			}
 
-			ctx := WithEvaluatorSDK(r.Context(), evaluator)
+			ctx := sdk.WithEvaluator(r.Context(), evaluator)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

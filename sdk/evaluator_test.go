@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package core
+package sdk
 
 import (
 	"bytes"
@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
@@ -33,118 +34,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewSDK(t *testing.T) {
-	log, _ := test.NewNullLogger()
-	logger := logrus.NewEntry(log)
-
-	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
-	require.Nil(t, err)
-	opaModule := &OPAModuleConfig{
-		Name: "example.rego",
-		Content: `package policies
-		very_very_composed_permission { true }`,
-	}
-
-	t.Run("fails if oas is nil", func(t *testing.T) {
-		sdk, err := NewSDK(context.Background(), logger, nil, nil, nil, nil, "")
-		require.ErrorContains(t, err, "oas must not be nil")
-		require.Nil(t, sdk)
-	})
-
-	t.Run("fails if opaModuleConfig is nil", func(t *testing.T) {
-		sdk, err := NewSDK(context.Background(), logger, openAPISpec, nil, nil, nil, "")
-		require.ErrorContains(t, err, "OPAModuleConfig must not be nil")
-		require.Nil(t, sdk)
-	})
-
-	t.Run("fails if oas is invalid", func(t *testing.T) {
-		oas, err := openapi.LoadOASFile("../mocks/invalidOASConfiguration.json")
-		require.NoError(t, err)
-		sdk, err := NewSDK(context.Background(), logger, oas, opaModule, nil, nil, "")
-		require.ErrorContains(t, err, "invalid OAS configuration:")
-		require.Nil(t, sdk)
-	})
-
-	t.Run("creates sdk correctly", func(t *testing.T) {
-		sdk, err := NewSDK(context.Background(), logger, openAPISpec, opaModule, nil, nil, "")
-		require.NoError(t, err)
-		require.NotEmpty(t, sdk)
-	})
-
-	t.Run("if registry is passed, setup metrics", func(t *testing.T) {
-		registry := prometheus.NewRegistry()
-		sdk, err := NewSDK(context.Background(), logger, openAPISpec, opaModule, nil, registry, "")
-		require.NoError(t, err)
-		require.NotEmpty(t, sdk)
-	})
-}
-
-func TestSDK(t *testing.T) {
-	log, _ := test.NewNullLogger()
-	logger := logrus.NewEntry(log)
-
-	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
-	require.Nil(t, err)
-	opaModule := &OPAModuleConfig{
-		Name: "example.rego",
-		Content: `package policies
-		very_very_composed_permission { true }`,
-	}
-	registry := prometheus.NewRegistry()
-	sdk, err := NewSDK(context.Background(), logger, openAPISpec, opaModule, nil, registry, "")
-	require.NoError(t, err)
-
-	rond, ok := sdk.(rondImpl)
-	require.True(t, ok, "rondImpl is not sdk")
-
-	t.Run("FindEvaluator", func(t *testing.T) {
-		t.Run("throws if path and method not found", func(t *testing.T) {
-			actual, err := sdk.FindEvaluator(logger, http.MethodGet, "/not-existent/path")
-			require.ErrorContains(t, err, "not found oas definition: GET /not-existent/path")
-			require.Nil(t, actual)
-		})
-
-		t.Run("returns correct evaluator", func(t *testing.T) {
-			actual, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
-			require.NoError(t, err)
-			evaluatorOptions := &EvaluatorOptions{
-				Metrics: rond.evaluatorOptions.Metrics,
-				RouterInfo: openapi.RouterInfo{
-					MatchedPath:   "/users/",
-					RequestedPath: "/users/",
-					Method:        http.MethodGet,
-				},
-			}
-			require.Equal(t, evaluator{
-				rondConfig: openapi.RondConfig{
-					RequestFlow: openapi.RequestFlow{
-						PolicyName: "todo",
-					},
-				},
-				opaModuleConfig:         opaModule,
-				partialResultEvaluators: rond.partialResultEvaluators,
-				logger:                  logger,
-				evaluatorOptions:        evaluatorOptions,
-			}, actual)
-
-			t.Run("get permissions", func(t *testing.T) {
-				require.Equal(t, openapi.RondConfig{
-					RequestFlow: openapi.RequestFlow{
-						PolicyName: "todo",
-					},
-				}, actual.Config())
-			})
-		})
-	})
-}
-
 func TestEvaluateRequestPolicy(t *testing.T) {
 	logger := logrus.NewEntry(logrus.New())
 
-	clientTypeHeaderKey := "client-header-key"
-
 	t.Run("throws without RondInput", func(t *testing.T) {
-		sdk := getSdk(t, nil)
+		sdk := getOASSdk(t, nil)
 		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
 		require.NoError(t, err)
 
@@ -196,7 +90,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				},
 
 				expectedPolicy: PolicyResult{},
-				expectedErr:    ErrPolicyEvalFailed,
+				expectedErr:    core.ErrPolicyEvalFailed,
 			},
 			"not allowed policy result": {
 				method: http.MethodGet,
@@ -207,7 +101,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				opaModuleContent: `package policies todo { false }`,
 
 				expectedPolicy: PolicyResult{},
-				expectedErr:    ErrPolicyEvalFailed,
+				expectedErr:    core.ErrPolicyEvalFailed,
 			},
 			"with empty filter query": {
 				method:      http.MethodGet,
@@ -292,6 +186,33 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				user: types.User{
 					UserID: "my-user",
 				},
+				opaModuleContent: `package policies
+				todo {
+					project := find_one("my-collection", {"myField": "1234"})
+					project.myField == "1234"
+				}
+				`,
+				mongoClient: &mocks.MongoClientMock{
+					FindOneResult: map[string]string{"myField": "1234"},
+					FindOneExpectation: func(collectionName string, query interface{}) {
+						require.Equal(t, "my-collection", collectionName)
+						require.Equal(t, map[string]interface{}{"myField": "1234"}, query)
+					},
+				},
+				expectedPolicy: PolicyResult{
+					Allowed:      true,
+					QueryToProxy: []byte{},
+				},
+			},
+			"with mongo client and find_one with dynamic find_one query": {
+				method: http.MethodGet,
+				path:   "/users/",
+				user: types.User{
+					UserID: "my-user",
+					Properties: map[string]any{
+						"field": "1234",
+					},
+				},
 				mongoClient: &mocks.MongoClientMock{
 					FindOneResult: map[string]string{"myField": "1234"},
 					FindOneExpectation: func(collectionName string, query interface{}) {
@@ -300,10 +221,12 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					},
 				},
 				opaModuleContent: `package policies
-					todo {
-						project := find_one("my-collection", {"myField": "1234"})
-						project.myField == "1234"
-					}
+				todo {
+					field := input.user.properties.field
+					field == "1234"
+					project := find_one("my-collection", {"myField": field})
+					project.myField == "1234"
+				}
 				`,
 				expectedPolicy: PolicyResult{
 					Allowed:      true,
@@ -343,9 +266,6 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				user: types.User{
 					UserGroups: []string{"my-group"},
 				},
-				reqHeaders: map[string]string{
-					"my-header-key": "ok",
-				},
 				mongoClient: &mocks.MongoClientMock{
 					FindOneResult: map[string]string{"myField": "1234"},
 					FindOneExpectation: func(collectionName string, query interface{}) {
@@ -366,12 +286,44 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					QueryToProxy: []byte(`{"$or":[{"$and":[{"filterField":{"$eq":"1234"}}]}]}`),
 				},
 			},
+			"with query and mongo client with dynamic find_one query": {
+				method:      http.MethodGet,
+				path:        "/users/",
+				oasFilePath: "../mocks/rondOasConfig.json",
+				user: types.User{
+					UserID: "my-user",
+					Properties: map[string]any{
+						"field": "1234",
+					},
+				},
+				mongoClient: &mocks.MongoClientMock{
+					FindOneResult: map[string]string{"myField": "1234"},
+					FindOneExpectation: func(collectionName string, query interface{}) {
+						require.Equal(t, "my-collection", collectionName)
+						require.Equal(t, map[string]interface{}{"myField": "1234"}, query)
+					},
+				},
+				opaModuleContent: `
+				package policies
+				generate_filter {
+					field := input.user.properties.field
+					field == "1234"
+					project := find_one("my-collection", {"myField": field})
+
+					query := data.resources[_]
+					query.filterField == "1234"
+				}`,
+				expectedPolicy: PolicyResult{
+					Allowed:      true,
+					QueryToProxy: []byte(`{"$or":[{"$and":[{"filterField":{"$eq":"1234"}}]}]}`),
+				},
+			},
 		}
 
 		for name, testCase := range testCases {
 			t.Run(name, func(t *testing.T) {
 				registry := prometheus.NewPedanticRegistry()
-				sdk := getSdk(t, &sdkOptions{
+				sdk := getOASSdk(t, &sdkOptions{
 					opaModuleContent: testCase.opaModuleContent,
 					oasFilePath:      testCase.oasFilePath,
 					mongoClient:      testCase.mongoClient,
@@ -384,13 +336,17 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				evaluate, err := sdk.FindEvaluator(logger, testCase.method, testCase.path)
 				require.NoError(t, err)
 
-				req := httptest.NewRequest(testCase.method, testCase.path, nil)
+				headers := http.Header{}
 				if testCase.reqHeaders != nil {
 					for k, v := range testCase.reqHeaders {
-						req.Header.Set(k, v)
+						headers.Set(k, v)
 					}
 				}
-				rondInput := NewRondInput(req, clientTypeHeaderKey, nil)
+				rondInput := getFakeInput(t, core.InputRequest{
+					Headers: headers,
+					Path:    testCase.path,
+					Method:  testCase.method,
+				}, "")
 
 				actual, err := evaluate.EvaluateRequestPolicy(context.Background(), rondInput, testCase.user)
 				if testCase.expectedErr != nil {
@@ -420,7 +376,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					fields := logrus.Fields{
 						"allowed":       actual.Allowed,
 						"requestedPath": testCase.path,
-						"matchedPath":   evaluatorInfo.evaluatorOptions.RouterInfo.MatchedPath,
+						"matchedPath":   evaluatorInfo.policyEvaluationOptions.RouterInfo.MatchedPath,
 						"method":        testCase.method,
 						"partialEval":   evaluate.Config().RequestFlow.GenerateQuery,
 						"policyName":    evaluate.Config().RequestFlow.PolicyName,
@@ -466,10 +422,8 @@ func assertCorrectMetrics(t *testing.T, registry *prometheus.Registry, expected 
 func TestEvaluateResponsePolicy(t *testing.T) {
 	logger := logrus.NewEntry(logrus.New())
 
-	clientTypeHeaderKey := "client-header-key"
-
 	t.Run("throws without RondInput", func(t *testing.T) {
-		sdk := getSdk(t, nil)
+		sdk := getOASSdk(t, nil)
 		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
 		require.NoError(t, err)
 
@@ -533,7 +487,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					false
 					body := input.response.body
 				}`,
-				expectedErr:  ErrPolicyEvalFailed,
+				expectedErr:  core.ErrPolicyEvalFailed,
 				expectedBody: "",
 				notAllowed:   true,
 			},
@@ -581,7 +535,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 				log.Level = logrus.DebugLevel
 				logger := logrus.NewEntry(log)
 				registry := prometheus.NewPedanticRegistry()
-				sdk := getSdk(t, &sdkOptions{
+				sdk := getOASSdk(t, &sdkOptions{
 					opaModuleContent: opaModuleContent,
 					oasFilePath:      "../mocks/rondOasConfig.json",
 					mongoClient:      testCase.mongoClient,
@@ -597,7 +551,17 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 						req.Header.Set(k, v)
 					}
 				}
-				rondInput := NewRondInput(req, clientTypeHeaderKey, nil)
+				headers := http.Header{}
+				if testCase.reqHeaders != nil {
+					for k, v := range testCase.reqHeaders {
+						headers.Set(k, v)
+					}
+				}
+				rondInput := getFakeInput(t, core.InputRequest{
+					Headers: headers,
+					Path:    testCase.path,
+					Method:  testCase.method,
+				}, "")
 
 				actual, err := evaluate.EvaluateResponsePolicy(context.Background(), rondInput, testCase.user, testCase.decodedBody)
 				if testCase.expectedErr != nil {
@@ -626,7 +590,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					require.Equal(t, logrus.Fields{
 						"allowed":       !testCase.notAllowed,
 						"requestedPath": testCase.path,
-						"matchedPath":   evaluatorInfo.evaluatorOptions.RouterInfo.MatchedPath,
+						"matchedPath":   evaluatorInfo.policyEvaluationOptions.RouterInfo.MatchedPath,
 						"method":        testCase.method,
 						"partialEval":   false,
 						"policyName":    evaluate.Config().ResponseFlow.PolicyName,
@@ -643,39 +607,8 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 	})
 }
 
-func TestContext(t *testing.T) {
-	t.Run("ok", func(t *testing.T) {
-		ctx := context.Background()
-		rondConfig := openapi.RondConfig{
-			RequestFlow: openapi.RequestFlow{
-				PolicyName:    "todo",
-				GenerateQuery: true,
-			},
-			ResponseFlow: openapi.ResponseFlow{
-				PolicyName: "other",
-			},
-		}
-
-		expectedEvaluator := evaluator{
-			rondConfig: rondConfig,
-		}
-
-		ctx = WithEvaluatorSDK(ctx, expectedEvaluator)
-
-		actualEvaluator, err := GetEvaluatorSKD(ctx)
-		require.NoError(t, err)
-		require.Equal(t, expectedEvaluator, actualEvaluator)
-	})
-
-	t.Run("throws if not in context", func(t *testing.T) {
-		actualEvaluator, err := GetEvaluatorSKD(context.Background())
-		require.EqualError(t, err, "no SDKEvaluator found in request context")
-		require.Nil(t, actualEvaluator)
-	})
-}
-
 func BenchmarkEvaluateRequest(b *testing.B) {
-	moduleConfig, err := LoadRegoModule("../mocks/bench-policies")
+	moduleConfig, err := core.LoadRegoModule("../mocks/bench-policies")
 	require.NoError(b, err, "Unexpected error")
 
 	openAPISpec, err := openapi.LoadOASFile("../mocks/bench.json")
@@ -683,21 +616,29 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 
 	log, _ := test.NewNullLogger()
 	logger := logrus.NewEntry(log)
-	sdk, err := NewSDK(context.Background(), logger, openAPISpec, moduleConfig, &EvaluatorOptions{
-		MongoClient: testmongoMock,
-	}, nil, "")
+	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &FromOASOptions{
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
+			MongoClient: testmongoMock,
+		},
+	})
 	require.NoError(b, err)
 
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
 		b.StopTimer()
-		req := httptest.NewRequest(http.MethodGet, "/projects/project123", nil)
-		req.Header.Set("my-header", "value")
+		headers := http.Header{}
+		headers.Set("my-header", "value")
 		recorder := httptest.NewRecorder()
-		rondInput := NewRondInput(req, "", map[string]string{
-			"projectId": "project123",
-		})
+
+		rondInput := getFakeInput(b, core.InputRequest{
+			Path:    "/projects/project123",
+			Headers: headers,
+			Method:  http.MethodGet,
+			PathParams: map[string]string{
+				"projectId": "project123",
+			},
+		}, "")
 		b.StartTimer()
 		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/projects/project123")
 		require.NoError(b, err)
@@ -707,19 +648,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	}
 }
 
-type sdkOptions struct {
-	opaModuleContent string
-	oasFilePath      string
-
-	mongoClient types.IMongoClient
-	registry    *prometheus.Registry
-}
-
-type tHelper interface {
-	Helper()
-}
-
-func getSdk(t require.TestingT, options *sdkOptions) SDK {
+func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
 	}
@@ -736,7 +665,7 @@ func getSdk(t require.TestingT, options *sdkOptions) SDK {
 
 	openAPISpec, err := openapi.LoadOASFile(oasFilePath)
 	require.NoError(t, err)
-	opaModule := &OPAModuleConfig{
+	opaModule := &core.OPAModuleConfig{
 		Name: "example.rego",
 		Content: `package policies
 		todo { true }`,
@@ -744,111 +673,15 @@ func getSdk(t require.TestingT, options *sdkOptions) SDK {
 	if options.opaModuleContent != "" {
 		opaModule.Content = options.opaModuleContent
 	}
-	sdk, err := NewSDK(context.Background(), logger, openAPISpec, opaModule, &EvaluatorOptions{
-		EnablePrintStatements: true,
-		MongoClient:           options.mongoClient,
-	}, options.registry, "")
+	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &FromOASOptions{
+		Registry: options.registry,
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
+			EnablePrintStatements: true,
+			MongoClient:           options.mongoClient,
+		},
+		Logger: logger,
+	})
 	require.NoError(t, err)
 
 	return sdk
-}
-
-var testmongoMock = &mocks.MongoClientMock{
-	UserBindings: []types.Binding{
-		{
-			BindingID:   "binding1",
-			Subjects:    []string{"user1"},
-			Roles:       []string{"admin"},
-			Groups:      []string{"area_rocket"},
-			Permissions: []string{"permission4"},
-			Resource: &types.Resource{
-				ResourceType: "project",
-				ResourceID:   "project123",
-			},
-			CRUDDocumentState: "PUBLIC",
-		},
-		{
-			BindingID:         "binding2",
-			Subjects:          []string{"user1"},
-			Roles:             []string{"role3", "role4"},
-			Groups:            []string{"group4"},
-			Permissions:       []string{"permission7"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		{
-			BindingID:         "binding3",
-			Subjects:          []string{"user5"},
-			Roles:             []string{"role3", "role4"},
-			Groups:            []string{"group2"},
-			Permissions:       []string{"permission10", "permission4"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		{
-			BindingID:         "binding4",
-			Roles:             []string{"role3", "role4"},
-			Groups:            []string{"group2"},
-			Permissions:       []string{"permission11"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		{
-			BindingID:         "bindingForRowFiltering",
-			Roles:             []string{"role3", "role4"},
-			Groups:            []string{"group1"},
-			Permissions:       []string{"console.project.view"},
-			Resource:          &types.Resource{ResourceType: "custom", ResourceID: "9876"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		{
-			BindingID:         "bindingForRowFilteringFromSubject",
-			Subjects:          []string{"filter_test"},
-			Roles:             []string{"role3", "role4"},
-			Groups:            []string{"group1"},
-			Permissions:       []string{"console.project.view"},
-			Resource:          &types.Resource{ResourceType: "custom", ResourceID: "12345"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		{
-			BindingID:         "binding5",
-			Subjects:          []string{"user1"},
-			Roles:             []string{"role3", "role4"},
-			Permissions:       []string{"permission12"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		{
-			BindingID:         "notUsedByAnyone",
-			Subjects:          []string{"user5"},
-			Roles:             []string{"role3", "role4"},
-			Permissions:       []string{"permissionNotUsed"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		{
-			BindingID:         "notUsedByAnyone2",
-			Subjects:          []string{"user1"},
-			Roles:             []string{"role3", "role6"},
-			Permissions:       []string{"permissionNotUsed"},
-			CRUDDocumentState: "PRIVATE",
-		},
-	},
-	UserRoles: []types.Role{
-		{
-			RoleID:            "admin",
-			Permissions:       []string{"console.project.view", "permission2", "foobar"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		{
-			RoleID:            "role3",
-			Permissions:       []string{"permission3", "permission5", "console.project.view"},
-			CRUDDocumentState: "PUBLIC",
-		},
-		{
-			RoleID:            "role6",
-			Permissions:       []string{"permission3", "permission5"},
-			CRUDDocumentState: "PRIVATE",
-		},
-		{
-			RoleID:            "notUsedByAnyone",
-			Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
-			CRUDDocumentState: "PUBLIC",
-		},
-	},
 }

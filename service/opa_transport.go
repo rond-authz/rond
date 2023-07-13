@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package core
+package service
 
 import (
 	"bytes"
@@ -23,12 +23,20 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/sdk"
+	rondhttp "github.com/rond-authz/rond/sdk/rondinput/http"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+)
+
+var (
+	ErrUnexepectedContentType          = fmt.Errorf("unexpected content type")
+	ErrOPATransportInvalidResponseBody = fmt.Errorf("response body is not valid")
 )
 
 type OPATransport struct {
@@ -40,7 +48,7 @@ type OPATransport struct {
 
 	clientHeaderKey string
 	userHeaders     types.UserHeadersKeys
-	evaluatorSDK    SDKEvaluator
+	evaluatorSDK    sdk.Evaluator
 }
 
 func NewOPATransport(
@@ -50,7 +58,7 @@ func NewOPATransport(
 	req *http.Request,
 	clientHeaderKey string,
 	userHeadersKeys types.UserHeadersKeys,
-	evaluatorSDK SDKEvaluator,
+	evaluatorSDK sdk.Evaluator,
 ) *OPATransport {
 	return &OPATransport{
 		RoundTripper: transport,
@@ -108,7 +116,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 	}
 
 	pathParams := mux.Vars(t.request)
-	input := NewRondInput(t.request, t.clientHeaderKey, pathParams)
+	input := rondhttp.NewInput(t.request, t.clientHeaderKey, pathParams)
 
 	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, input, userInfo, decodedBody)
 	if err != nil {
@@ -121,7 +129,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 }
 
 func (t *OPATransport) responseWithError(resp *http.Response, err error, statusCode int) {
-	t.logger.WithField("error", logrus.Fields{"message": err.Error()}).Error(ErrResponsePolicyEvalFailed)
+	t.logger.WithField("error", logrus.Fields{"message": err.Error()}).Error(core.ErrResponsePolicyEvalFailed)
 	message := utils.NO_PERMISSIONS_ERROR_MESSAGE
 	if statusCode != http.StatusForbidden {
 		message = utils.GENERIC_BUSINESS_ERROR_MESSAGE

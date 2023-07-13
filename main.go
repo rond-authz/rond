@@ -29,6 +29,7 @@ import (
 	"github.com/rond-authz/rond/internal/helpers"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/service"
 
 	"github.com/mia-platform/glogger/v2"
@@ -99,10 +100,14 @@ func entrypoint(shutdown chan os.Signal) {
 	)
 
 	registry := prometheus.NewRegistry()
-	sdk, err := core.NewSDK(ctx, logrus.NewEntry(log), oas, opaModuleConfig, &core.EvaluatorOptions{
-		EnablePrintStatements: env.IsTraceLogLevel(),
-		MongoClient:           mongoClient,
-	}, registry, env.ClientTypeHeader)
+	sdk, err := sdk.NewFromOAS(ctx, opaModuleConfig, oas, &sdk.FromOASOptions{
+		Registry: registry,
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
+			EnablePrintStatements: env.IsTraceLogLevel(),
+			MongoClient:           mongoClient,
+		},
+		Logger: logrus.NewEntry(log),
+	})
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},

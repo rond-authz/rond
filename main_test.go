@@ -28,7 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mia-platform/glogger/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
@@ -36,6 +35,7 @@ import (
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/service"
 	"github.com/rond-authz/rond/types"
 
@@ -1748,7 +1748,6 @@ func TestSetupRouterStandaloneMode(t *testing.T) {
 	defer gock.Flush()
 
 	log, _ := test.NewNullLogger()
-	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
 	env := config.EnvironmentVariables{
 		Standalone:               true,
@@ -1795,9 +1794,13 @@ filter_policy {
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
-		MongoClient: mongoClient,
-	}, registry, "")
+	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.FromOASOptions{
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
+			MongoClient: mongoClient,
+		},
+		Registry: registry,
+		Logger:   logrus.NewEntry(logger),
+	})
 	require.NoError(t, err, "unexpected error")
 
 	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
@@ -1906,7 +1909,6 @@ func TestSetupRouterMetrics(t *testing.T) {
 	defer gock.Flush()
 
 	log, _ := test.NewNullLogger()
-	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
 	env := config.EnvironmentVariables{
 		Standalone:               true,
@@ -1954,9 +1956,13 @@ filter_policy {
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	sdk, err := core.NewSDK(ctx, logrus.NewEntry(logger), oas, opa, &core.EvaluatorOptions{
-		MongoClient: mongoClient,
-	}, registry, "")
+	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.FromOASOptions{
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
+			MongoClient: mongoClient,
+		},
+		Registry: registry,
+		Logger:   logrus.NewEntry(logger),
+	})
 	require.NoError(t, err, "unexpected error")
 
 	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)

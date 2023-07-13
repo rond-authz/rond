@@ -31,8 +31,4 @@ var (
 	ErrFailedInputEncode                 = fmt.Errorf("failed input encode")
 	ErrFailedInputRequestParse           = fmt.Errorf("failed request body parse")
 	ErrFailedInputRequestDeserialization = fmt.Errorf("failed request body deserialization")
-
-	ErrUnexepectedContentType = fmt.Errorf("unexpected content type")
-
-	ErrOPATransportInvalidResponseBody = fmt.Errorf("response body is not valid")
 )
