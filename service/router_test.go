@@ -285,7 +285,7 @@ func getEvaluator(
 		logger = logrus.NewEntry(log)
 	}
 
-	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.FromOASOptions{
+	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},

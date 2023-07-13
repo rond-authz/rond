@@ -509,7 +509,7 @@ func getSdk(t require.TestingT, options *sdkOptions) sdk.OASEvaluatorFinder {
 		opaModule.Content = options.opaModuleContent
 	}
 
-	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, openAPISpec, &sdk.FromOASOptions{
+	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, openAPISpec, &sdk.Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient:           options.mongoClient,
 			EnablePrintStatements: true,

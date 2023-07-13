@@ -26,22 +26,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type FromOASOptions struct {
+type Options struct {
 	Registry         *prometheus.Registry
 	EvaluatorOptions *core.OPAEvaluatorOptions
 	Logger           *logrus.Entry
 }
 
-// The SDK is now into core because there are coupled function here which should use the SDK itself
-// (which uses core, so it will result in a cyclic dependency). In the future, sdk should be in a
-// specific package.
-func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas *openapi.OpenAPISpec, options *FromOASOptions) (OASEvaluatorFinder, error) {
+func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas *openapi.OpenAPISpec, options *Options) (OASEvaluatorFinder, error) {
 	if opaModuleConfig == nil {
 		return nil, fmt.Errorf("OPAModuleConfig must not be nil")
 	}
 
 	if options == nil {
-		options = &FromOASOptions{}
+		options = &Options{}
 	}
 	if options.Logger == nil {
 		// TODO: default to a fake silent logger instead of return error
@@ -75,6 +72,34 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 		partialResultEvaluators: evaluator,
 		opaEvaluatorOptions:     evaluatorOptions,
 		metrics:                 metrics,
+	}, nil
+}
+
+func NewWithConfig(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, rondConfig core.RondConfig, options *Options) (Evaluator, error) {
+	if options == nil {
+		options = &Options{}
+	}
+	if options.Logger == nil {
+		// TODO: default to a fake silent logger instead of return error
+		return nil, fmt.Errorf("logger must be set in config options")
+	}
+
+	policyEvaluators := core.PartialResultsEvaluators{}
+	if err := policyEvaluators.AddFromConfig(ctx, options.Logger, opaModuleConfig, &rondConfig, options.EvaluatorOptions); err != nil {
+		return nil, err
+	}
+	metrics := setupMetrics(options.Registry)
+
+	return evaluator{
+		rondConfig:              rondConfig,
+		logger:                  options.Logger,
+		opaModuleConfig:         opaModuleConfig,
+		partialResultEvaluators: policyEvaluators,
+
+		opaEvaluatorOptions: options.EvaluatorOptions,
+		policyEvaluationOptions: &core.PolicyEvaluationOptions{
+			Metrics: metrics,
+		},
 	}, nil
 }
 

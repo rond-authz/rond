@@ -100,7 +100,7 @@ func entrypoint(shutdown chan os.Signal) {
 	)
 
 	registry := prometheus.NewRegistry()
-	sdk, err := sdk.NewFromOAS(ctx, opaModuleConfig, oas, &sdk.FromOASOptions{
+	sdk, err := sdk.NewFromOAS(ctx, opaModuleConfig, oas, &sdk.Options{
 		Registry: registry,
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			EnablePrintStatements: env.IsTraceLogLevel(),

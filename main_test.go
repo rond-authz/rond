@@ -1794,7 +1794,7 @@ filter_policy {
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.FromOASOptions{
+	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},
@@ -1956,7 +1956,7 @@ filter_policy {
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.FromOASOptions{
+	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},

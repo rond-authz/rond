@@ -616,7 +616,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 
 	log, _ := test.NewNullLogger()
 	logger := logrus.NewEntry(log)
-	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &FromOASOptions{
+	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: testmongoMock,
 		},
@@ -673,7 +673,7 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 	if options.opaModuleContent != "" {
 		opaModule.Content = options.opaModuleContent
 	}
-	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &FromOASOptions{
+	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &Options{
 		Registry: options.registry,
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			EnablePrintStatements: true,

@@ -39,7 +39,7 @@ func TestOPAMiddleware(t *testing.T) {
 		t.Helper()
 
 		logger, _ := test.NewNullLogger()
-		sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.FromOASOptions{
+		sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.Options{
 			Logger: logrus.NewEntry(logger),
 		})
 		require.NoError(t, err, "unexpected error")
@@ -304,7 +304,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 
 		log, _ := test.NewNullLogger()
 		logger := logrus.NewEntry(log)
-		sdk, err := sdk.NewFromOAS(context.Background(), opaModule, openAPISpec, &sdk.FromOASOptions{
+		sdk, err := sdk.NewFromOAS(context.Background(), opaModule, openAPISpec, &sdk.Options{
 			Logger: logger,
 		})
 		require.NoError(t, err, "unexpected error")

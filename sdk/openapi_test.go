@@ -40,7 +40,7 @@ func TestOasSDK(t *testing.T) {
 		very_very_composed_permission { true }`,
 	}
 	registry := prometheus.NewRegistry()
-	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &FromOASOptions{
+	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &Options{
 		Registry: registry,
 		Logger:   logger,
 	})
