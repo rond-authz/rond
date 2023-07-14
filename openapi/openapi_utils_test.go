@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
@@ -46,25 +47,25 @@ func TestFetchOpenAPI(t *testing.T) {
 		require.Equal(t, OpenAPIPaths{
 			"/users/": PathVerbs{
 				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "todo"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "todo"},
 					},
 				},
 				"head": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "todo"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "todo"},
 					},
 				},
 				"post": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "notexistingpermission"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "notexistingpermission"},
 					},
 				},
 			},
 			"/composed/permission/": PathVerbs{
 				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "very.very.composed.permission"},
 					},
 				},
 			},
@@ -74,8 +75,8 @@ func TestFetchOpenAPI(t *testing.T) {
 			},
 			"/eval/composed/permission/": PathVerbs{
 				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission.with.eval"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"},
 					},
 				},
 			},
@@ -140,17 +141,17 @@ func TestLoadOASFile(t *testing.T) {
 		require.Equal(t, OpenAPIPaths{
 			"/users-from-static-file/": PathVerbs{
 				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{
 							PolicyName:    "foobar",
 							GenerateQuery: true,
-							QueryOptions:  QueryOptions{HeaderName: "customHeaderKey"},
+							QueryOptions:  core.QueryOptions{HeaderName: "customHeaderKey"},
 						},
 					},
 				},
 				"post": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{
 							PolicyName: "notexistingpermission",
 						},
 					},
@@ -185,17 +186,17 @@ func TestLoadOAS(t *testing.T) {
 		require.Equal(t, OpenAPIPaths{
 			"/users-from-static-file/": PathVerbs{
 				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{
 							PolicyName:    "foobar",
 							GenerateQuery: true,
-							QueryOptions:  QueryOptions{HeaderName: "customHeaderKey"},
+							QueryOptions:  core.QueryOptions{HeaderName: "customHeaderKey"},
 						},
 					},
 				},
 				"post": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{
 							PolicyName: "notexistingpermission",
 						},
 					},
@@ -226,25 +227,25 @@ func TestLoadOAS(t *testing.T) {
 		require.Equal(t, OpenAPIPaths{
 			"/users/": PathVerbs{
 				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "todo"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "todo"},
 					},
 				},
 				"head": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "todo"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "todo"},
 					},
 				},
 				"post": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "notexistingpermission"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "notexistingpermission"},
 					},
 				},
 			},
 			"/composed/permission/": PathVerbs{
 				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "very.very.composed.permission"},
 					},
 				},
 			},
@@ -254,8 +255,8 @@ func TestLoadOAS(t *testing.T) {
 			},
 			"/eval/composed/permission/": PathVerbs{
 				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "very.very.composed.permission.with.eval"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"},
 					},
 				},
 			},
@@ -292,7 +293,7 @@ func TestFindPermission(t *testing.T) {
 		OASRouter, _ := oas.PrepareOASRouter()
 
 		found, matchedPath, err := oas.FindPermission(OASRouter, "/not/existing/route", "/invalid-method")
-		require.Empty(t, RondConfig{}, found)
+		require.Empty(t, core.RondConfig{}, found)
 		require.EqualError(t, err, "net/http: invalid method \"/invalid-method\"")
 		require.Equal(t, RouterInfo{
 			Method:        "/invalid-method",
@@ -300,7 +301,7 @@ func TestFindPermission(t *testing.T) {
 		}, matchedPath)
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/not/existing/route", "GET")
-		require.Empty(t, RondConfig{}, found)
+		require.Empty(t, core.RondConfig{}, found)
 		require.EqualError(t, err, fmt.Sprintf("%s: GET /not/existing/route", ErrNotFoundOASDefinition))
 		require.Equal(t, RouterInfo{
 			Method:        "GET",
@@ -308,7 +309,7 @@ func TestFindPermission(t *testing.T) {
 		}, matchedPath)
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/no/method", "PUT")
-		require.Equal(t, RondConfig{}, found)
+		require.Equal(t, core.RondConfig{}, found)
 		require.EqualError(t, err, fmt.Sprintf("%s: PUT /no/method", ErrNotFoundOASDefinition))
 		require.Equal(t, RouterInfo{
 			Method:        "PUT",
@@ -316,7 +317,7 @@ func TestFindPermission(t *testing.T) {
 		}, matchedPath)
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/use/method/that/not/existing/put", "PUT")
-		require.Equal(t, RondConfig{}, found)
+		require.Equal(t, core.RondConfig{}, found)
 		require.EqualError(t, err, fmt.Sprintf("%s: PUT /use/method/that/not/existing/put", ErrNotFoundOASDefinition))
 		require.Equal(t, RouterInfo{
 			Method:        "PUT",
@@ -325,11 +326,11 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/foo/bar/barId", "GET")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{
-			RequestFlow: RequestFlow{
+		require.Equal(t, core.RondConfig{
+			RequestFlow: core.RequestFlow{
 				PolicyName:    "foo_bar_params",
 				GenerateQuery: true,
-				QueryOptions: QueryOptions{
+				QueryOptions: core.QueryOptions{
 					HeaderName: "customHeaderKey",
 				},
 			},
@@ -342,11 +343,11 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/foo/bar/barId/another-params-not-configured", "GET")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{
-			RequestFlow: RequestFlow{
+		require.Equal(t, core.RondConfig{
+			RequestFlow: core.RequestFlow{
 				PolicyName:    "foo_bar",
 				GenerateQuery: true,
-				QueryOptions: QueryOptions{
+				QueryOptions: core.QueryOptions{
 					HeaderName: "customHeaderKey",
 				},
 			},
@@ -359,7 +360,7 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/foo/bar/nested/case/really/nested", "GET")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "foo_bar_nested_case"}}, found)
+		require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "foo_bar_nested_case"}}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/foo/bar/nested/case/*",
 			RequestedPath: "/foo/bar/nested/case/really/nested",
@@ -368,11 +369,11 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/foo/bar/nested", "GET")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{
-			RequestFlow: RequestFlow{
+		require.Equal(t, core.RondConfig{
+			RequestFlow: core.RequestFlow{
 				PolicyName:    "foo_bar_nested",
 				GenerateQuery: true,
-				QueryOptions: QueryOptions{
+				QueryOptions: core.QueryOptions{
 					HeaderName: "customHeaderKey",
 				},
 			},
@@ -385,11 +386,11 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/foo/simple", "PATCH")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{
-			RequestFlow: RequestFlow{
+		require.Equal(t, core.RondConfig{
+			RequestFlow: core.RequestFlow{
 				PolicyName:    "foo",
 				GenerateQuery: true,
-				QueryOptions: QueryOptions{
+				QueryOptions: core.QueryOptions{
 					HeaderName: "customHeaderKey",
 				},
 			},
@@ -401,7 +402,7 @@ func TestFindPermission(t *testing.T) {
 		}, matchedPath)
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all", "GET")
-		require.Equal(t, RondConfig{}, found)
+		require.Equal(t, core.RondConfig{}, found)
 		require.EqualError(t, err, fmt.Sprintf("%s: GET /test/all", ErrNotFoundOASDefinition))
 		require.Equal(t, RouterInfo{
 			Method:        "GET",
@@ -410,7 +411,7 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/", "GET")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
+		require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "permission_for_get"}}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/test/all/*",
 			RequestedPath: "/test/all/",
@@ -419,7 +420,7 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/verb", "GET")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_get"}}, found)
+		require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "permission_for_get"}}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/test/all/*",
 			RequestedPath: "/test/all/verb",
@@ -428,7 +429,7 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/verb", "POST")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_post"}}, found)
+		require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "permission_for_post"}}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/test/all/*",
 			RequestedPath: "/test/all/verb",
@@ -437,7 +438,7 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/verb", "PUT")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
+		require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "permission_for_all"}}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/test/all/*",
 			RequestedPath: "/test/all/verb",
@@ -446,7 +447,7 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/verb", "PATCH")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
+		require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "permission_for_all"}}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/test/all/*",
 			RequestedPath: "/test/all/verb",
@@ -455,7 +456,7 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/verb", "DELETE")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
+		require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "permission_for_all"}}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/test/all/*",
 			RequestedPath: "/test/all/verb",
@@ -464,7 +465,7 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/test/all/verb", "HEAD")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "permission_for_all"}}, found)
+		require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "permission_for_all"}}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/test/all/*",
 			RequestedPath: "/test/all/verb",
@@ -473,7 +474,7 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/projects/", "POST")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_all"}}, found)
+		require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "project_all"}}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/projects/",
 			RequestedPath: "/projects/",
@@ -482,7 +483,7 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/projects/", "GET")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "project_get"}}, found)
+		require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "project_get"}}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/projects/",
 			RequestedPath: "/projects/",
@@ -491,10 +492,10 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/with/trailing/slash/", "GET")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{
-			RequestFlow:  RequestFlow{PolicyName: "foo_bar"},
-			ResponseFlow: ResponseFlow{PolicyName: "original_path"},
-			Options:      PermissionOptions{IgnoreTrailingSlash: true},
+		require.Equal(t, core.RondConfig{
+			RequestFlow:  core.RequestFlow{PolicyName: "foo_bar"},
+			ResponseFlow: core.ResponseFlow{PolicyName: "original_path"},
+			Options:      core.PermissionOptions{IgnoreTrailingSlash: true},
 		}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/with/trailing/slash/",
@@ -504,10 +505,10 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/with/trailing/slash", "GET")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{
-			RequestFlow:  RequestFlow{PolicyName: "foo_bar"},
-			ResponseFlow: ResponseFlow{PolicyName: "original_path"},
-			Options:      PermissionOptions{IgnoreTrailingSlash: true},
+		require.Equal(t, core.RondConfig{
+			RequestFlow:  core.RequestFlow{PolicyName: "foo_bar"},
+			ResponseFlow: core.ResponseFlow{PolicyName: "original_path"},
+			Options:      core.PermissionOptions{IgnoreTrailingSlash: true},
 		}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/with/trailing/slash/",
@@ -517,9 +518,9 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/without/trailing/slash", "POST")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{
-			RequestFlow: RequestFlow{PolicyName: "foo_bar"},
-			Options:     PermissionOptions{IgnoreTrailingSlash: true},
+		require.Equal(t, core.RondConfig{
+			RequestFlow: core.RequestFlow{PolicyName: "foo_bar"},
+			Options:     core.PermissionOptions{IgnoreTrailingSlash: true},
 		}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/without/trailing/slash",
@@ -529,9 +530,9 @@ func TestFindPermission(t *testing.T) {
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/without/trailing/slash/", "POST")
 		require.NoError(t, err)
-		require.Equal(t, RondConfig{
-			RequestFlow: RequestFlow{PolicyName: "foo_bar"},
-			Options:     PermissionOptions{IgnoreTrailingSlash: true},
+		require.Equal(t, core.RondConfig{
+			RequestFlow: core.RequestFlow{PolicyName: "foo_bar"},
+			Options:     core.PermissionOptions{IgnoreTrailingSlash: true},
 		}, found)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/without/trailing/slash",
@@ -545,7 +546,7 @@ func TestFindPermission(t *testing.T) {
 		OASRouter, _ := oas.PrepareOASRouter()
 
 		found, matchedPath, err := oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%252Fcms-backend%252FcmsProperties.json", "POST")
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "allow_commit"}}, found)
+		require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "allow_commit"}}, found)
 		require.NoError(t, err)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/api/backend/projects/:projectId/branches/:branchName/files/:filePath",
@@ -554,7 +555,7 @@ func TestFindPermission(t *testing.T) {
 		}, matchedPath)
 
 		found, matchedPath, err = oas.FindPermission(OASRouter, "/api/backend/projects/5df2260277baff0011fde823/branches/team-james/files/config-extension%2Fcms-backend%2FcmsProperties.json", "POST")
-		require.Equal(t, RondConfig{RequestFlow: RequestFlow{PolicyName: "allow_commit"}}, found)
+		require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "allow_commit"}}, found)
 		require.NoError(t, err)
 		require.Equal(t, RouterInfo{
 			MatchedPath:   "/api/backend/projects/:projectId/branches/:branchName/files/:filePath",
@@ -573,7 +574,7 @@ func TestGetXPermission(t *testing.T) {
 	})
 
 	t.Run(`GetXPermission returns OPAEvaluator from context`, func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), XPermissionKey{}, &RondConfig{RequestFlow: RequestFlow{PolicyName: "foo"}})
+		ctx := context.WithValue(context.Background(), XPermissionKey{}, &core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "foo"}})
 		permission, err := GetXPermission(ctx)
 		require.True(t, err == nil, "Unexpected error.")
 		require.True(t, permission != nil, "XPermission not found.")
@@ -613,15 +614,15 @@ func TestAdaptOASSpec(t *testing.T) {
 					"/path-with-old-perm": PathVerbs{
 						"get": VerbConfig{
 							PermissionV1: nil,
-							PermissionV2: &RondConfig{
-								RequestFlow: RequestFlow{
+							PermissionV2: &core.RondConfig{
+								RequestFlow: core.RequestFlow{
 									PolicyName:    "allow_req",
 									GenerateQuery: true,
-									QueryOptions: QueryOptions{
+									QueryOptions: core.QueryOptions{
 										HeaderName: "header",
 									},
 								},
-								ResponseFlow: ResponseFlow{
+								ResponseFlow: core.ResponseFlow{
 									PolicyName: "allow_res",
 								},
 							},
@@ -677,30 +678,30 @@ func TestAdaptOASSpec(t *testing.T) {
 					"/path-with-old-perm": PathVerbs{
 						"get": VerbConfig{
 							PermissionV1: nil,
-							PermissionV2: &RondConfig{
-								RequestFlow: RequestFlow{
+							PermissionV2: &core.RondConfig{
+								RequestFlow: core.RequestFlow{
 									PolicyName:    "allow_req",
 									GenerateQuery: true,
-									QueryOptions: QueryOptions{
+									QueryOptions: core.QueryOptions{
 										HeaderName: "header",
 									},
 								},
-								ResponseFlow: ResponseFlow{
+								ResponseFlow: core.ResponseFlow{
 									PolicyName: "allow_res",
 								},
 							},
 						},
 						"post": VerbConfig{
 							PermissionV1: nil,
-							PermissionV2: &RondConfig{
-								RequestFlow: RequestFlow{
+							PermissionV2: &core.RondConfig{
+								RequestFlow: core.RequestFlow{
 									PolicyName:    "allow_req_post",
 									GenerateQuery: false,
-									QueryOptions: QueryOptions{
+									QueryOptions: core.QueryOptions{
 										HeaderName: "",
 									},
 								},
-								ResponseFlow: ResponseFlow{
+								ResponseFlow: core.ResponseFlow{
 									PolicyName: "allow_res_post",
 								},
 							},
@@ -709,8 +710,8 @@ func TestAdaptOASSpec(t *testing.T) {
 					"/path-with-old-perm-2": PathVerbs{
 						"patch": VerbConfig{
 							PermissionV1: nil,
-							PermissionV2: &RondConfig{
-								RequestFlow: RequestFlow{
+							PermissionV2: &core.RondConfig{
+								RequestFlow: core.RequestFlow{
 									PolicyName: "allow_req_patch",
 								},
 							},
@@ -750,15 +751,15 @@ func TestAdaptOASSpec(t *testing.T) {
 									Policy: "allow_res_post_OLD_CONF",
 								},
 							},
-							PermissionV2: &RondConfig{
-								RequestFlow: RequestFlow{
+							PermissionV2: &core.RondConfig{
+								RequestFlow: core.RequestFlow{
 									PolicyName:    "allow_req_post",
 									GenerateQuery: false,
-									QueryOptions: QueryOptions{
+									QueryOptions: core.QueryOptions{
 										HeaderName: "",
 									},
 								},
-								ResponseFlow: ResponseFlow{
+								ResponseFlow: core.ResponseFlow{
 									PolicyName: "allow_res_post",
 								},
 							},
@@ -778,30 +779,30 @@ func TestAdaptOASSpec(t *testing.T) {
 					"/path-with-old-perm": PathVerbs{
 						"get": VerbConfig{
 							PermissionV1: nil,
-							PermissionV2: &RondConfig{
-								RequestFlow: RequestFlow{
+							PermissionV2: &core.RondConfig{
+								RequestFlow: core.RequestFlow{
 									PolicyName:    "allow_req",
 									GenerateQuery: true,
-									QueryOptions: QueryOptions{
+									QueryOptions: core.QueryOptions{
 										HeaderName: "header",
 									},
 								},
-								ResponseFlow: ResponseFlow{
+								ResponseFlow: core.ResponseFlow{
 									PolicyName: "allow_res",
 								},
 							},
 						},
 						"post": VerbConfig{
 							PermissionV1: nil,
-							PermissionV2: &RondConfig{
-								RequestFlow: RequestFlow{
+							PermissionV2: &core.RondConfig{
+								RequestFlow: core.RequestFlow{
 									PolicyName:    "allow_req_post",
 									GenerateQuery: false,
-									QueryOptions: QueryOptions{
+									QueryOptions: core.QueryOptions{
 										HeaderName: "",
 									},
 								},
-								ResponseFlow: ResponseFlow{
+								ResponseFlow: core.ResponseFlow{
 									PolicyName: "allow_res_post",
 								},
 							},
@@ -810,8 +811,8 @@ func TestAdaptOASSpec(t *testing.T) {
 					"/path-with-old-perm-2": PathVerbs{
 						"patch": VerbConfig{
 							PermissionV1: nil,
-							PermissionV2: &RondConfig{
-								RequestFlow: RequestFlow{
+							PermissionV2: &core.RondConfig{
+								RequestFlow: core.RequestFlow{
 									PolicyName: "allow_req_patch",
 								},
 							},

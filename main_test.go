@@ -1772,18 +1772,18 @@ filter_policy {
 		Paths: openapi.OpenAPIPaths{
 			"/evalapi": openapi.PathVerbs{
 				"get": openapi.VerbConfig{
-					PermissionV2: &openapi.RondConfig{
-						RequestFlow: openapi.RequestFlow{PolicyName: "test_policy"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "test_policy"},
 					},
 				},
 			},
 			"/evalfilter": openapi.PathVerbs{
 				"get": openapi.VerbConfig{
-					PermissionV2: &openapi.RondConfig{
-						RequestFlow: openapi.RequestFlow{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{
 							PolicyName:    "filter_policy",
 							GenerateQuery: true,
-							QueryOptions:  openapi.QueryOptions{HeaderName: "my-query"},
+							QueryOptions:  core.QueryOptions{HeaderName: "my-query"},
 						},
 					},
 				},
@@ -1794,7 +1794,7 @@ filter_policy {
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.FromOASOptions{
+	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},
@@ -1934,18 +1934,18 @@ filter_policy {
 		Paths: openapi.OpenAPIPaths{
 			"/evalapi": openapi.PathVerbs{
 				"get": openapi.VerbConfig{
-					PermissionV2: &openapi.RondConfig{
-						RequestFlow: openapi.RequestFlow{PolicyName: "test_policy"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "test_policy"},
 					},
 				},
 			},
 			"/evalfilter": openapi.PathVerbs{
 				"get": openapi.VerbConfig{
-					PermissionV2: &openapi.RondConfig{
-						RequestFlow: openapi.RequestFlow{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{
 							PolicyName:    "filter_policy",
 							GenerateQuery: true,
-							QueryOptions:  openapi.QueryOptions{HeaderName: "my-query"},
+							QueryOptions:  core.QueryOptions{HeaderName: "my-query"},
 						},
 					},
 				},
@@ -1956,7 +1956,7 @@ filter_policy {
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
-	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.FromOASOptions{
+	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},

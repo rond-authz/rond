@@ -46,8 +46,12 @@ func (r oasImpl) FindEvaluator(logger *logrus.Entry, method, path string) (Evalu
 
 		opaEvaluatorOptions: r.opaEvaluatorOptions,
 		policyEvaluationOptions: &core.PolicyEvaluationOptions{
-			Metrics:    r.metrics,
-			RouterInfo: routerInfo,
+			Metrics: r.metrics,
+			AdditionalLogFields: map[string]string{
+				"matchedPath":   routerInfo.MatchedPath,
+				"requestedPath": routerInfo.RequestedPath,
+				"method":        routerInfo.Method,
+			},
 		},
 	}, err
 }

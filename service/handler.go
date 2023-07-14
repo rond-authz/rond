@@ -19,11 +19,11 @@ import (
 	"net/http"
 	"net/http/httputil"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
-	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	rondhttp "github.com/rond-authz/rond/sdk/rondinput/http"
 	"github.com/rond-authz/rond/types"
@@ -43,7 +43,7 @@ func ReverseProxyOrResponse(
 	req *http.Request,
 	evaluatorSdk sdk.Evaluator,
 ) {
-	var permission openapi.RondConfig
+	var permission core.RondConfig
 	if evaluatorSdk != nil {
 		permission = evaluatorSdk.Config()
 	}
@@ -147,7 +147,7 @@ func ReverseProxy(
 	env config.EnvironmentVariables,
 	w http.ResponseWriter,
 	req *http.Request,
-	permission *openapi.RondConfig,
+	permission *core.RondConfig,
 	evaluatorSdk sdk.Evaluator,
 ) {
 	targetHostFromEnv := env.TargetServiceHost

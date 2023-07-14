@@ -15,17 +15,15 @@
 package core
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
-	"regexp"
 	"testing"
 
-	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/open-policy-agent/opa/topdown/print"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
@@ -35,7 +33,7 @@ func TestNewOPAEvaluator(t *testing.T) {
 	input := map[string]interface{}{}
 	inputBytes, _ := json.Marshal(input)
 	t.Run("policy sanitization", func(t *testing.T) {
-		evaluator, _ := NewOPAEvaluator(context.Background(), "very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, inputBytes, nil)
+		evaluator, _ := newQueryOPAEvaluator(context.Background(), "very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, inputBytes, nil)
 
 		result, err := evaluator.PolicyEvaluator.Eval(context.TODO())
 		require.Nil(t, err, "unexpected error")
@@ -47,46 +45,45 @@ func TestNewOPAEvaluator(t *testing.T) {
 	})
 }
 
-func TestCreatePolicyEvaluators(t *testing.T) {
-	t.Run("with simplified mock", func(t *testing.T) {
-		log, _ := test.NewNullLogger()
-		logger := logrus.NewEntry(log)
-		ctx := context.Background()
+func TestOPAEvaluator(t *testing.T) {
+	t.Run("get context", func(t *testing.T) {
+		t.Run("no context and no mongo client", func(t *testing.T) {
+			opaEval := OPAEvaluator{}
+			ctx := opaEval.getContext()
 
-		opaModuleDirectory := "../mocks/rego-policies"
-		loadOptions := openapi.LoadOptions{
-			APIPermissionsFilePath: "../mocks/simplifiedMock.json",
-		}
-		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, loadOptions)
-		require.NoError(t, err, "unexpected error")
+			require.NotNil(t, ctx)
+			client, err := mongoclient.GetMongoClientFromContext(ctx)
+			require.NoError(t, err)
+			require.Nil(t, client)
+		})
 
-		opaModuleConfig, err := LoadRegoModule(opaModuleDirectory)
-		require.NoError(t, err, "unexpected error")
+		t.Run("passed context with mongo client", func(t *testing.T) {
+			mongoClient := mocks.MongoClientMock{}
+			originalContext := mongoclient.WithMongoClient(context.Background(), mongoClient)
+			opaEval := OPAEvaluator{
+				context: originalContext,
+			}
+			ctx := opaEval.getContext()
 
-		policyEvals, err := SetupEvaluators(ctx, logger, openApiSpec, opaModuleConfig, nil)
-		require.NoError(t, err, "unexpected error creating evaluators")
-		require.Len(t, policyEvals, 4, "unexpected length")
-	})
+			require.NotNil(t, ctx)
+			client, err := mongoclient.GetMongoClientFromContext(ctx)
+			require.NoError(t, err)
+			require.Equal(t, mongoClient, client)
+		})
 
-	t.Run("with complete oas mock", func(t *testing.T) {
-		log, _ := test.NewNullLogger()
-		logger := logrus.NewEntry(log)
-		ctx := context.Background()
+		t.Run("passed mongo client", func(t *testing.T) {
+			mongoClient := mocks.MongoClientMock{}
+			opaEval := OPAEvaluator{
+				context:     context.Background(),
+				mongoClient: mongoClient,
+			}
+			ctx := opaEval.getContext()
 
-		opaModulesDirectory := "../mocks/rego-policies"
-
-		loadOptions := openapi.LoadOptions{
-			APIPermissionsFilePath: "../mocks/pathsConfigAllInclusive.json",
-		}
-		openApiSpec, err := openapi.LoadOASFromFileOrNetwork(log, loadOptions)
-		require.NoError(t, err, "unexpected error")
-
-		opaModuleConfig, err := LoadRegoModule(opaModulesDirectory)
-		require.NoError(t, err, "unexpected error")
-
-		policyEvals, err := SetupEvaluators(ctx, logger, openApiSpec, opaModuleConfig, nil)
-		require.NoError(t, err, "unexpected error creating evaluators")
-		require.Len(t, policyEvals, 4, "unexpected length")
+			require.NotNil(t, ctx)
+			client, err := mongoclient.GetMongoClientFromContext(ctx)
+			require.NoError(t, err)
+			require.Equal(t, mongoClient, client)
+		})
 	})
 }
 
@@ -118,10 +115,12 @@ column_policy{
 	false
 }
 `
-	permission := openapi.XPermission{
-		AllowPermission: "allow",
-		ResponseFilter: openapi.ResponseFilterConfiguration{
-			Policy: "column_policy",
+	permission := RondConfig{
+		RequestFlow: RequestFlow{
+			PolicyName: "allow",
+		},
+		ResponseFlow: ResponseFlow{
+			PolicyName: "column_policy",
 		},
 	}
 
@@ -134,27 +133,16 @@ column_policy{
 	inputBytes, _ := json.Marshal(input)
 
 	t.Run("create evaluator with allowPolicy", func(t *testing.T) {
-		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, permission.AllowPermission, inputBytes, nil)
+		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, permission.RequestFlow.PolicyName, inputBytes, nil)
 		require.True(t, evaluator != nil)
 		require.NoError(t, err, "Unexpected status code.")
 	})
 
 	t.Run("create  evaluator with policy for column filtering", func(t *testing.T) {
-		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, permission.ResponseFilter.Policy, inputBytes, nil)
+		evaluator, err := opaModuleConfig.CreateQueryEvaluator(context.Background(), logger, permission.ResponseFlow.PolicyName, inputBytes, nil)
 		require.True(t, evaluator != nil)
 		require.NoError(t, err, "Unexpected status code.")
 	})
-}
-
-func TestPrint(t *testing.T) {
-	var buf bytes.Buffer
-	h := NewPrintHook(&buf, "policy-name")
-
-	err := h.Print(print.Context{}, "the print message")
-	require.NoError(t, err)
-
-	var re = regexp.MustCompile(`"time":\d+`)
-	require.JSONEq(t, `{"level":10,"msg":"the print message","time":123,"policyName":"policy-name"}`, string(re.ReplaceAll(buf.Bytes(), []byte("\"time\":123"))))
 }
 
 func TestGetHeaderFunction(t *testing.T) {
@@ -176,7 +164,7 @@ func TestGetHeaderFunction(t *testing.T) {
 		}
 		inputBytes, _ := json.Marshal(input)
 
-		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, nil)
+		opaEvaluator, err := newQueryOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, nil)
 		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
 
 		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())
@@ -195,7 +183,7 @@ func TestGetHeaderFunction(t *testing.T) {
 		}
 		inputBytes, _ := json.Marshal(input)
 
-		opaEvaluator, err := NewOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, nil)
+		opaEvaluator, err := newQueryOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, nil)
 		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
 
 		results, err := opaEvaluator.PolicyEvaluator.Eval(context.TODO())

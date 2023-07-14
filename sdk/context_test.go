@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/core"
 
 	"github.com/stretchr/testify/require"
 )
@@ -26,12 +26,12 @@ import (
 func TestContext(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		ctx := context.Background()
-		rondConfig := openapi.RondConfig{
-			RequestFlow: openapi.RequestFlow{
+		rondConfig := core.RondConfig{
+			RequestFlow: core.RequestFlow{
 				PolicyName:    "todo",
 				GenerateQuery: true,
 			},
-			ResponseFlow: openapi.ResponseFlow{
+			ResponseFlow: core.ResponseFlow{
 				PolicyName: "other",
 			},
 		}

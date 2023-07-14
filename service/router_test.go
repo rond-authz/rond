@@ -60,11 +60,11 @@ func TestSetupRoutes(t *testing.T) {
 				"/-/rbac-check-up": openapi.PathVerbs{"get": openapi.VerbConfig{}},
 				"/with/trailing/slash": openapi.PathVerbs{
 					"get": openapi.VerbConfig{
-						PermissionV2: &openapi.RondConfig{
-							RequestFlow: openapi.RequestFlow{
+						PermissionV2: &core.RondConfig{
+							RequestFlow: core.RequestFlow{
 								PolicyName: "filter_policy",
 							},
-							Options: openapi.PermissionOptions{IgnoreTrailingSlash: true},
+							Options: core.PermissionOptions{IgnoreTrailingSlash: true},
 						},
 					},
 				},
@@ -256,7 +256,7 @@ var mockOPAModule = &core.OPAModuleConfig{
 	Content: `package policies
 todo { true }`,
 }
-var mockXPermission = openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}
+var mockXPermission = core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "todo"}}
 
 type evaluatorParams struct {
 	logger   *logrus.Entry
@@ -268,7 +268,7 @@ func getEvaluator(
 	ctx context.Context,
 	opaModule *core.OPAModuleConfig,
 	mongoClient *mocks.MongoClientMock,
-	rondConfig openapi.RondConfig,
+	rondConfig core.RondConfig,
 	oas *openapi.OpenAPISpec,
 	method, path string,
 	options *evaluatorParams,
@@ -285,7 +285,7 @@ func getEvaluator(
 		logger = logrus.NewEntry(log)
 	}
 
-	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.FromOASOptions{
+	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},
@@ -360,7 +360,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		router := mux.NewRouter()
 		setupRoutes(router, oas, envs)
 
-		eval, err := core.SetupEvaluators(ctx, logger, oas, mockOPAModule, nil)
+		eval, err := openapi.SetupEvaluators(ctx, logger, oas, mockOPAModule, nil)
 		require.NoError(t, err)
 		evaluator := fake.NewSDKEvaluator(eval, mockXPermission, nil)
 
@@ -446,7 +446,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 	t.Run("invokes the API not explicitly set in the oas file", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
-		rondConfig := openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "foo"}}
+		rondConfig := core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "foo"}}
 		var mockOPAModule = &core.OPAModuleConfig{
 			Name: "example.rego",
 			Content: `package policies
@@ -489,7 +489,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 	t.Run("invokes a specific API within a nested path", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
-		rondConfig := openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "foo"}}
+		rondConfig := core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "foo"}}
 		var mockOPAModule = &core.OPAModuleConfig{
 			Name: "example.rego",
 			Content: `package policies

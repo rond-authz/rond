@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/sirupsen/logrus"
@@ -35,7 +34,7 @@ type PolicyResult struct {
 // Do not use outside this repository until it is ready.
 type Evaluator interface {
 	// retrieve the RondConfig used to generate the evaluator
-	Config() openapi.RondConfig
+	Config() core.RondConfig
 
 	// EvaluateResponsePolicy evaluate request policy. In the response, it is specified if the
 	// request is allowed and the request query (if filter generation is requested)
@@ -48,7 +47,7 @@ type Evaluator interface {
 
 type evaluator struct {
 	logger                  *logrus.Entry
-	rondConfig              openapi.RondConfig
+	rondConfig              core.RondConfig
 	opaModuleConfig         *core.OPAModuleConfig
 	partialResultEvaluators core.PartialResultsEvaluators
 
@@ -56,7 +55,7 @@ type evaluator struct {
 	policyEvaluationOptions *core.PolicyEvaluationOptions
 }
 
-func (e evaluator) Config() openapi.RondConfig {
+func (e evaluator) Config() core.RondConfig {
 	return e.rondConfig
 }
 
@@ -92,7 +91,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req core.RondInput
 		}
 	}
 
-	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(e.logger, &rondConfig, e.policyEvaluationOptions)
+	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(e.logger, e.policyEvaluationOptions)
 
 	if err != nil {
 		e.logger.WithField("error", logrus.Fields{

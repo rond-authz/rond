@@ -39,7 +39,7 @@ func TestOPAMiddleware(t *testing.T) {
 		t.Helper()
 
 		logger, _ := test.NewNullLogger()
-		sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.FromOASOptions{
+		sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.Options{
 			Logger: logrus.NewEntry(logger),
 		})
 		require.NoError(t, err, "unexpected error")
@@ -189,7 +189,7 @@ foobar { true }`,
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				actual, err := sdk.GetEvaluator(r.Context())
 				require.NoError(t, err, "Unexpected error")
-				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}, actual.Config())
+				require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "todo"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -211,7 +211,7 @@ foobar { true }`,
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				actual, err := sdk.GetEvaluator(r.Context())
 				require.NoError(t, err)
-				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}, actual.Config())
+				require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "todo"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -234,7 +234,7 @@ very_very_composed_permission { true }`,
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				actual, err := sdk.GetEvaluator(r.Context())
 				require.NoError(t, err)
-				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission"}}, actual.Config())
+				require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "very.very.composed.permission"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -262,7 +262,7 @@ very_very_composed_permission_with_eval { true }`,
 			builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				actual, err := sdk.GetEvaluator(r.Context())
 				require.NoError(t, err)
-				require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, actual.Config())
+				require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, actual.Config())
 				w.WriteHeader(http.StatusOK)
 			}))
 
@@ -304,7 +304,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 
 		log, _ := test.NewNullLogger()
 		logger := logrus.NewEntry(log)
-		sdk, err := sdk.NewFromOAS(context.Background(), opaModule, openAPISpec, &sdk.FromOASOptions{
+		sdk, err := sdk.NewFromOAS(context.Background(), opaModule, openAPISpec, &sdk.Options{
 			Logger: logger,
 		})
 		require.NoError(t, err, "unexpected error")
@@ -324,7 +324,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			actual, err := sdk.GetEvaluator(r.Context())
 			require.NoError(t, err)
-			require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission"}}, actual.Config())
+			require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "very.very.composed.permission"}}, actual.Config())
 			w.WriteHeader(http.StatusOK)
 		}))
 
@@ -347,7 +347,7 @@ very_very_composed_permission_with_eval { true }`,
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			actual, err := sdk.GetEvaluator(r.Context())
 			require.NoError(t, err)
-			require.Equal(t, openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, actual.Config())
+			require.Equal(t, core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "very.very.composed.permission.with.eval"}}, actual.Config())
 			w.WriteHeader(http.StatusOK)
 		}))
 

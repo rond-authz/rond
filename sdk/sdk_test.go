@@ -16,6 +16,7 @@ package sdk
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -44,7 +45,7 @@ func TestNewFromOas(t *testing.T) {
 	log, _ := test.NewNullLogger()
 	logger := logrus.NewEntry(log)
 
-	options := &FromOASOptions{
+	options := &Options{
 		Logger: logger,
 	}
 
@@ -55,7 +56,7 @@ func TestNewFromOas(t *testing.T) {
 	})
 
 	t.Run("throws if logger is nil", func(t *testing.T) {
-		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &FromOASOptions{})
+		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &Options{})
 		require.EqualError(t, err, "logger is required inside options")
 		require.Nil(t, sdk)
 	})
@@ -82,7 +83,7 @@ func TestNewFromOas(t *testing.T) {
 
 	t.Run("if registry is passed, setup metrics", func(t *testing.T) {
 		registry := prometheus.NewRegistry()
-		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &FromOASOptions{
+		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &Options{
 			Registry: registry,
 			Logger:   logger,
 		})
@@ -94,7 +95,7 @@ func TestNewFromOas(t *testing.T) {
 		evalOpts := &core.OPAEvaluatorOptions{
 			EnablePrintStatements: true,
 		}
-		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &FromOASOptions{
+		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &Options{
 			EvaluatorOptions: evalOpts,
 			Logger:           logger,
 			Registry:         prometheus.NewRegistry(),
@@ -114,6 +115,116 @@ func TestNewFromOas(t *testing.T) {
 			evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
 			require.NoError(t, err)
 			require.NotNil(t, evaluator)
+		})
+	})
+}
+
+func TestNewWithConfig(t *testing.T) {
+	opaModule := &core.OPAModuleConfig{
+		Name: "example.rego",
+		Content: `package policies
+		allow { true }
+		projection_field { true }
+		`,
+	}
+	ctx := context.Background()
+
+	log, _ := test.NewNullLogger()
+	logger := logrus.NewEntry(log)
+
+	options := &Options{
+		Logger: logger,
+	}
+
+	rondConfig := core.RondConfig{
+		RequestFlow:  core.RequestFlow{PolicyName: "allow"},
+		ResponseFlow: core.ResponseFlow{PolicyName: "projection_field"},
+	}
+
+	t.Run("throws if logger not passed", func(t *testing.T) {
+		evaluator, err := NewWithConfig(ctx, opaModule, core.RondConfig{}, nil)
+		require.EqualError(t, err, "logger must be set in config options")
+		require.Nil(t, evaluator)
+	})
+
+	t.Run("throws if empty config", func(t *testing.T) {
+		evaluator, err := NewWithConfig(ctx, opaModule, core.RondConfig{}, options)
+		require.ErrorContains(t, err, core.ErrInvalidConfig.Error())
+		require.Nil(t, evaluator)
+	})
+
+	t.Run("throws if opaModuleConfig is nil", func(t *testing.T) {
+		sdk, err := NewWithConfig(ctx, nil, rondConfig, options)
+		require.EqualError(t, err, fmt.Sprintf("%s: OPAModuleConfig must not be nil", core.ErrEvaluatorCreationFailed))
+		require.Nil(t, sdk)
+	})
+
+	t.Run("passes EvaluatorOptions and set metrics correctly", func(t *testing.T) {
+		evalOpts := &core.OPAEvaluatorOptions{
+			EnablePrintStatements: true,
+		}
+		eval, err := NewWithConfig(ctx, opaModule, rondConfig, &Options{
+			EvaluatorOptions: evalOpts,
+			Logger:           logger,
+			Registry:         prometheus.NewRegistry(),
+		})
+		require.NoError(t, err)
+		require.NotEmpty(t, eval)
+		r, ok := eval.(evaluator)
+		require.True(t, ok)
+		require.Equal(t, evalOpts, r.opaEvaluatorOptions)
+	})
+
+	t.Run("creates config sdk correctly", func(t *testing.T) {
+		evaluator, err := NewWithConfig(ctx, opaModule, rondConfig, options)
+		require.NoError(t, err)
+		require.NotNil(t, evaluator)
+
+		t.Run("run evaluator correctly", func(t *testing.T) {
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, ""), types.User{})
+			require.NoError(t, err)
+			require.Equal(t, PolicyResult{
+				Allowed:      true,
+				QueryToProxy: []byte(""),
+			}, result)
+		})
+	})
+
+	t.Run("creates config sdk correctly - using mongo functions", func(t *testing.T) {
+		opaModule := &core.OPAModuleConfig{
+			Name: "example.rego",
+			Content: `package policies
+			allow {
+				project := find_one("my-collection", {"myField": "1234"})
+				project.myField == "1234"
+			}
+			projection_field { true }
+			`,
+		}
+		options := &Options{
+			Logger: logger,
+			EvaluatorOptions: &core.OPAEvaluatorOptions{
+				MongoClient: mocks.MongoClientMock{
+					FindOneResult: map[string]string{"myField": "1234"},
+					FindOneExpectation: func(collectionName string, query interface{}) {
+						require.Equal(t, "my-collection", collectionName)
+						require.Equal(t, map[string]interface{}{"myField": "1234"}, query)
+					},
+				},
+			},
+		}
+
+		evaluator, err := NewWithConfig(ctx, opaModule, rondConfig, options)
+		require.NoError(t, err)
+		require.NotNil(t, evaluator)
+
+		t.Run("run evaluator correctly", func(t *testing.T) {
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, ""), types.User{})
+			require.NoError(t, err)
+			require.Equal(t, PolicyResult{
+				Allowed:      true,
+				QueryToProxy: []byte(""),
+			}, result)
 		})
 	})
 }

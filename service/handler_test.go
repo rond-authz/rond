@@ -45,11 +45,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var mockRondConfigWithQueryGen = openapi.RondConfig{
-	RequestFlow: openapi.RequestFlow{
+var mockRondConfigWithQueryGen = core.RondConfig{
+	RequestFlow: core.RequestFlow{
 		PolicyName:    "allow",
 		GenerateQuery: true,
-		QueryOptions: openapi.QueryOptions{
+		QueryOptions: core.QueryOptions{
 			HeaderName: "rowfilterquery",
 		},
 	},
@@ -60,8 +60,8 @@ func TestDirectProxyHandler(t *testing.T) {
 		Paths: openapi.OpenAPIPaths{
 			"/api": openapi.PathVerbs{
 				"get": openapi.VerbConfig{
-					PermissionV2: &openapi.RondConfig{
-						RequestFlow: openapi.RequestFlow{PolicyName: "todo"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "todo"},
 					},
 				},
 			},
@@ -72,11 +72,11 @@ func TestDirectProxyHandler(t *testing.T) {
 		Paths: openapi.OpenAPIPaths{
 			"/api": openapi.PathVerbs{
 				"get": openapi.VerbConfig{
-					PermissionV2: &openapi.RondConfig{
-						RequestFlow: openapi.RequestFlow{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{
 							PolicyName:    "allow",
 							GenerateQuery: true,
-							QueryOptions: openapi.QueryOptions{
+							QueryOptions: core.QueryOptions{
 								HeaderName: "rowfilterquery",
 							},
 						},
@@ -217,7 +217,7 @@ func TestDirectProxyHandler(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		rondConfig := openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}
+		rondConfig := core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "todo"}}
 		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, rondConfig, oas, http.MethodGet, "/api", nil)
 
 		ctx := createContext(t,
@@ -849,8 +849,8 @@ func TestStandaloneMode(t *testing.T) {
 		Paths: openapi.OpenAPIPaths{
 			"/api": openapi.PathVerbs{
 				"get": openapi.VerbConfig{
-					PermissionV2: &openapi.RondConfig{
-						RequestFlow: openapi.RequestFlow{PolicyName: "todo"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "todo"},
 					},
 				},
 			},
@@ -861,11 +861,11 @@ func TestStandaloneMode(t *testing.T) {
 		Paths: openapi.OpenAPIPaths{
 			"/api": openapi.PathVerbs{
 				"get": openapi.VerbConfig{
-					PermissionV2: &openapi.RondConfig{
-						RequestFlow: openapi.RequestFlow{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{
 							PolicyName:    "allow",
 							GenerateQuery: true,
-							QueryOptions: openapi.QueryOptions{
+							QueryOptions: core.QueryOptions{
 								HeaderName: "rowfilterquery",
 							},
 						},
@@ -1179,8 +1179,8 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 		Paths: openapi.OpenAPIPaths{
 			"/api": openapi.PathVerbs{
 				"get": openapi.VerbConfig{
-					PermissionV2: &openapi.RondConfig{
-						RequestFlow: openapi.RequestFlow{PolicyName: "todo"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "todo"},
 					},
 				},
 			},
@@ -1215,7 +1215,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					todo { count(input.request.headers["%s"]) != 0 }`, mockHeader),
 				}
 
-				rondConfig := openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}
+				rondConfig := core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "todo"}}
 				evaluator := getEvaluator(t, ctx, opaModule, nil, rondConfig, oas, http.MethodGet, "/api", nil)
 				ctx := createContext(t,
 					context.Background(),
@@ -1386,15 +1386,15 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				Paths: openapi.OpenAPIPaths{
 					"/api": openapi.PathVerbs{
 						"get": openapi.VerbConfig{
-							PermissionV2: &openapi.RondConfig{
-								RequestFlow: openapi.RequestFlow{PolicyName: "todo"},
+							PermissionV2: &core.RondConfig{
+								RequestFlow: core.RequestFlow{PolicyName: "todo"},
 							},
 						},
 					},
 				},
 			}
 
-			rondConfig := &openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}
+			rondConfig := &core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "todo"}}
 			evaluator := getEvaluator(t, ctx, opaModule, nil, *rondConfig, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
@@ -1945,13 +1945,13 @@ project := find_one("projects", {"projectId": "1234"})
 project.tenantId == "1234"
 }`,
 	}
-	var mockXPermission = openapi.RondConfig{RequestFlow: openapi.RequestFlow{PolicyName: "todo"}}
+	var mockXPermission = core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "todo"}}
 	oas := &openapi.OpenAPISpec{
 		Paths: openapi.OpenAPIPaths{
 			"/api": openapi.PathVerbs{
 				"get": openapi.VerbConfig{
-					PermissionV2: &openapi.RondConfig{
-						RequestFlow: openapi.RequestFlow{PolicyName: "todo"},
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "todo"},
 					},
 				},
 			},
