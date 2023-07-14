@@ -32,5 +32,5 @@ var (
 	ErrFailedInputEncode                 = fmt.Errorf("failed input encode")
 	ErrFailedInputRequestParse           = fmt.Errorf("failed request body parse")
 	ErrFailedInputRequestDeserialization = fmt.Errorf("failed request body deserialization")
-	ErrRondConfigNotExists               = fmt.Errorf("rond config not exists")
+	ErrRondConfigNotExists               = fmt.Errorf("rond config does not exist")
 )
