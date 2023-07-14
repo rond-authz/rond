@@ -81,7 +81,7 @@ type XPermission struct {
 	Options         core.PermissionOptions      `json:"options"`
 }
 
-// END Config v1 //,
+// END Config v1 //
 
 type VerbConfig struct {
 	PermissionV1 *XPermission     `json:"x-permission"`
