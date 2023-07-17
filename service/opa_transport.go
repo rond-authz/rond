@@ -26,6 +26,7 @@ import (
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
+	rondlogrus "github.com/rond-authz/rond/logger/logrus"
 	"github.com/rond-authz/rond/sdk"
 	rondhttp "github.com/rond-authz/rond/sdk/rondinput/http"
 	"github.com/rond-authz/rond/types"
@@ -109,7 +110,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return nil, fmt.Errorf("%w: %s", ErrOPATransportInvalidResponseBody, err.Error())
 	}
 
-	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(t.logger, t.request, t.userHeaders)
+	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(rondlogrus.NewEntry(t.logger), t.request, t.userHeaders)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusInternalServerError)
 		return resp, nil

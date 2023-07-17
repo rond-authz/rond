@@ -33,7 +33,8 @@ import (
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/service"
 
-	"github.com/mia-platform/glogger/v2"
+	"github.com/mia-platform/glogger/v4"
+	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
 	"github.com/sirupsen/logrus"
 )
 
@@ -46,7 +47,7 @@ func entrypoint(shutdown chan os.Signal) {
 	env := config.GetEnvOrDie()
 
 	// Init logger instance.
-	log, err := glogger.InitHelper(glogger.InitOptions{Level: env.LogLevel})
+	log, err := glogrus.InitHelper(glogrus.InitOptions{Level: env.LogLevel})
 	if err != nil {
 		panic(err.Error())
 	}
@@ -88,7 +89,7 @@ func entrypoint(shutdown chan os.Signal) {
 		"oasApiPath":  env.TargetServiceOASPath,
 	}).Trace("OAS successfully loaded")
 
-	mongoClient, err := mongoclient.NewMongoClient(env, log)
+	mongoClient, err := mongoclient.NewMongoClient(env, rondlogrus.NewLogger(log))
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},

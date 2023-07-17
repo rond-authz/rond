@@ -14,6 +14,8 @@
 
 package logger
 
+import "context"
+
 type Logger interface {
 	WithFields(fields map[string]any) Logger
 	WithField(field string, value any) Logger
@@ -43,4 +45,18 @@ func (l nullLogger) Warn(msg any)  {}
 
 func NewNullLogger() Logger {
 	return &nullLogger{}
+}
+
+type loggerKey struct{}
+
+func WithContext(ctx context.Context, logger Logger) context.Context {
+	return context.WithValue(ctx, loggerKey{}, logger)
+}
+
+func FromContext(ctx context.Context) Logger {
+	logger, ok := ctx.Value(loggerKey{}).(Logger)
+	if !ok {
+		return &nullLogger{}
+	}
+	return logger
 }

@@ -23,13 +23,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
-	"github.com/mia-platform/glogger/v2"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/logger"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/sirupsen/logrus"
+	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -86,7 +85,7 @@ func (mongoClient *MongoClient) Disconnect() error {
 
 // NewMongoClient tries to setup a new MongoClient instance.
 // The function returns a `nil` client if the environment variable `MongoDBUrl` is not specified.
-func NewMongoClient(env config.EnvironmentVariables, logger *logrus.Logger) (*MongoClient, error) {
+func NewMongoClient(env config.EnvironmentVariables, logger logger.Logger) (*MongoClient, error) {
 	if env.MongoDBUrl == "" {
 		logger.Info("No MongoDB configuration provided, skipping setup")
 		return nil, nil
@@ -198,7 +197,8 @@ func (mongoClient *MongoClient) RetrieveUserRolesByRolesID(ctx context.Context, 
 
 func (mongoClient *MongoClient) FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error) {
 	collection := mongoClient.client.Database(mongoClient.databaseName).Collection(collectionName)
-	glogger.Get(ctx).WithFields(logrus.Fields{
+	log := logger.FromContext(ctx)
+	log.WithFields(map[string]any{
 		"mongoQuery":     query,
 		"dbName":         mongoClient.databaseName,
 		"collectionName": collectionName,
@@ -210,22 +210,22 @@ func (mongoClient *MongoClient) FindOne(ctx context.Context, collectionName stri
 	err := result.Decode(&bsonDocument)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			glogger.Get(ctx).WithField("error", logrus.Fields{"message": err.Error()}).Warn("no document found")
+			log.WithField("error", map[string]any{"message": err.Error()}).Warn("no document found")
 			return nil, nil
 		}
-		glogger.Get(ctx).WithField("error", logrus.Fields{"message": err.Error()}).Error("failed query decode")
+		log.WithField("error", map[string]any{"message": err.Error()}).Error("failed query decode")
 		return nil, err
 	}
 
 	temporaryBytes, err := bson.MarshalExtJSON(bsonDocument, true, true)
 	if err != nil {
-		glogger.Get(ctx).WithField("error", logrus.Fields{"message": err.Error()}).Error("failed query result marshalling")
+		log.WithField("error", map[string]any{"message": err.Error()}).Error("failed query result marshalling")
 		return nil, err
 	}
 
 	var res map[string]interface{}
 	if err := json.Unmarshal(temporaryBytes, &res); err != nil {
-		glogger.Get(ctx).WithField("error", logrus.Fields{"message": err.Error()}).Error("failed query result deserialization")
+		log.WithField("error", map[string]any{"message": err.Error()}).Error("failed query result deserialization")
 		return nil, err
 	}
 	return res, nil
@@ -233,7 +233,8 @@ func (mongoClient *MongoClient) FindOne(ctx context.Context, collectionName stri
 
 func (mongoClient *MongoClient) FindMany(ctx context.Context, collectionName string, query map[string]interface{}) ([]interface{}, error) {
 	collection := mongoClient.client.Database(mongoClient.databaseName).Collection(collectionName)
-	glogger.Get(ctx).WithFields(logrus.Fields{
+	log := logger.FromContext(ctx)
+	log.WithFields(map[string]any{
 		"mongoQuery":     query,
 		"dbName":         mongoClient.databaseName,
 		"collectionName": collectionName,
@@ -241,28 +242,28 @@ func (mongoClient *MongoClient) FindMany(ctx context.Context, collectionName str
 
 	resultCursor, err := collection.Find(ctx, query)
 	if err != nil {
-		glogger.Get(ctx).WithField("error", logrus.Fields{"message": err.Error()}).Error("failed query execution")
+		log.WithField("error", map[string]any{"message": err.Error()}).Error("failed query execution")
 		return nil, err
 	}
 
 	results := make([]interface{}, 0)
 	if err := resultCursor.All(ctx, &results); err != nil {
-		glogger.Get(ctx).WithField("error", logrus.Fields{"message": err.Error()}).Error("failed complete query result deserialization")
+		log.WithField("error", map[string]any{"message": err.Error()}).Error("failed complete query result deserialization")
 		return nil, err
 	}
 
 	for i := 0; i < len(results); i++ {
 		temporaryBytes, err := bson.MarshalExtJSON(results[i], true, true)
 		if err != nil {
-			glogger.Get(ctx).WithFields(logrus.Fields{
-				"error":       logrus.Fields{"message": err.Error()},
+			log.WithFields(map[string]any{
+				"error":       map[string]any{"message": err.Error()},
 				"resultIndex": i,
 			}).Error("failed query result marshalling")
 			return nil, err
 		}
 		if err := json.Unmarshal(temporaryBytes, &results[i]); err != nil {
-			glogger.Get(ctx).WithFields(logrus.Fields{
-				"error":       logrus.Fields{"message": err.Error()},
+			log.WithFields(map[string]any{
+				"error":       map[string]any{"message": err.Error()},
 				"resultIndex": i,
 			}).Error("failed result document deserialization")
 			return nil, err
@@ -283,7 +284,7 @@ func RolesIDsFromBindings(bindings []types.Binding) []string {
 	return rolesIds
 }
 
-func RetrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, userHeaders types.UserHeadersKeys) (types.User, error) {
+func RetrieveUserBindingsAndRoles(logger logger.Logger, req *http.Request, userHeaders types.UserHeadersKeys) (types.User, error) {
 	requestContext := req.Context()
 	mongoClient, err := GetMongoClientFromContext(requestContext)
 	if err != nil {
@@ -305,18 +306,18 @@ func RetrieveUserBindingsAndRoles(logger *logrus.Entry, req *http.Request, userH
 	if mongoClient != nil && user.UserID != "" {
 		user.UserBindings, err = mongoClient.RetrieveUserBindings(requestContext, &user)
 		if err != nil {
-			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user bindings")
+			logger.WithField("error", map[string]any{"message": err.Error()}).Error("something went wrong while retrieving user bindings")
 			return types.User{}, fmt.Errorf("error while retrieving user bindings: %s", err.Error())
 		}
 
 		userRolesIds := RolesIDsFromBindings(user.UserBindings)
 		user.UserRoles, err = mongoClient.RetrieveUserRolesByRolesID(requestContext, userRolesIds)
 		if err != nil {
-			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("something went wrong while retrieving user roles")
+			logger.WithField("error", map[string]any{"message": err.Error()}).Error("something went wrong while retrieving user roles")
 
 			return types.User{}, fmt.Errorf("error while retrieving user Roles: %s", err.Error())
 		}
-		logger.WithFields(logrus.Fields{
+		logger.WithFields(map[string]any{
 			"foundBindingsLength": len(user.UserBindings),
 			"foundRolesLength":    len(user.UserRoles),
 		}).Trace("found bindings and roles")

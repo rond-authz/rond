@@ -26,7 +26,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/mia-platform/glogger/v2"
+	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
 	"github.com/mia-platform/go-crud-service-client"
 	"github.com/sirupsen/logrus"
 )
@@ -45,7 +45,7 @@ type RevokeResponseBody struct {
 }
 
 func revokeHandler(w http.ResponseWriter, r *http.Request) {
-	logger := glogger.Get(r.Context())
+	logger := glogrus.FromContext(r.Context())
 	env, err := config.GetEnv(r.Context())
 	if err != nil {
 		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), utils.GENERIC_BUSINESS_ERROR_MESSAGE)
@@ -166,7 +166,7 @@ type GrantResponseBody struct {
 }
 
 func grantHandler(w http.ResponseWriter, r *http.Request) {
-	logger := glogger.Get(r.Context())
+	logger := glogrus.FromContext(r.Context())
 	env, err := config.GetEnv(r.Context())
 	if err != nil {
 		utils.FailResponseWithCode(w, http.StatusInternalServerError, err.Error(), utils.GENERIC_BUSINESS_ERROR_MESSAGE)

@@ -23,8 +23,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/mia-platform/glogger/v2"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/fake"
@@ -34,6 +32,9 @@ import (
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
+
+	"github.com/mia-platform/glogger/v4"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"

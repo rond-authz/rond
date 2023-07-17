@@ -144,6 +144,10 @@ func newPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 		ctx = mongoclient.WithMongoClient(ctx, evaluatorOptions.MongoClient)
 		options = append(options, custom_builtins.MongoFindOne, custom_builtins.MongoFindMany)
 	}
+	if evaluatorOptions.Logger != nil {
+		// TODO: test logger
+		ctx = logger.WithContext(ctx, evaluatorOptions.Logger)
+	}
 	regoInstance := rego.New(options...)
 
 	results, err := regoInstance.PartialResult(ctx)

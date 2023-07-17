@@ -38,7 +38,7 @@ import (
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
-	"github.com/mia-platform/glogger/v2"
+	"github.com/mia-platform/glogger/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/sirupsen/logrus"

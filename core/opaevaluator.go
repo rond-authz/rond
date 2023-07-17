@@ -75,11 +75,13 @@ type OPAEvaluator struct {
 	context       context.Context
 	mongoClient   types.IMongoClient
 	generateQuery bool
+	logger        logger.Logger
 }
 
 type OPAEvaluatorOptions struct {
 	EnablePrintStatements bool
 	MongoClient           types.IMongoClient
+	Logger                logger.Logger
 }
 
 func newQueryOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte, options *OPAEvaluatorOptions) (*OPAEvaluator, error) {
@@ -113,6 +115,7 @@ func newQueryOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *O
 		context:       ctx,
 		mongoClient:   options.MongoClient,
 		generateQuery: true,
+		logger:        options.Logger,
 	}, nil
 }
 
@@ -220,7 +223,11 @@ func (evaluator *OPAEvaluator) getContext() context.Context {
 		ctx = context.Background()
 	}
 	if evaluator.mongoClient != nil {
-		return mongoclient.WithMongoClient(ctx, evaluator.mongoClient)
+		ctx = mongoclient.WithMongoClient(ctx, evaluator.mongoClient)
+	}
+	// TODO: test logger
+	if evaluator.logger != nil {
+		ctx = logger.WithContext(ctx, evaluator.logger)
 	}
 	return ctx
 }
