@@ -23,10 +23,10 @@ import (
 
 	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/logger"
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
-	"github.com/sirupsen/logrus"
 )
 
 type PartialResultsEvaluators map[string]PartialEvaluator
@@ -35,7 +35,7 @@ type PartialEvaluator struct {
 	PartialEvaluator *rego.PartialResult
 }
 
-func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy string, opaModuleConfig *OPAModuleConfig, options *OPAEvaluatorOptions) (*PartialEvaluator, error) {
+func createPartialEvaluator(ctx context.Context, logger logger.Logger, policy string, opaModuleConfig *OPAModuleConfig, options *OPAEvaluatorOptions) (*PartialEvaluator, error) {
 	logger.WithField("policyName", policy).Info("precomputing rego policy")
 
 	policyEvaluatorTime := time.Now()
@@ -45,7 +45,7 @@ func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy st
 	}
 
 	logger.
-		WithFields(logrus.Fields{
+		WithFields(map[string]any{
 			"policyName":                   policy,
 			"computationTimeMicroserconds": time.Since(policyEvaluatorTime).Microseconds,
 		}).
@@ -54,12 +54,12 @@ func createPartialEvaluator(ctx context.Context, logger *logrus.Entry, policy st
 	return &PartialEvaluator{PartialEvaluator: partialResultEvaluator}, nil
 }
 
-func (policyEvaluators PartialResultsEvaluators) AddFromConfig(ctx context.Context, logger *logrus.Entry, opaModuleConfig *OPAModuleConfig, rondConfig *RondConfig, options *OPAEvaluatorOptions) error {
+func (policyEvaluators PartialResultsEvaluators) AddFromConfig(ctx context.Context, logger logger.Logger, opaModuleConfig *OPAModuleConfig, rondConfig *RondConfig, options *OPAEvaluatorOptions) error {
 	allowPolicy := rondConfig.RequestFlow.PolicyName
 	responsePolicy := rondConfig.ResponseFlow.PolicyName
 
 	logger.
-		WithFields(logrus.Fields{
+		WithFields(map[string]any{
 			"policyName":         allowPolicy,
 			"responsePolicyName": responsePolicy,
 		}).

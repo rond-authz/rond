@@ -21,6 +21,7 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/utils"
+	rondlogrus "github.com/rond-authz/rond/logger/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 
@@ -55,7 +56,7 @@ func OPAMiddleware(
 
 			logger := glogger.Get(r.Context())
 
-			evaluator, err := rondSDK.FindEvaluator(logger, r.Method, path)
+			evaluator, err := rondSDK.FindEvaluator(rondlogrus.NewEntry(logger), r.Method, path)
 			rondConfig := core.RondConfig{}
 			if err == nil {
 				rondConfig = evaluator.Config()

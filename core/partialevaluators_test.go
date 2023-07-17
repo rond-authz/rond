@@ -22,13 +22,13 @@ import (
 
 	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/logger"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
 func TestPartialResultEvaluators(t *testing.T) {
-	logger := logrus.NewEntry(logrus.New())
+	logger := logger.NewNullLogger()
 
 	opaModule := &OPAModuleConfig{
 		Content: `package policies

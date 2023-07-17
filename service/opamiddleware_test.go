@@ -25,11 +25,11 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/utils"
+	rondlogrus "github.com/rond-authz/rond/logger/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
@@ -40,7 +40,7 @@ func TestOPAMiddleware(t *testing.T) {
 
 		logger, _ := test.NewNullLogger()
 		sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.Options{
-			Logger: logrus.NewEntry(logger),
+			Logger: rondlogrus.NewLogger(logger),
 		})
 		require.NoError(t, err, "unexpected error")
 
@@ -303,7 +303,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 		t.Helper()
 
 		log, _ := test.NewNullLogger()
-		logger := logrus.NewEntry(log)
+		logger := rondlogrus.NewLogger(log)
 		sdk, err := sdk.NewFromOAS(context.Background(), opaModule, openAPISpec, &sdk.Options{
 			Logger: logger,
 		})

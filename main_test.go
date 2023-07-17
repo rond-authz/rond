@@ -34,12 +34,12 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/internal/utils"
+	rondlogrus "github.com/rond-authz/rond/logger/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/service"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -1799,7 +1799,7 @@ filter_policy {
 			MongoClient: mongoClient,
 		},
 		Registry: registry,
-		Logger:   logrus.NewEntry(logger),
+		Logger:   rondlogrus.NewLogger(logger),
 	})
 	require.NoError(t, err, "unexpected error")
 
@@ -1961,7 +1961,7 @@ filter_policy {
 			MongoClient: mongoClient,
 		},
 		Registry: registry,
-		Logger:   logrus.NewEntry(logger),
+		Logger:   rondlogrus.NewLogger(logger),
 	})
 	require.NoError(t, err, "unexpected error")
 

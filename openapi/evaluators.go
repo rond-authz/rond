@@ -5,11 +5,10 @@ import (
 	"fmt"
 
 	"github.com/rond-authz/rond/core"
-
-	"github.com/sirupsen/logrus"
+	"github.com/rond-authz/rond/logger"
 )
 
-func SetupEvaluators(ctx context.Context, logger *logrus.Entry, oas *OpenAPISpec, opaModuleConfig *core.OPAModuleConfig, options *core.OPAEvaluatorOptions) (core.PartialResultsEvaluators, error) {
+func SetupEvaluators(ctx context.Context, logger logger.Logger, oas *OpenAPISpec, opaModuleConfig *core.OPAModuleConfig, options *core.OPAEvaluatorOptions) (core.PartialResultsEvaluators, error) {
 	if oas == nil {
 		return nil, fmt.Errorf("oas must not be nil")
 	}
@@ -22,7 +21,7 @@ func SetupEvaluators(ctx context.Context, logger *logrus.Entry, oas *OpenAPISpec
 			}
 
 			logger.
-				WithFields(logrus.Fields{
+				WithFields(map[string]any{
 					"verb": verb,
 					"path": path,
 				}).

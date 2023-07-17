@@ -21,13 +21,14 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/rond-authz/rond/logger"
+
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
 )
 
 func TestFetchOpenAPI(t *testing.T) {
-	log, _ := test.NewNullLogger()
+	log := logger.NewNullLogger()
 
 	t.Run("fetches json OAS", func(t *testing.T) {
 		defer gock.Off()
@@ -172,7 +173,7 @@ func TestLoadOASFile(t *testing.T) {
 }
 
 func TestLoadOAS(t *testing.T) {
-	log, _ := test.NewNullLogger()
+	log := logger.NewNullLogger()
 
 	t.Run("if TargetServiceOASPath & APIPermissionsFilePath are set together, expect to read oas from static file", func(t *testing.T) {
 		options := LoadOptions{

@@ -22,10 +22,9 @@ import (
 
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/logger"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -126,8 +125,7 @@ column_policy{
 
 	opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-	log, _ := test.NewNullLogger()
-	logger := logrus.NewEntry(log)
+	logger := logger.NewNullLogger()
 
 	input := Input{Request: InputRequest{}, Response: InputResponse{}}
 	inputBytes, _ := json.Marshal(input)

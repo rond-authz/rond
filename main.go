@@ -28,6 +28,7 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/helpers"
 	"github.com/rond-authz/rond/internal/mongoclient"
+	rondlogrus "github.com/rond-authz/rond/logger/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/service"
@@ -68,7 +69,8 @@ func entrypoint(shutdown chan os.Signal) {
 	}
 	log.WithField("opaModuleFileName", opaModuleConfig.Name).Trace("rego module successfully loaded")
 
-	oas, err := openapi.LoadOASFromFileOrNetwork(log, openapi.LoadOptions{
+	rondLogger := rondlogrus.NewLogger(log)
+	oas, err := openapi.LoadOASFromFileOrNetwork(rondLogger, openapi.LoadOptions{
 		APIPermissionsFilePath: env.APIPermissionsFilePath,
 		TargetServiceOASPath:   env.TargetServiceOASPath,
 		TargetServiceHost:      env.TargetServiceHost,
@@ -106,7 +108,7 @@ func entrypoint(shutdown chan os.Signal) {
 			EnablePrintStatements: env.IsTraceLogLevel(),
 			MongoClient:           mongoClient,
 		},
-		Logger: logrus.NewEntry(log),
+		Logger: rondLogger,
 	})
 	if err != nil {
 		log.WithFields(logrus.Fields{

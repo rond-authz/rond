@@ -24,6 +24,8 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/logger"
+	rondlogrus "github.com/rond-authz/rond/logger/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
@@ -35,7 +37,7 @@ import (
 )
 
 func TestEvaluateRequestPolicy(t *testing.T) {
-	logger := logrus.NewEntry(logrus.New())
+	logger := logger.NewNullLogger()
 
 	t.Run("throws without RondInput", func(t *testing.T) {
 		sdk := getOASSdk(t, nil)
@@ -330,9 +332,10 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					registry:         registry,
 				})
 
+				// TODO: do not use logrus
 				log, hook := test.NewNullLogger()
 				log.Level = logrus.DebugLevel
-				logger := logrus.NewEntry(log)
+				logger := rondlogrus.NewLogger(log)
 				evaluate, err := sdk.FindEvaluator(logger, testCase.method, testCase.path)
 				require.NoError(t, err)
 
@@ -420,7 +423,7 @@ func assertCorrectMetrics(t *testing.T, registry *prometheus.Registry, expected 
 }
 
 func TestEvaluateResponsePolicy(t *testing.T) {
-	logger := logrus.NewEntry(logrus.New())
+	logger := logger.NewNullLogger()
 
 	t.Run("throws without RondInput", func(t *testing.T) {
 		sdk := getOASSdk(t, nil)
@@ -533,7 +536,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 
 				log, hook := test.NewNullLogger()
 				log.Level = logrus.DebugLevel
-				logger := logrus.NewEntry(log)
+				logger := rondlogrus.NewLogger(log)
 				registry := prometheus.NewPedanticRegistry()
 				sdk := getOASSdk(t, &sdkOptions{
 					opaModuleContent: opaModuleContent,
@@ -614,8 +617,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	openAPISpec, err := openapi.LoadOASFile("../mocks/bench.json")
 	require.NoError(b, err)
 
-	log, _ := test.NewNullLogger()
-	logger := logrus.NewEntry(log)
+	logger := logger.NewNullLogger()
 	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: testmongoMock,
@@ -653,7 +655,7 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 		h.Helper()
 	}
 
-	logger := logrus.NewEntry(logrus.New())
+	logger := logger.NewNullLogger()
 	if options == nil {
 		options = &sdkOptions{}
 	}

@@ -18,19 +18,17 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/rond-authz/rond/logger"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreateRegoInput(t *testing.T) {
-	logrusLogger, _ := test.NewNullLogger()
-	logger := logrus.NewEntry(logrusLogger)
+	log := logger.NewNullLogger()
 
 	t.Run("returns correctly", func(t *testing.T) {
-		actual, err := CreateRegoQueryInput(logger, Input{}, RegoInputOptions{})
+		actual, err := CreateRegoQueryInput(log, Input{}, RegoInputOptions{})
 		require.NoError(t, err)
 		require.Equal(t, "{\"request\":{\"method\":\"\",\"path\":\"\"},\"response\":{},\"user\":{}}", string(actual))
 	})
@@ -79,7 +77,7 @@ func TestCreateRegoInput(t *testing.T) {
 				User: user,
 			}
 
-			input.buildOptimizedResourcePermissionsMap(logger, true)
+			input.buildOptimizedResourcePermissionsMap(log, true)
 			expected := PermissionsOnResourceMap{
 				"permission1:type1:resource1":          true,
 				"permission2:type1:resource1":          true,
@@ -101,7 +99,7 @@ func TestCreateRegoInput(t *testing.T) {
 				User: user,
 			}
 
-			input.buildOptimizedResourcePermissionsMap(logger, false)
+			input.buildOptimizedResourcePermissionsMap(log, false)
 			require.Nil(t, input.User.ResourcePermissionsMap)
 		})
 
@@ -136,7 +134,7 @@ func TestCreateRegoInput(t *testing.T) {
 				},
 			}
 
-			input.buildOptimizedResourcePermissionsMap(logger, true)
+			input.buildOptimizedResourcePermissionsMap(log, true)
 			expected := PermissionsOnResourceMap{
 				"permission1:type1:resource1":          true,
 				"permission2:type1:resource1":          true,
@@ -185,7 +183,7 @@ func TestCreateRegoInput(t *testing.T) {
 				},
 			}
 
-			input.buildOptimizedResourcePermissionsMap(logger, true)
+			input.buildOptimizedResourcePermissionsMap(log, true)
 			expected := PermissionsOnResourceMap{
 				"permission3:type2:resource2":          true,
 				"permission3:type3:resource3":          true,
@@ -228,8 +226,7 @@ func BenchmarkBuildOptimizedResourcePermissionsMap(b *testing.B) {
 		Bindings: bindings,
 	}
 
-	logrusLogger, _ := test.NewNullLogger()
-	logger := logrus.NewEntry(logrusLogger)
+	logger := logger.NewNullLogger()
 	input := Input{
 		User: user,
 	}

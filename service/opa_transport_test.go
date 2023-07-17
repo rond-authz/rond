@@ -29,6 +29,7 @@ import (
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
+	rondlogrus "github.com/rond-authz/rond/logger/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
@@ -284,7 +285,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{"Content-Type": []string{"application/json"}},
 		}
 
-		logEntry := logrus.NewEntry(logger)
+		logEntry := rondlogrus.NewLogger(logger)
 		req = req.Clone(context.Background())
 
 		evaluator := getSdk(t, &sdkOptions{
@@ -422,7 +423,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			oasFilePath:      "../mocks/rondOasConfig.json",
 			opaModuleContent: "package policies responsepolicy [resources] { resources := input.response.body }",
 		})
-		logEntry := logrus.NewEntry(logger)
+		logEntry := rondlogrus.NewLogger(logger)
 		evaluatorSDK, err := evaluator.FindEvaluator(logEntry, http.MethodGet, "/users/")
 		require.NoError(t, err)
 
@@ -488,7 +489,7 @@ func getSdk(t require.TestingT, options *sdkOptions) sdk.OASEvaluatorFinder {
 		h.Helper()
 	}
 
-	logger := logrus.NewEntry(logrus.New())
+	logger := rondlogrus.NewLogger(logrus.New())
 	if options == nil {
 		options = &sdkOptions{}
 	}

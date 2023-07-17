@@ -22,12 +22,11 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/logger"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,9 +41,7 @@ func TestNewFromOas(t *testing.T) {
 	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 	require.NoError(t, err)
 
-	log, _ := test.NewNullLogger()
-	logger := logrus.NewEntry(log)
-
+	logger := logger.NewNullLogger()
 	options := &Options{
 		Logger: logger,
 	}
@@ -129,9 +126,7 @@ func TestNewWithConfig(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	log, _ := test.NewNullLogger()
-	logger := logrus.NewEntry(log)
-
+	logger := logger.NewNullLogger()
 	options := &Options{
 		Logger: logger,
 	}

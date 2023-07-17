@@ -29,6 +29,8 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/fake"
 	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/logger"
+	rondlogrus "github.com/rond-authz/rond/logger/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
@@ -259,7 +261,7 @@ todo { true }`,
 var mockXPermission = core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "todo"}}
 
 type evaluatorParams struct {
-	logger   *logrus.Entry
+	logger   logger.Logger
 	registry *prometheus.Registry
 }
 
@@ -281,8 +283,8 @@ func getEvaluator(
 
 	logger := options.logger
 	if logger == nil {
-		log, _ := test.NewNullLogger()
-		logger = logrus.NewEntry(log)
+		log := logrus.New()
+		logger = rondlogrus.NewLogger(log)
 	}
 
 	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.Options{
@@ -305,8 +307,8 @@ func TestSetupRoutesIntegration(t *testing.T) {
 	oas := prepareOASFromFile(t, "../mocks/simplifiedMock.json")
 
 	log, _ := test.NewNullLogger()
-	logger := logrus.NewEntry(log)
-	ctx := glogger.WithLogger(context.Background(), logger)
+	logger := rondlogrus.NewLogger(log)
+	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
 	t.Run("invokes known API", func(t *testing.T) {
 		var invoked bool

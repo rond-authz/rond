@@ -21,9 +21,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/rond-authz/rond/logger"
 	"github.com/rond-authz/rond/types"
-
-	"github.com/sirupsen/logrus"
 )
 
 type Input struct {
@@ -54,7 +53,7 @@ type InputUser struct {
 	ResourcePermissionsMap PermissionsOnResourceMap `json:"resourcePermissionsMap,omitempty"`
 }
 
-func (input *Input) buildOptimizedResourcePermissionsMap(logger *logrus.Entry, enableResourcePermissionsMapOptimization bool) {
+func (input *Input) buildOptimizedResourcePermissionsMap(logger logger.Logger, enableResourcePermissionsMapOptimization bool) {
 	if !enableResourcePermissionsMapOptimization {
 		return
 	}
@@ -85,7 +84,7 @@ func (input *Input) buildOptimizedResourcePermissionsMap(logger *logrus.Entry, e
 		}
 	}
 	input.User.ResourcePermissionsMap = permissionsOnResourceMap
-	logger.WithField("resourcePermissionMapCreationTime", fmt.Sprintf("%+v", time.Since(opaPermissionsMapTime))).Tracef("resource permission map creation")
+	logger.WithField("resourcePermissionMapCreationTime", fmt.Sprintf("%+v", time.Since(opaPermissionsMapTime))).Trace("resource permission map creation")
 }
 
 type RegoInputOptions struct {
@@ -93,7 +92,7 @@ type RegoInputOptions struct {
 }
 
 func CreateRegoQueryInput(
-	logger *logrus.Entry,
+	logger logger.Logger,
 	input Input,
 	options RegoInputOptions,
 ) ([]byte, error) {
@@ -107,7 +106,7 @@ func CreateRegoQueryInput(
 	}
 	logger.
 		WithField("inputCreationTimeMicroseconds", time.Since(opaInputCreationTime).Microseconds()).
-		Tracef("input creation time")
+		Trace("input creation time")
 	return inputBytes, nil
 }
 
