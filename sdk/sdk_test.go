@@ -126,7 +126,6 @@ func TestNewFromOas(t *testing.T) {
 			require.NotNil(t, evaluator)
 		})
 	})
-
 }
 
 func TestNewWithConfig(t *testing.T) {
