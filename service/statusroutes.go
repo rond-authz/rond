@@ -18,9 +18,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gorilla/mux"
-	"github.com/mia-platform/glogger/v2"
 	"github.com/rond-authz/rond/internal/utils"
+
+	"github.com/gorilla/mux"
+	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
 	"github.com/sirupsen/logrus"
 )
 
@@ -53,7 +54,7 @@ func handleStatusEndpoint(serviceName, serviceVersion string) func(http.Response
 	return func(w http.ResponseWriter, req *http.Request) {
 		_, body := handleStatusRoutes(w, serviceName, serviceVersion)
 		if _, err := w.Write(body); err != nil {
-			logger := glogger.Get(req.Context())
+			logger := glogrus.FromContext(req.Context())
 			logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
 		}
 	}

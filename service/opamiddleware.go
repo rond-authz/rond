@@ -19,13 +19,14 @@ import (
 	"net/http"
 	"strings"
 
+	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/utils"
+	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 
 	"github.com/gorilla/mux"
-	"github.com/mia-platform/glogger/v2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -53,9 +54,9 @@ func OPAMiddleware(
 				path = strings.Replace(r.URL.EscapedPath(), options.PathPrefixStandalone, "", 1)
 			}
 
-			logger := glogger.Get(r.Context())
+			logger := glogrus.FromContext(r.Context())
 
-			evaluator, err := rondSDK.FindEvaluator(logger, r.Method, path)
+			evaluator, err := rondSDK.FindEvaluator(rondlogrus.NewEntry(logger), r.Method, path)
 			rondConfig := core.RondConfig{}
 			if err == nil {
 				rondConfig = evaluator.Config()

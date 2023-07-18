@@ -24,12 +24,13 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
+	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/sdk"
 	rondhttp "github.com/rond-authz/rond/sdk/rondinput/http"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
-	"github.com/mia-platform/glogger/v2"
+	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
 	"github.com/sirupsen/logrus"
 )
 
@@ -68,7 +69,7 @@ func ReverseProxyOrResponse(
 
 func rbacHandler(w http.ResponseWriter, req *http.Request) {
 	requestContext := req.Context()
-	logger := glogger.Get(requestContext)
+	logger := glogrus.FromContext(requestContext)
 
 	env, err := config.GetEnv(requestContext)
 	if err != nil {
@@ -96,12 +97,11 @@ func EvaluateRequest(
 	w http.ResponseWriter,
 	evaluatorSdk sdk.Evaluator,
 ) error {
-	requestContext := req.Context()
-	logger := glogger.Get(requestContext)
+	logger := glogrus.FromContext(req.Context())
 
 	permission := evaluatorSdk.Config()
 
-	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(logger, req, types.UserHeadersKeys{
+	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(rondlogrus.NewEntry(logger), req, types.UserHeadersKeys{
 		IDHeaderKey:         env.UserIdHeader,
 		GroupsHeaderKey:     env.UserGroupsHeader,
 		PropertiesHeaderKey: env.UserPropertiesHeader,
@@ -187,10 +187,10 @@ func ReverseProxy(
 
 func alwaysProxyHandler(w http.ResponseWriter, req *http.Request) {
 	requestContext := req.Context()
-	logger := glogger.Get(req.Context())
+	logger := glogrus.FromContext(req.Context())
 	env, err := config.GetEnv(requestContext)
 	if err != nil {
-		glogger.Get(requestContext).WithError(err).Error("no env found in context")
+		logger.WithError(err).Error("no env found in context")
 		utils.FailResponse(w, "no environment found in context", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}

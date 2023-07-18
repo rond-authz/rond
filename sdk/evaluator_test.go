@@ -24,18 +24,18 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/logging"
+	"github.com/rond-authz/rond/logging/test"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEvaluateRequestPolicy(t *testing.T) {
-	logger := logrus.NewEntry(logrus.New())
+	logger := logging.NewNoOpLogger()
 
 	t.Run("throws without RondInput", func(t *testing.T) {
 		sdk := getOASSdk(t, nil)
@@ -330,9 +330,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					registry:         registry,
 				})
 
-				log, hook := test.NewNullLogger()
-				log.Level = logrus.DebugLevel
-				logger := logrus.NewEntry(log)
+				logger := test.GetLogger()
 				evaluate, err := sdk.FindEvaluator(logger, testCase.method, testCase.path)
 				require.NoError(t, err)
 
@@ -357,8 +355,10 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				require.Equal(t, testCase.expectedPolicy, actual)
 
 				t.Run("logger", func(t *testing.T) {
-					var actualEntry *logrus.Entry
-					for _, entry := range hook.AllEntries() {
+					var actualEntry test.Record
+					records, err := test.GetRecords(logger)
+					require.NoError(t, err)
+					for _, entry := range records {
 						if entry.Message == "policy evaluation completed" {
 							actualEntry = entry
 						}
@@ -366,14 +366,14 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					evaluatorInfo := evaluate.(evaluator)
 
 					require.NotNil(t, actual)
-					delete(actualEntry.Data, "evaluationTimeMicroseconds")
+					delete(actualEntry.Fields, "evaluationTimeMicroseconds")
 
 					resultLength := 1
 					if !actual.Allowed {
 						resultLength = 0
 					}
 
-					fields := logrus.Fields{
+					fields := map[string]any{
 						"allowed":       actual.Allowed,
 						"requestedPath": testCase.path,
 						"matchedPath":   evaluatorInfo.policyEvaluationOptions.AdditionalLogFields["matchedPath"],
@@ -386,7 +386,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 						fields["resultsLength"] = resultLength
 					}
 
-					require.Equal(t, fields, actualEntry.Data)
+					require.Equal(t, fields, actualEntry.Fields)
 				})
 
 				t.Run("metrics", func(t *testing.T) {
@@ -420,7 +420,7 @@ func assertCorrectMetrics(t *testing.T, registry *prometheus.Registry, expected 
 }
 
 func TestEvaluateResponsePolicy(t *testing.T) {
-	logger := logrus.NewEntry(logrus.New())
+	logger := logging.NewNoOpLogger()
 
 	t.Run("throws without RondInput", func(t *testing.T) {
 		sdk := getOASSdk(t, nil)
@@ -531,9 +531,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					opaModuleContent = testCase.opaModuleContent
 				}
 
-				log, hook := test.NewNullLogger()
-				log.Level = logrus.DebugLevel
-				logger := logrus.NewEntry(log)
+				logger := test.GetLogger()
 				registry := prometheus.NewPedanticRegistry()
 				sdk := getOASSdk(t, &sdkOptions{
 					opaModuleContent: opaModuleContent,
@@ -577,8 +575,10 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 				}
 
 				t.Run("logger", func(t *testing.T) {
-					var actual *logrus.Entry
-					for _, entry := range hook.AllEntries() {
+					var actual test.Record
+					records, err := test.GetRecords(logger)
+					require.NoError(t, err)
+					for _, entry := range records {
 						if entry.Message == "policy evaluation completed" {
 							actual = entry
 						}
@@ -586,8 +586,8 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					evaluatorInfo := evaluate.(evaluator)
 
 					require.NotNil(t, actual)
-					delete(actual.Data, "evaluationTimeMicroseconds")
-					require.Equal(t, logrus.Fields{
+					delete(actual.Fields, "evaluationTimeMicroseconds")
+					require.Equal(t, map[string]any{
 						"allowed":       !testCase.notAllowed,
 						"requestedPath": testCase.path,
 						"matchedPath":   evaluatorInfo.policyEvaluationOptions.AdditionalLogFields["matchedPath"],
@@ -595,7 +595,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 						"partialEval":   false,
 						"policyName":    evaluate.Config().ResponseFlow.PolicyName,
 						"resultsLength": 1,
-					}, actual.Data)
+					}, actual.Fields)
 				})
 
 				t.Run("metrics", func(t *testing.T) {
@@ -614,8 +614,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	openAPISpec, err := openapi.LoadOASFile("../mocks/bench.json")
 	require.NoError(b, err)
 
-	log, _ := test.NewNullLogger()
-	logger := logrus.NewEntry(log)
+	logger := logging.NewNoOpLogger()
 	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: testmongoMock,
@@ -653,7 +652,7 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 		h.Helper()
 	}
 
-	logger := logrus.NewEntry(logrus.New())
+	logger := logging.NewNoOpLogger()
 	if options == nil {
 		options = &sdkOptions{}
 	}

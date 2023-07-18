@@ -27,12 +27,12 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -75,11 +75,13 @@ type OPAEvaluator struct {
 	context       context.Context
 	mongoClient   types.IMongoClient
 	generateQuery bool
+	logger        logging.Logger
 }
 
 type OPAEvaluatorOptions struct {
 	EnablePrintStatements bool
 	MongoClient           types.IMongoClient
+	Logger                logging.Logger
 }
 
 func newQueryOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte, options *OPAEvaluatorOptions) (*OPAEvaluator, error) {
@@ -113,19 +115,19 @@ func newQueryOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *O
 		context:       ctx,
 		mongoClient:   options.MongoClient,
 		generateQuery: true,
+		logger:        options.Logger,
 	}, nil
 }
 
-func (config *OPAModuleConfig) CreateQueryEvaluator(ctx context.Context, logger *logrus.Entry, policy string, input []byte, options *OPAEvaluatorOptions) (*OPAEvaluator, error) {
-	// TODO: remove logger and set in sdk
-	logger.WithFields(logrus.Fields{
+func (config *OPAModuleConfig) CreateQueryEvaluator(ctx context.Context, logger logging.Logger, policy string, input []byte, options *OPAEvaluatorOptions) (*OPAEvaluator, error) {
+	logger.WithFields(map[string]any{
 		"policyName": policy,
 	}).Info("Policy to be evaluated")
 
 	opaEvaluatorInstanceTime := time.Now()
 	evaluator, err := newQueryOPAEvaluator(ctx, policy, config, input, options)
 	if err != nil {
-		logger.WithError(err).Error(ErrEvaluatorCreationFailed)
+		logger.WithField("error", err).Error(ErrEvaluatorCreationFailed)
 		return nil, err
 	}
 	logger.
@@ -134,7 +136,7 @@ func (config *OPAModuleConfig) CreateQueryEvaluator(ctx context.Context, logger 
 	return evaluator, nil
 }
 
-func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry, options *PolicyEvaluationOptions) (primitive.M, error) {
+func (evaluator *OPAEvaluator) partiallyEvaluate(logger logging.Logger, options *PolicyEvaluationOptions) (primitive.M, error) {
 	if options == nil {
 		options = &PolicyEvaluationOptions{}
 	}
@@ -150,7 +152,7 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry, options *
 		"policy_name": evaluator.PolicyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
-	fields := logrus.Fields{
+	fields := map[string]any{
 		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                true,
@@ -166,15 +168,15 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger *logrus.Entry, options *
 		return nil, err
 	}
 
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(map[string]any{
 		"allowed": true,
 		"query":   q,
-	}).Tracef("policy results and query")
+	}).Trace("policy results and query")
 
 	return q, nil
 }
 
-func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry, options *PolicyEvaluationOptions) (interface{}, error) {
+func (evaluator *OPAEvaluator) Evaluate(logger logging.Logger, options *PolicyEvaluationOptions) (interface{}, error) {
 	if options == nil {
 		options = &PolicyEvaluationOptions{}
 	}
@@ -192,7 +194,7 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry, options *PolicyEva
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
 	allowed, responseBodyOverwriter := processResults(results)
-	fields := logrus.Fields{
+	fields := map[string]any{
 		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
 		"policyName":                 evaluator.PolicyName,
 		"partialEval":                false,
@@ -203,7 +205,7 @@ func (evaluator *OPAEvaluator) Evaluate(logger *logrus.Entry, options *PolicyEva
 
 	logger.WithFields(fields).Debug("policy evaluation completed")
 
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(map[string]any{
 		"policyName": evaluator.PolicyName,
 		"allowed":    allowed,
 	}).Info("policy result")
@@ -220,7 +222,10 @@ func (evaluator *OPAEvaluator) getContext() context.Context {
 		ctx = context.Background()
 	}
 	if evaluator.mongoClient != nil {
-		return mongoclient.WithMongoClient(ctx, evaluator.mongoClient)
+		ctx = mongoclient.WithMongoClient(ctx, evaluator.mongoClient)
+	}
+	if evaluator.logger != nil {
+		ctx = logging.WithContext(ctx, evaluator.logger)
 	}
 	return ctx
 }
@@ -237,7 +242,7 @@ func (evaluator *PolicyEvaluationOptions) metrics() metrics.Metrics {
 	return metrics.SetupMetrics("rond")
 }
 
-func (evaluator *OPAEvaluator) PolicyEvaluation(logger *logrus.Entry, options *PolicyEvaluationOptions) (interface{}, primitive.M, error) {
+func (evaluator *OPAEvaluator) PolicyEvaluation(logger logging.Logger, options *PolicyEvaluationOptions) (interface{}, primitive.M, error) {
 	if evaluator.generateQuery {
 		query, err := evaluator.partiallyEvaluate(logger, options)
 		return nil, query, err

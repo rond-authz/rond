@@ -26,9 +26,8 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/testutils"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -79,7 +78,7 @@ func TestGetMongoCollectionFromContext(t *testing.T) {
 func TestSetupMongoCollection(t *testing.T) {
 	t.Run("if MongoDBUrl empty, returns nil", func(t *testing.T) {
 		env := config.EnvironmentVariables{}
-		log, _ := test.NewNullLogger()
+		log := logging.NewNoOpLogger()
 		adapter, _ := NewMongoClient(env, log)
 		require.True(t, adapter == nil, "MongoDBUrl is not nil")
 	})
@@ -89,7 +88,7 @@ func TestSetupMongoCollection(t *testing.T) {
 			MongoDBUrl:             "MONGODB_URL",
 			BindingsCollectionName: "Some different name",
 		}
-		log, _ := test.NewNullLogger()
+		log := logging.NewNoOpLogger()
 		adapter, err := NewMongoClient(env, log)
 		require.True(t, adapter == nil, "RolesCollectionName collection is not nil")
 		require.Contains(t, err.Error(), `MongoDB url is not empty, required variables might be missing: BindingsCollectionName: "Some different name",  RolesCollectionName: ""`)
@@ -103,7 +102,7 @@ func TestSetupMongoCollection(t *testing.T) {
 			RolesCollectionName:    "something new",
 			BindingsCollectionName: "Some different name",
 		}
-		log, _ := test.NewNullLogger()
+		log := logging.NewNoOpLogger()
 		adapter, err := NewMongoClient(env, log)
 		require.True(t, err != nil, "setup mongo not returns error")
 		require.Contains(t, err.Error(), "failed MongoDB connection string validation:")
@@ -123,7 +122,7 @@ func TestSetupMongoCollection(t *testing.T) {
 			BindingsCollectionName: "bindings",
 		}
 
-		log, _ := test.NewNullLogger()
+		log := logging.NewNoOpLogger()
 		mongoClient, err := NewMongoClient(env, log)
 
 		defer mongoClient.Disconnect()
@@ -146,7 +145,7 @@ func TestMongoCollections(t *testing.T) {
 			BindingsCollectionName: "bindings",
 		}
 
-		log, _ := test.NewNullLogger()
+		log := logging.NewNoOpLogger()
 		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
 		require.True(t, err == nil, "setup mongo returns error")
@@ -234,7 +233,7 @@ func TestMongoCollections(t *testing.T) {
 			BindingsCollectionName: "bindings",
 		}
 
-		log, _ := test.NewNullLogger()
+		log := logging.NewNoOpLogger()
 		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
 		require.True(t, err == nil, "setup mongo returns error")
@@ -284,7 +283,7 @@ func TestMongoCollections(t *testing.T) {
 			BindingsCollectionName: "bindings",
 		}
 
-		log, _ := test.NewNullLogger()
+		log := logging.NewNoOpLogger()
 		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
 		require.True(t, err == nil, "setup mongo returns error")
@@ -329,7 +328,7 @@ func TestMongoFindOne(t *testing.T) {
 		RolesCollectionName:    "roles",
 		BindingsCollectionName: "bindings",
 	}
-	log, _ := test.NewNullLogger()
+	log := logging.NewNoOpLogger()
 	mongoClient, err := NewMongoClient(env, log)
 	defer mongoClient.Disconnect()
 	require.True(t, err == nil, "setup mongo returns error")
@@ -387,7 +386,7 @@ func TestMongoFindMany(t *testing.T) {
 		RolesCollectionName:    "roles",
 		BindingsCollectionName: "bindings",
 	}
-	log, _ := test.NewNullLogger()
+	log := logging.NewNoOpLogger()
 	mongoClient, err := NewMongoClient(env, log)
 	defer mongoClient.Disconnect()
 	require.True(t, err == nil, "setup mongo returns error")
@@ -472,7 +471,7 @@ func TestRolesIDSFromBindings(t *testing.T) {
 }
 
 func TestRetrieveUserBindingsAndRoles(t *testing.T) {
-	logger, _ := test.NewNullLogger()
+	log := logging.NewNoOpLogger()
 	userHeaders := types.UserHeadersKeys{
 		GroupsHeaderKey:     "thegroupsheader",
 		IDHeaderKey:         "theuserheader",
@@ -483,7 +482,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req = req.WithContext(context.WithValue(req.Context(), types.MongoClientContextKey{}, "test"))
 
-		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logger), req, userHeaders)
+		_, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
 		require.Error(t, err, "Unexpected error retrieving MongoDB Client from request context")
 	})
 
@@ -492,7 +491,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req.Header.Set("thegroupsheader", "group1,group2")
 		req.Header.Set("theuserheader", "userId")
 
-		user, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logger), req, userHeaders)
+		user, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
 		require.NoError(t, err)
 		require.Equal(t, types.User{
 			UserID:     "userId",
@@ -508,7 +507,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req = req.WithContext(WithMongoClient(req.Context(), mock))
 
-		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, userHeaders)
+		_, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
 		require.NoError(t, err)
 	})
 
@@ -521,7 +520,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req.Header.Set("thegroupsheader", "group1,group2")
 		req.Header.Set("theuserheader", "userId")
 
-		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, userHeaders)
+		_, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
 		require.Error(t, err, "Error while retrieving user bindings: some error")
 	})
 
@@ -537,7 +536,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req.Header.Set("thegroupsheader", "group1,group2")
 		req.Header.Set("theuserheader", "userId")
 
-		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, userHeaders)
+		_, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
 		require.Error(t, err, "Error while retrieving user Roles: some error 2")
 	})
 
@@ -558,7 +557,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req.Header.Set("thegroupsheader", "group1,group2")
 		req.Header.Set("theuserheader", "userId")
 
-		user, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, userHeaders)
+		user, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
 		require.NoError(t, err)
 		require.Equal(t, types.User{
 			UserID:     "userId",
@@ -582,7 +581,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req.Header.Set("thegroupsheader", "group1,group2")
 		req.Header.Set("theuserheader", "userId")
 
-		user, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, userHeaders)
+		user, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
 		require.NoError(t, err)
 		require.Equal(t, types.User{
 			UserID:     "userId",
@@ -595,7 +594,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req.Header.Set("userproperties", "1")
 
-		_, err := RetrieveUserBindingsAndRoles(logrus.NewEntry(logrus.New()), req, userHeaders)
+		_, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
 		require.ErrorContains(t, err, "user properties header is not valid:")
 	})
 }

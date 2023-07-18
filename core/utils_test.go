@@ -17,7 +17,6 @@ package core
 import (
 	"testing"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,12 +25,12 @@ func TestAdditionalLogFields(t *testing.T) {
 		"foo": "bar",
 	}
 
-	actual := logrus.Fields{
+	actual := map[string]any{
 		"taz": "ok",
 	}
 	addDataToLogFields(actual, logFieldsToAdd)
 
-	expected := logrus.Fields{
+	expected := map[string]any{
 		"foo": "bar",
 		"taz": "ok",
 	}

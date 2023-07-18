@@ -14,9 +14,7 @@
 
 package core
 
-import "github.com/sirupsen/logrus"
-
-func addDataToLogFields(fields logrus.Fields, m map[string]string) {
+func addDataToLogFields(fields map[string]any, m map[string]string) {
 	for k, v := range m {
 		fields[k] = v
 	}

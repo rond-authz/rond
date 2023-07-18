@@ -74,7 +74,9 @@ type IMongoClient interface {
 	RetrieveRoles(ctx context.Context) ([]Role, error)
 	RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]Role, error)
 
+	// FindOne is only used inside the custom_builtins
 	FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error)
+	// FindMany is only used inside the custom_builtins
 	FindMany(ctx context.Context, collectionName string, query map[string]interface{}) ([]interface{}, error)
 }
 

@@ -22,10 +22,9 @@ import (
 
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,7 +46,7 @@ func TestNewOPAEvaluator(t *testing.T) {
 
 func TestOPAEvaluator(t *testing.T) {
 	t.Run("get context", func(t *testing.T) {
-		t.Run("no context and no mongo client", func(t *testing.T) {
+		t.Run("no context", func(t *testing.T) {
 			opaEval := OPAEvaluator{}
 			ctx := opaEval.getContext()
 
@@ -55,6 +54,9 @@ func TestOPAEvaluator(t *testing.T) {
 			client, err := mongoclient.GetMongoClientFromContext(ctx)
 			require.NoError(t, err)
 			require.Nil(t, client)
+
+			logger := logging.FromContext(ctx)
+			require.NotNil(t, logger)
 		})
 
 		t.Run("passed context with mongo client", func(t *testing.T) {
@@ -83,6 +85,19 @@ func TestOPAEvaluator(t *testing.T) {
 			client, err := mongoclient.GetMongoClientFromContext(ctx)
 			require.NoError(t, err)
 			require.Equal(t, mongoClient, client)
+		})
+
+		t.Run("passed logger", func(t *testing.T) {
+			log := logging.NewNoOpLogger()
+			opaEval := OPAEvaluator{
+				context: context.Background(),
+				logger:  log,
+			}
+			ctx := opaEval.getContext()
+
+			require.NotNil(t, ctx)
+			actualLog := logging.FromContext(ctx)
+			require.Equal(t, log, actualLog)
 		})
 	})
 }
@@ -126,8 +141,7 @@ column_policy{
 
 	opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-	log, _ := test.NewNullLogger()
-	logger := logrus.NewEntry(log)
+	logger := logging.NewNoOpLogger()
 
 	input := Input{Request: InputRequest{}, Response: InputResponse{}}
 	inputBytes, _ := json.Marshal(input)

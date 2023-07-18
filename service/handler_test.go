@@ -33,11 +33,12 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/internal/utils"
+	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
-	"github.com/mia-platform/glogger/v2"
+	"github.com/mia-platform/glogger/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/sirupsen/logrus"
@@ -718,8 +719,9 @@ allow {
 
 			log, hook := test.NewNullLogger()
 			log.Level = logrus.TraceLevel
-			logger := logrus.NewEntry(log)
-			ctx = glogger.WithLogger(ctx, logger)
+			logEntry := logrus.NewEntry(log)
+			logger := rondlogrus.NewEntry(logEntry)
+			ctx = glogger.WithLogger(ctx, logEntry)
 
 			registry := prometheus.NewRegistry()
 
@@ -793,8 +795,9 @@ allow {
 
 			log, hook := test.NewNullLogger()
 			log.Level = logrus.TraceLevel
-			logger := logrus.NewEntry(log)
-			ctx = glogger.WithLogger(ctx, logger)
+			logEntry := logrus.NewEntry(log)
+			logger := rondlogrus.NewEntry(logEntry)
+			ctx = glogger.WithLogger(ctx, logEntry)
 
 			registry := prometheus.NewRegistry()
 

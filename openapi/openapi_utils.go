@@ -29,8 +29,8 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/logging"
 
-	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bunrouter"
 )
 
@@ -286,7 +286,7 @@ func deserializeSpec(spec []byte, errorWrapper error) (*OpenAPISpec, error) {
 	return &oas, nil
 }
 
-func fetchOpenAPI(log *logrus.Logger, url string) (*OpenAPISpec, error) {
+func fetchOpenAPI(log logging.Logger, url string) (*OpenAPISpec, error) {
 	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrRequestFailed, err)
@@ -294,7 +294,9 @@ func fetchOpenAPI(log *logrus.Logger, url string) (*OpenAPISpec, error) {
 	defer func() {
 		err := resp.Body.Close()
 		if err != nil {
-			log.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed response body close")
+			log.WithFields(map[string]any{
+				"error": map[string]any{"message": err.Error()},
+			}).Error("failed response body close")
 		}
 	}()
 
@@ -320,12 +322,12 @@ type LoadOptions struct {
 	TargetServiceHost      string
 }
 
-func LoadOASFromFileOrNetwork(log *logrus.Logger, config LoadOptions) (*OpenAPISpec, error) {
+func LoadOASFromFileOrNetwork(log logging.Logger, config LoadOptions) (*OpenAPISpec, error) {
 	if config.APIPermissionsFilePath != "" {
 		log.WithField("oasFilePath", config.APIPermissionsFilePath).Debug("Attempt to load OAS from file")
 		oas, err := LoadOASFile(config.APIPermissionsFilePath)
 		if err != nil {
-			log.WithFields(logrus.Fields{
+			log.WithFields(map[string]any{
 				"APIPermissionsFilePath": config.APIPermissionsFilePath,
 			}).Warn("failed api permissions file read")
 			return nil, err
@@ -341,10 +343,10 @@ func LoadOASFromFileOrNetwork(log *logrus.Logger, config LoadOptions) (*OpenAPIS
 		for {
 			fetchedOAS, err := fetchOpenAPI(log, documentationURL)
 			if err != nil {
-				log.WithFields(logrus.Fields{
+				log.WithFields(map[string]any{
 					"targetServiceHost": config.TargetServiceHost,
 					"targetOASPath":     config.TargetServiceOASPath,
-					"error":             logrus.Fields{"message": err.Error()},
+					"error":             map[string]any{"message": err.Error()},
 				}).Warn("failed OAS fetch, retry in 1s")
 				time.Sleep(1 * time.Second)
 				continue

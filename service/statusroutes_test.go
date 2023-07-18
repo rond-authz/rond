@@ -26,11 +26,11 @@ import (
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
+	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 
 	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
@@ -119,7 +119,7 @@ test_policy { true }
 			MongoClient: mongoClient,
 		},
 		Registry: registry,
-		Logger:   logrus.NewEntry(logger),
+		Logger:   rondlogrus.NewLogger(logger),
 	})
 	require.NoError(t, err, "unexpected error")
 

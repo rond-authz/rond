@@ -1,3 +1,17 @@
+// Copyright 2021 Mia srl
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package openapi
 
 import (
@@ -5,23 +19,21 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/logging"
 
-	"github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreatePolicyEvaluators(t *testing.T) {
 	t.Run("with simplified mock", func(t *testing.T) {
-		log, _ := test.NewNullLogger()
-		logger := logrus.NewEntry(log)
+		logger := logging.NewNoOpLogger()
 		ctx := context.Background()
 
 		opaModuleDirectory := "../mocks/rego-policies"
 		loadOptions := LoadOptions{
 			APIPermissionsFilePath: "../mocks/simplifiedMock.json",
 		}
-		openApiSpec, err := LoadOASFromFileOrNetwork(log, loadOptions)
+		openApiSpec, err := LoadOASFromFileOrNetwork(logger, loadOptions)
 		require.NoError(t, err, "unexpected error")
 
 		opaModuleConfig, err := core.LoadRegoModule(opaModuleDirectory)
@@ -33,8 +45,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 	})
 
 	t.Run("with complete oas mock", func(t *testing.T) {
-		log, _ := test.NewNullLogger()
-		logger := logrus.NewEntry(log)
+		logger := logging.NewNoOpLogger()
 		ctx := context.Background()
 
 		opaModulesDirectory := "../mocks/rego-policies"
@@ -42,7 +53,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 		loadOptions := LoadOptions{
 			APIPermissionsFilePath: "../mocks/pathsConfigAllInclusive.json",
 		}
-		openApiSpec, err := LoadOASFromFileOrNetwork(log, loadOptions)
+		openApiSpec, err := LoadOASFromFileOrNetwork(logger, loadOptions)
 		require.NoError(t, err, "unexpected error")
 
 		opaModuleConfig, err := core.LoadRegoModule(opaModulesDirectory)
@@ -54,8 +65,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 	})
 
 	t.Run("with oas nil", func(t *testing.T) {
-		log, _ := test.NewNullLogger()
-		logger := logrus.NewEntry(log)
+		logger := logging.NewNoOpLogger()
 		ctx := context.Background()
 
 		_, err := SetupEvaluators(ctx, logger, nil, nil, nil)
@@ -63,8 +73,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 	})
 
 	t.Run("with complete oas mock", func(t *testing.T) {
-		log, _ := test.NewNullLogger()
-		logger := logrus.NewEntry(log)
+		logger := logging.NewNoOpLogger()
 		ctx := context.Background()
 
 		opaModulesDirectory := "../mocks/rego-policies"

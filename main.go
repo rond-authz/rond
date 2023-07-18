@@ -28,11 +28,13 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/helpers"
 	"github.com/rond-authz/rond/internal/mongoclient"
+	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/service"
 
-	"github.com/mia-platform/glogger/v2"
+	"github.com/mia-platform/glogger/v4"
+	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
 	"github.com/sirupsen/logrus"
 )
 
@@ -45,7 +47,7 @@ func entrypoint(shutdown chan os.Signal) {
 	env := config.GetEnvOrDie()
 
 	// Init logger instance.
-	log, err := glogger.InitHelper(glogger.InitOptions{Level: env.LogLevel})
+	log, err := glogrus.InitHelper(glogrus.InitOptions{Level: env.LogLevel})
 	if err != nil {
 		panic(err.Error())
 	}
@@ -68,7 +70,8 @@ func entrypoint(shutdown chan os.Signal) {
 	}
 	log.WithField("opaModuleFileName", opaModuleConfig.Name).Trace("rego module successfully loaded")
 
-	oas, err := openapi.LoadOASFromFileOrNetwork(log, openapi.LoadOptions{
+	rondLogger := rondlogrus.NewLogger(log)
+	oas, err := openapi.LoadOASFromFileOrNetwork(rondLogger, openapi.LoadOptions{
 		APIPermissionsFilePath: env.APIPermissionsFilePath,
 		TargetServiceOASPath:   env.TargetServiceOASPath,
 		TargetServiceHost:      env.TargetServiceHost,
@@ -86,7 +89,7 @@ func entrypoint(shutdown chan os.Signal) {
 		"oasApiPath":  env.TargetServiceOASPath,
 	}).Trace("OAS successfully loaded")
 
-	mongoClient, err := mongoclient.NewMongoClient(env, log)
+	mongoClient, err := mongoclient.NewMongoClient(env, rondLogger)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},
@@ -106,7 +109,7 @@ func entrypoint(shutdown chan os.Signal) {
 			EnablePrintStatements: env.IsTraceLogLevel(),
 			MongoClient:           mongoClient,
 		},
-		Logger: logrus.NewEntry(log),
+		Logger: rondLogger,
 	})
 	if err != nil {
 		log.WithFields(logrus.Fields{

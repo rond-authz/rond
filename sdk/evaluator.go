@@ -20,9 +20,8 @@ import (
 	"fmt"
 
 	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
-
-	"github.com/sirupsen/logrus"
 )
 
 type PolicyResult struct {
@@ -46,7 +45,7 @@ type Evaluator interface {
 }
 
 type evaluator struct {
-	logger                  *logrus.Entry
+	logger                  logging.Logger
 	rondConfig              core.RondConfig
 	opaModuleConfig         *core.OPAModuleConfig
 	partialResultEvaluators core.PartialResultsEvaluators
@@ -94,7 +93,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req core.RondInput
 	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(e.logger, e.policyEvaluationOptions)
 
 	if err != nil {
-		e.logger.WithField("error", logrus.Fields{
+		e.logger.WithField("error", map[string]any{
 			"policyName": rondConfig.RequestFlow.PolicyName,
 			"message":    err.Error(),
 		}).Error("RBAC policy evaluation failed")

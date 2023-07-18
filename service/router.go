@@ -22,10 +22,6 @@ import (
 	"sort"
 	"strings"
 
-	swagger "github.com/davidebianchi/gswagger"
-	"github.com/davidebianchi/gswagger/support/gorilla"
-	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/metrics"
@@ -35,8 +31,13 @@ import (
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
 
+	swagger "github.com/davidebianchi/gswagger"
+	"github.com/davidebianchi/gswagger/support/gorilla"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gorilla/mux"
-	"github.com/mia-platform/glogger/v2"
+	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
+	gmux "github.com/mia-platform/glogger/v4/middleware/mux"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
 
@@ -106,7 +107,7 @@ func SetupRouter(
 	registry *prometheus.Registry,
 ) (*mux.Router, error) {
 	router := mux.NewRouter().UseEncodedPath()
-	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
+	router.Use(gmux.RequestMiddlewareLogger(glogrus.GetLogger(logrus.NewEntry(log)), []string{"/-/"}))
 	serviceName := "rönd"
 	StatusRoutes(router, serviceName, env.ServiceVersion)
 

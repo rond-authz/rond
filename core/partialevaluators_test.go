@@ -22,13 +22,13 @@ import (
 
 	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/logging"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
 func TestPartialResultEvaluators(t *testing.T) {
-	logger := logrus.NewEntry(logrus.New())
+	logger := logging.NewNoOpLogger()
 
 	opaModule := &OPAModuleConfig{
 		Content: `package policies
@@ -154,6 +154,45 @@ func TestPartialResultEvaluators(t *testing.T) {
 			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
 			require.NoError(t, err)
 			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "allow_with_find_one", input, &evalOpts)
+			require.NoError(t, err)
+			res, query, err := evaluator.PolicyEvaluation(logger, nil)
+			require.NoError(t, err)
+			require.Empty(t, query)
+			require.Empty(t, res)
+		})
+	})
+
+	t.Run("correctly create with logger", func(t *testing.T) {
+		partialEvaluators := PartialResultsEvaluators{}
+		rondConfig := &RondConfig{
+			RequestFlow: RequestFlow{
+				PolicyName: "allow",
+			},
+		}
+
+		evalOpts := OPAEvaluatorOptions{
+			Logger: logger,
+		}
+
+		err := partialEvaluators.AddFromConfig(context.Background(), logger, opaModule, rondConfig, &evalOpts)
+		require.NoError(t, err)
+		require.NotNil(t, partialEvaluators["allow"])
+
+		rondInput := Input{
+			Request: InputRequest{
+				PathParams: map[string]string{
+					"projectId": "1234",
+				},
+			},
+			Response:   InputResponse{},
+			User:       InputUser{},
+			ClientType: "client-type",
+		}
+
+		t.Run("find and evaluate policy", func(t *testing.T) {
+			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
+			require.NoError(t, err)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "allow", input, &evalOpts)
 			require.NoError(t, err)
 			res, query, err := evaluator.PolicyEvaluation(logger, nil)
 			require.NoError(t, err)
