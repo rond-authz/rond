@@ -24,7 +24,6 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
-	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
@@ -41,7 +40,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var routesToNotProxy = utils.Union(statusRoutes, []string{metrics.MetricsRoutePath})
+var routesToNotProxy = utils.Union(statusRoutes, []string{metricsRoutePath})
 
 var revokeDefinitions = swagger.Definitions{
 	RequestBody: &swagger.ContentValue{
@@ -111,7 +110,9 @@ func SetupRouter(
 	serviceName := "rönd"
 	StatusRoutes(router, serviceName, env.ServiceVersion)
 
-	metrics.MetricsRoute(router, registry)
+	if env.ExposeMetrics {
+		metricsRoute(router, registry)
+	}
 
 	router.Use(config.RequestMiddlewareEnvironments(env))
 

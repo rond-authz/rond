@@ -13,21 +13,3 @@
 // limitations under the License.
 
 package metrics
-
-import (
-	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-)
-
-var MetricsRoutePath = "/-/rond/metrics"
-
-func MetricsRoute(r *mux.Router, registry *prometheus.Registry) {
-	r.Handle(MetricsRoutePath, promhttp.InstrumentMetricHandler(
-		registry,
-		promhttp.HandlerFor(registry, promhttp.HandlerOpts{
-			Registry:          registry,
-			EnableOpenMetrics: true,
-		}),
-	))
-}

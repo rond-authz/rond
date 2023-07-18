@@ -24,11 +24,14 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/helpers"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
+	"github.com/rond-authz/rond/metrics"
+	rondprometheus "github.com/rond-authz/rond/metrics/prometheus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/service"
@@ -102,9 +105,18 @@ func entrypoint(shutdown chan os.Signal) {
 		logrus.NewEntry(log),
 	)
 
-	registry := prometheus.NewRegistry()
+	var m *metrics.Metrics
+	var registry *prometheus.Registry
+	if env.ExposeMetrics {
+		registry = prometheus.NewRegistry()
+		registry.MustRegister(
+			collectors.NewGoCollector(),
+			collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+		)
+		m = rondprometheus.SetupMetrics(registry)
+	}
 	sdk, err := sdk.NewFromOAS(ctx, opaModuleConfig, oas, &sdk.Options{
-		Registry: registry,
+		Metrics: m,
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			EnablePrintStatements: env.IsTraceLogLevel(),
 			MongoClient:           mongoClient,

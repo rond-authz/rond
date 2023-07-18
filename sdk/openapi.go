@@ -16,8 +16,8 @@ package sdk
 
 import (
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/logging"
+	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
 
 	"github.com/uptrace/bunrouter"

@@ -19,15 +19,13 @@ import (
 	"fmt"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/logging"
+	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Options struct {
-	Registry         *prometheus.Registry
+	Metrics          *metrics.Metrics
 	EvaluatorOptions *core.OPAEvaluatorOptions
 	Logger           logging.Logger
 }
@@ -50,7 +48,6 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 	if options.EvaluatorOptions != nil {
 		evaluatorOptions = options.EvaluatorOptions
 	}
-	metrics := setupMetrics(options.Registry)
 
 	evaluator, err := openapi.SetupEvaluators(ctx, logger, oas, opaModuleConfig, evaluatorOptions)
 	if err != nil {
@@ -71,7 +68,7 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 		opaModuleConfig:         opaModuleConfig,
 		partialResultEvaluators: evaluator,
 		opaEvaluatorOptions:     evaluatorOptions,
-		metrics:                 metrics,
+		metrics:                 options.Metrics,
 	}, nil
 }
 
@@ -88,7 +85,6 @@ func NewWithConfig(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, r
 	if err := policyEvaluators.AddFromConfig(ctx, logger, opaModuleConfig, &rondConfig, options.EvaluatorOptions); err != nil {
 		return nil, err
 	}
-	metrics := setupMetrics(options.Registry)
 
 	return evaluator{
 		rondConfig:              rondConfig,
@@ -98,15 +94,7 @@ func NewWithConfig(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, r
 
 		opaEvaluatorOptions: options.EvaluatorOptions,
 		policyEvaluationOptions: &core.PolicyEvaluationOptions{
-			Metrics: metrics,
+			Metrics: options.Metrics,
 		},
 	}, nil
-}
-
-func setupMetrics(registry *prometheus.Registry) *metrics.Metrics {
-	m := metrics.SetupMetrics("rond")
-	if registry != nil {
-		m.MustRegister(registry)
-	}
-	return &m
 }

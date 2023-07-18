@@ -21,9 +21,9 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/logging"
+	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,10 +37,9 @@ func TestOasSDK(t *testing.T) {
 		Content: `package policies
 		very_very_composed_permission { true }`,
 	}
-	registry := prometheus.NewRegistry()
 	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &Options{
-		Registry: registry,
-		Logger:   logger,
+		Metrics: metrics.NoOpMetrics(),
+		Logger:  logger,
 	})
 	require.NoError(t, err)
 

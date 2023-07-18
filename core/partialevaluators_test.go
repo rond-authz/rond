@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/logging"
+	"github.com/rond-authz/rond/metrics"
 
 	"github.com/stretchr/testify/require"
 )
@@ -326,9 +326,8 @@ func TestPartialResultEvaluators(t *testing.T) {
 			require.NoError(t, err)
 			evaluator, err := opaModule.CreateQueryEvaluator(context.Background(), logger, "filter_projects", input, &evalOpts)
 			require.NoError(t, err)
-			metrics := metrics.SetupMetrics("rond")
 			opts := PolicyEvaluationOptions{
-				Metrics: &metrics,
+				Metrics: metrics.NoOpMetrics(),
 			}
 			res, query, err := evaluator.PolicyEvaluation(logger, &opts)
 			require.NoError(t, err)

@@ -26,6 +26,7 @@ import (
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/logging/test"
+	rondprometheus "github.com/rond-authz/rond/metrics/prometheus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
@@ -327,7 +328,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					opaModuleContent: testCase.opaModuleContent,
 					oasFilePath:      testCase.oasFilePath,
 					mongoClient:      testCase.mongoClient,
-					registry:         registry,
+					metrics:          rondprometheus.SetupMetrics(registry),
 				})
 
 				logger := test.GetLogger()
@@ -537,7 +538,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					opaModuleContent: opaModuleContent,
 					oasFilePath:      "../mocks/rondOasConfig.json",
 					mongoClient:      testCase.mongoClient,
-					registry:         registry,
+					metrics:          rondprometheus.SetupMetrics(registry),
 				})
 
 				evaluate, err := sdk.FindEvaluator(logger, testCase.method, testCase.path)
@@ -672,8 +673,9 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 	if options.opaModuleContent != "" {
 		opaModule.Content = options.opaModuleContent
 	}
+
 	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &Options{
-		Registry: options.registry,
+		Metrics: options.metrics,
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			EnablePrintStatements: true,
 			MongoClient:           options.mongoClient,

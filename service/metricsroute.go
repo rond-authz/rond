@@ -12,29 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metrics
+package service
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"testing"
-
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/require"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func TestMetricsRoute(t *testing.T) {
-	t.Run("exposes metrics route", func(t *testing.T) {
-		router := mux.NewRouter()
-		registry := prometheus.NewRegistry()
-		MetricsRoute(router, registry)
+var metricsRoutePath = "/-/rond/metrics"
 
-		req := httptest.NewRequest(http.MethodGet, MetricsRoutePath, nil)
-		w := httptest.NewRecorder()
+func metricsRoute(r *mux.Router, registry *prometheus.Registry) {
+	if registry == nil {
+		return
+	}
 
-		router.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusOK, w.Result().StatusCode)
-	})
+	r.Handle(metricsRoutePath, promhttp.InstrumentMetricHandler(
+		registry,
+		promhttp.HandlerFor(registry, promhttp.HandlerOpts{
+			Registry:          registry,
+			EnableOpenMetrics: true,
+		}),
+	))
 }

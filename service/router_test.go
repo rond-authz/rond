@@ -29,6 +29,8 @@ import (
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/logging"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
+	"github.com/rond-authz/rond/metrics"
+	rondprometheus "github.com/rond-authz/rond/metrics/prometheus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
@@ -288,12 +290,17 @@ func getEvaluator(
 		logger = rondlogrus.NewLogger(log)
 	}
 
+	var m *metrics.Metrics
+	if options.registry != nil {
+		m = rondprometheus.SetupMetrics(options.registry)
+	}
+
 	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},
-		Registry: options.registry,
-		Logger:   logger,
+		Logger:  logger,
+		Metrics: m,
 	})
 	require.NoError(t, err, "unexpected error")
 
