@@ -15,9 +15,7 @@
 package sdk
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,12 +24,11 @@ import (
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/logging/test"
-	rondprometheus "github.com/rond-authz/rond/metrics/prometheus"
+	"github.com/rond-authz/rond/metrics"
+	metricstest "github.com/rond-authz/rond/metrics/test"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/require"
 )
 
@@ -323,12 +320,12 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 
 		for name, testCase := range testCases {
 			t.Run(name, func(t *testing.T) {
-				registry := prometheus.NewPedanticRegistry()
+				testMetrics, hook := metricstest.New()
 				sdk := getOASSdk(t, &sdkOptions{
 					opaModuleContent: testCase.opaModuleContent,
 					oasFilePath:      testCase.oasFilePath,
 					mongoClient:      testCase.mongoClient,
-					metrics:          rondprometheus.SetupMetrics(registry),
+					metrics:          testMetrics,
 				})
 
 				logger := test.GetLogger()
@@ -391,33 +388,18 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				})
 
 				t.Run("metrics", func(t *testing.T) {
-					expected := fmt.Sprintf(`rond_policy_evaluation_duration_milliseconds_count{policy_name="%s"} 1`, evaluate.Config().RequestFlow.PolicyName)
-					assertCorrectMetrics(t, registry, expected)
+					require.Len(t, hook.AllEntries(), 1)
+					require.Equal(t, metricstest.Entry{
+						Name: "policy_evaluation_duration_milliseconds",
+						Labels: metrics.Labels{
+							"policy_name": evaluate.Config().RequestFlow.PolicyName,
+						},
+						Value: hook.Entries[0].Value,
+					}, hook.Entries[0])
 				})
 			})
 		}
 	})
-}
-
-func assertCorrectMetrics(t *testing.T, registry *prometheus.Registry, expected string) {
-	t.Helper()
-
-	g := prometheus.ToTransactionalGatherer(registry)
-	got, done, err := g.Gather()
-	defer done()
-	require.NoError(t, err)
-
-	for _, m := range got {
-		if m.GetName() == "rond_policy_evaluation_duration_milliseconds" {
-			var gotBuf bytes.Buffer
-			enc := expfmt.NewEncoder(&gotBuf, expfmt.FmtText)
-			err := enc.Encode(m)
-			require.NoError(t, err)
-			require.Contains(t, gotBuf.String(), expected)
-			return
-		}
-	}
-	require.Fail(t, "metrics must be retrieved")
 }
 
 func TestEvaluateResponsePolicy(t *testing.T) {
@@ -533,12 +515,12 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 				}
 
 				logger := test.GetLogger()
-				registry := prometheus.NewPedanticRegistry()
+				testMetrics, hook := metricstest.New()
 				sdk := getOASSdk(t, &sdkOptions{
 					opaModuleContent: opaModuleContent,
 					oasFilePath:      "../mocks/rondOasConfig.json",
 					mongoClient:      testCase.mongoClient,
-					metrics:          rondprometheus.SetupMetrics(registry),
+					metrics:          testMetrics,
 				})
 
 				evaluate, err := sdk.FindEvaluator(logger, testCase.method, testCase.path)
@@ -600,8 +582,14 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 				})
 
 				t.Run("metrics", func(t *testing.T) {
-					expected := fmt.Sprintf(`rond_policy_evaluation_duration_milliseconds_count{policy_name="%s"} 1`, evaluate.Config().ResponseFlow.PolicyName)
-					assertCorrectMetrics(t, registry, expected)
+					require.Len(t, hook.AllEntries(), 1)
+					require.Equal(t, metricstest.Entry{
+						Name: "policy_evaluation_duration_milliseconds",
+						Labels: metrics.Labels{
+							"policy_name": evaluate.Config().ResponseFlow.PolicyName,
+						},
+						Value: hook.Entries[0].Value,
+					}, hook.Entries[0])
 				})
 			})
 		}

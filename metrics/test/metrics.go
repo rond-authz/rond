@@ -12,40 +12,69 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package rondprometheus
+package metricstest
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/metrics"
 )
 
-func SetupMetrics(reg prometheus.Registerer) *metrics.Metrics {
-	duration := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+type Entry struct {
+	Name   string
+	Labels metrics.Labels
+	Value  float64
+}
+
+type Entries []Entry
+
+type Hook struct {
+	Entries Entries
+}
+
+func (h *Hook) setValueToLastEntry(v float64) {
+	h.Entries[len(h.Entries)-1].Value = v
+}
+
+func (h *Hook) AllEntries() Entries {
+	return h.Entries
+}
+
+func New() (*metrics.Metrics, *Hook) {
+	duration := histogramVec{
 		Namespace: metrics.Prefix,
 		Name:      metrics.PolicyEvalDuration,
-		Help:      "A histogram of the policy evaluation durations in milliseconds.",
-		Buckets:   []float64{1, 5, 10, 50, 100, 250, 500},
-	}, []string{"policy_name"})
+		Labels:    []string{"policy_name"},
 
-	m := &metrics.Metrics{
-		PolicyEvaluationDurationMilliseconds: histogramVec{duration},
+		hook: &Hook{},
 	}
 
-	reg.MustRegister(
-		duration,
-	)
+	m := &metrics.Metrics{
+		PolicyEvaluationDurationMilliseconds: duration,
+	}
 
-	return m
+	return m, duration.hook
 }
 
 type histogramVec struct {
-	*prometheus.HistogramVec
+	Namespace string
+	Name      string
+	Labels    []string
+
+	hook *Hook
 }
 
 type observer struct {
-	prometheus.Observer
+	hook *Hook
+}
+
+func (o observer) Observe(v float64) {
+	o.hook.setValueToLastEntry(v)
 }
 
 func (h histogramVec) With(labels metrics.Labels) metrics.Observer {
-	return observer{h.HistogramVec.With(prometheus.Labels(labels))}
+	h.hook.Entries = append(h.hook.Entries, Entry{
+		Name:   h.Name,
+		Labels: labels,
+	})
+
+	return observer{hook: h.hook}
 }
