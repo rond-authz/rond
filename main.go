@@ -89,7 +89,7 @@ func entrypoint(shutdown chan os.Signal) {
 		"oasApiPath":  env.TargetServiceOASPath,
 	}).Trace("OAS successfully loaded")
 
-	mongoClient, err := mongoclient.NewMongoClient(env, rondlogrus.NewLogger(log))
+	mongoClient, err := mongoclient.NewMongoClient(env, rondLogger)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},
