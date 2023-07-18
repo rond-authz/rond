@@ -46,7 +46,7 @@ func TestNewOPAEvaluator(t *testing.T) {
 
 func TestOPAEvaluator(t *testing.T) {
 	t.Run("get context", func(t *testing.T) {
-		t.Run("no context and no mongo client", func(t *testing.T) {
+		t.Run("no context", func(t *testing.T) {
 			opaEval := OPAEvaluator{}
 			ctx := opaEval.getContext()
 
@@ -54,6 +54,9 @@ func TestOPAEvaluator(t *testing.T) {
 			client, err := mongoclient.GetMongoClientFromContext(ctx)
 			require.NoError(t, err)
 			require.Nil(t, client)
+
+			logger := logger.FromContext(ctx)
+			require.NotNil(t, logger)
 		})
 
 		t.Run("passed context with mongo client", func(t *testing.T) {
@@ -82,6 +85,19 @@ func TestOPAEvaluator(t *testing.T) {
 			client, err := mongoclient.GetMongoClientFromContext(ctx)
 			require.NoError(t, err)
 			require.Equal(t, mongoClient, client)
+		})
+
+		t.Run("passed logger", func(t *testing.T) {
+			log := logger.NewNullLogger()
+			opaEval := OPAEvaluator{
+				context: context.Background(),
+				logger:  log,
+			}
+			ctx := opaEval.getContext()
+
+			require.NotNil(t, ctx)
+			actualLog := logger.FromContext(ctx)
+			require.Equal(t, log, actualLog)
 		})
 	})
 }

@@ -18,85 +18,120 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/logger"
+
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLogrusAdapter(t *testing.T) {
-	t.Run("error", func(t *testing.T) {
-		logger, hook := getLogger()
+	testCases := []struct {
+		name          string
+		test          func(t *testing.T, log logger.Logger)
+		expectedMsg   string
+		expectedLevel logrus.Level
+		expectedData  logrus.Fields
+	}{
+		{
+			name: "error",
+			test: func(t *testing.T, log logger.Logger) {
+				log.Error("a message")
+			},
+			expectedMsg:   "a message",
+			expectedLevel: logrus.ErrorLevel,
+		},
+		{
+			name: "warn",
+			test: func(t *testing.T, log logger.Logger) {
+				log.Warn("a message")
+			},
+			expectedMsg:   "a message",
+			expectedLevel: logrus.WarnLevel,
+		},
+		{
+			name: "info",
+			test: func(t *testing.T, log logger.Logger) {
+				log.Info("a message")
+			},
+			expectedMsg:   "a message",
+			expectedLevel: logrus.InfoLevel,
+		},
+		{
+			name: "debug",
+			test: func(t *testing.T, log logger.Logger) {
+				log.Debug("a message")
+			},
+			expectedMsg:   "a message",
+			expectedLevel: logrus.DebugLevel,
+		},
+		{
+			name: "trace",
+			test: func(t *testing.T, log logger.Logger) {
+				log.Trace("a message")
+			},
+			expectedMsg:   "a message",
+			expectedLevel: logrus.TraceLevel,
+		},
+		{
+			name: "with fields",
+			test: func(t *testing.T, log logger.Logger) {
+				log.WithFields(map[string]any{
+					"some": "value",
+				}).Info("a message")
+			},
+			expectedMsg:   "a message",
+			expectedLevel: logrus.InfoLevel,
+			expectedData: logrus.Fields{
+				"some": "value",
+			},
+		},
+		{
+			name: "with field",
+			test: func(t *testing.T, log logger.Logger) {
+				log.WithField("some", "value").Info("a message")
+			},
+			expectedMsg:   "a message",
+			expectedLevel: logrus.InfoLevel,
+			expectedData: logrus.Fields{
+				"some": "value",
+			},
+		},
+	}
 
-		logger.Error("a message")
+	t.Run("from logger", func(t *testing.T) {
+		for _, testCase := range testCases {
+			t.Run(testCase.name, func(t *testing.T) {
+				logrusLogger, hook := test.NewNullLogger()
+				logrusLogger.SetLevel(logrus.TraceLevel)
+				logger := NewLogger(logrusLogger)
 
-		require.Len(t, hook.AllEntries(), 1)
-		require.Equal(t, "a message", hook.LastEntry().Message)
-		require.Equal(t, logrus.ErrorLevel, hook.LastEntry().Level)
+				testCase.test(t, logger)
+				require.Len(t, hook.AllEntries(), 1)
+				require.Equal(t, testCase.expectedMsg, hook.LastEntry().Message)
+				require.Equal(t, testCase.expectedLevel, hook.LastEntry().Level)
+				if testCase.expectedData != nil {
+					require.Equal(t, testCase.expectedData, hook.LastEntry().Data)
+				}
+			})
+		}
 	})
 
-	t.Run("info", func(t *testing.T) {
-		logger, hook := getLogger()
+	t.Run("from entry", func(t *testing.T) {
+		for _, testCase := range testCases {
+			t.Run(testCase.name, func(t *testing.T) {
+				logrusLogger, hook := test.NewNullLogger()
+				logrusLogger.SetLevel(logrus.TraceLevel)
+				entry := logrus.NewEntry(logrusLogger)
+				logger := NewEntry(entry)
 
-		logger.Info("a message")
-
-		require.Len(t, hook.AllEntries(), 1)
-		require.Equal(t, "a message", hook.LastEntry().Message)
-		require.Equal(t, logrus.InfoLevel, hook.LastEntry().Level)
+				testCase.test(t, logger)
+				require.Len(t, hook.AllEntries(), 1)
+				require.Equal(t, testCase.expectedMsg, hook.LastEntry().Message)
+				require.Equal(t, testCase.expectedLevel, hook.LastEntry().Level)
+				if testCase.expectedData != nil {
+					require.Equal(t, testCase.expectedData, hook.LastEntry().Data)
+				}
+			})
+		}
 	})
-
-	t.Run("debug", func(t *testing.T) {
-		logger, hook := getLogger()
-
-		logger.Debug("a message")
-
-		require.Len(t, hook.AllEntries(), 1)
-		require.Equal(t, "a message", hook.LastEntry().Message)
-		require.Equal(t, logrus.DebugLevel, hook.LastEntry().Level)
-	})
-
-	t.Run("trace", func(t *testing.T) {
-		logger, hook := getLogger()
-
-		logger.Trace("a message")
-
-		require.Len(t, hook.AllEntries(), 1)
-		require.Equal(t, "a message", hook.LastEntry().Message)
-		require.Equal(t, logrus.TraceLevel, hook.LastEntry().Level)
-	})
-
-	t.Run("with field", func(t *testing.T) {
-		logger, hook := getLogger()
-
-		logger.WithField("some", "value").Info("a message")
-
-		require.Len(t, hook.AllEntries(), 1)
-		require.Equal(t, "a message", hook.LastEntry().Message)
-		require.Equal(t, logrus.InfoLevel, hook.LastEntry().Level)
-		require.Equal(t, logrus.Fields{
-			"some": "value",
-		}, hook.LastEntry().Data)
-	})
-
-	t.Run("with fields", func(t *testing.T) {
-		logger, hook := getLogger()
-
-		logger.WithFields(map[string]any{
-			"some": "value",
-		}).Info("a message")
-
-		require.Len(t, hook.AllEntries(), 1)
-		require.Equal(t, "a message", hook.LastEntry().Message)
-		require.Equal(t, logrus.InfoLevel, hook.LastEntry().Level)
-		require.Equal(t, logrus.Fields{
-			"some": "value",
-		}, hook.LastEntry().Data)
-	})
-}
-
-func getLogger() (logger.Logger, *test.Hook) {
-	logrusLogger, hook := test.NewNullLogger()
-	logrusLogger.SetLevel(logrus.TraceLevel)
-	logger := NewLogger(logrusLogger)
-
-	return logger, hook
 }

@@ -225,7 +225,6 @@ func (evaluator *OPAEvaluator) getContext() context.Context {
 	if evaluator.mongoClient != nil {
 		ctx = mongoclient.WithMongoClient(ctx, evaluator.mongoClient)
 	}
-	// TODO: test logger
 	if evaluator.logger != nil {
 		ctx = logger.WithContext(ctx, evaluator.logger)
 	}
