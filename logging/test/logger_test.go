@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/logging"
+
 	"github.com/stretchr/testify/require"
 )
 
