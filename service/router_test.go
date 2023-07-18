@@ -27,8 +27,8 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/fake"
 	"github.com/rond-authz/rond/internal/mocks"
-	"github.com/rond-authz/rond/logger"
-	rondlogrus "github.com/rond-authz/rond/logger/logrus"
+	"github.com/rond-authz/rond/logging"
+	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
@@ -262,7 +262,7 @@ todo { true }`,
 var mockXPermission = core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "todo"}}
 
 type evaluatorParams struct {
-	logger   logger.Logger
+	logger   logging.Logger
 	registry *prometheus.Registry
 }
 

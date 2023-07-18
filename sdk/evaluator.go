@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
 )
 
@@ -45,7 +45,7 @@ type Evaluator interface {
 }
 
 type evaluator struct {
-	logger                  logger.Logger
+	logger                  logging.Logger
 	rondConfig              core.RondConfig
 	opaModuleConfig         *core.OPAModuleConfig
 	partialResultEvaluators core.PartialResultsEvaluators

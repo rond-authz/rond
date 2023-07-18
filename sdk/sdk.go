@@ -20,7 +20,7 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/metrics"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/openapi"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -29,7 +29,7 @@ import (
 type Options struct {
 	Registry         *prometheus.Registry
 	EvaluatorOptions *core.OPAEvaluatorOptions
-	Logger           logger.Logger
+	Logger           logging.Logger
 }
 
 func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas *openapi.OpenAPISpec, options *Options) (OASEvaluatorFinder, error) {

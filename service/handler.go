@@ -24,7 +24,7 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
-	rondlogrus "github.com/rond-authz/rond/logger/logrus"
+	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/sdk"
 	rondhttp "github.com/rond-authz/rond/sdk/rondinput/http"
 	"github.com/rond-authz/rond/types"

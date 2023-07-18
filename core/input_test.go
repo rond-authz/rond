@@ -18,14 +18,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreateRegoInput(t *testing.T) {
-	log := logger.NewNullLogger()
+	log := logging.NewNullLogger()
 
 	t.Run("returns correctly", func(t *testing.T) {
 		actual, err := CreateRegoQueryInput(log, Input{}, RegoInputOptions{})
@@ -226,7 +226,7 @@ func BenchmarkBuildOptimizedResourcePermissionsMap(b *testing.B) {
 		Bindings: bindings,
 	}
 
-	logger := logger.NewNullLogger()
+	logger := logging.NewNullLogger()
 	input := Input{
 		User: user,
 	}

@@ -28,7 +28,7 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/helpers"
 	"github.com/rond-authz/rond/internal/mongoclient"
-	rondlogrus "github.com/rond-authz/rond/logger/logrus"
+	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/service"

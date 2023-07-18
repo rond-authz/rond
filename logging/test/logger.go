@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 )
 
 type Record struct {
@@ -83,7 +83,7 @@ func (l *testLogger) Trace(msg any) {
 	l.setRecord("trace", msg)
 }
 
-func (l *testLogger) WithFields(fields map[string]any) logger.Logger {
+func (l *testLogger) WithFields(fields map[string]any) logging.Logger {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 
@@ -114,7 +114,7 @@ func (l *testLogger) WithFields(fields map[string]any) logger.Logger {
 	return logger
 }
 
-func (l *testLogger) WithField(key string, value any) logger.Logger {
+func (l *testLogger) WithField(key string, value any) logging.Logger {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 
@@ -155,7 +155,7 @@ func (l *testLogger) OriginalLogger() *entry {
 	return l.entry
 }
 
-func GetLogger() logger.Logger {
+func GetLogger() logging.Logger {
 	return &testLogger{
 		Fields: map[string]any{},
 		entry: &entry{
@@ -164,7 +164,7 @@ func GetLogger() logger.Logger {
 	}
 }
 
-func GetRecords(log logger.Logger) ([]Record, error) {
+func GetRecords(log logging.Logger) ([]Record, error) {
 	testLog, ok := log.(*testLogger)
 	if ok {
 		return testLog.OriginalLogger().AllRecords(), nil

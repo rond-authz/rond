@@ -25,7 +25,7 @@ import (
 
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
@@ -85,7 +85,7 @@ func (mongoClient *MongoClient) Disconnect() error {
 
 // NewMongoClient tries to setup a new MongoClient instance.
 // The function returns a `nil` client if the environment variable `MongoDBUrl` is not specified.
-func NewMongoClient(env config.EnvironmentVariables, logger logger.Logger) (*MongoClient, error) {
+func NewMongoClient(env config.EnvironmentVariables, logger logging.Logger) (*MongoClient, error) {
 	if env.MongoDBUrl == "" {
 		logger.Info("No MongoDB configuration provided, skipping setup")
 		return nil, nil
@@ -197,7 +197,7 @@ func (mongoClient *MongoClient) RetrieveUserRolesByRolesID(ctx context.Context, 
 
 func (mongoClient *MongoClient) FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error) {
 	collection := mongoClient.client.Database(mongoClient.databaseName).Collection(collectionName)
-	log := logger.FromContext(ctx)
+	log := logging.FromContext(ctx)
 	log.WithFields(map[string]any{
 		"mongoQuery":     query,
 		"dbName":         mongoClient.databaseName,
@@ -233,7 +233,7 @@ func (mongoClient *MongoClient) FindOne(ctx context.Context, collectionName stri
 
 func (mongoClient *MongoClient) FindMany(ctx context.Context, collectionName string, query map[string]interface{}) ([]interface{}, error) {
 	collection := mongoClient.client.Database(mongoClient.databaseName).Collection(collectionName)
-	log := logger.FromContext(ctx)
+	log := logging.FromContext(ctx)
 	log.WithFields(map[string]any{
 		"mongoQuery":     query,
 		"dbName":         mongoClient.databaseName,
@@ -284,7 +284,7 @@ func RolesIDsFromBindings(bindings []types.Binding) []string {
 	return rolesIds
 }
 
-func RetrieveUserBindingsAndRoles(logger logger.Logger, req *http.Request, userHeaders types.UserHeadersKeys) (types.User, error) {
+func RetrieveUserBindingsAndRoles(logger logging.Logger, req *http.Request, userHeaders types.UserHeadersKeys) (types.User, error) {
 	requestContext := req.Context()
 	mongoClient, err := GetMongoClientFromContext(requestContext)
 	if err != nil {

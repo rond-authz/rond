@@ -23,7 +23,7 @@ import (
 
 	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/mongoclient"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
@@ -35,7 +35,7 @@ type PartialEvaluator struct {
 	PartialEvaluator *rego.PartialResult
 }
 
-func createPartialEvaluator(ctx context.Context, logger logger.Logger, policy string, opaModuleConfig *OPAModuleConfig, options *OPAEvaluatorOptions) (*PartialEvaluator, error) {
+func createPartialEvaluator(ctx context.Context, logger logging.Logger, policy string, opaModuleConfig *OPAModuleConfig, options *OPAEvaluatorOptions) (*PartialEvaluator, error) {
 	logger.WithField("policyName", policy).Info("precomputing rego policy")
 
 	policyEvaluatorTime := time.Now()
@@ -54,7 +54,7 @@ func createPartialEvaluator(ctx context.Context, logger logger.Logger, policy st
 	return &PartialEvaluator{PartialEvaluator: partialResultEvaluator}, nil
 }
 
-func (policyEvaluators PartialResultsEvaluators) AddFromConfig(ctx context.Context, logger logger.Logger, opaModuleConfig *OPAModuleConfig, rondConfig *RondConfig, options *OPAEvaluatorOptions) error {
+func (policyEvaluators PartialResultsEvaluators) AddFromConfig(ctx context.Context, logger logging.Logger, opaModuleConfig *OPAModuleConfig, rondConfig *RondConfig, options *OPAEvaluatorOptions) error {
 	allowPolicy := rondConfig.RequestFlow.PolicyName
 	responsePolicy := rondConfig.ResponseFlow.PolicyName
 
@@ -146,7 +146,7 @@ func newPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 	}
 	if evaluatorOptions.Logger != nil {
 		// TODO: test logger
-		ctx = logger.WithContext(ctx, evaluatorOptions.Logger)
+		ctx = logging.WithContext(ctx, evaluatorOptions.Logger)
 	}
 	regoInstance := rego.New(options...)
 

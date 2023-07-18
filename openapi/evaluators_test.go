@@ -19,14 +19,14 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreatePolicyEvaluators(t *testing.T) {
 	t.Run("with simplified mock", func(t *testing.T) {
-		logger := logger.NewNullLogger()
+		logger := logging.NewNullLogger()
 		ctx := context.Background()
 
 		opaModuleDirectory := "../mocks/rego-policies"
@@ -45,7 +45,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 	})
 
 	t.Run("with complete oas mock", func(t *testing.T) {
-		logger := logger.NewNullLogger()
+		logger := logging.NewNullLogger()
 		ctx := context.Background()
 
 		opaModulesDirectory := "../mocks/rego-policies"
@@ -65,7 +65,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 	})
 
 	t.Run("with oas nil", func(t *testing.T) {
-		logger := logger.NewNullLogger()
+		logger := logging.NewNullLogger()
 		ctx := context.Background()
 
 		_, err := SetupEvaluators(ctx, logger, nil, nil, nil)
@@ -73,7 +73,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 	})
 
 	t.Run("with complete oas mock", func(t *testing.T) {
-		logger := logger.NewNullLogger()
+		logger := logging.NewNullLogger()
 		ctx := context.Background()
 
 		opaModulesDirectory := "../mocks/rego-policies"

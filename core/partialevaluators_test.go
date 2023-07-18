@@ -22,13 +22,13 @@ import (
 
 	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mocks"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestPartialResultEvaluators(t *testing.T) {
-	logger := logger.NewNullLogger()
+	logger := logging.NewNullLogger()
 
 	opaModule := &OPAModuleConfig{
 		Content: `package policies
@@ -166,20 +166,17 @@ func TestPartialResultEvaluators(t *testing.T) {
 		partialEvaluators := PartialResultsEvaluators{}
 		rondConfig := &RondConfig{
 			RequestFlow: RequestFlow{
-				PolicyName: "allow_with_find_one",
+				PolicyName: "allow",
 			},
 		}
-
-		opaModule, err := LoadRegoModule("../mocks/rego-policies-with-mongo-builtins")
-		require.NoError(t, err)
 
 		evalOpts := OPAEvaluatorOptions{
 			Logger: logger,
 		}
 
-		err = partialEvaluators.AddFromConfig(context.Background(), logger, opaModule, rondConfig, &evalOpts)
+		err := partialEvaluators.AddFromConfig(context.Background(), logger, opaModule, rondConfig, &evalOpts)
 		require.NoError(t, err)
-		require.NotNil(t, partialEvaluators["allow_with_find_one"])
+		require.NotNil(t, partialEvaluators["allow"])
 
 		rondInput := Input{
 			Request: InputRequest{
@@ -195,7 +192,7 @@ func TestPartialResultEvaluators(t *testing.T) {
 		t.Run("find and evaluate policy", func(t *testing.T) {
 			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
 			require.NoError(t, err)
-			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "allow_with_find_one", input, &evalOpts)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "allow", input, &evalOpts)
 			require.NoError(t, err)
 			res, query, err := evaluator.PolicyEvaluation(logger, nil)
 			require.NoError(t, err)

@@ -21,7 +21,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
 )
 
@@ -53,7 +53,7 @@ type InputUser struct {
 	ResourcePermissionsMap PermissionsOnResourceMap `json:"resourcePermissionsMap,omitempty"`
 }
 
-func (input *Input) buildOptimizedResourcePermissionsMap(logger logger.Logger, enableResourcePermissionsMapOptimization bool) {
+func (input *Input) buildOptimizedResourcePermissionsMap(logger logging.Logger, enableResourcePermissionsMapOptimization bool) {
 	if !enableResourcePermissionsMapOptimization {
 		return
 	}
@@ -92,7 +92,7 @@ type RegoInputOptions struct {
 }
 
 func CreateRegoQueryInput(
-	logger logger.Logger,
+	logger logging.Logger,
 	input Input,
 	options RegoInputOptions,
 ) ([]byte, error) {

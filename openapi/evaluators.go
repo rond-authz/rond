@@ -19,10 +19,10 @@ import (
 	"fmt"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 )
 
-func SetupEvaluators(ctx context.Context, logger logger.Logger, oas *OpenAPISpec, opaModuleConfig *core.OPAModuleConfig, options *core.OPAEvaluatorOptions) (core.PartialResultsEvaluators, error) {
+func SetupEvaluators(ctx context.Context, logger logging.Logger, oas *OpenAPISpec, opaModuleConfig *core.OPAModuleConfig, options *core.OPAEvaluatorOptions) (core.PartialResultsEvaluators, error) {
 	if oas == nil {
 		return nil, fmt.Errorf("oas must not be nil")
 	}

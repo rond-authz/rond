@@ -29,7 +29,7 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/utils"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 
 	"github.com/uptrace/bunrouter"
 )
@@ -286,7 +286,7 @@ func deserializeSpec(spec []byte, errorWrapper error) (*OpenAPISpec, error) {
 	return &oas, nil
 }
 
-func fetchOpenAPI(log logger.Logger, url string) (*OpenAPISpec, error) {
+func fetchOpenAPI(log logging.Logger, url string) (*OpenAPISpec, error) {
 	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrRequestFailed, err)
@@ -322,7 +322,7 @@ type LoadOptions struct {
 	TargetServiceHost      string
 }
 
-func LoadOASFromFileOrNetwork(log logger.Logger, config LoadOptions) (*OpenAPISpec, error) {
+func LoadOASFromFileOrNetwork(log logging.Logger, config LoadOptions) (*OpenAPISpec, error) {
 	if config.APIPermissionsFilePath != "" {
 		log.WithField("oasFilePath", config.APIPermissionsFilePath).Debug("Attempt to load OAS from file")
 		oas, err := LoadOASFile(config.APIPermissionsFilePath)

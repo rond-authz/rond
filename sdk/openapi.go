@@ -17,7 +17,7 @@ package sdk
 import (
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/metrics"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/openapi"
 
 	"github.com/uptrace/bunrouter"
@@ -33,7 +33,7 @@ type oasImpl struct {
 	metrics                 *metrics.Metrics
 }
 
-func (r oasImpl) FindEvaluator(logger logger.Logger, method, path string) (Evaluator, error) {
+func (r oasImpl) FindEvaluator(logger logging.Logger, method, path string) (Evaluator, error) {
 	permission, routerInfo, err := r.oas.FindPermission(r.oasRouter, path, method)
 	if err != nil {
 		return nil, err
@@ -57,5 +57,5 @@ func (r oasImpl) FindEvaluator(logger logger.Logger, method, path string) (Evalu
 }
 
 type OASEvaluatorFinder interface {
-	FindEvaluator(logger logger.Logger, method, path string) (Evaluator, error)
+	FindEvaluator(logger logging.Logger, method, path string) (Evaluator, error)
 }

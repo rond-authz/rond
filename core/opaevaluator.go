@@ -27,7 +27,7 @@ import (
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/open-policy-agent/opa/ast"
@@ -75,13 +75,13 @@ type OPAEvaluator struct {
 	context       context.Context
 	mongoClient   types.IMongoClient
 	generateQuery bool
-	logger        logger.Logger
+	logger        logging.Logger
 }
 
 type OPAEvaluatorOptions struct {
 	EnablePrintStatements bool
 	MongoClient           types.IMongoClient
-	Logger                logger.Logger
+	Logger                logging.Logger
 }
 
 func newQueryOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte, options *OPAEvaluatorOptions) (*OPAEvaluator, error) {
@@ -119,8 +119,7 @@ func newQueryOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *O
 	}, nil
 }
 
-func (config *OPAModuleConfig) CreateQueryEvaluator(ctx context.Context, logger logger.Logger, policy string, input []byte, options *OPAEvaluatorOptions) (*OPAEvaluator, error) {
-	// TODO: remove logger and set in sdk
+func (config *OPAModuleConfig) CreateQueryEvaluator(ctx context.Context, logger logging.Logger, policy string, input []byte, options *OPAEvaluatorOptions) (*OPAEvaluator, error) {
 	logger.WithFields(map[string]any{
 		"policyName": policy,
 	}).Info("Policy to be evaluated")
@@ -137,7 +136,7 @@ func (config *OPAModuleConfig) CreateQueryEvaluator(ctx context.Context, logger 
 	return evaluator, nil
 }
 
-func (evaluator *OPAEvaluator) partiallyEvaluate(logger logger.Logger, options *PolicyEvaluationOptions) (primitive.M, error) {
+func (evaluator *OPAEvaluator) partiallyEvaluate(logger logging.Logger, options *PolicyEvaluationOptions) (primitive.M, error) {
 	if options == nil {
 		options = &PolicyEvaluationOptions{}
 	}
@@ -177,7 +176,7 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger logger.Logger, options *
 	return q, nil
 }
 
-func (evaluator *OPAEvaluator) Evaluate(logger logger.Logger, options *PolicyEvaluationOptions) (interface{}, error) {
+func (evaluator *OPAEvaluator) Evaluate(logger logging.Logger, options *PolicyEvaluationOptions) (interface{}, error) {
 	if options == nil {
 		options = &PolicyEvaluationOptions{}
 	}
@@ -226,7 +225,7 @@ func (evaluator *OPAEvaluator) getContext() context.Context {
 		ctx = mongoclient.WithMongoClient(ctx, evaluator.mongoClient)
 	}
 	if evaluator.logger != nil {
-		ctx = logger.WithContext(ctx, evaluator.logger)
+		ctx = logging.WithContext(ctx, evaluator.logger)
 	}
 	return ctx
 }
@@ -243,7 +242,7 @@ func (evaluator *PolicyEvaluationOptions) metrics() metrics.Metrics {
 	return metrics.SetupMetrics("rond")
 }
 
-func (evaluator *OPAEvaluator) PolicyEvaluation(logger logger.Logger, options *PolicyEvaluationOptions) (interface{}, primitive.M, error) {
+func (evaluator *OPAEvaluator) PolicyEvaluation(logger logging.Logger, options *PolicyEvaluationOptions) (interface{}, primitive.M, error) {
 	if evaluator.generateQuery {
 		query, err := evaluator.partiallyEvaluate(logger, options)
 		return nil, query, err

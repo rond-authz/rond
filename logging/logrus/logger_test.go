@@ -17,8 +17,7 @@ package rondlogrus
 import (
 	"testing"
 
-	"github.com/rond-authz/rond/logger"
-
+	"github.com/rond-authz/rond/logging"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
@@ -27,14 +26,14 @@ import (
 func TestLogrusAdapter(t *testing.T) {
 	testCases := []struct {
 		name          string
-		test          func(t *testing.T, log logger.Logger)
+		test          func(t *testing.T, log logging.Logger)
 		expectedMsg   string
 		expectedLevel logrus.Level
 		expectedData  logrus.Fields
 	}{
 		{
 			name: "error",
-			test: func(t *testing.T, log logger.Logger) {
+			test: func(t *testing.T, log logging.Logger) {
 				log.Error("a message")
 			},
 			expectedMsg:   "a message",
@@ -42,7 +41,7 @@ func TestLogrusAdapter(t *testing.T) {
 		},
 		{
 			name: "warn",
-			test: func(t *testing.T, log logger.Logger) {
+			test: func(t *testing.T, log logging.Logger) {
 				log.Warn("a message")
 			},
 			expectedMsg:   "a message",
@@ -50,7 +49,7 @@ func TestLogrusAdapter(t *testing.T) {
 		},
 		{
 			name: "info",
-			test: func(t *testing.T, log logger.Logger) {
+			test: func(t *testing.T, log logging.Logger) {
 				log.Info("a message")
 			},
 			expectedMsg:   "a message",
@@ -58,7 +57,7 @@ func TestLogrusAdapter(t *testing.T) {
 		},
 		{
 			name: "debug",
-			test: func(t *testing.T, log logger.Logger) {
+			test: func(t *testing.T, log logging.Logger) {
 				log.Debug("a message")
 			},
 			expectedMsg:   "a message",
@@ -66,7 +65,7 @@ func TestLogrusAdapter(t *testing.T) {
 		},
 		{
 			name: "trace",
-			test: func(t *testing.T, log logger.Logger) {
+			test: func(t *testing.T, log logging.Logger) {
 				log.Trace("a message")
 			},
 			expectedMsg:   "a message",
@@ -74,7 +73,7 @@ func TestLogrusAdapter(t *testing.T) {
 		},
 		{
 			name: "with fields",
-			test: func(t *testing.T, log logger.Logger) {
+			test: func(t *testing.T, log logging.Logger) {
 				log.WithFields(map[string]any{
 					"some": "value",
 				}).Info("a message")
@@ -87,7 +86,7 @@ func TestLogrusAdapter(t *testing.T) {
 		},
 		{
 			name: "with field",
-			test: func(t *testing.T, log logger.Logger) {
+			test: func(t *testing.T, log logging.Logger) {
 				log.WithField("some", "value").Info("a message")
 			},
 			expectedMsg:   "a message",

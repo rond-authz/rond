@@ -22,7 +22,7 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/mocks"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
@@ -41,7 +41,7 @@ func TestNewFromOas(t *testing.T) {
 	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 	require.NoError(t, err)
 
-	logger := logger.NewNullLogger()
+	logger := logging.NewNullLogger()
 	options := &Options{
 		Logger: logger,
 	}
@@ -126,7 +126,7 @@ func TestNewWithConfig(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	logger := logger.NewNullLogger()
+	logger := logging.NewNullLogger()
 	options := &Options{
 		Logger: logger,
 	}

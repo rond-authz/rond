@@ -26,7 +26,7 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/testutils"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
 	"github.com/stretchr/testify/require"
 )
@@ -78,7 +78,7 @@ func TestGetMongoCollectionFromContext(t *testing.T) {
 func TestSetupMongoCollection(t *testing.T) {
 	t.Run("if MongoDBUrl empty, returns nil", func(t *testing.T) {
 		env := config.EnvironmentVariables{}
-		log := logger.NewNullLogger()
+		log := logging.NewNullLogger()
 		adapter, _ := NewMongoClient(env, log)
 		require.True(t, adapter == nil, "MongoDBUrl is not nil")
 	})
@@ -88,7 +88,7 @@ func TestSetupMongoCollection(t *testing.T) {
 			MongoDBUrl:             "MONGODB_URL",
 			BindingsCollectionName: "Some different name",
 		}
-		log := logger.NewNullLogger()
+		log := logging.NewNullLogger()
 		adapter, err := NewMongoClient(env, log)
 		require.True(t, adapter == nil, "RolesCollectionName collection is not nil")
 		require.Contains(t, err.Error(), `MongoDB url is not empty, required variables might be missing: BindingsCollectionName: "Some different name",  RolesCollectionName: ""`)
@@ -102,7 +102,7 @@ func TestSetupMongoCollection(t *testing.T) {
 			RolesCollectionName:    "something new",
 			BindingsCollectionName: "Some different name",
 		}
-		log := logger.NewNullLogger()
+		log := logging.NewNullLogger()
 		adapter, err := NewMongoClient(env, log)
 		require.True(t, err != nil, "setup mongo not returns error")
 		require.Contains(t, err.Error(), "failed MongoDB connection string validation:")
@@ -122,7 +122,7 @@ func TestSetupMongoCollection(t *testing.T) {
 			BindingsCollectionName: "bindings",
 		}
 
-		log := logger.NewNullLogger()
+		log := logging.NewNullLogger()
 		mongoClient, err := NewMongoClient(env, log)
 
 		defer mongoClient.Disconnect()
@@ -145,7 +145,7 @@ func TestMongoCollections(t *testing.T) {
 			BindingsCollectionName: "bindings",
 		}
 
-		log := logger.NewNullLogger()
+		log := logging.NewNullLogger()
 		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
 		require.True(t, err == nil, "setup mongo returns error")
@@ -233,7 +233,7 @@ func TestMongoCollections(t *testing.T) {
 			BindingsCollectionName: "bindings",
 		}
 
-		log := logger.NewNullLogger()
+		log := logging.NewNullLogger()
 		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
 		require.True(t, err == nil, "setup mongo returns error")
@@ -283,7 +283,7 @@ func TestMongoCollections(t *testing.T) {
 			BindingsCollectionName: "bindings",
 		}
 
-		log := logger.NewNullLogger()
+		log := logging.NewNullLogger()
 		mongoClient, err := NewMongoClient(env, log)
 		defer mongoClient.Disconnect()
 		require.True(t, err == nil, "setup mongo returns error")
@@ -328,7 +328,7 @@ func TestMongoFindOne(t *testing.T) {
 		RolesCollectionName:    "roles",
 		BindingsCollectionName: "bindings",
 	}
-	log := logger.NewNullLogger()
+	log := logging.NewNullLogger()
 	mongoClient, err := NewMongoClient(env, log)
 	defer mongoClient.Disconnect()
 	require.True(t, err == nil, "setup mongo returns error")
@@ -386,7 +386,7 @@ func TestMongoFindMany(t *testing.T) {
 		RolesCollectionName:    "roles",
 		BindingsCollectionName: "bindings",
 	}
-	log := logger.NewNullLogger()
+	log := logging.NewNullLogger()
 	mongoClient, err := NewMongoClient(env, log)
 	defer mongoClient.Disconnect()
 	require.True(t, err == nil, "setup mongo returns error")
@@ -471,7 +471,7 @@ func TestRolesIDSFromBindings(t *testing.T) {
 }
 
 func TestRetrieveUserBindingsAndRoles(t *testing.T) {
-	log := logger.NewNullLogger()
+	log := logging.NewNullLogger()
 	userHeaders := types.UserHeadersKeys{
 		GroupsHeaderKey:     "thegroupsheader",
 		IDHeaderKey:         "theuserheader",

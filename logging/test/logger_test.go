@@ -19,7 +19,7 @@ package test
 import (
 	"testing"
 
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 	"github.com/stretchr/testify/require"
 )
 
@@ -361,7 +361,7 @@ func TestFakeLogger(t *testing.T) {
 	})
 }
 
-func getRecords(t *testing.T, log logger.Logger) []Record {
+func getRecords(t *testing.T, log logging.Logger) []Record {
 	records, err := GetRecords(log)
 	require.NoError(t, err)
 	return records

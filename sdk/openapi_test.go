@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/openapi"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -28,7 +28,7 @@ import (
 )
 
 func TestOasSDK(t *testing.T) {
-	logger := logger.NewNullLogger()
+	logger := logging.NewNullLogger()
 
 	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 	require.Nil(t, err)

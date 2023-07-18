@@ -22,7 +22,7 @@ import (
 
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/mongoclient"
-	"github.com/rond-authz/rond/logger"
+	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/stretchr/testify/require"
@@ -55,7 +55,7 @@ func TestOPAEvaluator(t *testing.T) {
 			require.NoError(t, err)
 			require.Nil(t, client)
 
-			logger := logger.FromContext(ctx)
+			logger := logging.FromContext(ctx)
 			require.NotNil(t, logger)
 		})
 
@@ -88,7 +88,7 @@ func TestOPAEvaluator(t *testing.T) {
 		})
 
 		t.Run("passed logger", func(t *testing.T) {
-			log := logger.NewNullLogger()
+			log := logging.NewNullLogger()
 			opaEval := OPAEvaluator{
 				context: context.Background(),
 				logger:  log,
@@ -96,7 +96,7 @@ func TestOPAEvaluator(t *testing.T) {
 			ctx := opaEval.getContext()
 
 			require.NotNil(t, ctx)
-			actualLog := logger.FromContext(ctx)
+			actualLog := logging.FromContext(ctx)
 			require.Equal(t, log, actualLog)
 		})
 	})
@@ -141,7 +141,7 @@ column_policy{
 
 	opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-	logger := logger.NewNullLogger()
+	logger := logging.NewNullLogger()
 
 	input := Input{Request: InputRequest{}, Response: InputResponse{}}
 	inputBytes, _ := json.Marshal(input)

@@ -15,8 +15,7 @@
 package rondlogrus
 
 import (
-	"github.com/rond-authz/rond/logger"
-
+	"github.com/rond-authz/rond/logging"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,12 +23,12 @@ type logrusEntryWrapper struct {
 	*logrus.Entry
 }
 
-func (l *logrusEntryWrapper) WithField(key string, value any) logger.Logger {
+func (l *logrusEntryWrapper) WithField(key string, value any) logging.Logger {
 	entry := l.Logger.WithField(key, value)
 	return &logrusEntryWrapper{entry}
 }
 
-func (l *logrusEntryWrapper) WithFields(fields map[string]any) logger.Logger {
+func (l *logrusEntryWrapper) WithFields(fields map[string]any) logging.Logger {
 	entry := l.Logger.WithFields(fields)
 	return &logrusEntryWrapper{entry}
 }
@@ -54,10 +53,10 @@ func (l logrusEntryWrapper) Warn(msg any) {
 	l.Entry.Warn(msg)
 }
 
-func NewLogger(logger *logrus.Logger) logger.Logger {
+func NewLogger(logger *logrus.Logger) logging.Logger {
 	return &logrusEntryWrapper{logrus.NewEntry(logger)}
 }
 
-func NewEntry(entry *logrus.Entry) logger.Logger {
+func NewEntry(entry *logrus.Entry) logging.Logger {
 	return &logrusEntryWrapper{entry}
 }

@@ -24,8 +24,8 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/mocks"
-	"github.com/rond-authz/rond/logger"
-	"github.com/rond-authz/rond/logger/test"
+	"github.com/rond-authz/rond/logging"
+	"github.com/rond-authz/rond/logging/test"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
@@ -35,7 +35,7 @@ import (
 )
 
 func TestEvaluateRequestPolicy(t *testing.T) {
-	logger := logger.NewNullLogger()
+	logger := logging.NewNullLogger()
 
 	t.Run("throws without RondInput", func(t *testing.T) {
 		sdk := getOASSdk(t, nil)
@@ -420,7 +420,7 @@ func assertCorrectMetrics(t *testing.T, registry *prometheus.Registry, expected 
 }
 
 func TestEvaluateResponsePolicy(t *testing.T) {
-	logger := logger.NewNullLogger()
+	logger := logging.NewNullLogger()
 
 	t.Run("throws without RondInput", func(t *testing.T) {
 		sdk := getOASSdk(t, nil)
@@ -614,7 +614,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	openAPISpec, err := openapi.LoadOASFile("../mocks/bench.json")
 	require.NoError(b, err)
 
-	logger := logger.NewNullLogger()
+	logger := logging.NewNullLogger()
 	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: testmongoMock,
@@ -652,7 +652,7 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 		h.Helper()
 	}
 
-	logger := logger.NewNullLogger()
+	logger := logging.NewNullLogger()
 	if options == nil {
 		options = &sdkOptions{}
 	}
