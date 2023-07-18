@@ -40,9 +40,10 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 	if options == nil {
 		options = &Options{}
 	}
-	if options.Logger == nil {
-		// TODO: default to a fake silent logger instead of return error
-		return nil, fmt.Errorf("logger is required inside options")
+
+	logger := options.Logger
+	if logger == nil {
+		logger = logging.NewNoOpLogger()
 	}
 
 	var evaluatorOptions *core.OPAEvaluatorOptions
@@ -51,7 +52,6 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 	}
 	metrics := setupMetrics(options.Registry)
 
-	logger := options.Logger
 	evaluator, err := openapi.SetupEvaluators(ctx, logger, oas, opaModuleConfig, evaluatorOptions)
 	if err != nil {
 		return nil, err
@@ -79,20 +79,20 @@ func NewWithConfig(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, r
 	if options == nil {
 		options = &Options{}
 	}
-	if options.Logger == nil {
-		// TODO: default to a fake silent logger instead of return error
-		return nil, fmt.Errorf("logger must be set in config options")
+	logger := options.Logger
+	if logger == nil {
+		logger = logging.NewNoOpLogger()
 	}
 
 	policyEvaluators := core.PartialResultsEvaluators{}
-	if err := policyEvaluators.AddFromConfig(ctx, options.Logger, opaModuleConfig, &rondConfig, options.EvaluatorOptions); err != nil {
+	if err := policyEvaluators.AddFromConfig(ctx, logger, opaModuleConfig, &rondConfig, options.EvaluatorOptions); err != nil {
 		return nil, err
 	}
 	metrics := setupMetrics(options.Registry)
 
 	return evaluator{
 		rondConfig:              rondConfig,
-		logger:                  options.Logger,
+		logger:                  logger,
 		opaModuleConfig:         opaModuleConfig,
 		partialResultEvaluators: policyEvaluators,
 

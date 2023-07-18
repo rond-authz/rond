@@ -28,7 +28,7 @@ import (
 )
 
 func TestOasSDK(t *testing.T) {
-	logger := logging.NewNullLogger()
+	logger := logging.NewNoOpLogger()
 
 	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 	require.Nil(t, err)

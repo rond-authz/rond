@@ -28,7 +28,7 @@ import (
 )
 
 func TestFetchOpenAPI(t *testing.T) {
-	log := logging.NewNullLogger()
+	log := logging.NewNoOpLogger()
 
 	t.Run("fetches json OAS", func(t *testing.T) {
 		defer gock.Off()
@@ -173,7 +173,7 @@ func TestLoadOASFile(t *testing.T) {
 }
 
 func TestLoadOAS(t *testing.T) {
-	log := logging.NewNullLogger()
+	log := logging.NewNoOpLogger()
 
 	t.Run("if TargetServiceOASPath & APIPermissionsFilePath are set together, expect to read oas from static file", func(t *testing.T) {
 		options := LoadOptions{

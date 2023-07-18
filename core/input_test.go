@@ -25,7 +25,7 @@ import (
 )
 
 func TestCreateRegoInput(t *testing.T) {
-	log := logging.NewNullLogger()
+	log := logging.NewNoOpLogger()
 
 	t.Run("returns correctly", func(t *testing.T) {
 		actual, err := CreateRegoQueryInput(log, Input{}, RegoInputOptions{})
@@ -226,7 +226,7 @@ func BenchmarkBuildOptimizedResourcePermissionsMap(b *testing.B) {
 		Bindings: bindings,
 	}
 
-	logger := logging.NewNullLogger()
+	logger := logging.NewNoOpLogger()
 	input := Input{
 		User: user,
 	}

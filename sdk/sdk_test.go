@@ -41,22 +41,10 @@ func TestNewFromOas(t *testing.T) {
 	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 	require.NoError(t, err)
 
-	logger := logging.NewNullLogger()
+	logger := logging.NewNoOpLogger()
 	options := &Options{
 		Logger: logger,
 	}
-
-	t.Run("throws if options is nil", func(t *testing.T) {
-		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, nil)
-		require.EqualError(t, err, "logger is required inside options")
-		require.Nil(t, sdk)
-	})
-
-	t.Run("throws if logger is nil", func(t *testing.T) {
-		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &Options{})
-		require.EqualError(t, err, "logger is required inside options")
-		require.Nil(t, sdk)
-	})
 
 	t.Run("throws if opaModuleConfig is nil", func(t *testing.T) {
 		sdk, err := NewFromOAS(ctx, nil, nil, options)
@@ -114,6 +102,31 @@ func TestNewFromOas(t *testing.T) {
 			require.NotNil(t, evaluator)
 		})
 	})
+
+	t.Run("ok if options is nil", func(t *testing.T) {
+		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, nil)
+		require.NoError(t, err)
+		require.NotNil(t, sdk)
+
+		t.Run("and find evaluators", func(t *testing.T) {
+			evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
+			require.NoError(t, err)
+			require.NotNil(t, evaluator)
+		})
+	})
+
+	t.Run("ok if logger is nil", func(t *testing.T) {
+		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &Options{})
+		require.NoError(t, err)
+		require.NotNil(t, sdk)
+
+		t.Run("and find evaluators", func(t *testing.T) {
+			evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
+			require.NoError(t, err)
+			require.NotNil(t, evaluator)
+		})
+	})
+
 }
 
 func TestNewWithConfig(t *testing.T) {
@@ -126,7 +139,7 @@ func TestNewWithConfig(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	logger := logging.NewNullLogger()
+	logger := logging.NewNoOpLogger()
 	options := &Options{
 		Logger: logger,
 	}
@@ -135,12 +148,6 @@ func TestNewWithConfig(t *testing.T) {
 		RequestFlow:  core.RequestFlow{PolicyName: "allow"},
 		ResponseFlow: core.ResponseFlow{PolicyName: "projection_field"},
 	}
-
-	t.Run("throws if logger not passed", func(t *testing.T) {
-		evaluator, err := NewWithConfig(ctx, opaModule, core.RondConfig{}, nil)
-		require.EqualError(t, err, "logger must be set in config options")
-		require.Nil(t, evaluator)
-	})
 
 	t.Run("throws if empty config", func(t *testing.T) {
 		evaluator, err := NewWithConfig(ctx, opaModule, core.RondConfig{}, options)
@@ -152,6 +159,36 @@ func TestNewWithConfig(t *testing.T) {
 		sdk, err := NewWithConfig(ctx, nil, rondConfig, options)
 		require.EqualError(t, err, fmt.Sprintf("%s: OPAModuleConfig must not be nil", core.ErrEvaluatorCreationFailed))
 		require.Nil(t, sdk)
+	})
+
+	t.Run("ok with nil options", func(t *testing.T) {
+		evaluator, err := NewWithConfig(ctx, opaModule, rondConfig, nil)
+		require.NoError(t, err)
+		require.NotNil(t, evaluator)
+
+		t.Run("run evaluator correctly", func(t *testing.T) {
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, ""), types.User{})
+			require.NoError(t, err)
+			require.Equal(t, PolicyResult{
+				Allowed:      true,
+				QueryToProxy: []byte(""),
+			}, result)
+		})
+	})
+
+	t.Run("ok if logger not passed", func(t *testing.T) {
+		evaluator, err := NewWithConfig(ctx, opaModule, rondConfig, nil)
+		require.NoError(t, err)
+		require.NotNil(t, evaluator)
+
+		t.Run("run evaluator correctly", func(t *testing.T) {
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, ""), types.User{})
+			require.NoError(t, err)
+			require.Equal(t, PolicyResult{
+				Allowed:      true,
+				QueryToProxy: []byte(""),
+			}, result)
+		})
 	})
 
 	t.Run("passes EvaluatorOptions and set metrics correctly", func(t *testing.T) {

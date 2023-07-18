@@ -35,7 +35,7 @@ import (
 )
 
 func TestEvaluateRequestPolicy(t *testing.T) {
-	logger := logging.NewNullLogger()
+	logger := logging.NewNoOpLogger()
 
 	t.Run("throws without RondInput", func(t *testing.T) {
 		sdk := getOASSdk(t, nil)
@@ -420,7 +420,7 @@ func assertCorrectMetrics(t *testing.T, registry *prometheus.Registry, expected 
 }
 
 func TestEvaluateResponsePolicy(t *testing.T) {
-	logger := logging.NewNullLogger()
+	logger := logging.NewNoOpLogger()
 
 	t.Run("throws without RondInput", func(t *testing.T) {
 		sdk := getOASSdk(t, nil)
@@ -614,7 +614,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	openAPISpec, err := openapi.LoadOASFile("../mocks/bench.json")
 	require.NoError(b, err)
 
-	logger := logging.NewNullLogger()
+	logger := logging.NewNoOpLogger()
 	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: testmongoMock,
@@ -652,7 +652,7 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 		h.Helper()
 	}
 
-	logger := logging.NewNullLogger()
+	logger := logging.NewNoOpLogger()
 	if options == nil {
 		options = &sdkOptions{}
 	}

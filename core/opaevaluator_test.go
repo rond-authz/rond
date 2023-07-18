@@ -88,7 +88,7 @@ func TestOPAEvaluator(t *testing.T) {
 		})
 
 		t.Run("passed logger", func(t *testing.T) {
-			log := logging.NewNullLogger()
+			log := logging.NewNoOpLogger()
 			opaEval := OPAEvaluator{
 				context: context.Background(),
 				logger:  log,
@@ -141,7 +141,7 @@ column_policy{
 
 	opaModuleConfig := &OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-	logger := logging.NewNullLogger()
+	logger := logging.NewNoOpLogger()
 
 	input := Input{Request: InputRequest{}, Response: InputResponse{}}
 	inputBytes, _ := json.Marshal(input)

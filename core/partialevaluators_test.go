@@ -28,7 +28,7 @@ import (
 )
 
 func TestPartialResultEvaluators(t *testing.T) {
-	logger := logging.NewNullLogger()
+	logger := logging.NewNoOpLogger()
 
 	opaModule := &OPAModuleConfig{
 		Content: `package policies

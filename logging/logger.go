@@ -27,24 +27,24 @@ type Logger interface {
 	Trace(msg any)
 }
 
-type nullLogger struct{}
+type noopLogger struct{}
 
-func (l *nullLogger) WithFields(fields map[string]any) Logger {
+func (l *noopLogger) WithFields(fields map[string]any) Logger {
 	return l
 }
 
-func (l *nullLogger) WithField(field string, value any) Logger {
+func (l *noopLogger) WithField(field string, value any) Logger {
 	return l
 }
 
-func (l nullLogger) Error(msg any) {}
-func (l nullLogger) Info(msg any)  {}
-func (l nullLogger) Debug(msg any) {}
-func (l nullLogger) Trace(msg any) {}
-func (l nullLogger) Warn(msg any)  {}
+func (l noopLogger) Error(msg any) {}
+func (l noopLogger) Info(msg any)  {}
+func (l noopLogger) Debug(msg any) {}
+func (l noopLogger) Trace(msg any) {}
+func (l noopLogger) Warn(msg any)  {}
 
-func NewNullLogger() Logger {
-	return &nullLogger{}
+func NewNoOpLogger() Logger {
+	return &noopLogger{}
 }
 
 type loggerKey struct{}
@@ -56,7 +56,7 @@ func WithContext(ctx context.Context, logger Logger) context.Context {
 func FromContext(ctx context.Context) Logger {
 	logger, ok := ctx.Value(loggerKey{}).(Logger)
 	if !ok {
-		return &nullLogger{}
+		return &noopLogger{}
 	}
 	return logger
 }
