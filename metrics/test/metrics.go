@@ -41,7 +41,7 @@ func (h *Hook) AllEntries() Entries {
 func New() (*metrics.Metrics, *Hook) {
 	duration := histogramVec{
 		Namespace: metrics.Prefix,
-		Name:      metrics.PolicyEvalDuration,
+		Name:      metrics.PolicyEvalDurationMetricName,
 		Labels:    []string{"policy_name"},
 
 		hook: &Hook{},

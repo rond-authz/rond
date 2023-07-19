@@ -17,7 +17,7 @@ package metrics
 const (
 	Prefix = "rond"
 
-	PolicyEvalDuration = "policy_evaluation_duration_milliseconds"
+	PolicyEvalDurationMetricName = "policy_evaluation_duration_milliseconds"
 )
 
 type Labels map[string]string

@@ -1981,7 +1981,8 @@ filter_policy {
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
 		responseBody := getResponseBody(t, w)
-		require.Contains(t, string(responseBody), "promhttp_metric_handler_errors_total")
+		require.Contains(t, string(responseBody), "go_gc_duration_seconds")
+		require.Contains(t, string(responseBody), fmt.Sprintf("rond_%s", metrics.PolicyEvalDurationMetricName))
 	})
 }
 

@@ -18,9 +18,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rond-authz/rond/metrics"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
-	"github.com/rond-authz/rond/metrics"
 	"github.com/stretchr/testify/require"
 )
 
