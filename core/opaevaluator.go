@@ -23,16 +23,15 @@ import (
 	"time"
 
 	"github.com/rond-authz/rond/custom_builtins"
-	"github.com/rond-authz/rond/internal/metrics"
 	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/logging"
+	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
-	"github.com/prometheus/client_golang/prometheus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -148,7 +147,7 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger logging.Logger, options 
 
 	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
 
-	options.metrics().PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
+	options.metrics().PolicyEvaluationDurationMilliseconds.With(metrics.Labels{
 		"policy_name": evaluator.PolicyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
@@ -189,7 +188,7 @@ func (evaluator *OPAEvaluator) Evaluate(logger logging.Logger, options *PolicyEv
 	}
 
 	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
-	options.metrics().PolicyEvaluationDurationMilliseconds.With(prometheus.Labels{
+	options.metrics().PolicyEvaluationDurationMilliseconds.With(metrics.Labels{
 		"policy_name": evaluator.PolicyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
@@ -235,11 +234,11 @@ type PolicyEvaluationOptions struct {
 	AdditionalLogFields map[string]string
 }
 
-func (evaluator *PolicyEvaluationOptions) metrics() metrics.Metrics {
+func (evaluator *PolicyEvaluationOptions) metrics() *metrics.Metrics {
 	if evaluator.Metrics != nil {
-		return *evaluator.Metrics
+		return evaluator.Metrics
 	}
-	return metrics.SetupMetrics("rond")
+	return metrics.NoOpMetrics()
 }
 
 func (evaluator *OPAEvaluator) PolicyEvaluation(logger logging.Logger, options *PolicyEvaluationOptions) (interface{}, primitive.M, error) {

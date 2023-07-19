@@ -14,20 +14,38 @@
 
 package metrics
 
-import (
-	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+const (
+	Prefix = "rond"
+
+	PolicyEvalDurationMetricName = "policy_evaluation_duration_milliseconds"
 )
 
-var MetricsRoutePath = "/-/rond/metrics"
+type Labels map[string]string
 
-func MetricsRoute(r *mux.Router, registry *prometheus.Registry) {
-	r.Handle(MetricsRoutePath, promhttp.InstrumentMetricHandler(
-		registry,
-		promhttp.HandlerFor(registry, promhttp.HandlerOpts{
-			Registry:          registry,
-			EnableOpenMetrics: true,
-		}),
-	))
+type Observer interface {
+	Observe(float64)
+}
+
+type HistogramVec interface {
+	With(labels Labels) Observer
+}
+
+type Metrics struct {
+	PolicyEvaluationDurationMilliseconds HistogramVec
+}
+
+type noopHistogram struct{}
+
+func (h noopHistogram) With(labels Labels) Observer {
+	return noopObserver{}
+}
+
+type noopObserver struct{}
+
+func (o noopObserver) Observe(float64) {}
+
+func NoOpMetrics() *Metrics {
+	return &Metrics{
+		PolicyEvaluationDurationMilliseconds: noopHistogram{},
+	}
 }

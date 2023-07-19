@@ -23,10 +23,10 @@ import (
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/logging"
+	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,11 +66,10 @@ func TestNewFromOas(t *testing.T) {
 		require.Nil(t, sdk)
 	})
 
-	t.Run("if registry is passed, setup metrics", func(t *testing.T) {
-		registry := prometheus.NewRegistry()
+	t.Run("if metrics is passed, setup metrics", func(t *testing.T) {
 		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &Options{
-			Registry: registry,
-			Logger:   logger,
+			Metrics: metrics.NoOpMetrics(),
+			Logger:  logger,
 		})
 		require.NoError(t, err)
 		require.NotEmpty(t, sdk)
@@ -83,7 +82,7 @@ func TestNewFromOas(t *testing.T) {
 		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &Options{
 			EvaluatorOptions: evalOpts,
 			Logger:           logger,
-			Registry:         prometheus.NewRegistry(),
+			Metrics:          metrics.NoOpMetrics(),
 		})
 		require.NoError(t, err)
 		require.NotEmpty(t, sdk)
@@ -196,8 +195,8 @@ func TestNewWithConfig(t *testing.T) {
 		}
 		eval, err := NewWithConfig(ctx, opaModule, rondConfig, &Options{
 			EvaluatorOptions: evalOpts,
+			Metrics:          metrics.NoOpMetrics(),
 			Logger:           logger,
-			Registry:         prometheus.NewRegistry(),
 		})
 		require.NoError(t, err)
 		require.NotEmpty(t, eval)
@@ -265,7 +264,7 @@ type sdkOptions struct {
 	oasFilePath      string
 
 	mongoClient types.IMongoClient
-	registry    *prometheus.Registry
+	metrics     *metrics.Metrics
 }
 
 type tHelper interface {

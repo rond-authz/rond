@@ -22,7 +22,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mongoclient"
@@ -112,14 +111,12 @@ test_policy { true }
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
 	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},
-		Registry: registry,
-		Logger:   rondlogrus.NewLogger(logger),
+		Logger: rondlogrus.NewLogger(logger),
 	})
 	require.NoError(t, err, "unexpected error")
 
@@ -129,7 +126,7 @@ test_policy { true }
 			TargetServiceHost:    "my-service:4444",
 			PathPrefixStandalone: "/my-prefix",
 		}
-		router, err := SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
+		router, err := SetupRouter(log, env, opa, oas, sdk, mongoClient, nil)
 		require.NoError(t, err, "unexpected error")
 
 		t.Run("/-/rbac-ready", func(t *testing.T) {
@@ -162,7 +159,7 @@ test_policy { true }
 			PathPrefixStandalone: "/my-prefix",
 			ServiceVersion:       "latest",
 		}
-		router, err := SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
+		router, err := SetupRouter(log, env, opa, oas, sdk, mongoClient, nil)
 		require.NoError(t, err, "unexpected error")
 		t.Run("/-/rbac-ready", func(t *testing.T) {
 			w := httptest.NewRecorder()

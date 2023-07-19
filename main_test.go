@@ -35,6 +35,8 @@ import (
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
+	"github.com/rond-authz/rond/metrics"
+	rondprometheus "github.com/rond-authz/rond/metrics/prometheus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/service"
@@ -1792,18 +1794,16 @@ filter_policy {
 	}
 
 	var mongoClient *mongoclient.MongoClient
-	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
 	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},
-		Registry: registry,
-		Logger:   rondlogrus.NewLogger(logger),
+		Logger: rondlogrus.NewLogger(logger),
 	})
 	require.NoError(t, err, "unexpected error")
 
-	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
+	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, nil)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("some eval API", func(t *testing.T) {
@@ -1956,14 +1956,19 @@ filter_policy {
 	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
+	m := rondprometheus.SetupMetrics(registry)
 	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},
-		Registry: registry,
-		Logger:   rondlogrus.NewLogger(logger),
+		Logger:  rondlogrus.NewLogger(logger),
+		Metrics: m,
 	})
 	require.NoError(t, err, "unexpected error")
+
+	m.PolicyEvaluationDurationMilliseconds.With(metrics.Labels{
+		"policy_name": "myPolicy",
+	}).Observe(123)
 
 	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
 	require.NoError(t, err, "unexpected error")
@@ -1976,7 +1981,7 @@ filter_policy {
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
 		responseBody := getResponseBody(t, w)
-		require.Contains(t, string(responseBody), "go_gc_duration_seconds")
+		require.Contains(t, string(responseBody), fmt.Sprintf("rond_%s", metrics.PolicyEvalDurationMetricName))
 	})
 }
 

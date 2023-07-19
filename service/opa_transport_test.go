@@ -34,7 +34,6 @@ import (
 	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
@@ -477,7 +476,6 @@ type sdkOptions struct {
 	oasFilePath      string
 
 	mongoClient types.IMongoClient
-	registry    *prometheus.Registry
 }
 
 type tHelper interface {
@@ -515,8 +513,7 @@ func getSdk(t require.TestingT, options *sdkOptions) sdk.OASEvaluatorFinder {
 			MongoClient:           options.mongoClient,
 			EnablePrintStatements: true,
 		},
-		Registry: options.registry,
-		Logger:   logger,
+		Logger: logger,
 	})
 	require.NoError(t, err)
 
