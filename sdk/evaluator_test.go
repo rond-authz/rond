@@ -604,9 +604,32 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	require.NoError(b, err)
 
 	logger := logging.NewNoOpLogger()
+	mongoClient := mocks.MongoClientMock{
+		FindOneResult: map[string]any{
+			"_id":      "project123",
+			"tenantId": "tenantId",
+		},
+		FindOneExpectation: func(collectionName string, query interface{}) {
+			b.StopTimer()
+			require.Equal(b, "projects", collectionName)
+
+			require.Equal(b, query, map[string]any{
+				"$expr": map[string]any{
+					"$eq": []any{
+						"$_id",
+						map[string]any{
+							"$toObjectId": "project123",
+						},
+					},
+				},
+			})
+			b.StartTimer()
+		},
+	}
+
 	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
-			MongoClient: testmongoMock,
+			MongoClient: mergeMongoMockWithBindingsAndRoles(&mongoClient),
 		},
 	})
 	require.NoError(b, err)
@@ -635,6 +658,47 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 		require.Equal(b, http.StatusOK, recorder.Code)
 	}
 }
+
+// func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
+// 	moduleConfig, err := core.LoadRegoModule("../mocks/bench-policies")
+// 	require.NoError(b, err, "Unexpected error")
+
+// 	openAPISpec, err := openapi.LoadOASFile("../mocks/bench.json")
+// 	require.NoError(b, err)
+
+// 	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &Options{
+// 		EvaluatorOptions: &core.OPAEvaluatorOptions{
+// 			MongoClient: benchMongoMock,
+// 		},
+// 	})
+// 	require.NoError(b, err)
+
+// 	b.ResetTimer()
+
+// 	for n := 0; n < b.N; n++ {
+// 		b.StopTimer()
+// 		headers := http.Header{}
+// 		headers.Set("my-header", "value")
+// 		recorder := httptest.NewRecorder()
+
+// 		rondInput := getFakeInput(b, core.InputRequest{
+// 			Path:       "/projects/",
+// 			Headers:    headers,
+// 			Method:     http.MethodGet,
+// 			PathParams: map[string]string{},
+// 		}, "")
+// 		logger := logging.NewNoOpLogger()
+
+// 		b.StartTimer()
+// 		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/projects/")
+// 		require.NoError(b, err)
+// 		evaluator.EvaluateRequestPolicy(context.Background(), rondInput, types.User{
+// 			UserID: "user1",
+// 		})
+// 		b.StopTimer()
+// 		require.Equal(b, http.StatusOK, recorder.Code)
+// 	}
+// }
 
 func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 	if h, ok := t.(tHelper); ok {
@@ -673,4 +737,86 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 	require.NoError(t, err)
 
 	return sdk
+}
+
+func mergeMongoMockWithBindingsAndRoles(mock *mocks.MongoClientMock) *mocks.MongoClientMock {
+	if mock.UserBindings != nil {
+		mock.UserBindings = []types.Binding{
+			{
+				BindingID:   "binding1",
+				Subjects:    []string{"user1"},
+				Roles:       []string{"admin"},
+				Groups:      []string{"area_rocket"},
+				Permissions: []string{"permission4"},
+				Resource: &types.Resource{
+					ResourceType: "project",
+					ResourceID:   "project123",
+				},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "binding2",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role3", "role4"},
+				Groups:            []string{"group4"},
+				Permissions:       []string{"permission7"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "binding5",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role3", "role4"},
+				Permissions:       []string{"permission12"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "notUsedByAnyone2",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role3", "role6"},
+				Permissions:       []string{"permissionNotUsed"},
+				CRUDDocumentState: "PRIVATE",
+			},
+			{
+				BindingID: "binding-company-owner",
+				Subjects:  []string{"user1"},
+				Roles:     []string{"company_owner"},
+				Resource: &types.Resource{
+					ResourceType: "company",
+					ResourceID:   "myCompany",
+				},
+				CRUDDocumentState: "PUBLIC",
+			},
+		}
+	}
+	if mock.UserRoles != nil {
+		mock.UserRoles = []types.Role{
+			{
+				RoleID:            "company_owner",
+				Permissions:       []string{"console.company.project.view"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				RoleID:            "admin",
+				Permissions:       []string{"console.project.view", "permission2", "foobar"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				RoleID:            "role3",
+				Permissions:       []string{"permission3", "permission5", "console.project.view"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				RoleID:            "role6",
+				Permissions:       []string{"permission3", "permission5"},
+				CRUDDocumentState: "PRIVATE",
+			},
+			{
+				RoleID:            "notUsedByAnyone",
+				Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
+				CRUDDocumentState: "PUBLIC",
+			},
+		}
+	}
+
+	return mock
 }
