@@ -604,7 +604,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	require.NoError(b, err)
 
 	logger := logging.NewNoOpLogger()
-	mongoClient := mocks.MongoClientMock{
+	mongoClient := &mocks.MongoClientMock{
 		FindOneResult: map[string]any{
 			"_id":      "project123",
 			"tenantId": "tenantId",
@@ -629,7 +629,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 
 	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
-			MongoClient: mergeMongoMockWithBindingsAndRoles(&mongoClient),
+			MongoClient: mongoClient,
 		},
 	})
 	require.NoError(b, err)
@@ -640,7 +640,6 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 		b.StopTimer()
 		headers := http.Header{}
 		headers.Set("my-header", "value")
-		recorder := httptest.NewRecorder()
 
 		rondInput := getFakeInput(b, core.InputRequest{
 			Path:    "/projects/project123",
@@ -653,52 +652,16 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 		b.StartTimer()
 		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/projects/project123")
 		require.NoError(b, err)
-		evaluator.EvaluateRequestPolicy(context.Background(), rondInput, types.User{})
+		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, getUserMockWithBindingsAndRoles())
 		b.StopTimer()
-		require.Equal(b, http.StatusOK, recorder.Code)
+
+		require.NoError(b, err)
+		require.Equal(b, PolicyResult{
+			QueryToProxy: []byte(""),
+			Allowed:      true,
+		}, policyResult)
 	}
 }
-
-// func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
-// 	moduleConfig, err := core.LoadRegoModule("../mocks/bench-policies")
-// 	require.NoError(b, err, "Unexpected error")
-
-// 	openAPISpec, err := openapi.LoadOASFile("../mocks/bench.json")
-// 	require.NoError(b, err)
-
-// 	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &Options{
-// 		EvaluatorOptions: &core.OPAEvaluatorOptions{
-// 			MongoClient: benchMongoMock,
-// 		},
-// 	})
-// 	require.NoError(b, err)
-
-// 	b.ResetTimer()
-
-// 	for n := 0; n < b.N; n++ {
-// 		b.StopTimer()
-// 		headers := http.Header{}
-// 		headers.Set("my-header", "value")
-// 		recorder := httptest.NewRecorder()
-
-// 		rondInput := getFakeInput(b, core.InputRequest{
-// 			Path:       "/projects/",
-// 			Headers:    headers,
-// 			Method:     http.MethodGet,
-// 			PathParams: map[string]string{},
-// 		}, "")
-// 		logger := logging.NewNoOpLogger()
-
-// 		b.StartTimer()
-// 		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/projects/")
-// 		require.NoError(b, err)
-// 		evaluator.EvaluateRequestPolicy(context.Background(), rondInput, types.User{
-// 			UserID: "user1",
-// 		})
-// 		b.StopTimer()
-// 		require.Equal(b, http.StatusOK, recorder.Code)
-// 	}
-// }
 
 func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 	if h, ok := t.(tHelper); ok {
@@ -739,9 +702,9 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 	return sdk
 }
 
-func mergeMongoMockWithBindingsAndRoles(mock *mocks.MongoClientMock) *mocks.MongoClientMock {
-	if mock.UserBindings != nil {
-		mock.UserBindings = []types.Binding{
+func getUserMockWithBindingsAndRoles() types.User {
+	return types.User{
+		UserBindings: []types.Binding{
 			{
 				BindingID:   "binding1",
 				Subjects:    []string{"user1"},
@@ -786,10 +749,8 @@ func mergeMongoMockWithBindingsAndRoles(mock *mocks.MongoClientMock) *mocks.Mong
 				},
 				CRUDDocumentState: "PUBLIC",
 			},
-		}
-	}
-	if mock.UserRoles != nil {
-		mock.UserRoles = []types.Role{
+		},
+		UserRoles: []types.Role{
 			{
 				RoleID:            "company_owner",
 				Permissions:       []string{"console.company.project.view"},
@@ -815,8 +776,6 @@ func mergeMongoMockWithBindingsAndRoles(mock *mocks.MongoClientMock) *mocks.Mong
 				Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
 				CRUDDocumentState: "PUBLIC",
 			},
-		}
+		},
 	}
-
-	return mock
 }
