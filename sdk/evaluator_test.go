@@ -663,6 +663,45 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	}
 }
 
+func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
+	moduleConfig, err := core.LoadRegoModule("../mocks/bench-policies")
+	require.NoError(b, err, "Unexpected error")
+
+	openAPISpec, err := openapi.LoadOASFile("../mocks/bench.json")
+	require.NoError(b, err)
+
+	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, nil)
+	require.NoError(b, err)
+
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		b.StopTimer()
+		headers := http.Header{}
+		headers.Set("my-header", "value")
+
+		rondInput := getFakeInput(b, core.InputRequest{
+			Path:       "/projects/",
+			Headers:    headers,
+			Method:     http.MethodGet,
+			PathParams: map[string]string{},
+		}, "")
+		logger := logging.NewNoOpLogger()
+
+		b.StartTimer()
+		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/projects/")
+		require.NoError(b, err)
+		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, getUserMockWithBindingsAndRoles())
+		b.StopTimer()
+
+		require.NoError(b, err)
+		require.Equal(b, PolicyResult{
+			QueryToProxy: []byte(`{"$or":[{"$and":[{"tenantId":{"$eq":"myCompany"}}]},{"$and":[{"_id":{"$eq":"project123"}}]}]}`),
+			Allowed:      true,
+		}, policyResult)
+	}
+}
+
 func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
@@ -704,6 +743,7 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 
 func getUserMockWithBindingsAndRoles() types.User {
 	return types.User{
+		UserID: "user1",
 		UserBindings: []types.Binding{
 			{
 				BindingID:   "binding1",
