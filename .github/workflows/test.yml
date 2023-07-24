@@ -55,6 +55,16 @@ jobs:
           external-data-json-path: ./cache/benchmark-data.json
           comment-on-alert: false
           fail-on-alert: true
+      # only execute this step when cache was restored
+      # do not fail hard here, as the key might not exist
+      - name: clear
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh extension install actions/gh-actions-cache
+          gh actions-cache delete '${{ runner.os }}-benchmark' --confirm
+        continue-on-error: true
 
   build:
     name: Build docker image
