@@ -41,7 +41,7 @@ jobs:
         with:
           go-version: ${{ matrix.go_version }}
       - name: Run benchmark
-        run: make bench && tee output.txt
+        run: make bench | tee output.txt
       - name: Download previous benchmark data
         uses: actions/cache@v3
         with:
