@@ -43,7 +43,7 @@ jobs:
       - name: Run benchmark
         run: make bench | tee output.txt
       - name: Download previous benchmark data
-        uses: actions/cache@v3
+        uses: actions/cache/restore@v3
         with:
           path: ./cache
           key: ${{ runner.os }}-benchmark
@@ -57,14 +57,20 @@ jobs:
           fail-on-alert: true
       # only execute this step when cache was restored
       # do not fail hard here, as the key might not exist
-      - name: clear
+      - name: Clear cache
         shell: bash
+        if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh extension install actions/gh-actions-cache
           gh actions-cache delete '${{ runner.os }}-benchmark' --confirm
         continue-on-error: true
+      - name: Download previous benchmark data
+        uses: actions/cache/save@v3
+        with:
+          path: ./cache
+          key: ${{ runner.os }}-benchmark
 
   build:
     name: Build docker image
