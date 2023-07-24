@@ -159,67 +159,64 @@ allow_manage_secret_envs {
 #   - console.company.project.environment.view
 
 projection_projects_list_environments [projects] {
-  projects := [projects_with_envs_filtered |
-      project := input.response.body[_]
-      projectId := project._id
-      allow_view_project with input.request.pathParams.id as projectId
-      allowed_envs := filter_envs(project)
-      projects_with_envs_filtered := json.patch(project, [{"op": "replace", "path": "/environments", "value": allowed_envs}])
-  ]
+    projects := [projects_with_envs_filtered |
+        project := input.response.body[_]
+        isAllowed := user_can_access_project_given_project(project)
+        isAllowed
+        allowed_envs := filter_envs(project.environments, project._id, project.tenantId)
+        projects_with_envs_filtered := json.patch(project, [{"op": "replace", "path": "/environments", "value": allowed_envs}])
+    ]
 }
 
 # projection_project_environments
-#
+
+user_can_access_project_given_project(project) = allowed {
+    allowed := user_has_permission_from_bindings("console.company.project.view", project.tenantId)
+} {
+    not user_has_permission_from_bindings("console.company.project.view", project.tenantId)
+    allowed := user_has_permission_from_bindings("console.project.view", project._id)
+}
+
 # Used permissions:
 #   - console.project.view
 #   - console.company.project.view
 #   - console.environment.view
 #   - console.project.environment.view
 projection_project_environments [project] {
-  allow_view_project
-  user_has_permission_from_bindings("console.project.environment.view", input.request.pathParams.projectId)
-  project := input.response.body
+    project := input.response.body
+    project
+    user_can_access_project_given_project(project)
+    user_has_permission_from_bindings("console.project.environment.view", project._id)
 } {
-  allow_view_project
-  not user_has_permission_from_bindings("console.project.environment.view", input.request.pathParams.projectId)
-  project_from_db := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId":  input.request.pathParams.projectId}] }
-  })
-  user_has_permission_from_bindings("console.company.project.environment.view", project_from_db.tenantId)
-  project := input.response.body
-}{
-  allow_view_project
-  not user_has_permission_from_bindings("console.project.environment.view", input.request.pathParams.projectId)
-  project_from_db := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId":  input.request.pathParams.projectId}] }
-  })
-  not user_has_permission_from_bindings("console.company.project.environment.view", project_from_db.tenantId)
-  originalProject := input.response.body
-  allowed_envs := filter_envs(originalProject)
-  project := json.patch(originalProject, [{"op": "replace", "path": "environments", "value": allowed_envs}])
+    project := input.response.body
+    project
+    user_can_access_project_given_project(project)
+    not user_has_permission_from_bindings("console.project.environment.view", project._id)
+    user_has_permission_from_bindings("console.company.project.environment.view", project.tenantId)
+} {
+    originalProject := input.response.body
+    user_can_access_project_given_project(originalProject)
+    not user_has_permission_from_bindings("console.project.environment.view", originalProject._id)
+    not user_has_permission_from_bindings("console.company.project.environment.view", originalProject.tenantId)
+    allowed_envs := filter_envs(originalProject.environments, originalProject._id, originalProject.tenantId)
+    project := json.patch(originalProject, [{"op": "replace", "path": "environments", "value": allowed_envs}])
 }
 
-filter_envs(project) = allowed_envs {
-  user_has_permission_from_bindings("console.project.environment.view", project._id)
-  allowed_envs := project.environments
+filter_envs(environments, mongoProjectId, tenantId) = allowed_envs {
+    user_has_permission_from_bindings("console.project.environment.view", mongoProjectId)
+    allowed_envs := environments
 } {
-  not user_has_permission_from_bindings("console.project.environment.view", project._id)
-  project_from_db := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId":  project._id}] }
-  })
-  user_has_permission_from_bindings("console.company.project.environment.view", project_from_db.tenantId)
-  allowed_envs := project.environments
+    not user_has_permission_from_bindings("console.project.environment.view", mongoProjectId)
+    user_has_permission_from_bindings("console.company.project.environment.view", tenantId)
+    allowed_envs := environments
 } {
-  not user_has_permission_from_bindings("console.project.environment.view", project._id)
-  project_from_db := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId":  project._id}] }
-  })
-  not user_has_permission_from_bindings("console.company.project.environment.view", project_from_db.tenantId)
-  allowed_envs := [y |
-      environment := project.environments[_]
-      user_has_permission_from_bindings("console.environment.view", concat(":", [project._id, environment.envId]))
-      y := environment
-  ]
+    not user_has_permission_from_bindings("console.project.environment.view", mongoProjectId)
+    not user_has_permission_from_bindings("console.company.project.environment.view", tenantId)
+    allowed_envs := [y |
+        environment := environments[_]
+        user_has_permission_from_bindings("console.environment.view", concat(":", [mongoProjectId, environment.envId]))
+        y := environment
+    ]
 }
 
 # filter_values_from_secreted_envs

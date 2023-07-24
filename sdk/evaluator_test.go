@@ -16,6 +16,7 @@ package sdk
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -600,10 +601,6 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	moduleConfig, err := core.LoadRegoModule("../mocks/bench-policies")
 	require.NoError(b, err, "Unexpected error")
 
-	openAPISpec, err := openapi.LoadOASFile("../mocks/bench.json")
-	require.NoError(b, err)
-
-	logger := logging.NewNoOpLogger()
 	mongoClient := &mocks.MongoClientMock{
 		FindOneResult: map[string]any{
 			"_id":      "project123",
@@ -627,7 +624,76 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 		},
 	}
 
-	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, &Options{
+	user := types.User{
+		UserID: "user1",
+		UserBindings: []types.Binding{
+			{
+				BindingID:   "binding1",
+				Subjects:    []string{"user1"},
+				Roles:       []string{"admin"},
+				Groups:      []string{"area_rocket"},
+				Permissions: []string{"permission4"},
+				Resource: &types.Resource{
+					ResourceType: "project",
+					ResourceID:   "project123",
+				},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "binding2",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role3", "role4"},
+				Groups:            []string{"group4"},
+				Permissions:       []string{"permission7"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID: "binding-company-owner",
+				Subjects:  []string{"user1"},
+				Roles:     []string{"company_owner"},
+				Resource: &types.Resource{
+					ResourceType: "company",
+					ResourceID:   "myCompany",
+				},
+				CRUDDocumentState: "PUBLIC",
+			},
+		},
+		UserRoles: []types.Role{
+			{
+				RoleID:            "company_owner",
+				Permissions:       []string{"console.company.project.view", "console.company.project.environment.view"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				RoleID:            "admin",
+				Permissions:       []string{"console.project.view", "console.project.environment.view", "permission2", "foobar"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				RoleID:            "role3",
+				Permissions:       []string{"permission3", "permission5", "console.project.view"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				RoleID:            "role6",
+				Permissions:       []string{"permission3", "permission5"},
+				CRUDDocumentState: "PRIVATE",
+			},
+			{
+				RoleID:            "notUsedByAnyone",
+				Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
+				CRUDDocumentState: "PUBLIC",
+			},
+		},
+	}
+
+	config := core.RondConfig{
+		RequestFlow: core.RequestFlow{
+			PolicyName: "allow_view_project",
+		},
+	}
+
+	evaluator, err := NewWithConfig(context.Background(), moduleConfig, config, &Options{
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			MongoClient: mongoClient,
 		},
@@ -649,10 +715,9 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 				"projectId": "project123",
 			},
 		}, "")
+
 		b.StartTimer()
-		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/projects/project123")
-		require.NoError(b, err)
-		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, getUserMockWithBindingsAndRoles())
+		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, user)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -667,10 +732,81 @@ func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
 	moduleConfig, err := core.LoadRegoModule("../mocks/bench-policies")
 	require.NoError(b, err, "Unexpected error")
 
-	openAPISpec, err := openapi.LoadOASFile("../mocks/bench.json")
-	require.NoError(b, err)
+	config := core.RondConfig{
+		RequestFlow: core.RequestFlow{
+			PolicyName:    "filter_projects",
+			GenerateQuery: true,
+		},
+	}
 
-	sdk, err := NewFromOAS(context.Background(), moduleConfig, openAPISpec, nil)
+	user := types.User{
+		UserID: "user1",
+		UserBindings: []types.Binding{
+			{
+				BindingID:   "binding1",
+				Subjects:    []string{"user1"},
+				Roles:       []string{"admin"},
+				Groups:      []string{"area_rocket"},
+				Permissions: []string{"permission4"},
+				Resource: &types.Resource{
+					ResourceType: "project",
+					ResourceID:   "project123",
+				},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "binding2",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role3", "role4"},
+				Groups:            []string{"group4"},
+				Permissions:       []string{"permission7"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID: "binding-company-owner",
+				Subjects:  []string{"user1"},
+				Roles:     []string{"company_owner"},
+				Resource: &types.Resource{
+					ResourceType: "company",
+					ResourceID:   "myCompany",
+				},
+				CRUDDocumentState: "PUBLIC",
+			},
+		},
+		UserRoles: []types.Role{
+			{
+				RoleID:            "company_owner",
+				Permissions:       []string{"console.company.project.view", "console.company.project.environment.view"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				RoleID:            "admin",
+				Permissions:       []string{"console.project.view", "console.project.environment.view", "permission2", "foobar"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				RoleID:            "role3",
+				Permissions:       []string{"permission3", "permission5", "console.project.view"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				RoleID:            "role6",
+				Permissions:       []string{"permission3", "permission5"},
+				CRUDDocumentState: "PRIVATE",
+			},
+			{
+				RoleID:            "notUsedByAnyone",
+				Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
+				CRUDDocumentState: "PUBLIC",
+			},
+		},
+	}
+
+	evaluator, err := NewWithConfig(context.Background(), moduleConfig, config, &Options{
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
+			MongoClient: mocks.MongoClientMock{},
+		},
+	})
 	require.NoError(b, err)
 
 	b.ResetTimer()
@@ -686,12 +822,9 @@ func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
 			Method:     http.MethodGet,
 			PathParams: map[string]string{},
 		}, "")
-		logger := logging.NewNoOpLogger()
 
 		b.StartTimer()
-		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/projects/")
-		require.NoError(b, err)
-		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, getUserMockWithBindingsAndRoles())
+		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, user)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -699,6 +832,121 @@ func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
 			QueryToProxy: []byte(`{"$or":[{"$and":[{"tenantId":{"$eq":"myCompany"}}]},{"$and":[{"_id":{"$eq":"project123"}}]}]}`),
 			Allowed:      true,
 		}, policyResult)
+	}
+}
+
+func BenchmarkEvaluateResponse(b *testing.B) {
+	moduleConfig, err := core.LoadRegoModule("../mocks/bench-policies")
+	require.NoError(b, err, "Unexpected error")
+
+	config := core.RondConfig{
+		RequestFlow: core.RequestFlow{
+			PolicyName: "allow_all",
+		},
+		ResponseFlow: core.ResponseFlow{
+			PolicyName: "projection_project_environments",
+		},
+	}
+
+	user := types.User{
+		UserID: "user1",
+		UserBindings: []types.Binding{{
+			BindingID: "binding-env",
+			Subjects:  []string{"user1"},
+			Roles:     []string{"env-reader"},
+			Resource: &types.Resource{
+				ResourceType: "environment",
+				ResourceID:   "projectWithEnv:my-preprod-env",
+			},
+			CRUDDocumentState: "PUBLIC",
+		},
+			{
+				BindingID: "binding-projectWithEnv-project-reader",
+				Subjects:  []string{"user1"},
+				Roles:     []string{"project-reader"},
+				Resource: &types.Resource{
+					ResourceType: "project",
+					ResourceID:   "projectWithEnv",
+				},
+				CRUDDocumentState: "PUBLIC",
+			},
+		},
+		UserRoles: []types.Role{
+			{
+				RoleID:            "env-reader",
+				Permissions:       []string{"console.environment.view"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				RoleID:            "project-reader",
+				Permissions:       []string{"console.project.view"},
+				CRUDDocumentState: "PUBLIC",
+			},
+		},
+	}
+
+	evaluator, err := NewWithConfig(context.Background(), moduleConfig, config, &Options{
+		EvaluatorOptions: &core.OPAEvaluatorOptions{
+			MongoClient: &mocks.MongoClientMock{},
+		},
+	})
+	require.NoError(b, err)
+
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		b.StopTimer()
+		headers := http.Header{}
+		headers.Set("my-header", "value")
+
+		rondInput := getFakeInput(b, core.InputRequest{
+			Path:    "/projects/projectWithEnv",
+			Headers: headers,
+			Method:  http.MethodGet,
+			PathParams: map[string]string{
+				"projectId": "projectWithEnv",
+			},
+		}, "")
+
+		decodedBody := map[string]any{
+			"_id":       "projectWithEnv",
+			"projectId": "my-project",
+			"tenantId":  "my-tenant",
+			"environments": []map[string]any{
+				{
+					"envId": "my-dev-env",
+				},
+				{
+					"envId": "my-preprod-env",
+				},
+				{
+					"envId": "my-prod-env",
+				},
+			},
+		}
+
+		b.StartTimer()
+		policyResult, err := evaluator.EvaluateResponsePolicy(context.Background(), rondInput, user, decodedBody)
+		b.StopTimer()
+
+		require.NoError(b, err)
+
+		expectedProject := map[string]any{
+			"_id":       "projectWithEnv",
+			"projectId": "my-project",
+			"tenantId":  "my-tenant",
+			"environments": []interface{}{
+				map[string]any{
+					"envId": "my-preprod-env",
+				},
+			},
+		}
+
+		actualProject := map[string]any{}
+		err = json.Unmarshal(policyResult, &actualProject)
+		require.NoError(b, err)
+
+		require.Equal(b, expectedProject, actualProject)
 	}
 }
 
@@ -739,83 +987,4 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 	require.NoError(t, err)
 
 	return sdk
-}
-
-func getUserMockWithBindingsAndRoles() types.User {
-	return types.User{
-		UserID: "user1",
-		UserBindings: []types.Binding{
-			{
-				BindingID:   "binding1",
-				Subjects:    []string{"user1"},
-				Roles:       []string{"admin"},
-				Groups:      []string{"area_rocket"},
-				Permissions: []string{"permission4"},
-				Resource: &types.Resource{
-					ResourceType: "project",
-					ResourceID:   "project123",
-				},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				BindingID:         "binding2",
-				Subjects:          []string{"user1"},
-				Roles:             []string{"role3", "role4"},
-				Groups:            []string{"group4"},
-				Permissions:       []string{"permission7"},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				BindingID:         "binding5",
-				Subjects:          []string{"user1"},
-				Roles:             []string{"role3", "role4"},
-				Permissions:       []string{"permission12"},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				BindingID:         "notUsedByAnyone2",
-				Subjects:          []string{"user1"},
-				Roles:             []string{"role3", "role6"},
-				Permissions:       []string{"permissionNotUsed"},
-				CRUDDocumentState: "PRIVATE",
-			},
-			{
-				BindingID: "binding-company-owner",
-				Subjects:  []string{"user1"},
-				Roles:     []string{"company_owner"},
-				Resource: &types.Resource{
-					ResourceType: "company",
-					ResourceID:   "myCompany",
-				},
-				CRUDDocumentState: "PUBLIC",
-			},
-		},
-		UserRoles: []types.Role{
-			{
-				RoleID:            "company_owner",
-				Permissions:       []string{"console.company.project.view"},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				RoleID:            "admin",
-				Permissions:       []string{"console.project.view", "permission2", "foobar"},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				RoleID:            "role3",
-				Permissions:       []string{"permission3", "permission5", "console.project.view"},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				RoleID:            "role6",
-				Permissions:       []string{"permission3", "permission5"},
-				CRUDDocumentState: "PRIVATE",
-			},
-			{
-				RoleID:            "notUsedByAnyone",
-				Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
-				CRUDDocumentState: "PUBLIC",
-			},
-		},
-	}
 }
