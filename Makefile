@@ -26,7 +26,7 @@ coverage: clean mongo-start
 
 .PHONY: bench
 bench: clean mongo-start
-	go test -benchmem -bench=^Bench ./...
+	go test -benchmem -bench=^Bench ./... -run=^Bench
 
 .PHONY: clean
 clean:

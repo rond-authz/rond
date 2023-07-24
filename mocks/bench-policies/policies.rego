@@ -8,7 +8,7 @@ allow_all {
 
 # filter_projects
 #
-# Used permissions: 
+# Used permissions:
 #  - "console.project.view"
 #  - "console.company.project.view"
 #
@@ -25,8 +25,8 @@ filter_projects {
 }
 
 # allow_view_project
-# 
-# Used permissions: 
+#
+# Used permissions:
 #  - "console.project.view"
 #  - "console.company.project.view"
 #
@@ -37,20 +37,20 @@ allow_view_project {
 } {
   not user_has_permission_from_bindings("console.project.view", input.request.pathParams.id)
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.id }] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.id }] }
   })
   user_has_permission_from_bindings("console.company.project.view", project.tenantId)
 } {
   not user_has_permission_from_bindings("console.project.view", input.request.pathParams.projectId)
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId}] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId}] }
   })
   user_has_permission_from_bindings("console.company.project.view", project.tenantId)
 }
 
 # allow_create_project
-# 
-# Used groups: 
+#
+# Used groups:
 #  - "create_project"
 #
 allow_create_project {
@@ -59,7 +59,7 @@ allow_create_project {
 
 # allow_commit
 #
-# Used permissions: 
+# Used permissions:
 #  - "console.project.configuration.update"
 #
 allow_commit {
@@ -69,13 +69,13 @@ allow_commit {
 } {
   not user_has_permission_from_bindings("console.project.configuration.update", input.request.pathParams.projectId)
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] }
   })
   user_has_permission_from_bindings("console.company.project.configuration.update", project.tenantId)
 } {
   not user_has_permission_from_bindings("console.project.configuration.update", input.request.query.projectId[0])
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] }
   })
   user_has_permission_from_bindings("console.company.project.configuration.update", project.tenantId)
 }
@@ -93,13 +93,13 @@ allow_service_repository_creation {
 }{
   not user_has_permission_from_bindings("console.project.service.repository.create", input.request.pathParams.projectId)
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] }
   })
   user_has_permission_from_bindings("console.company.project.service.repository.create", project.tenantId)
 }{
   not user_has_permission_from_bindings("console.project.service.repository.create", input.request.query.projectId[0])
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] }
   })
   user_has_permission_from_bindings("console.company.project.service.repository.create", project.tenantId)
 }
@@ -116,13 +116,13 @@ allow_view_secret_envs_key {
 }{
   not user_has_permission_from_bindings("console.project.view", input.request.pathParams.projectId)
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] }
   })
   user_has_permission_from_bindings("console.company.project.view", project.tenantId)
 } {
   not user_has_permission_from_bindings("console.project.view", input.request.query.projectId[0])
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] }
   })
   user_has_permission_from_bindings("console.company.project.view", project.tenantId)
 }
@@ -139,13 +139,13 @@ allow_manage_secret_envs {
 } {
   not user_has_permission_from_bindings("console.project.secreted_variables.manage", input.request.pathParams.projectId)
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] }
   })
   user_has_permission_from_bindings("console.company.project.secreted_variables.manage", project.tenantId)
 } {
   not user_has_permission_from_bindings("console.project.secreted_variables.manage", input.request.query.projectId[0])
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] }
   })
   user_has_permission_from_bindings("console.company.project.secreted_variables.manage", project.tenantId)
 }
@@ -159,67 +159,64 @@ allow_manage_secret_envs {
 #   - console.company.project.environment.view
 
 projection_projects_list_environments [projects] {
-  projects := [projects_with_envs_filtered | 
-      project := input.response.body[_]
-      projectId := project._id
-      allow_view_project with input.request.pathParams.id as projectId
-      allowed_envs := filter_envs(project)
-      projects_with_envs_filtered := json.patch(project, [{"op": "replace", "path": "/environments", "value": allowed_envs}])
-  ]
+    projects := [projects_with_envs_filtered |
+        project := input.response.body[_]
+        isAllowed := user_can_access_project_given_project(project)
+        isAllowed
+        allowed_envs := filter_envs(project.environments, project._id, project.tenantId)
+        projects_with_envs_filtered := json.patch(project, [{"op": "replace", "path": "/environments", "value": allowed_envs}])
+    ]
 }
 
 # projection_project_environments
-#
+
+user_can_access_project_given_project(project) = allowed {
+    allowed := user_has_permission_from_bindings("console.company.project.view", project.tenantId)
+} {
+    not user_has_permission_from_bindings("console.company.project.view", project.tenantId)
+    allowed := user_has_permission_from_bindings("console.project.view", project._id)
+}
+
 # Used permissions:
 #   - console.project.view
 #   - console.company.project.view
 #   - console.environment.view
 #   - console.project.environment.view
 projection_project_environments [project] {
-  allow_view_project
-  user_has_permission_from_bindings("console.project.environment.view", input.request.pathParams.projectId)
-  project := input.response.body
+    project := input.response.body
+    project
+    user_can_access_project_given_project(project)
+    user_has_permission_from_bindings("console.project.environment.view", project._id)
 } {
-  allow_view_project
-  not user_has_permission_from_bindings("console.project.environment.view", input.request.pathParams.projectId)
-  project_from_db := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId":  input.request.pathParams.projectId}] } 
-  })
-  user_has_permission_from_bindings("console.company.project.environment.view", project_from_db.tenantId)
-  project := input.response.body
-}{
-  allow_view_project
-  not user_has_permission_from_bindings("console.project.environment.view", input.request.pathParams.projectId)
-  project_from_db := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId":  input.request.pathParams.projectId}] } 
-  })
-  not user_has_permission_from_bindings("console.company.project.environment.view", project_from_db.tenantId)
-  originalProject := input.response.body
-  allowed_envs := filter_envs(originalProject)
-  project := json.patch(originalProject, [{"op": "replace", "path": "environments", "value": allowed_envs}])
+    project := input.response.body
+    project
+    user_can_access_project_given_project(project)
+    not user_has_permission_from_bindings("console.project.environment.view", project._id)
+    user_has_permission_from_bindings("console.company.project.environment.view", project.tenantId)
+} {
+    originalProject := input.response.body
+    user_can_access_project_given_project(originalProject)
+    not user_has_permission_from_bindings("console.project.environment.view", originalProject._id)
+    not user_has_permission_from_bindings("console.company.project.environment.view", originalProject.tenantId)
+    allowed_envs := filter_envs(originalProject.environments, originalProject._id, originalProject.tenantId)
+    project := json.patch(originalProject, [{"op": "replace", "path": "environments", "value": allowed_envs}])
 }
 
-filter_envs(project) = allowed_envs {
-  user_has_permission_from_bindings("console.project.environment.view", project._id)
-  allowed_envs := project.environments
+filter_envs(environments, mongoProjectId, tenantId) = allowed_envs {
+    user_has_permission_from_bindings("console.project.environment.view", mongoProjectId)
+    allowed_envs := environments
 } {
-  not user_has_permission_from_bindings("console.project.environment.view", project._id)
-  project_from_db := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId":  project._id}] } 
-  })
-  user_has_permission_from_bindings("console.company.project.environment.view", project_from_db.tenantId)
-  allowed_envs := project.environments
+    not user_has_permission_from_bindings("console.project.environment.view", mongoProjectId)
+    user_has_permission_from_bindings("console.company.project.environment.view", tenantId)
+    allowed_envs := environments
 } {
-  not user_has_permission_from_bindings("console.project.environment.view", project._id)
-  project_from_db := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId":  project._id}] } 
-  })
-  not user_has_permission_from_bindings("console.company.project.environment.view", project_from_db.tenantId)
-  allowed_envs := [y |
-      environment := project.environments[_]
-      user_has_permission_from_bindings("console.environment.view", concat(":", [project._id, environment.envId]))
-      y := environment
-  ]
+    not user_has_permission_from_bindings("console.project.environment.view", mongoProjectId)
+    not user_has_permission_from_bindings("console.company.project.environment.view", tenantId)
+    allowed_envs := [y |
+        environment := environments[_]
+        user_has_permission_from_bindings("console.environment.view", concat(":", [mongoProjectId, environment.envId]))
+        y := environment
+    ]
 }
 
 # filter_values_from_secreted_envs
@@ -230,10 +227,10 @@ filter_envs(project) = allowed_envs {
 filter_values_from_secreted_envs [env_variables] {
   not user_has_permission_from_bindings("console.project.secreted_variables.manage", input.request.pathParams.projectId)
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId}] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId}] }
   })
   not user_has_permission_from_bindings("console.company.project.secreted_variables.manage", project.tenantId)
-  env_variables:= [x | 
+  env_variables:= [x |
       envs_from_body:= input.response.body[_]
       x = {"key": envs_from_body.key, "value": ""}
   ]
@@ -256,13 +253,13 @@ allow_deploy {
 } {
   not user_has_permission_from_bindings("console.project.deploy.trigger", input.request.pathParams.projectId)
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] }
   })
   user_has_permission_from_bindings("console.company.project.deploy.trigger", project.tenantId)
 } {
   not user_has_permission_from_bindings("console.project.deploy.trigger", input.request.query.projectId[0])
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] }
   })
   user_has_permission_from_bindings("console.company.project.deploy.trigger", project.tenantId)
 }
@@ -282,13 +279,13 @@ allow_pod_delete {
 } {
   not user_has_permission_from_bindings("console.project.k8s.pod.delete", input.request.pathParams.projectId)
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] }
   })
   user_has_permission_from_bindings("console.company.project.k8s.pod.delete", project.tenantId)
 } {
   not user_has_permission_from_bindings("console.project.k8s.pod.delete", input.request.query.projectId[0])
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] }
   })
   user_has_permission_from_bindings("console.company.project.k8s.pod.delete", project.tenantId)
 }
@@ -308,13 +305,13 @@ allow_manage_dashboard {
 } {
   not user_has_permission_from_bindings("console.project.dashboard.manage", input.request.pathParams.projectId)
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.pathParams.projectId }] }
   })
   user_has_permission_from_bindings("console.company.project.dashboard.manage", project.tenantId)
 } {
   not user_has_permission_from_bindings("console.project.dashboard.manage", input.request.query.projectId[0])
   project := find_one("projects", {
-      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] } 
+      "$expr": { "$eq": ["$_id", { "$toObjectId": input.request.query.projectId[0]}] }
   })
   user_has_permission_from_bindings("console.company.project.dashboard.manage", project.tenantId)
 }
@@ -332,7 +329,7 @@ allow_manage_dashboard {
 #   - ENABLE_PERMISSION_RESTART_POD_{ENVID}
 #   - ENABLE_PERMISSION_MANAGE_DASHBOARD_{ENVID}
 projection_features_toggle[res] {
-  ft_not_allowed := {x | 
+  ft_not_allowed := {x |
     some key, val in input.response.body
       ft_checker with input.ft as key
     x = key
