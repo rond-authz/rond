@@ -10,7 +10,7 @@ require (
 	github.com/mia-platform/configlib v1.0.0
 	github.com/mia-platform/glogger/v4 v4.0.0
 	github.com/mia-platform/go-crud-service-client v0.10.0
-	github.com/open-policy-agent/opa v0.54.0
+	github.com/open-policy-agent/opa v0.55.0
 	github.com/prometheus/client_golang v1.16.0
 	github.com/samber/lo v1.38.1
 	github.com/sirupsen/logrus v1.9.3
@@ -76,14 +76,15 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yashtewari/glob-intersection v0.2.0 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
-	go.opentelemetry.io/otel v1.14.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.14.0 // indirect
-	go.opentelemetry.io/otel/trace v1.14.0 // indirect
-	golang.org/x/crypto v0.10.0 // indirect
+	go.opentelemetry.io/otel v1.16.0 // indirect
+	go.opentelemetry.io/otel/metric v1.16.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.16.0 // indirect
+	go.opentelemetry.io/otel/trace v1.16.0 // indirect
+	golang.org/x/crypto v0.11.0 // indirect
 	golang.org/x/exp v0.0.0-20221002003631-540bb7301a08 // indirect
-	golang.org/x/sync v0.2.0 // indirect
+	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
-	golang.org/x/text v0.10.0 // indirect
+	golang.org/x/text v0.11.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
