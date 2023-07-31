@@ -279,6 +279,7 @@ type FakeInput struct {
 func (i FakeInput) Input(user types.User, responseBody any) (core.Input, error) {
 	return core.Input{
 		User: core.InputUser{
+			ID:         user.UserID,
 			Properties: user.Properties,
 			Groups:     user.UserGroups,
 			Bindings:   user.UserBindings,

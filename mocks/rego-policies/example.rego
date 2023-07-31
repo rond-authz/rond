@@ -83,6 +83,10 @@ testingPathParamsAbsence {
 }
 
 allow_view {
-    id :=  object.get(input,["request","pathParams", "id"], false)
+    id := object.get(input,["request","pathParams", "id"], false)
     id
+}
+
+assert_user {
+	input.user.id == "the-user-id"
 }

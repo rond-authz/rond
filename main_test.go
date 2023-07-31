@@ -312,6 +312,23 @@ func TestEntrypoint(t *testing.T) {
 			require.True(t, gock.IsDone(), "the proxy blocks the request when the permissions are granted.")
 		})
 
+		t.Run("ok - user assertions", func(t *testing.T) {
+			gock.Flush()
+			gock.New("http://localhost:3001/").
+				Get("/assert-user").
+				Reply(200)
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:3000/assert-user", nil)
+			require.Nil(t, err)
+
+			req.Header.Set("miauserid", "the-user-id")
+			resp, err := http.DefaultClient.Do(req)
+
+			require.Equal(t, nil, err)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+			require.True(t, gock.IsDone(), "the proxy blocks the request when the permissions are granted.")
+		})
+
 		t.Run("forbidden - opa evaluation fail", func(t *testing.T) {
 			gock.Flush()
 			gock.New("http://localhost:3001/").

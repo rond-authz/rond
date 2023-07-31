@@ -46,6 +46,13 @@ func TestFetchOpenAPI(t *testing.T) {
 		require.NoError(t, err, "unexpected error")
 		require.NotNil(t, openApiSpec, "unexpected nil result")
 		require.Equal(t, OpenAPIPaths{
+			"/assert-user": PathVerbs{
+				"get": VerbConfig{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "assert_user"},
+					},
+				},
+			},
 			"/users/": PathVerbs{
 				"get": VerbConfig{
 					PermissionV2: &core.RondConfig{
@@ -226,6 +233,13 @@ func TestLoadOAS(t *testing.T) {
 		require.NoError(t, err, "unexpected error")
 		require.NotNil(t, openApiSpec, "unexpected nil result")
 		require.Equal(t, OpenAPIPaths{
+			"/assert-user": PathVerbs{
+				"get": VerbConfig{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "assert_user"},
+					},
+				},
+			},
 			"/users/": PathVerbs{
 				"get": VerbConfig{
 					PermissionV2: &core.RondConfig{
