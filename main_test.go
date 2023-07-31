@@ -273,7 +273,7 @@ func TestEntrypoint(t *testing.T) {
 			if r.URL.Path == "/documentation/json" {
 				return false
 			}
-			if r.URL.Path == "/users/" && r.URL.Host == "localhost:3001" {
+			if (r.URL.Path == "/users/" || r.URL.Path == "/assert-user") && r.URL.Host == "localhost:3001" {
 				return false
 			}
 			return true
