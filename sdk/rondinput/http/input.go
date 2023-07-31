@@ -63,6 +63,7 @@ func (req requestInfo) Input(user types.User, responseBody any) (core.Input, err
 			Body: responseBody,
 		},
 		User: core.InputUser{
+			ID:         user.UserID,
 			Properties: user.Properties,
 			Groups:     user.UserGroups,
 			Bindings:   user.UserBindings,

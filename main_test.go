@@ -273,7 +273,7 @@ func TestEntrypoint(t *testing.T) {
 			if r.URL.Path == "/documentation/json" {
 				return false
 			}
-			if r.URL.Path == "/users/" && r.URL.Host == "localhost:3001" {
+			if (r.URL.Path == "/users/" || r.URL.Path == "/assert-user") && r.URL.Host == "localhost:3001" {
 				return false
 			}
 			return true
@@ -309,6 +309,24 @@ func TestEntrypoint(t *testing.T) {
 
 			require.Equal(t, nil, err)
 			require.Equal(t, http.StatusOK, resp.StatusCode)
+			require.True(t, gock.IsDone(), "the proxy blocks the request when the permissions are granted.")
+		})
+
+		t.Run("ok - user assertions", func(t *testing.T) {
+			gock.Flush()
+
+			gock.New("http://localhost:3001/").
+				Get("/assert-user").
+				Reply(200)
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:3000/assert-user", nil)
+			require.Nil(t, err)
+			req.Header.Set("miauserid", "the-user-id")
+
+			resp, err := http.DefaultClient.Do(req)
+			require.Equal(t, nil, err)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+
 			require.True(t, gock.IsDone(), "the proxy blocks the request when the permissions are granted.")
 		})
 
@@ -1283,7 +1301,7 @@ func TestEntrypoint(t *testing.T) {
 			File("./mocks/pathsWithWildCardCollision2.json")
 
 		setEnvs(t, []env{
-			{name: "HTTP_PORT", value: "3039"},
+			{name: "HTTP_PORT", value: "3060"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3038"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
@@ -1333,7 +1351,7 @@ func TestEntrypoint(t *testing.T) {
 		gock.New("http://localhost:3038/foo/count").
 			Get("/foo/count").
 			Reply(200)
-		req, err := http.NewRequest("GET", "http://localhost:3039/foo/count", nil)
+		req, err := http.NewRequest("GET", "http://localhost:3060/foo/count", nil)
 		require.NoError(t, err)
 
 		req.Header.Set("miausergroups", "group1")
@@ -1367,7 +1385,7 @@ func TestEntrypoint(t *testing.T) {
 			File("./mocks/pathsWithWildCardCollision.json")
 
 		setEnvs(t, []env{
-			{name: "HTTP_PORT", value: "3039"},
+			{name: "HTTP_PORT", value: "3070"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3038"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
@@ -1417,7 +1435,7 @@ func TestEntrypoint(t *testing.T) {
 		gock.New("http://localhost:3038/foo/count").
 			Patch("/foo/count").
 			Reply(200)
-		req, err := http.NewRequest("PATCH", "http://localhost:3039/foo/count", nil)
+		req, err := http.NewRequest("PATCH", "http://localhost:3070/foo/count", nil)
 		require.NoError(t, err)
 
 		req.Header.Set("miausergroups", "group1")

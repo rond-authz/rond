@@ -41,7 +41,7 @@ func TestCreatePolicyEvaluators(t *testing.T) {
 
 		policyEvals, err := SetupEvaluators(ctx, logger, openApiSpec, opaModuleConfig, nil)
 		require.NoError(t, err, "unexpected error creating evaluators")
-		require.Len(t, policyEvals, 4, "unexpected length")
+		require.Len(t, policyEvals, 5, "unexpected length")
 	})
 
 	t.Run("with complete oas mock", func(t *testing.T) {
