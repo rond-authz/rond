@@ -60,7 +60,6 @@ ft_checker {
 	true
 }
 
-
 response_policy1 {
 	true
 }
