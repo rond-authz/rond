@@ -101,4 +101,23 @@ func TestRondInput(t *testing.T) {
 			require.Nil(t, input.Request.Body)
 		})
 	})
+
+	t.Run("request userinfo remapping", func(t *testing.T) {
+		user := types.User{
+			UserID:       "UserID",
+			UserGroups:   []string{"UserGroups"},
+			UserRoles:    []types.Role{},
+			UserBindings: []types.Binding{},
+			Properties:   map[string]any{"key": "val"},
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/", bytes.NewReader([]byte{}))
+
+		rondRequest := NewInput(req, clientTypeHeaderKey, pathParams)
+		input, err := rondRequest.Input(user, nil)
+
+		require.NoError(t, err, "Unexpected error")
+		require.Equal(t, user.UserID, input.User.ID)
+		require.EqualValues(t, user.Properties, input.User.Properties)
+	})
 }

@@ -60,7 +60,6 @@ ft_checker {
 	true
 }
 
-
 response_policy1 {
 	true
 }
@@ -83,6 +82,10 @@ testingPathParamsAbsence {
 }
 
 allow_view {
-    id :=  object.get(input,["request","pathParams", "id"], false)
-    id
+	id := object.get(input,["request","pathParams", "id"], false)
+	id
+}
+
+assert_user {
+	input.user.id == "the-user-id"
 }

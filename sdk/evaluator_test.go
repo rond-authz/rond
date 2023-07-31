@@ -150,6 +150,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				method: http.MethodGet,
 				path:   "/users/",
 				user: types.User{
+					UserID:     "the-user-id",
 					UserGroups: []string{"my-group"},
 					UserRoles: []types.Role{
 						{
@@ -169,6 +170,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				},
 				opaModuleContent: `package policies
 				todo {
+					input.user.id == "the-user-id"
 					input.user.groups[0] == "my-group"
 					input.user.roles[0].roleId == "rid"
 					input.user.bindings[0].resource.resourceType == "my-resource"

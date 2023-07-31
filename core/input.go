@@ -46,6 +46,7 @@ type InputResponse struct {
 }
 
 type InputUser struct {
+	ID                     string                   `json:"id,omitempty"`
 	Properties             map[string]interface{}   `json:"properties,omitempty"`
 	Groups                 []string                 `json:"groups,omitempty"`
 	Bindings               []types.Binding          `json:"bindings,omitempty"`
