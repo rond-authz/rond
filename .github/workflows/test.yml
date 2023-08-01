@@ -5,7 +5,8 @@ on:
   push:
 jobs:
   tests:
-    name: Test with go version ${{ matrix.go_version }} on OS ${{matrix.os}}
+    name: Test
+    run-name: Tests with go version ${{ matrix.go_version }} on OS ${{matrix.os}}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -29,7 +30,8 @@ jobs:
           path-to-profile: coverage.out
 
   bench:
-    name: Bench with go version ${{ matrix.go_version }} on OS ${{matrix.os}}
+    name: Benchmark
+    run-name: Bench with go version ${{ matrix.go_version }} on OS ${{matrix.os}}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
