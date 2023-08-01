@@ -6,12 +6,12 @@ on:
 jobs:
   tests:
     name: Test
-    #run-name: Tests with go version ${{ matrix.go_version }} on OS ${{matrix.os}}
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         go_version: ['1.20', latest]
         os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v3
       - name: Use golang ${{ matrix.go_version }}
@@ -29,9 +29,32 @@ jobs:
         with:
           path-to-profile: coverage.out
 
+  test-latest:
+    name: Test latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use golang ${{ matrix.go_version }}
+        uses: actions/setup-go@v4
+        with:
+          check-latest: true
+      - name: Go version
+        run: go version
+      - name: Go get dependencies
+        run: go get -v -t -d ./...
+      - name: Run tests
+        run: make coverage
+      - name: Send the coverage output
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: coverage.out
+
   bench:
     name: Benchmark
-    #run-name: Bench with go version ${{ matrix.go_version }} on OS ${{matrix.os}}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
