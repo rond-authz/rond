@@ -23,6 +23,7 @@ import (
 	"github.com/rond-authz/rond/internal/helpers"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/types"
+	"github.com/samber/lo"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -59,12 +60,11 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resourceType := mux.Vars(r)["resourceType"]
-	if resourceType != "" && len(reqBody.ResourceIDs) == 0 {
-		utils.FailResponseWithCode(w, http.StatusBadRequest, "empty resources list", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
-		return
-	}
-	if len(reqBody.Subjects) == 0 && len(reqBody.Groups) == 0 {
-		utils.FailResponseWithCode(w, http.StatusBadRequest, "empty subjects and groups lists", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
+	isResourceIDsQuery := resourceType != "" && len(reqBody.ResourceIDs) > 0
+	isSubjectsOrGroupsQuery := len(reqBody.Subjects) > 0 || len(reqBody.Groups) > 0
+
+	if !isResourceIDsQuery && !isSubjectsOrGroupsQuery {
+		utils.FailResponseWithCode(w, http.StatusBadRequest, "empty subjects and groups lists or resource ids", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
@@ -318,6 +318,11 @@ func prepareBindings(bindings []types.Binding, reqBody RevokeRequestBody) ([]typ
 	var bindingToDelete []types.Binding
 
 	for _, binding := range bindings {
+		if binding.Resource != nil && lo.Contains(reqBody.ResourceIDs, binding.Resource.ResourceID) && len(reqBody.Groups) == 0 && len(reqBody.Subjects) == 0 {
+			bindingToDelete = append(bindingToDelete, binding)
+			continue
+		}
+
 		binding.Subjects = utils.FilterList(binding.Subjects, reqBody.Subjects)
 		if binding.Subjects == nil {
 			binding.Subjects = []string{}
