@@ -43,21 +43,6 @@ func TestRevokeHandler(t *testing.T) {
 		nil,
 	)
 
-	t.Run("400 on missing subjects and groups", func(t *testing.T) {
-		reqBody := setupRevokeRequestBody(t, RevokeRequestBody{
-			Subjects:    []string{},
-			Groups:      []string{},
-			ResourceIDs: []string{"mike"},
-		})
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody))
-		require.NoError(t, err, "unexpected error")
-		w := httptest.NewRecorder()
-
-		revokeHandler(w, req)
-
-		require.Equal(t, http.StatusBadRequest, w.Result().StatusCode)
-	})
-
 	t.Run("400 on missing resourceIds from body if resourceType request param is present", func(t *testing.T) {
 		reqBody := setupRevokeRequestBody(t, RevokeRequestBody{
 			Subjects: []string{"piero"},
@@ -169,6 +154,52 @@ func TestRevokeHandler(t *testing.T) {
 
 		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
 			"resourceType": "project",
+		})
+		w := httptest.NewRecorder()
+
+		revokeHandler(w, req)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+	})
+
+	t.Run("performs correct delete query only on resource type and id", func(t *testing.T) {
+		defer gock.Flush()
+
+		bindingsFromCrud := []types.Binding{
+			{
+				BindingID: "bindingToDelete",
+				Subjects:  []string{"piero"},
+				Resource: &types.Resource{
+					ResourceType: "project",
+					ResourceID:   "mike",
+				},
+			},
+		}
+		gock.DisableNetworking()
+		newGockScope(t, "http://crud-service", http.MethodGet, "/bindings/").
+			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
+				mongoQueryString := req.URL.Query().Get("_q")
+				match := mongoQueryString == `{"$and":[{"resource.resourceId":{"$in":["mike"]}]}`
+				return match, nil
+			}).
+			Reply(http.StatusOK).
+			JSON(bindingsFromCrud)
+
+		newGockScope(t, "http://crud-service", http.MethodDelete, "/bindings/").
+			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
+				mongoQuery := req.URL.Query().Get("_q")
+				match := mongoQuery == `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"myResource"}]}`
+				return match, nil
+			}).
+			Reply(http.StatusOK).
+			BodyString("1")
+
+		reqBody := setupRevokeRequestBody(t, RevokeRequestBody{
+			ResourceIDs: []string{"mike"},
+		})
+
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
+			"resourceType": "myResource",
 		})
 		w := httptest.NewRecorder()
 
