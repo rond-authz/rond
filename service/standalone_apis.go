@@ -23,7 +23,6 @@ import (
 	"github.com/rond-authz/rond/internal/helpers"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/types"
-	"github.com/samber/lo"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -318,7 +317,7 @@ func prepareBindings(bindings []types.Binding, reqBody RevokeRequestBody) ([]typ
 	var bindingToDelete []types.Binding
 
 	for _, binding := range bindings {
-		if binding.Resource != nil && lo.Contains(reqBody.ResourceIDs, binding.Resource.ResourceID) && len(reqBody.Groups) == 0 && len(reqBody.Subjects) == 0 {
+		if len(reqBody.Groups) == 0 && len(reqBody.Subjects) == 0 {
 			bindingToDelete = append(bindingToDelete, binding)
 			continue
 		}
