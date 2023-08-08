@@ -188,7 +188,7 @@ func TestRevokeHandler(t *testing.T) {
 		gock.DisableNetworking()
 		newGockScope(t, "http://crud-service", http.MethodGet, "/bindings/").
 			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
-				expected := `{"$and":[{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"myResource"},{"$or":[]}]}`
+				expected := `{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"myResource"}`
 				mongoQuery := req.URL.Query().Get("_q")
 				return assert.Equal(t, expected, mongoQuery), nil
 			}).

@@ -264,6 +264,13 @@ func buildQuery(resourceType string, resourceIDs []string, subjects []string, gr
 		return queryPartForSubjectOrGroups
 	}
 
+	if parts := queryPartForSubjectOrGroups["$or"].([]map[string]any); len(parts) == 0 {
+		return map[string]any{
+			"resource.resourceType": resourceType,
+			"resource.resourceId":   map[string]any{"$in": resourceIDs},
+		}
+	}
+
 	query := map[string]interface{}{
 		"$and": []map[string]interface{}{
 			{
