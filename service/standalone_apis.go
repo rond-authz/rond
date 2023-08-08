@@ -59,10 +59,10 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resourceType := mux.Vars(r)["resourceType"]
-	isResourceIDsQuery := resourceType != "" && len(reqBody.ResourceIDs) > 0
-	isSubjectsOrGroupsQuery := len(reqBody.Subjects) > 0 || len(reqBody.Groups) > 0
+	hasResourceID := resourceType != "" && len(reqBody.ResourceIDs) > 0
+	hasSubjectsOrGroups := len(reqBody.Subjects) > 0 || len(reqBody.Groups) > 0
 
-	if !isResourceIDsQuery && !isSubjectsOrGroupsQuery {
+	if !hasResourceID && !hasSubjectsOrGroups {
 		utils.FailResponseWithCode(w, http.StatusBadRequest, "empty subjects and groups lists or resource ids", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
