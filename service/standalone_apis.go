@@ -316,12 +316,11 @@ func prepareBindings(bindings []types.Binding, reqBody RevokeRequestBody) ([]typ
 	var bindingToPatch []types.Binding
 	var bindingToDelete []types.Binding
 
-	for _, binding := range bindings {
-		if len(reqBody.Groups) == 0 && len(reqBody.Subjects) == 0 {
-			bindingToDelete = append(bindingToDelete, binding)
-			continue
-		}
+	if len(reqBody.Groups) == 0 && len(reqBody.Subjects) == 0 {
+		return bindingToPatch, bindings
+	}
 
+	for _, binding := range bindings {
 		binding.Subjects = utils.FilterList(binding.Subjects, reqBody.Subjects)
 		if binding.Subjects == nil {
 			binding.Subjects = []string{}
