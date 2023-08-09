@@ -59,12 +59,11 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resourceType := mux.Vars(r)["resourceType"]
-	if resourceType != "" && len(reqBody.ResourceIDs) == 0 {
-		utils.FailResponseWithCode(w, http.StatusBadRequest, "empty resources list", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
-		return
-	}
-	if len(reqBody.Subjects) == 0 && len(reqBody.Groups) == 0 {
-		utils.FailResponseWithCode(w, http.StatusBadRequest, "empty subjects and groups lists", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
+	hasResourceID := resourceType != "" && len(reqBody.ResourceIDs) > 0
+	hasSubjectsOrGroups := len(reqBody.Subjects) > 0 || len(reqBody.Groups) > 0
+
+	if !hasResourceID && !hasSubjectsOrGroups {
+		utils.FailResponseWithCode(w, http.StatusBadRequest, "empty subjects and groups lists or resource ids", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
 
@@ -265,6 +264,13 @@ func buildQuery(resourceType string, resourceIDs []string, subjects []string, gr
 		return queryPartForSubjectOrGroups
 	}
 
+	if parts := queryPartForSubjectOrGroups["$or"].([]map[string]any); len(parts) == 0 {
+		return map[string]any{
+			"resource.resourceType": resourceType,
+			"resource.resourceId":   map[string]any{"$in": resourceIDs},
+		}
+	}
+
 	query := map[string]interface{}{
 		"$and": []map[string]interface{}{
 			{
@@ -316,6 +322,10 @@ func buildRequestBodyForBindingsToPatch(bindingsToPatch []types.Binding) crud.Pa
 func prepareBindings(bindings []types.Binding, reqBody RevokeRequestBody) ([]types.Binding, []types.Binding) {
 	var bindingToPatch []types.Binding
 	var bindingToDelete []types.Binding
+
+	if len(reqBody.Groups) == 0 && len(reqBody.Subjects) == 0 {
+		return bindingToPatch, bindings
+	}
 
 	for _, binding := range bindings {
 		binding.Subjects = utils.FilterList(binding.Subjects, reqBody.Subjects)
