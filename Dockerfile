@@ -31,6 +31,8 @@ LABEL maintainer="rond@rond-authz.io" \
   name="rond" \
   vcs.sha="$COMMIT_SHA"
 
+LABEL org.opencontainers.image.description "Rönd is a lightweight container that distributes security policy enforcement throughout your application."
+
 ENV SERVICE_VERSION="1.9.0"
 
 # Import the user and group files from the builder.
