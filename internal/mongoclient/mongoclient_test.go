@@ -42,6 +42,21 @@ func TestSetupMongoCollection(t *testing.T) {
 		require.True(t, adapter == nil)
 	})
 
+	t.Run("correctly returns mongodb client", func(t *testing.T) {
+		mongoHost := os.Getenv("MONGO_HOST_CI")
+		if mongoHost == "" {
+			mongoHost = testutils.LocalhostMongoDB
+			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
+		}
+
+		log := logging.NewNoOpLogger()
+		mongoClient, err := NewMongoClient(log, fmt.Sprintf("mongodb://%s/%s", mongoHost, testutils.GetRandomName(10)))
+
+		defer mongoClient.Disconnect()
+		require.True(t, err == nil, "setup mongo returns error")
+		require.True(t, mongoClient != nil)
+	})
+
 	t.Run("correctly returns mongodb collection", func(t *testing.T) {
 		mongoHost := os.Getenv("MONGO_HOST_CI")
 		if mongoHost == "" {
@@ -50,10 +65,21 @@ func TestSetupMongoCollection(t *testing.T) {
 		}
 
 		log := logging.NewNoOpLogger()
-		mongoClient, err := NewMongoClient(log, fmt.Sprintf("mongodb://%s/test", mongoHost))
+		mongoClient, err := NewMongoClient(log, fmt.Sprintf("mongodb://%s/%s", mongoHost, testutils.GetRandomName(10)))
+
+		collName := "a-collection"
+		coll := mongoClient.Collection(collName)
+		require.Equal(t, collName, coll.Name())
 
 		defer mongoClient.Disconnect()
 		require.True(t, err == nil, "setup mongo returns error")
 		require.True(t, mongoClient != nil)
+	})
+
+	t.Run("if client is nil", func(t *testing.T) {
+		var mongoClient *MongoClient
+
+		require.NoError(t, mongoClient.Disconnect())
+		require.Nil(t, mongoClient.Collection("name"))
 	})
 }
