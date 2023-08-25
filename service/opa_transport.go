@@ -117,9 +117,13 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 	}
 
 	pathParams := mux.Vars(t.request)
-	input := rondhttp.NewInput(t.request, t.clientHeaderKey, pathParams)
+	input, err := rondhttp.NewInput(t.request, t.clientHeaderKey, pathParams, userInfo, decodedBody)
+	if err != nil {
+		t.responseWithError(resp, err, http.StatusInternalServerError)
+		return resp, nil
+	}
 
-	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, input, userInfo, decodedBody)
+	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, input)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusForbidden)
 		return resp, nil

@@ -166,7 +166,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, ""), types.User{})
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", types.User{}, nil))
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -181,7 +181,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, ""), types.User{})
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", types.User{}, nil))
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -212,7 +212,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, ""), types.User{})
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", types.User{}, nil))
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -250,7 +250,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, ""), types.User{})
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", types.User{}, nil))
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -272,12 +272,11 @@ type tHelper interface {
 	Helper()
 }
 
-type FakeInput struct {
-	request    core.InputRequest
-	clientType string
-}
+func getFakeInput(t require.TestingT, request core.InputRequest, clientType string, user types.User, responseBody any) core.Input {
+	if h, ok := t.(tHelper); ok {
+		h.Helper()
+	}
 
-func (i FakeInput) Input(user types.User, responseBody any) (core.Input, error) {
 	return core.Input{
 		User: core.InputUser{
 			ID:         user.UserID,
@@ -286,21 +285,10 @@ func (i FakeInput) Input(user types.User, responseBody any) (core.Input, error) 
 			Bindings:   user.UserBindings,
 			Roles:      user.UserRoles,
 		},
-		Request: i.request,
+		Request: request,
 		Response: core.InputResponse{
 			Body: responseBody,
 		},
-		ClientType: i.clientType,
-	}, nil
-}
-
-func getFakeInput(t require.TestingT, request core.InputRequest, clientType string) core.RondInput {
-	if h, ok := t.(tHelper); ok {
-		h.Helper()
-	}
-
-	return FakeInput{
-		request:    request,
-		clientType: clientType,
+		ClientType: clientType,
 	}
 }

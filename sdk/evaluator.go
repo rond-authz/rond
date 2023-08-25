@@ -17,11 +17,9 @@ package sdk
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/logging"
-	"github.com/rond-authz/rond/types"
 )
 
 type PolicyResult struct {
@@ -37,11 +35,10 @@ type Evaluator interface {
 
 	// EvaluateResponsePolicy evaluate request policy. In the response, it is specified if the
 	// request is allowed and the request query (if filter generation is requested)
-	EvaluateRequestPolicy(ctx context.Context, input core.RondInput, userInfo types.User) (PolicyResult, error)
-	// EvaluateResponsePolicy evaluate response policy, take as input the decodedBody body from response
-	// (unmarshalled) and it is usable as `input.response.body` in the policy. The response is the response
+	EvaluateRequestPolicy(ctx context.Context, input core.Input) (PolicyResult, error)
+	// EvaluateResponsePolicy evaluate response policy. The response is the response
 	// value returned by the policy.
-	EvaluateResponsePolicy(ctx context.Context, input core.RondInput, userInfo types.User, decodedBody any) ([]byte, error)
+	EvaluateResponsePolicy(ctx context.Context, input core.Input) ([]byte, error)
 }
 
 type evaluator struct {
@@ -58,19 +55,10 @@ func (e evaluator) Config() core.RondConfig {
 	return e.rondConfig
 }
 
-func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req core.RondInput, userInfo types.User) (PolicyResult, error) {
-	if req == nil {
-		return PolicyResult{}, fmt.Errorf("RondInput cannot be empty")
-	}
-
+func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Input) (PolicyResult, error) {
 	rondConfig := e.Config()
 
-	input, err := req.Input(userInfo, nil)
-	if err != nil {
-		return PolicyResult{}, err
-	}
-
-	regoInput, err := core.CreateRegoQueryInput(e.logger, input, core.RegoInputOptions{
+	regoInput, err := core.CreateRegoQueryInput(e.logger, rondInput, core.RegoInputOptions{
 		EnableResourcePermissionsMapOptimization: rondConfig.Options.EnableResourcePermissionsMapOptimization,
 	})
 	if err != nil {
@@ -114,19 +102,10 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req core.RondInput
 	}, nil
 }
 
-func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.RondInput, userInfo types.User, decodedBody any) ([]byte, error) {
-	if rondInput == nil {
-		return nil, fmt.Errorf("RondInput cannot be empty")
-	}
-
+func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.Input) ([]byte, error) {
 	rondConfig := e.Config()
 
-	input, err := rondInput.Input(userInfo, decodedBody)
-	if err != nil {
-		return nil, err
-	}
-
-	regoInput, err := core.CreateRegoQueryInput(e.logger, input, core.RegoInputOptions{
+	regoInput, err := core.CreateRegoQueryInput(e.logger, rondInput, core.RegoInputOptions{
 		EnableResourcePermissionsMapOptimization: rondConfig.Options.EnableResourcePermissionsMapOptimization,
 	})
 	if err != nil {

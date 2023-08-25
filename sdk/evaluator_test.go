@@ -35,17 +35,6 @@ import (
 )
 
 func TestEvaluateRequestPolicy(t *testing.T) {
-	logger := logging.NewNoOpLogger()
-
-	t.Run("throws without RondInput", func(t *testing.T) {
-		sdk := getOASSdk(t, nil)
-		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
-		require.NoError(t, err)
-
-		_, err = evaluator.EvaluateRequestPolicy(context.Background(), nil, types.User{})
-		require.EqualError(t, err, "RondInput cannot be empty")
-	})
-
 	type testCase struct {
 		method           string
 		path             string
@@ -346,9 +335,9 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					Headers: headers,
 					Path:    testCase.path,
 					Method:  testCase.method,
-				}, "")
+				}, "", testCase.user, nil)
 
-				actual, err := evaluate.EvaluateRequestPolicy(context.Background(), rondInput, testCase.user)
+				actual, err := evaluate.EvaluateRequestPolicy(context.Background(), rondInput)
 				if testCase.expectedErr != nil {
 					require.EqualError(t, err, testCase.expectedErr.Error())
 				} else {
@@ -407,17 +396,6 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 }
 
 func TestEvaluateResponsePolicy(t *testing.T) {
-	logger := logging.NewNoOpLogger()
-
-	t.Run("throws without RondInput", func(t *testing.T) {
-		sdk := getOASSdk(t, nil)
-		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
-		require.NoError(t, err)
-
-		_, err = evaluator.EvaluateResponsePolicy(context.Background(), nil, types.User{}, nil)
-		require.EqualError(t, err, "RondInput cannot be empty")
-	})
-
 	type testCase struct {
 		method           string
 		path             string
@@ -546,9 +524,9 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					Headers: headers,
 					Path:    testCase.path,
 					Method:  testCase.method,
-				}, "")
+				}, "", testCase.user, testCase.decodedBody)
 
-				actual, err := evaluate.EvaluateResponsePolicy(context.Background(), rondInput, testCase.user, testCase.decodedBody)
+				actual, err := evaluate.EvaluateResponsePolicy(context.Background(), rondInput)
 				if testCase.expectedErr != nil {
 					require.EqualError(t, err, testCase.expectedErr.Error())
 				} else {
@@ -717,10 +695,10 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 			PathParams: map[string]string{
 				"projectId": "project123",
 			},
-		}, "")
+		}, "", user, nil)
 
 		b.StartTimer()
-		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, user)
+		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -824,10 +802,10 @@ func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
 			Headers:    headers,
 			Method:     http.MethodGet,
 			PathParams: map[string]string{},
-		}, "")
+		}, "", user, nil)
 
 		b.StartTimer()
-		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, user)
+		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -902,15 +880,6 @@ func BenchmarkEvaluateResponse(b *testing.B) {
 		headers := http.Header{}
 		headers.Set("my-header", "value")
 
-		rondInput := getFakeInput(b, core.InputRequest{
-			Path:    "/projects/projectWithEnv",
-			Headers: headers,
-			Method:  http.MethodGet,
-			PathParams: map[string]string{
-				"projectId": "projectWithEnv",
-			},
-		}, "")
-
 		decodedBody := map[string]any{
 			"_id":       "projectWithEnv",
 			"projectId": "my-project",
@@ -928,8 +897,17 @@ func BenchmarkEvaluateResponse(b *testing.B) {
 			},
 		}
 
+		rondInput := getFakeInput(b, core.InputRequest{
+			Path:    "/projects/projectWithEnv",
+			Headers: headers,
+			Method:  http.MethodGet,
+			PathParams: map[string]string{
+				"projectId": "projectWithEnv",
+			},
+		}, "", user, decodedBody)
+
 		b.StartTimer()
-		policyResult, err := evaluator.EvaluateResponsePolicy(context.Background(), rondInput, user, decodedBody)
+		policyResult, err := evaluator.EvaluateResponsePolicy(context.Background(), rondInput)
 		b.StopTimer()
 
 		require.NoError(b, err)

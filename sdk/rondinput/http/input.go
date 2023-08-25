@@ -26,13 +26,7 @@ import (
 	"github.com/rond-authz/rond/types"
 )
 
-type requestInfo struct {
-	*http.Request
-	clientTypeHeaderKey string
-	pathParams          map[string]string
-}
-
-func (req requestInfo) Input(user types.User, responseBody any) (core.Input, error) {
+func parseRequestBody(req *http.Request) (any, error) {
 	shouldParseJSONBody := utils.HasApplicationJSONContentType(req.Header) &&
 		req.ContentLength > 0 &&
 		(req.Method == http.MethodPatch || req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodDelete)
@@ -48,15 +42,26 @@ func (req requestInfo) Input(user types.User, responseBody any) (core.Input, err
 		}
 		req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
+	return requestBody, nil
+}
+
+// TODO: before to have a stable interface, remove the usage of clientTypeHeaderKey.
+// We could add to the core.Input a map[string]any to add any data passed from
+// outside instead
+func NewInput(req *http.Request, clientTypeHeaderKey string, pathParams map[string]string, user types.User, responseBody any) (core.Input, error) {
+	requestBody, err := parseRequestBody(req)
+	if err != nil {
+		return core.Input{}, err
+	}
 
 	return core.Input{
-		ClientType: req.Header.Get(req.clientTypeHeaderKey),
+		ClientType: req.Header.Get(clientTypeHeaderKey),
 		Request: core.InputRequest{
 			Method:     req.Method,
 			Path:       req.URL.Path,
 			Headers:    req.Header,
 			Query:      req.URL.Query(),
-			PathParams: req.pathParams,
+			PathParams: pathParams,
 			Body:       requestBody,
 		},
 		Response: core.InputResponse{
@@ -70,12 +75,4 @@ func (req requestInfo) Input(user types.User, responseBody any) (core.Input, err
 			Roles:      user.UserRoles,
 		},
 	}, nil
-}
-
-func NewInput(req *http.Request, clientTypeHeaderKey string, pathParams map[string]string) core.RondInput {
-	return requestInfo{
-		Request:             req,
-		clientTypeHeaderKey: clientTypeHeaderKey,
-		pathParams:          pathParams,
-	}
 }

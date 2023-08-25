@@ -112,8 +112,13 @@ func EvaluateRequest(
 		return err
 	}
 
-	rondInput := rondhttp.NewInput(req, env.ClientTypeHeader, mux.Vars(req))
-	result, err := evaluatorSdk.EvaluateRequestPolicy(req.Context(), rondInput, userInfo)
+	rondInput, err := rondhttp.NewInput(req, env.ClientTypeHeader, mux.Vars(req), userInfo, nil)
+	if err != nil {
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed to create rond input")
+		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed to create rond input", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
+		return err
+	}
+	result, err := evaluatorSdk.EvaluateRequestPolicy(req.Context(), rondInput)
 	if err != nil {
 		if errors.Is(err, opatranslator.ErrEmptyQuery) && utils.HasApplicationJSONContentType(req.Header) {
 			w.Header().Set(utils.ContentTypeHeaderKey, utils.JSONContentTypeHeader)
