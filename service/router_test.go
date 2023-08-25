@@ -24,6 +24,8 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/evaluationdata"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/fake"
 	"github.com/rond-authz/rond/internal/mocks"
@@ -33,7 +35,6 @@ import (
 	rondprometheus "github.com/rond-authz/rond/metrics/prometheus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
-	"github.com/rond-authz/rond/types"
 
 	"github.com/mia-platform/glogger/v4"
 	"github.com/prometheus/client_golang/prometheus"
@@ -248,7 +249,7 @@ func createContext(
 	partialContext = sdk.WithEvaluator(partialContext, evaluator)
 
 	if mongoClient != nil {
-		partialContext = context.WithValue(partialContext, types.MongoClientContextKey{}, mongoClient)
+		partialContext = evaluationdata.WithClient(partialContext, mongoClient)
 	}
 
 	partialContext = glogger.WithLogger(partialContext, logrus.NewEntry(logrus.New()))
@@ -272,7 +273,7 @@ func getEvaluator(
 	t *testing.T,
 	ctx context.Context,
 	opaModule *core.OPAModuleConfig,
-	mongoClient *mocks.MongoClientMock,
+	mongoClient custom_builtins.IMongoClient,
 	rondConfig core.RondConfig,
 	oas *openapi.OpenAPISpec,
 	method, path string,

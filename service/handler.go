@@ -20,8 +20,8 @@ import (
 	"net/http/httputil"
 
 	"github.com/rond-authz/rond/core"
+	mongoclient "github.com/rond-authz/rond/evaluationdata/mongo"
 	"github.com/rond-authz/rond/internal/config"
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"

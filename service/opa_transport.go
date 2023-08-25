@@ -24,7 +24,7 @@ import (
 	"strconv"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/internal/mongoclient"
+	mongoclient "github.com/rond-authz/rond/evaluationdata/mongo"
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/sdk"

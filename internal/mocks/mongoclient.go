@@ -20,22 +20,11 @@ import (
 	"github.com/rond-authz/rond/types"
 )
 
-type FindOneExpectation struct {
-	Query          map[string]string
-	CollectionName string
-}
-
 type MongoClientMock struct {
-	FindOneError        error
-	UserBindingsError   error
-	UserRolesError      error
-	FindOneResult       interface{}
-	FindManyError       error
-	FindOneExpectation  func(collectionName string, query interface{})
-	FindManyExpectation func(collectionName string, query interface{})
-	UserRoles           []types.Role
-	UserBindings        []types.Binding
-	FindManyResult      []interface{}
+	UserBindingsError error
+	UserRolesError    error
+	UserRoles         []types.Role
+	UserBindings      []types.Binding
 }
 
 func (mongoClient MongoClientMock) Disconnect() error {
@@ -58,28 +47,4 @@ func (mongoClient MongoClientMock) RetrieveUserRolesByRolesID(ctx context.Contex
 		return mongoClient.UserRoles, nil
 	}
 	return nil, mongoClient.UserRolesError
-}
-
-func (mongoClient MongoClientMock) FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error) {
-	if mongoClient.FindOneExpectation == nil {
-		panic("FindOneExpectation is required")
-	}
-	mongoClient.FindOneExpectation(collectionName, query)
-	if mongoClient.FindOneError != nil {
-		return nil, mongoClient.FindOneError
-	}
-
-	return mongoClient.FindOneResult, nil
-}
-
-func (mongoClient MongoClientMock) FindMany(ctx context.Context, collectionName string, query map[string]interface{}) ([]interface{}, error) {
-	if mongoClient.FindManyExpectation == nil {
-		panic("FindManyExpectation is required")
-	}
-	mongoClient.FindManyExpectation(collectionName, query)
-	if mongoClient.FindManyError != nil {
-		return nil, mongoClient.FindManyError
-	}
-
-	return mongoClient.FindManyResult, nil
 }

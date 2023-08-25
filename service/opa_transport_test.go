@@ -26,8 +26,9 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/evaluationdata"
 	"github.com/rond-authz/rond/internal/mocks"
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/openapi"
@@ -379,7 +380,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 		db := mocks.MongoClientMock{
 			UserBindingsError: fmt.Errorf("fail from mongoclient"),
 		}
-		ctx := mongoclient.WithMongoClient(req.Context(), db)
+		ctx := evaluationdata.WithClient(req.Context(), db)
 		req := req.WithContext(ctx)
 		req.Header.Set("useridheader", "userid")
 		resp := &http.Response{
@@ -475,7 +476,7 @@ type sdkOptions struct {
 	opaModuleContent string
 	oasFilePath      string
 
-	mongoClient types.IMongoClient
+	mongoClient custom_builtins.IMongoClient
 }
 
 type tHelper interface {

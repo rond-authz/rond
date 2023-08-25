@@ -23,8 +23,9 @@ import (
 	"strings"
 
 	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/evaluationdata"
+	mongoclient "github.com/rond-authz/rond/evaluationdata/mongo"
 	"github.com/rond-authz/rond/internal/config"
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
@@ -158,7 +159,7 @@ func SetupRouter(
 	}))
 
 	if mongoClient != nil {
-		evalRouter.Use(mongoclient.MongoClientInjectorMiddleware(mongoClient))
+		evalRouter.Use(evaluationdata.ClientInjectorMiddleware(mongoClient))
 	}
 
 	setupRoutes(evalRouter, oas, env)

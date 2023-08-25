@@ -24,8 +24,6 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
-	"github.com/rond-authz/rond/internal/mongoclient"
-	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
 
@@ -110,14 +108,7 @@ test_policy { true }
 		},
 	}
 
-	var mongoClient *mongoclient.MongoClient
-	logger, _ := test.NewNullLogger()
-	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
-			MongoClient: mongoClient,
-		},
-		Logger: rondlogrus.NewLogger(logger),
-	})
+	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{})
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("non standalone", func(t *testing.T) {
@@ -126,7 +117,7 @@ test_policy { true }
 			TargetServiceHost:    "my-service:4444",
 			PathPrefixStandalone: "/my-prefix",
 		}
-		router, err := SetupRouter(log, env, opa, oas, sdk, mongoClient, nil)
+		router, err := SetupRouter(log, env, opa, oas, sdk, nil, nil)
 		require.NoError(t, err, "unexpected error")
 
 		t.Run("/-/rbac-ready", func(t *testing.T) {
@@ -159,7 +150,7 @@ test_policy { true }
 			PathPrefixStandalone: "/my-prefix",
 			ServiceVersion:       "latest",
 		}
-		router, err := SetupRouter(log, env, opa, oas, sdk, mongoClient, nil)
+		router, err := SetupRouter(log, env, opa, oas, sdk, nil, nil)
 		require.NoError(t, err, "unexpected error")
 		t.Run("/-/rbac-ready", func(t *testing.T) {
 			w := httptest.NewRecorder()

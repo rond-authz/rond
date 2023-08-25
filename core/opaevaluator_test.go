@@ -20,8 +20,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/rond-authz/rond/internal/mocks"
-	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/custom_builtins/mocks"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
 
@@ -51,7 +51,7 @@ func TestOPAEvaluator(t *testing.T) {
 			ctx := opaEval.getContext()
 
 			require.NotNil(t, ctx)
-			client, err := mongoclient.GetMongoClientFromContext(ctx)
+			client, err := custom_builtins.GetMongoClientFromContext(ctx)
 			require.NoError(t, err)
 			require.Nil(t, client)
 
@@ -61,14 +61,14 @@ func TestOPAEvaluator(t *testing.T) {
 
 		t.Run("passed context with mongo client", func(t *testing.T) {
 			mongoClient := mocks.MongoClientMock{}
-			originalContext := mongoclient.WithMongoClient(context.Background(), mongoClient)
+			originalContext := custom_builtins.WithMongoClient(context.Background(), mongoClient)
 			opaEval := OPAEvaluator{
 				context: originalContext,
 			}
 			ctx := opaEval.getContext()
 
 			require.NotNil(t, ctx)
-			client, err := mongoclient.GetMongoClientFromContext(ctx)
+			client, err := custom_builtins.GetMongoClientFromContext(ctx)
 			require.NoError(t, err)
 			require.Equal(t, mongoClient, client)
 		})
@@ -82,7 +82,7 @@ func TestOPAEvaluator(t *testing.T) {
 			ctx := opaEval.getContext()
 
 			require.NotNil(t, ctx)
-			client, err := mongoclient.GetMongoClientFromContext(ctx)
+			client, err := custom_builtins.GetMongoClientFromContext(ctx)
 			require.NoError(t, err)
 			require.Equal(t, mongoClient, client)
 		})

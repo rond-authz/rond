@@ -22,7 +22,8 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/custom_builtins/mocks"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/logging/test"
 	"github.com/rond-authz/rond/metrics"
@@ -52,7 +53,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 		oasFilePath      string
 		user             types.User
 		reqHeaders       map[string]string
-		mongoClient      types.IMongoClient
+		mongoClient      custom_builtins.IMongoClient
 
 		expectedPolicy PolicyResult
 		expectedErr    error
@@ -423,7 +424,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 		opaModuleContent string
 		user             types.User
 		reqHeaders       map[string]string
-		mongoClient      types.IMongoClient
+		mongoClient      custom_builtins.IMongoClient
 
 		decodedBody any
 

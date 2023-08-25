@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/custom_builtins/mocks"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/metrics"
 

@@ -23,14 +23,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/rond-authz/rond/core"
+	cbmocks "github.com/rond-authz/rond/custom_builtins/mocks"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/mocks"
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
@@ -1420,53 +1419,6 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 		})
 	})
 
-	t.Run("Test retrieve roles ids from bindings", func(t *testing.T) {
-		bindings := []types.Binding{
-			{
-				BindingID:         "binding1",
-				Subjects:          []string{"user1"},
-				Roles:             []string{"role1", "role2"},
-				Groups:            []string{"group1"},
-				Permissions:       []string{"permission4"},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				BindingID:         "binding2",
-				Subjects:          []string{"user1"},
-				Roles:             []string{"role3", "role4"},
-				Groups:            []string{"group4"},
-				Permissions:       []string{"permission7"},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				BindingID:         "binding3",
-				Subjects:          []string{"user5"},
-				Roles:             []string{"role3", "role4"},
-				Groups:            []string{"group2"},
-				Permissions:       []string{"permission10", "permission4"},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				BindingID:         "binding4",
-				Roles:             []string{"role3", "role4"},
-				Groups:            []string{"group2"},
-				Permissions:       []string{"permission11"},
-				CRUDDocumentState: "PUBLIC",
-			},
-
-			{
-				BindingID:         "binding5",
-				Subjects:          []string{"user1"},
-				Roles:             []string{"role3", "role4"},
-				Permissions:       []string{"permission12"},
-				CRUDDocumentState: "PUBLIC",
-			},
-		}
-		rolesIds := mongoclient.RolesIDsFromBindings(bindings)
-		expected := []string{"role1", "role2", "role3", "role4"}
-		require.True(t, reflect.DeepEqual(rolesIds, expected), "Error while getting permissions")
-	})
-
 	t.Run("TestHandlerWithUserPermissionsRetrievalFromMongoDB", func(t *testing.T) {
 		t.Run("return 500 if retrieveUserBindings goes bad", func(t *testing.T) {
 			invoked := false
@@ -1480,8 +1432,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			serverURL, _ := url.Parse(server.URL)
 
 			mongoclientMock := &mocks.MongoClientMock{UserBindingsError: errors.New("Something went wrong"), UserBindings: nil, UserRoles: nil, UserRolesError: errors.New("Something went wrong")}
-
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1525,7 +1476,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			mongoclientMock := &mocks.MongoClientMock{UserBindingsError: errors.New("MongoDB Error"), UserRolesError: errors.New("MongoDB Error")}
 
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1608,7 +1559,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
 
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1695,7 +1646,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			serverURL, _ := url.Parse(server.URL)
 			mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
 
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1794,7 +1745,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
 
 			serverURL, _ := url.Parse(server.URL)
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1844,7 +1795,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			mongoclientMock := &mocks.MongoClientMock{UserBindings: nil}
 
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1902,7 +1853,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
 
 			serverURL, _ := url.Parse(server.URL)
-			evaluator := getEvaluator(t, ctx, opaModule, mongoclientMock, mockXPermission, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1969,7 +1920,7 @@ project.tenantId == "1234"
 		}))
 		defer server.Close()
 
-		mongoMock := &mocks.MongoClientMock{
+		mongoMock := &cbmocks.MongoClientMock{
 			FindOneExpectation: func(collectionName string, query interface{}) {
 				require.Equal(t, "projects", collectionName)
 				require.Equal(t, map[string]interface{}{
@@ -1982,13 +1933,11 @@ project.tenantId == "1234"
 		userBindings := []types.Binding{}
 
 		userRoles := []types.Role{}
-		log, _ := test.NewNullLogger()
 		mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
 
-		ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoMock), logrus.NewEntry(log))
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctxForPartial, mockOPAModule, mongoMock, mockXPermission, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, context.Background(), mockOPAModule, mongoMock, mockXPermission, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -2015,7 +1964,7 @@ project.tenantId == "1234"
 		}))
 		defer server.Close()
 
-		mongoMock := &mocks.MongoClientMock{
+		mongoMock := &cbmocks.MongoClientMock{
 			FindOneExpectation: func(collectionName string, query interface{}) {
 				require.Equal(t, "projects", collectionName)
 				require.Equal(t, map[string]interface{}{
@@ -2025,17 +1974,13 @@ project.tenantId == "1234"
 			FindOneError: fmt.Errorf("FAILED MONGO QUERY"),
 		}
 
-		log, _ := test.NewNullLogger()
-
-		ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoMock), logrus.NewEntry(log))
-
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, ctxForPartial, mockOPAModule, mongoMock, mockXPermission, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, context.Background(), mockOPAModule, mongoMock, mockXPermission, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
-			mongoMock,
+			nil,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
@@ -2057,7 +2002,7 @@ project.tenantId == "1234"
 		}))
 		defer server.Close()
 
-		mongoMock := &mocks.MongoClientMock{
+		mongoMock := &cbmocks.MongoClientMock{
 			FindOneExpectation: func(collectionName string, query interface{}) {
 				require.Equal(t, "projects", collectionName)
 				require.Equal(t, map[string]interface{}{
@@ -2067,17 +2012,13 @@ project.tenantId == "1234"
 			FindOneResult: nil, // not found corresponds to a nil interface.
 		}
 
-		log, _ := test.NewNullLogger()
-
-		ctxForPartial := glogger.WithLogger(mongoclient.WithMongoClient(context.Background(), mongoMock), logrus.NewEntry(log))
-
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, ctxForPartial, mockOPAModule, mongoMock, mockXPermission, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, context.Background(), mockOPAModule, mongoMock, mockXPermission, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
-			mongoMock,
+			nil,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)

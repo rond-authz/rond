@@ -26,9 +26,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/evaluationdata"
+	mongoclient "github.com/rond-authz/rond/evaluationdata/mongo"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/helpers"
-	"github.com/rond-authz/rond/internal/mongoclient"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/metrics"
 	rondprometheus "github.com/rond-authz/rond/metrics/prometheus"
@@ -92,7 +94,11 @@ func entrypoint(shutdown chan os.Signal) {
 		"oasApiPath":  env.TargetServiceOASPath,
 	}).Trace("OAS successfully loaded")
 
-	mongoClient, err := mongoclient.NewMongoClient(env, rondLogger)
+	mongoClient, err := mongoclient.NewMongoClient(rondLogger, mongoclient.Config{
+		MongoDBURL:             env.MongoDBUrl,
+		RolesCollectionName:    env.RolesCollectionName,
+		BindingsCollectionName: env.BindingsCollectionName,
+	})
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},
@@ -101,9 +107,17 @@ func entrypoint(shutdown chan os.Signal) {
 	}
 
 	ctx := glogger.WithLogger(
-		mongoclient.WithMongoClient(context.Background(), mongoClient),
+		evaluationdata.WithClient(context.Background(), mongoClient),
 		logrus.NewEntry(log),
 	)
+
+	mongoClientForBuiltin, err := custom_builtins.NewMongoClient(rondLogger, env.MongoDBUrl)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"error": logrus.Fields{"message": err.Error()},
+		}).Errorf("MongoDB for builtin setup failed")
+		return
+	}
 
 	var m *metrics.Metrics
 	var registry *prometheus.Registry
@@ -119,7 +133,7 @@ func entrypoint(shutdown chan os.Signal) {
 		Metrics: m,
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			EnablePrintStatements: env.IsTraceLogLevel(),
-			MongoClient:           mongoClient,
+			MongoClient:           mongoClientForBuiltin,
 		},
 		Logger: rondLogger,
 	})

@@ -21,7 +21,8 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/custom_builtins/mocks"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
@@ -263,7 +264,7 @@ type sdkOptions struct {
 	opaModuleContent string
 	oasFilePath      string
 
-	mongoClient types.IMongoClient
+	mongoClient custom_builtins.IMongoClient
 	metrics     *metrics.Metrics
 }
 

@@ -14,10 +14,6 @@
 
 package types
 
-import (
-	"context"
-)
-
 type User struct {
 	UserID       string
 	UserGroups   []string
@@ -31,8 +27,6 @@ type UserHeadersKeys struct {
 	IDHeaderKey         string
 	PropertiesHeaderKey string
 }
-
-type MongoClientContextKey struct{}
 
 type Resource struct {
 	ResourceType string `bson:"resourceType" json:"resourceType,omitempty"`
@@ -63,21 +57,6 @@ type Role struct {
 	RoleName          string   `bson:"name" json:"name"`
 	CRUDDocumentState string   `bson:"__STATE__" json:"-"`
 	Permissions       []string `bson:"permissions" json:"permissions"`
-}
-
-// MongoClientContextKey is the context key that shall be used to save
-// mongo Collection reference in request contexts.
-type IMongoClient interface {
-	Disconnect() error
-
-	RetrieveUserBindings(ctx context.Context, user *User) ([]Binding, error)
-	RetrieveRoles(ctx context.Context) ([]Role, error)
-	RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]Role, error)
-
-	// FindOne is only used inside the custom_builtins
-	FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error)
-	// FindMany is only used inside the custom_builtins
-	FindMany(ctx context.Context, collectionName string, query map[string]interface{}) ([]interface{}, error)
 }
 
 type RequestError struct {

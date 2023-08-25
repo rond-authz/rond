@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/rond-authz/rond/custom_builtins"
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/logging"
@@ -72,14 +71,14 @@ type OPAEvaluator struct {
 	PolicyName      string
 
 	context       context.Context
-	mongoClient   types.IMongoClient
+	mongoClient   custom_builtins.IMongoClient
 	generateQuery bool
 	logger        logging.Logger
 }
 
 type OPAEvaluatorOptions struct {
 	EnablePrintStatements bool
-	MongoClient           types.IMongoClient
+	MongoClient           custom_builtins.IMongoClient
 	Logger                logging.Logger
 }
 
@@ -221,7 +220,7 @@ func (evaluator *OPAEvaluator) getContext() context.Context {
 		ctx = context.Background()
 	}
 	if evaluator.mongoClient != nil {
-		ctx = mongoclient.WithMongoClient(ctx, evaluator.mongoClient)
+		ctx = custom_builtins.WithMongoClient(ctx, evaluator.mongoClient)
 	}
 	if evaluator.logger != nil {
 		ctx = logging.WithContext(ctx, evaluator.logger)
