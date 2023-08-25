@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/internal/mocks"
+
 	"github.com/stretchr/testify/require"
 )
 

@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/rond-authz/rond/types"
+
+	"github.com/gorilla/mux"
 )
 
 // Client allows to retrieve information to evaluate policy, as bindings and roles
