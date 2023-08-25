@@ -107,25 +107,6 @@ func (mongoClient *MongoClient) RetrieveUserBindings(ctx context.Context, user t
 	return bindingsResult, nil
 }
 
-// TODO: this seems unused, remove it
-func (mongoClient *MongoClient) RetrieveRoles(ctx context.Context) ([]types.Role, error) {
-	filter := bson.M{
-		STATE: PUBLIC,
-	}
-	cursor, err := mongoClient.roles.Find(
-		ctx,
-		filter,
-	)
-	if err != nil {
-		return nil, err
-	}
-	rolesResult := make([]types.Role, 0)
-	if err = cursor.All(ctx, &rolesResult); err != nil {
-		return nil, err
-	}
-	return rolesResult, nil
-}
-
 func (mongoClient *MongoClient) RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]types.Role, error) {
 	if mongoClient == nil {
 		return nil, fmt.Errorf("mongoClient is not defined")

@@ -174,53 +174,6 @@ func TestMongoCollections(t *testing.T) {
 			"Error while getting permissions")
 	})
 
-	t.Run("retrieve all roles from mongo", func(t *testing.T) {
-		mongoHost := os.Getenv("MONGO_HOST_CI")
-		if mongoHost == "" {
-			mongoHost = testutils.LocalhostMongoDB
-			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-		}
-
-		_, dbName, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
-
-		config := Config{
-			MongoDBURL:             fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName),
-			RolesCollectionName:    "roles",
-			BindingsCollectionName: "bindings",
-		}
-		log := logging.NewNoOpLogger()
-		mongoClient, err := NewMongoClient(log, config)
-		defer mongoClient.Disconnect()
-		require.NoError(t, err, "setup mongo returns error")
-
-		ctx := context.Background()
-
-		testutils.PopulateDBForTesting(t, ctx, rolesCollection, bindingsCollection)
-
-		result, _ := mongoClient.RetrieveRoles(ctx)
-		expected := []types.Role{
-			{
-				RoleID:            "role1",
-				RoleName:          "Role1",
-				Permissions:       []string{"permission1", "permission2", "foobar"},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				RoleID:            "role3",
-				RoleName:          "Role3",
-				Permissions:       []string{"permission3", "permission5", "console.project.view"},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				RoleID:            "notUsedByAnyone",
-				RoleName:          "Not Used By Anyone",
-				Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
-				CRUDDocumentState: "PUBLIC",
-			},
-		}
-		require.True(t, reflect.DeepEqual(result, expected), "Error while getting permissions")
-	})
-
 	t.Run("retrieve all roles by id from mongo", func(t *testing.T) {
 		mongoHost := os.Getenv("MONGO_HOST_CI")
 		if mongoHost == "" {
@@ -261,5 +214,23 @@ func TestMongoCollections(t *testing.T) {
 		}
 		require.True(t, reflect.DeepEqual(result, expected),
 			"Error while getting permissions")
+	})
+}
+
+func TestMongoClientNil(t *testing.T) {
+	var mongoClient *MongoClient
+
+	t.Run("disconnect", func(t *testing.T) {
+		require.Nil(t, mongoClient.Disconnect())
+	})
+
+	t.Run("retrieve user bindings", func(t *testing.T) {
+		_, err := mongoClient.RetrieveUserBindings(context.Background(), types.User{})
+		require.EqualError(t, err, "mongoClient is not defined")
+	})
+
+	t.Run("retrieve roles by roleIds", func(t *testing.T) {
+		_, err := mongoClient.RetrieveUserRolesByRolesID(context.Background(), []string{"id"})
+		require.EqualError(t, err, "mongoClient is not defined")
 	})
 }

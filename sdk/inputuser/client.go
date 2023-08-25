@@ -15,7 +15,6 @@ type Client interface {
 	Disconnect() error
 
 	RetrieveUserBindings(ctx context.Context, user types.User) ([]types.Binding, error)
-	RetrieveRoles(ctx context.Context) ([]types.Role, error)
 	RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]types.Role, error)
 }
 
