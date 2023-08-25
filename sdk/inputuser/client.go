@@ -1,4 +1,4 @@
-package evaluationdata
+package inputuser
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 type Client interface {
 	Disconnect() error
 
-	RetrieveUserBindings(ctx context.Context, user *types.User) ([]types.Binding, error)
+	RetrieveUserBindings(ctx context.Context, user types.User) ([]types.Binding, error)
 	RetrieveRoles(ctx context.Context) ([]types.Role, error)
 	RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]types.Role, error)
 }
@@ -25,13 +25,13 @@ type clientContextKey struct{}
 func ClientInjectorMiddleware(client Client) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := WithClient(r.Context(), client)
+			ctx := AddClientInContext(r.Context(), client)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-func WithClient(ctx context.Context, mongoClient Client) context.Context {
+func AddClientInContext(ctx context.Context, mongoClient Client) context.Context {
 	return context.WithValue(ctx, clientContextKey{}, mongoClient)
 }
 

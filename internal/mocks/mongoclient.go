@@ -20,6 +20,7 @@ import (
 	"github.com/rond-authz/rond/types"
 )
 
+// TODO: rename this, is not related to mongo it's the mock of the inputuser client
 type MongoClientMock struct {
 	UserBindingsError error
 	UserRolesError    error
@@ -35,7 +36,7 @@ func (mongoClient MongoClientMock) RetrieveRoles(ctx context.Context) ([]types.R
 	return nil, nil
 }
 
-func (mongoClient MongoClientMock) RetrieveUserBindings(ctx context.Context, user *types.User) ([]types.Binding, error) {
+func (mongoClient MongoClientMock) RetrieveUserBindings(ctx context.Context, user types.User) ([]types.Binding, error) {
 	if mongoClient.UserBindings != nil {
 		return mongoClient.UserBindings, nil
 	}

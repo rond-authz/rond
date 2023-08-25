@@ -27,8 +27,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/custom_builtins"
-	"github.com/rond-authz/rond/evaluationdata"
-	mongoclient "github.com/rond-authz/rond/evaluationdata/mongo"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/helpers"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
@@ -36,9 +34,9 @@ import (
 	rondprometheus "github.com/rond-authz/rond/metrics/prometheus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
+	mongoclient "github.com/rond-authz/rond/sdk/inputuser/mongo"
 	"github.com/rond-authz/rond/service"
 
-	"github.com/mia-platform/glogger/v4"
 	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
 	"github.com/sirupsen/logrus"
 )
@@ -105,11 +103,9 @@ func entrypoint(shutdown chan os.Signal) {
 		}).Errorf("MongoDB setup failed")
 		return
 	}
-
-	ctx := glogger.WithLogger(
-		evaluationdata.WithClient(context.Background(), mongoClient),
-		logrus.NewEntry(log),
-	)
+	if mongoClient != nil {
+		defer mongoClient.Disconnect()
+	}
 
 	mongoClientForBuiltin, err := custom_builtins.NewMongoClient(rondLogger, env.MongoDBUrl)
 	if err != nil {
@@ -117,6 +113,9 @@ func entrypoint(shutdown chan os.Signal) {
 			"error": logrus.Fields{"message": err.Error()},
 		}).Errorf("MongoDB for builtin setup failed")
 		return
+	}
+	if mongoClientForBuiltin != nil {
+		defer mongoClientForBuiltin.Disconnect()
 	}
 
 	var m *metrics.Metrics
@@ -129,7 +128,7 @@ func entrypoint(shutdown chan os.Signal) {
 		)
 		m = rondprometheus.SetupMetrics(registry)
 	}
-	sdk, err := sdk.NewFromOAS(ctx, opaModuleConfig, oas, &sdk.Options{
+	sdk, err := sdk.NewFromOAS(context.Background(), opaModuleConfig, oas, &sdk.Options{
 		Metrics: m,
 		EvaluatorOptions: &core.OPAEvaluatorOptions{
 			EnablePrintStatements: env.IsTraceLogLevel(),
@@ -146,9 +145,6 @@ func entrypoint(shutdown chan os.Signal) {
 
 	// Routing
 	router, err := service.SetupRouter(log, env, opaModuleConfig, oas, sdk, mongoClient, registry)
-	if mongoClient != nil {
-		defer mongoClient.Disconnect()
-	}
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},

@@ -1,4 +1,4 @@
-package evaluationdata
+package inputuser
 
 import (
 	"context"
@@ -6,12 +6,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rond-authz/rond/types"
+	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/stretchr/testify/require"
 )
 
 func TestClientInjectorMiddleware(t *testing.T) {
-	testCollections := &FakeClient{}
+	testCollections := &mocks.MongoClientMock{}
 
 	t.Run(`context gets updated`, func(t *testing.T) {
 		invoked := false
@@ -46,8 +46,8 @@ func TestGetClientFromContext(t *testing.T) {
 	})
 
 	t.Run(`config found in context`, func(t *testing.T) {
-		testClient := &FakeClient{}
-		ctx := WithClient(context.Background(), testClient)
+		testClient := &mocks.MongoClientMock{}
+		ctx := AddClientInContext(context.Background(), testClient)
 		foundConfig, err := GetClientFromContext(ctx)
 		require.NoError(t, err, "unexpected error")
 		require.True(t, foundConfig != nil)
@@ -59,19 +59,4 @@ func TestGetClientFromContext(t *testing.T) {
 		require.EqualError(t, err, "no client found in context")
 		require.Nil(t, foundConfig)
 	})
-}
-
-type FakeClient struct{}
-
-func (f FakeClient) RetrieveUserBindings(ctx context.Context, user *types.User) ([]types.Binding, error) {
-	return []types.Binding{}, nil
-}
-func (f FakeClient) RetrieveRoles(ctx context.Context) ([]types.Role, error) {
-	return []types.Role{}, nil
-}
-func (f FakeClient) RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]types.Role, error) {
-	return []types.Role{}, nil
-}
-func (f FakeClient) Disconnect() error {
-	return nil
 }

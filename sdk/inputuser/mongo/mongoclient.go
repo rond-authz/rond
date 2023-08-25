@@ -17,13 +17,10 @@ package mongoclient
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"strings"
 
-	"github.com/rond-authz/rond/evaluationdata"
 	"github.com/rond-authz/rond/internal/mongoclient"
-	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/logging"
+	"github.com/rond-authz/rond/sdk/inputuser"
 	"github.com/rond-authz/rond/types"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -55,7 +52,7 @@ type Config struct {
 
 // NewMongoClient tries to setup a new MongoClient instance.
 // The function returns a `nil` client if the environment variable `MongoDBUrl` is not specified.
-func NewMongoClient(logger logging.Logger, config Config) (*MongoClient, error) {
+func NewMongoClient(logger logging.Logger, config Config) (inputuser.Client, error) {
 	client, err := mongoclient.NewMongoClient(logger, config.MongoDBURL)
 	if err != nil {
 		return nil, err
@@ -79,18 +76,23 @@ func NewMongoClient(logger logging.Logger, config Config) (*MongoClient, error) 
 	}, nil
 }
 
-func (mongoClient *MongoClient) RetrieveUserBindings(ctx context.Context, user *types.User) ([]types.Binding, error) {
+func (mongoClient *MongoClient) RetrieveUserBindings(ctx context.Context, user types.User) ([]types.Binding, error) {
+	if mongoClient == nil {
+		return nil, fmt.Errorf("mongoClient is not defined")
+	}
+
 	filter := bson.M{
 		"$and": []bson.M{
 			{
 				"$or": []bson.M{
-					{"subjects": bson.M{"$elemMatch": bson.M{"$eq": user.UserID}}},
-					{"groups": bson.M{"$elemMatch": bson.M{"$in": user.UserGroups}}},
+					{"subjects": bson.M{"$elemMatch": bson.M{"$eq": user.ID}}},
+					{"groups": bson.M{"$elemMatch": bson.M{"$in": user.Groups}}},
 				},
 			},
 			{STATE: PUBLIC},
 		},
 	}
+
 	cursor, err := mongoClient.bindings.Find(
 		ctx,
 		filter,
@@ -105,6 +107,7 @@ func (mongoClient *MongoClient) RetrieveUserBindings(ctx context.Context, user *
 	return bindingsResult, nil
 }
 
+// TODO: this seems unused, remove it
 func (mongoClient *MongoClient) RetrieveRoles(ctx context.Context) ([]types.Role, error) {
 	filter := bson.M{
 		STATE: PUBLIC,
@@ -124,6 +127,10 @@ func (mongoClient *MongoClient) RetrieveRoles(ctx context.Context) ([]types.Role
 }
 
 func (mongoClient *MongoClient) RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]types.Role, error) {
+	if mongoClient == nil {
+		return nil, fmt.Errorf("mongoClient is not defined")
+	}
+
 	filter := bson.M{
 		"$and": []bson.M{
 			{
@@ -144,58 +151,4 @@ func (mongoClient *MongoClient) RetrieveUserRolesByRolesID(ctx context.Context, 
 		return nil, err
 	}
 	return rolesResult, nil
-}
-
-func RolesIDsFromBindings(bindings []types.Binding) []string {
-	rolesIds := []string{}
-	for _, binding := range bindings {
-		for _, role := range binding.Roles {
-			if !utils.Contains(rolesIds, role) {
-				rolesIds = append(rolesIds, role)
-			}
-		}
-	}
-	return rolesIds
-}
-
-// TODO: move from here
-func RetrieveUserBindingsAndRoles(logger logging.Logger, req *http.Request, userHeaders types.UserHeadersKeys) (types.User, error) {
-	requestContext := req.Context()
-	mongoClient, err := evaluationdata.GetClientFromContext(requestContext)
-	if err != nil {
-		return types.User{}, fmt.Errorf("unexpected error retrieving MongoDB Client from request context")
-	}
-
-	var user types.User
-
-	user.UserGroups = strings.Split(req.Header.Get(userHeaders.GroupsHeaderKey), ",")
-	user.UserID = req.Header.Get(userHeaders.IDHeaderKey)
-
-	userProperties := make(map[string]interface{})
-	_, err = utils.UnmarshalHeader(req.Header, userHeaders.PropertiesHeaderKey, &userProperties)
-	if err != nil {
-		return types.User{}, fmt.Errorf("user properties header is not valid: %s", err.Error())
-	}
-	user.Properties = userProperties
-
-	if mongoClient != nil && user.UserID != "" {
-		user.UserBindings, err = mongoClient.RetrieveUserBindings(requestContext, &user)
-		if err != nil {
-			logger.WithField("error", map[string]any{"message": err.Error()}).Error("something went wrong while retrieving user bindings")
-			return types.User{}, fmt.Errorf("error while retrieving user bindings: %s", err.Error())
-		}
-
-		userRolesIds := RolesIDsFromBindings(user.UserBindings)
-		user.UserRoles, err = mongoClient.RetrieveUserRolesByRolesID(requestContext, userRolesIds)
-		if err != nil {
-			logger.WithField("error", map[string]any{"message": err.Error()}).Error("something went wrong while retrieving user roles")
-
-			return types.User{}, fmt.Errorf("error while retrieving user Roles: %s", err.Error())
-		}
-		logger.WithFields(map[string]any{
-			"foundBindingsLength": len(user.UserBindings),
-			"foundRolesLength":    len(user.UserRoles),
-		}).Trace("found bindings and roles")
-	}
-	return user, nil
 }

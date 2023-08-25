@@ -21,6 +21,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/types"
 
@@ -28,7 +29,7 @@ import (
 )
 
 func TestRondInput(t *testing.T) {
-	user := types.User{}
+	user := core.InputUser{}
 	clientTypeHeaderKey := "clienttypeheader"
 	pathParams := map[string]string{}
 
@@ -97,12 +98,12 @@ func TestRondInput(t *testing.T) {
 	})
 
 	t.Run("request userinfo remapping", func(t *testing.T) {
-		user := types.User{
-			UserID:       "UserID",
-			UserGroups:   []string{"UserGroups"},
-			UserRoles:    []types.Role{},
-			UserBindings: []types.Binding{},
-			Properties:   map[string]any{"key": "val"},
+		user := core.InputUser{
+			ID:         "UserID",
+			Groups:     []string{"UserGroups"},
+			Roles:      []types.Role{},
+			Bindings:   []types.Binding{},
+			Properties: map[string]any{"key": "val"},
 		}
 
 		req := httptest.NewRequest(http.MethodGet, "/", bytes.NewReader([]byte{}))
@@ -110,7 +111,7 @@ func TestRondInput(t *testing.T) {
 		input, err := NewInput(req, clientTypeHeaderKey, pathParams, user, nil)
 
 		require.NoError(t, err, "Unexpected error")
-		require.Equal(t, user.UserID, input.User.ID)
+		require.Equal(t, user.ID, input.User.ID)
 		require.EqualValues(t, user.Properties, input.User.Properties)
 	})
 }

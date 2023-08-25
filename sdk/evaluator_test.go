@@ -40,7 +40,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 		path             string
 		opaModuleContent string
 		oasFilePath      string
-		user             types.User
+		user             core.InputUser
 		reqHeaders       map[string]string
 		mongoClient      custom_builtins.IMongoClient
 
@@ -62,8 +62,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"with user with policy true": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 				},
 
 				expectedPolicy: PolicyResult{
@@ -74,8 +74,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"not allow if not existing policy": {
 				method: http.MethodPost,
 				path:   "/users/",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 				},
 
 				expectedPolicy: PolicyResult{},
@@ -84,8 +84,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"not allowed policy result": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 				},
 				opaModuleContent: `package policies todo { false }`,
 
@@ -96,8 +96,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				method:      http.MethodGet,
 				path:        "/users/",
 				oasFilePath: "../mocks/rondOasConfig.json",
-				user: types.User{
-					UserGroups: []string{"my-group"},
+				user: core.InputUser{
+					Groups: []string{"my-group"},
 				},
 				reqHeaders: map[string]string{
 					"my-header-key": "ok",
@@ -119,8 +119,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				method:      http.MethodGet,
 				path:        "/users/",
 				oasFilePath: "../mocks/rondOasConfig.json",
-				user: types.User{
-					UserGroups: []string{"my-group"},
+				user: core.InputUser{
+					Groups: []string{"my-group"},
 				},
 				reqHeaders: map[string]string{
 					"my-header-key": "ok",
@@ -139,15 +139,15 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"check user": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: types.User{
-					UserID:     "the-user-id",
-					UserGroups: []string{"my-group"},
-					UserRoles: []types.Role{
+				user: core.InputUser{
+					ID:     "the-user-id",
+					Groups: []string{"my-group"},
+					Roles: []types.Role{
 						{
 							RoleID: "rid",
 						},
 					},
-					UserBindings: []types.Binding{
+					Bindings: []types.Binding{
 						{
 							Resource: &types.Resource{
 								ResourceType: "my-resource",
@@ -174,8 +174,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"with mongo client and find_one": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 				},
 				opaModuleContent: `package policies
 				todo {
@@ -198,8 +198,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"with mongo client and find_one with dynamic find_one query": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 					Properties: map[string]any{
 						"field": "1234",
 					},
@@ -227,8 +227,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"with mongo client and find_many": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 				},
 				mongoClient: &mocks.MongoClientMock{
 					FindManyResult: []interface{}{
@@ -254,8 +254,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				method:      http.MethodGet,
 				path:        "/users/",
 				oasFilePath: "../mocks/rondOasConfig.json",
-				user: types.User{
-					UserGroups: []string{"my-group"},
+				user: core.InputUser{
+					Groups: []string{"my-group"},
 				},
 				mongoClient: &mocks.MongoClientMock{
 					FindOneResult: map[string]string{"myField": "1234"},
@@ -281,8 +281,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				method:      http.MethodGet,
 				path:        "/users/",
 				oasFilePath: "../mocks/rondOasConfig.json",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 					Properties: map[string]any{
 						"field": "1234",
 					},
@@ -400,7 +400,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 		method           string
 		path             string
 		opaModuleContent string
-		user             types.User
+		user             core.InputUser
 		reqHeaders       map[string]string
 		mongoClient      custom_builtins.IMongoClient
 
@@ -605,9 +605,9 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 		},
 	}
 
-	user := types.User{
-		UserID: "user1",
-		UserBindings: []types.Binding{
+	user := core.InputUser{
+		ID: "user1",
+		Bindings: []types.Binding{
 			{
 				BindingID:   "binding1",
 				Subjects:    []string{"user1"},
@@ -639,7 +639,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 				CRUDDocumentState: "PUBLIC",
 			},
 		},
-		UserRoles: []types.Role{
+		Roles: []types.Role{
 			{
 				RoleID:            "company_owner",
 				Permissions:       []string{"console.company.project.view", "console.company.project.environment.view"},
@@ -720,9 +720,9 @@ func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
 		},
 	}
 
-	user := types.User{
-		UserID: "user1",
-		UserBindings: []types.Binding{
+	user := core.InputUser{
+		ID: "user1",
+		Bindings: []types.Binding{
 			{
 				BindingID:   "binding1",
 				Subjects:    []string{"user1"},
@@ -754,7 +754,7 @@ func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
 				CRUDDocumentState: "PUBLIC",
 			},
 		},
-		UserRoles: []types.Role{
+		Roles: []types.Role{
 			{
 				RoleID:            "company_owner",
 				Permissions:       []string{"console.company.project.view", "console.company.project.environment.view"},
@@ -829,9 +829,9 @@ func BenchmarkEvaluateResponse(b *testing.B) {
 		},
 	}
 
-	user := types.User{
-		UserID: "user1",
-		UserBindings: []types.Binding{{
+	user := core.InputUser{
+		ID: "user1",
+		Bindings: []types.Binding{{
 			BindingID: "binding-env",
 			Subjects:  []string{"user1"},
 			Roles:     []string{"env-reader"},
@@ -852,7 +852,7 @@ func BenchmarkEvaluateResponse(b *testing.B) {
 				CRUDDocumentState: "PUBLIC",
 			},
 		},
-		UserRoles: []types.Role{
+		Roles: []types.Role{
 			{
 				RoleID:            "env-reader",
 				Permissions:       []string{"console.environment.view"},

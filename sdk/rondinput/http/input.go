@@ -23,7 +23,6 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/utils"
-	"github.com/rond-authz/rond/types"
 )
 
 func parseRequestBody(req *http.Request) (any, error) {
@@ -48,7 +47,7 @@ func parseRequestBody(req *http.Request) (any, error) {
 // TODO: before to have a stable interface, remove the usage of clientTypeHeaderKey.
 // We could add to the core.Input a map[string]any to add any data passed from
 // outside instead
-func NewInput(req *http.Request, clientTypeHeaderKey string, pathParams map[string]string, user types.User, responseBody any) (core.Input, error) {
+func NewInput(req *http.Request, clientTypeHeaderKey string, pathParams map[string]string, user core.InputUser, responseBody any) (core.Input, error) {
 	requestBody, err := parseRequestBody(req)
 	if err != nil {
 		return core.Input{}, err
@@ -67,12 +66,6 @@ func NewInput(req *http.Request, clientTypeHeaderKey string, pathParams map[stri
 		Response: core.InputResponse{
 			Body: responseBody,
 		},
-		User: core.InputUser{
-			ID:         user.UserID,
-			Properties: user.Properties,
-			Groups:     user.UserGroups,
-			Bindings:   user.UserBindings,
-			Roles:      user.UserRoles,
-		},
+		User: user,
 	}, nil
 }

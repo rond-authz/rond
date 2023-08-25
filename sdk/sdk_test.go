@@ -26,7 +26,6 @@ import (
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
-	"github.com/rond-authz/rond/types"
 
 	"github.com/stretchr/testify/require"
 )
@@ -166,7 +165,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", types.User{}, nil))
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil))
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -181,7 +180,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", types.User{}, nil))
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil))
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -212,7 +211,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", types.User{}, nil))
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil))
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -250,7 +249,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", types.User{}, nil))
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil))
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -272,19 +271,13 @@ type tHelper interface {
 	Helper()
 }
 
-func getFakeInput(t require.TestingT, request core.InputRequest, clientType string, user types.User, responseBody any) core.Input {
+func getFakeInput(t require.TestingT, request core.InputRequest, clientType string, user core.InputUser, responseBody any) core.Input {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
 	}
 
 	return core.Input{
-		User: core.InputUser{
-			ID:         user.UserID,
-			Properties: user.Properties,
-			Groups:     user.UserGroups,
-			Bindings:   user.UserBindings,
-			Roles:      user.UserRoles,
-		},
+		User:    user,
 		Request: request,
 		Response: core.InputResponse{
 			Body: responseBody,

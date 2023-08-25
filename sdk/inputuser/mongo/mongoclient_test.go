@@ -17,14 +17,10 @@ package mongoclient
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"reflect"
 	"testing"
 
-	"github.com/rond-authz/rond/evaluationdata"
-	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
@@ -116,7 +112,7 @@ func TestMongoCollections(t *testing.T) {
 
 		testutils.PopulateDBForTesting(t, ctx, rolesCollection, bindingsCollection)
 
-		result, _ := mongoClient.RetrieveUserBindings(ctx, &types.User{UserID: "user1", UserGroups: []string{"group1", "group2"}})
+		result, _ := mongoClient.RetrieveUserBindings(ctx, types.User{ID: "user1", Groups: []string{"group1", "group2"}})
 		expected := []types.Binding{
 			{
 				BindingID:         "binding1",
@@ -265,186 +261,5 @@ func TestMongoCollections(t *testing.T) {
 		}
 		require.True(t, reflect.DeepEqual(result, expected),
 			"Error while getting permissions")
-	})
-}
-
-func TestRolesIDSFromBindings(t *testing.T) {
-	t.Run("retrieve roles ids #1", func(t *testing.T) {
-		result := RolesIDsFromBindings([]types.Binding{
-			{Roles: []string{"a", "b"}},
-			{Roles: []string{"a", "b"}},
-			{Roles: []string{"c", "d"}},
-			{Roles: []string{"e"}},
-		})
-
-		require.Equal(t, []string{"a", "b", "c", "d", "e"}, result)
-	})
-
-	t.Run("retrieve roles ids #2", func(t *testing.T) {
-		bindings := []types.Binding{
-			{
-				BindingID:         "binding1",
-				Subjects:          []string{"user1"},
-				Roles:             []string{"role1", "role2"},
-				Groups:            []string{"group1"},
-				Permissions:       []string{"permission4"},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				BindingID:         "binding2",
-				Subjects:          []string{"user1"},
-				Roles:             []string{"role3", "role4"},
-				Groups:            []string{"group4"},
-				Permissions:       []string{"permission7"},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				BindingID:         "binding3",
-				Subjects:          []string{"user5"},
-				Roles:             []string{"role3", "role4"},
-				Groups:            []string{"group2"},
-				Permissions:       []string{"permission10", "permission4"},
-				CRUDDocumentState: "PUBLIC",
-			},
-			{
-				BindingID:         "binding4",
-				Roles:             []string{"role3", "role4"},
-				Groups:            []string{"group2"},
-				Permissions:       []string{"permission11"},
-				CRUDDocumentState: "PUBLIC",
-			},
-
-			{
-				BindingID:         "binding5",
-				Subjects:          []string{"user1"},
-				Roles:             []string{"role3", "role4"},
-				Permissions:       []string{"permission12"},
-				CRUDDocumentState: "PUBLIC",
-			},
-		}
-		rolesIds := RolesIDsFromBindings(bindings)
-		expected := []string{"role1", "role2", "role3", "role4"}
-		require.True(t, reflect.DeepEqual(rolesIds, expected), "Error while getting permissions")
-	})
-}
-
-func TestRetrieveUserBindingsAndRoles(t *testing.T) {
-	log := logging.NewNoOpLogger()
-	userHeaders := types.UserHeadersKeys{
-		GroupsHeaderKey:     "thegroupsheader",
-		IDHeaderKey:         "theuserheader",
-		PropertiesHeaderKey: "userproperties",
-	}
-
-	t.Run("extract user from request without querying MongoDB", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req.Header.Set("thegroupsheader", "group1,group2")
-		req.Header.Set("theuserheader", "userId")
-
-		user, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
-		require.NoError(t, err)
-		require.Equal(t, types.User{
-			UserID:     "userId",
-			UserGroups: []string{"group1", "group2"},
-			Properties: map[string]interface{}{},
-		}, user)
-	})
-
-	t.Run("extract user with no id in headers does not perform queries", func(t *testing.T) {
-		mock := mocks.MongoClientMock{
-			UserBindingsError: fmt.Errorf("some error"),
-		}
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req = req.WithContext(evaluationdata.WithClient(req.Context(), mock))
-
-		_, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
-		require.NoError(t, err)
-	})
-
-	t.Run("extract user but retrieve bindings fails", func(t *testing.T) {
-		mock := mocks.MongoClientMock{
-			UserBindingsError: fmt.Errorf("some error"),
-		}
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req = req.WithContext(evaluationdata.WithClient(req.Context(), mock))
-		req.Header.Set("thegroupsheader", "group1,group2")
-		req.Header.Set("theuserheader", "userId")
-
-		_, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
-		require.Error(t, err, "Error while retrieving user bindings: some error")
-	})
-
-	t.Run("extract user bindings but retrieve roles by role id fails", func(t *testing.T) {
-		mock := mocks.MongoClientMock{
-			UserBindings: []types.Binding{
-				{Roles: []string{"r1", "r2"}},
-			},
-			UserRolesError: fmt.Errorf("some error 2"),
-		}
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req = req.WithContext(evaluationdata.WithClient(req.Context(), mock))
-		req.Header.Set("thegroupsheader", "group1,group2")
-		req.Header.Set("theuserheader", "userId")
-
-		_, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
-		require.Error(t, err, "Error while retrieving user Roles: some error 2")
-	})
-
-	t.Run("extract user bindings and roles", func(t *testing.T) {
-		mock := mocks.MongoClientMock{
-			UserBindings: []types.Binding{
-				{Roles: []string{"r1", "r2"}},
-				{Roles: []string{"r3"}},
-			},
-			UserRoles: []types.Role{
-				{RoleID: "r1", Permissions: []string{"p1", "p2"}},
-				{RoleID: "r2", Permissions: []string{"p3", "p4"}},
-				{RoleID: "r3", Permissions: []string{"p5"}},
-			},
-		}
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req = req.WithContext(evaluationdata.WithClient(req.Context(), mock))
-		req.Header.Set("thegroupsheader", "group1,group2")
-		req.Header.Set("theuserheader", "userId")
-
-		user, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
-		require.NoError(t, err)
-		require.Equal(t, types.User{
-			UserID:     "userId",
-			UserGroups: []string{"group1", "group2"},
-			UserBindings: []types.Binding{
-				{Roles: []string{"r1", "r2"}},
-				{Roles: []string{"r3"}},
-			},
-			UserRoles: []types.Role{
-				{RoleID: "r1", Permissions: []string{"p1", "p2"}},
-				{RoleID: "r2", Permissions: []string{"p3", "p4"}},
-				{RoleID: "r3", Permissions: []string{"p5"}},
-			},
-			Properties: map[string]interface{}{},
-		}, user)
-	})
-
-	t.Run("allow empty userproperties header", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req.Header.Set("userproperties", "")
-		req.Header.Set("thegroupsheader", "group1,group2")
-		req.Header.Set("theuserheader", "userId")
-
-		user, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
-		require.NoError(t, err)
-		require.Equal(t, types.User{
-			UserID:     "userId",
-			UserGroups: []string{"group1", "group2"},
-			Properties: map[string]interface{}{},
-		}, user)
-	})
-
-	t.Run("fail on invalid userproperties header value", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req.Header.Set("userproperties", "1")
-
-		_, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
-		require.ErrorContains(t, err, "user properties header is not valid:")
 	})
 }

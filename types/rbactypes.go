@@ -12,21 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO: delete this file
 package types
-
-type User struct {
-	UserID       string
-	UserGroups   []string
-	UserRoles    []Role
-	UserBindings []Binding
-	Properties   map[string]any
-}
-
-type UserHeadersKeys struct {
-	GroupsHeaderKey     string
-	IDHeaderKey         string
-	PropertiesHeaderKey string
-}
 
 type Resource struct {
 	ResourceType string `bson:"resourceType" json:"resourceType,omitempty"`
@@ -63,4 +50,10 @@ type RequestError struct {
 	Error      string `json:"error"`
 	Message    string `json:"message"`
 	StatusCode int    `json:"statusCode"`
+}
+
+type User struct {
+	ID         string
+	Groups     []string
+	Properties map[string]any
 }
