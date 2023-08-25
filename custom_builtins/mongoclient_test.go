@@ -8,9 +8,9 @@ import (
 
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/logging"
-	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestNewMongoClient(t *testing.T) {
