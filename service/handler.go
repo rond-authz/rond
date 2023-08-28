@@ -209,7 +209,7 @@ type userHeadersKeys struct {
 func getUserFromRequest(req *http.Request, userHeaders userHeadersKeys) (types.User, error) {
 	var user types.User
 
-	user.Groups = strings.Split(req.Header.Get(userHeaders.GroupsHeaderKey), ",")
+	user.Groups = split(req.Header.Get(userHeaders.GroupsHeaderKey), ",")
 	user.ID = req.Header.Get(userHeaders.IDHeaderKey)
 
 	userProperties := make(map[string]interface{})
@@ -243,4 +243,11 @@ func getInputUser(logger *logrus.Entry, env config.EnvironmentVariables, req *ht
 	}
 
 	return rondInputUser, nil
+}
+
+func split(str, sep string) []string {
+	if str == "" {
+		return []string{}
+	}
+	return strings.Split(str, sep)
 }

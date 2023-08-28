@@ -34,6 +34,7 @@ import (
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk/inputuser"
 	"github.com/rond-authz/rond/types"
 
 	"github.com/gorilla/mux"
@@ -1417,6 +1418,70 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
 			})
 		})
+
+		// TODO:
+		// t.Run("policy on user on response", func(t *testing.T) {
+		// 	invoked := false
+		// 	mockHeader := "X-Backdoor"
+		// 	mockHeaderValue := "mocked value"
+
+		// 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 		invoked = true
+		// 		require.Equal(t, mockHeaderValue, r.Header.Get(mockHeader), "Mocked Backend: Mocked Header not found")
+		// 		w.WriteHeader(http.StatusOK)
+		// 	}))
+		// 	defer server.Close()
+
+		// 	serverURL, _ := url.Parse(server.URL)
+
+		// 	opaModule := &core.OPAModuleConfig{
+		// 		Name: "example.rego",
+		// 		Content: fmt.Sprintf(`package policies
+		// 		todo[msg]{
+		// 			count(input.request.headers["%s"]) != 0
+		// 			msg := {"ciao":"boh"}
+		// 			test
+		// 		}
+		// 		test[x]{
+		// 			true
+		// 			x:= ["x"]
+		// 		}
+		// 		`, mockHeader),
+		// 	}
+
+		// 	oas := &openapi.OpenAPISpec{
+		// 		Paths: openapi.OpenAPIPaths{
+		// 			"/api": openapi.PathVerbs{
+		// 				"get": openapi.VerbConfig{
+		// 					PermissionV2: &core.RondConfig{
+		// 						RequestFlow: core.RequestFlow{PolicyName: "todo"},
+		// 					},
+		// 				},
+		// 			},
+		// 		},
+		// 	}
+
+		// 	rondConfig := &core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "todo"}}
+		// 	evaluator := getEvaluator(t, ctx, opaModule, nil, *rondConfig, oas, http.MethodGet, "/api", nil)
+		// 	ctx := createContext(t,
+		// 		context.Background(),
+		// 		config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
+		// 		evaluator,
+		// 		nil,
+		// 	)
+
+		// 	t.Run("request respects the policy", func(t *testing.T) {
+		// 		w := httptest.NewRecorder()
+		// 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", nil)
+		// 		require.NoError(t, err, "Unexpected error")
+
+		// 		r.Header.Set(mockHeader, mockHeaderValue)
+
+		// 		rbacHandler(w, r)
+		// 		require.True(t, invoked, "Handler was not invoked.")
+		// 		require.Equal(t, http.StatusOK, w.Result().StatusCode, "Unexpected status code.")
+		// 	})
+		// })
 	})
 
 	t.Run("TestHandlerWithUserPermissionsRetrievalFromMongoDB", func(t *testing.T) {
@@ -2041,4 +2106,96 @@ func findLogWithMessage(logs []*logrus.Entry, message string) []*logrus.Entry {
 		}
 	}
 	return logToReturn
+}
+
+func TestGetInputUser(t *testing.T) {
+	log, _ := test.NewNullLogger()
+	logger := logrus.NewEntry(log)
+
+	env := config.EnvironmentVariables{
+		UserIdHeader:         "useridheaderkey",
+		UserGroupsHeader:     "groupskey",
+		UserPropertiesHeader: "propertieskey",
+	}
+
+	t.Run("without groups", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(env.UserIdHeader, "userId")
+
+		inputUser, err := getInputUser(logger, env, req)
+		require.NoError(t, err)
+		require.Equal(t, core.InputUser{
+			ID:         "userId",
+			Groups:     []string{},
+			Properties: map[string]interface{}{},
+		}, inputUser)
+	})
+
+	t.Run("allow empty userproperties header", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(env.UserIdHeader, "userId")
+		req.Header.Set(env.UserGroupsHeader, "group1,group2")
+
+		inputUser, err := getInputUser(logger, env, req)
+		require.NoError(t, err)
+		require.Equal(t, core.InputUser{
+			ID:         "userId",
+			Groups:     []string{"group1", "group2"},
+			Properties: map[string]interface{}{},
+		}, inputUser)
+	})
+
+	t.Run("with userproperties header", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(env.UserIdHeader, "userId")
+		req.Header.Set(env.UserGroupsHeader, "group1,group2")
+		req.Header.Set(env.UserPropertiesHeader, `{"name":"my-name"}`)
+
+		inputUser, err := getInputUser(logger, env, req)
+		require.NoError(t, err)
+		require.Equal(t, core.InputUser{
+			ID:     "userId",
+			Groups: []string{"group1", "group2"},
+			Properties: map[string]interface{}{
+				"name": "my-name",
+			},
+		}, inputUser)
+	})
+
+	t.Run("fail on invalid userproperties header value", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(env.UserIdHeader, "userId")
+		req.Header.Set(env.UserPropertiesHeader, "1")
+
+		_, err := getInputUser(logger, env, req)
+		require.ErrorContains(t, err, "user properties header is not valid:")
+	})
+
+	t.Run("with client and userId", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(env.UserIdHeader, "userId")
+
+		roles := []types.Role{
+			{RoleID: "role-1"},
+		}
+		bindings := []types.Binding{
+			{BindingID: "binding-1"},
+		}
+		ctx := inputuser.AddClientInContext(context.Background(), fake.InputUserClient{
+			UserRoles:    roles,
+			UserBindings: bindings,
+		})
+		req = req.WithContext(ctx)
+
+		inputUser, err := getInputUser(logger, env, req)
+		require.NoError(t, err)
+		require.Equal(t, core.InputUser{
+			ID:         "userId",
+			Groups:     []string{},
+			Properties: map[string]interface{}{},
+			Bindings:   bindings,
+			Roles:      roles,
+		}, inputUser)
+	})
+
 }

@@ -163,29 +163,4 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 			},
 		}, inputUser)
 	})
-
-	// TODO: migrate those tests
-	// t.Run("allow empty userproperties header", func(t *testing.T) {
-	// 	user := types.User{
-	// 		Groups:     []string{"group1", "group2"},
-	// 		ID:         "userId",
-	// 		Properties: "",
-	// 	}
-
-	// 	inputUser, err := GetInputUser(context.Background(), log, mock, user)
-	// 	require.NoError(t, err)
-	// 	require.Equal(t, types.User{
-	// 		ID:         "userId",
-	// 		Groups:     []string{"group1", "group2"},
-	// 		Properties: map[string]interface{}{},
-	// 	}, inputUser)
-	// })
-
-	// t.Run("fail on invalid userproperties header value", func(t *testing.T) {
-	// 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	// 	req.Header.Set("userproperties", "1")
-
-	// 	_, err := RetrieveUserBindingsAndRoles(log, req, userHeaders)
-	// 	require.ErrorContains(t, err, "user properties header is not valid:")
-	// })
 }
