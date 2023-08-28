@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: delete this file
+// TODO: check if types should be removed from here, and set in correct packages
 package types
 
 type Resource struct {
