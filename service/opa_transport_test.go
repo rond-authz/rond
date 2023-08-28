@@ -263,14 +263,13 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{"Content-Type": []string{"application/json"}},
 		}
 
-		logEntry := rondlogrus.NewLogger(logger)
 		req = req.Clone(context.Background())
 
 		evaluator := getSdk(t, &sdkOptions{
 			oasFilePath:      "../mocks/rondOasConfig.json",
 			opaModuleContent: "package policies responsepolicy [resources] { resources := input.response.body }",
 		})
-		evaluatorSDK, err := evaluator.FindEvaluator(logEntry, http.MethodGet, "/users/")
+		evaluatorSDK, err := evaluator.FindEvaluator(http.MethodGet, "/users/")
 		require.NoError(t, err)
 
 		transport := NewOPATransport(
@@ -402,7 +401,7 @@ func getSdk(t require.TestingT, options *sdkOptions) sdk.OASEvaluatorFinder {
 	}
 
 	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, openAPISpec, &sdk.Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &sdk.EvaluatorOptions{
 			MongoClient:           options.mongoClient,
 			EnablePrintStatements: true,
 		},

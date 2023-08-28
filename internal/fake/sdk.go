@@ -45,14 +45,14 @@ func NewSDKEvaluator(
 	}
 }
 
-func (s SDKEvaluator) EvaluateRequestPolicy(ctx context.Context, input core.Input) (sdk.PolicyResult, error) {
+func (s SDKEvaluator) EvaluateRequestPolicy(ctx context.Context, input core.Input, options *sdk.EvaluateOptions) (sdk.PolicyResult, error) {
 	if s.requestPolicyEvaluatorResult == nil {
 		return sdk.PolicyResult{}, nil
 	}
 	return sdk.PolicyResult{}, s.requestPolicyEvaluatorResult.Err
 }
 
-func (e SDKEvaluator) EvaluateResponsePolicy(ctx context.Context, input core.Input) ([]byte, error) {
+func (e SDKEvaluator) EvaluateResponsePolicy(ctx context.Context, input core.Input, options *sdk.EvaluateOptions) ([]byte, error) {
 	return nil, nil
 }
 

@@ -321,8 +321,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					metrics:          testMetrics,
 				})
 
-				logger := test.GetLogger()
-				evaluate, err := sdk.FindEvaluator(logger, testCase.method, testCase.path)
+				evaluate, err := sdk.FindEvaluator(testCase.method, testCase.path)
 				require.NoError(t, err)
 
 				headers := http.Header{}
@@ -337,7 +336,10 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					Method:  testCase.method,
 				}, "", testCase.user, nil)
 
-				actual, err := evaluate.EvaluateRequestPolicy(context.Background(), rondInput)
+				logger := test.GetLogger()
+				actual, err := evaluate.EvaluateRequestPolicy(context.Background(), rondInput, &EvaluateOptions{
+					Logger: logger,
+				})
 				if testCase.expectedErr != nil {
 					require.EqualError(t, err, testCase.expectedErr.Error())
 				} else {
@@ -392,6 +394,25 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				})
 			})
 		}
+	})
+
+	t.Run("with nil options", func(t *testing.T) {
+		opaModule := &core.OPAModuleConfig{
+			Name: "example.rego",
+			Content: `package policies
+			todo { true }`,
+		}
+		sdk, err := NewWithConfig(context.Background(), opaModule, core.RondConfig{
+			RequestFlow: core.RequestFlow{PolicyName: "todo"},
+		}, nil)
+		require.NoError(t, err)
+
+		result, err := sdk.EvaluateRequestPolicy(context.Background(), core.Input{}, nil)
+		require.NoError(t, err)
+		require.Equal(t, PolicyResult{
+			Allowed:      true,
+			QueryToProxy: []byte(""),
+		}, result)
 	})
 }
 
@@ -505,7 +526,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					metrics:          testMetrics,
 				})
 
-				evaluate, err := sdk.FindEvaluator(logger, testCase.method, testCase.path)
+				evaluate, err := sdk.FindEvaluator(testCase.method, testCase.path)
 				require.NoError(t, err)
 
 				req := httptest.NewRequest(testCase.method, testCase.path, nil)
@@ -526,7 +547,9 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					Method:  testCase.method,
 				}, "", testCase.user, testCase.decodedBody)
 
-				actual, err := evaluate.EvaluateResponsePolicy(context.Background(), rondInput)
+				actual, err := evaluate.EvaluateResponsePolicy(context.Background(), rondInput, &EvaluateOptions{
+					Logger: logger,
+				})
 				if testCase.expectedErr != nil {
 					require.EqualError(t, err, testCase.expectedErr.Error())
 				} else {
@@ -575,6 +598,29 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 				})
 			})
 		}
+	})
+
+	t.Run("with nil options", func(t *testing.T) {
+		opaModule := &core.OPAModuleConfig{
+			Name: "example.rego",
+			Content: `package policies
+			responsepolicy [body] {
+				body := input.response.body
+			}`,
+		}
+		sdk, err := NewWithConfig(context.Background(), opaModule, core.RondConfig{
+			RequestFlow:  core.RequestFlow{PolicyName: "todo"},
+			ResponseFlow: core.ResponseFlow{PolicyName: "responsepolicy"},
+		}, nil)
+		require.NoError(t, err)
+
+		result, err := sdk.EvaluateResponsePolicy(context.Background(), core.Input{
+			Response: core.InputResponse{
+				Body: map[string]string{"foo": "bar"},
+			},
+		}, nil)
+		require.NoError(t, err)
+		require.Equal(t, `{"foo":"bar"}`, string(result))
 	})
 }
 
@@ -675,7 +721,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	}
 
 	evaluator, err := NewWithConfig(context.Background(), moduleConfig, config, &Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &EvaluatorOptions{
 			MongoClient: mongoClient,
 		},
 	})
@@ -698,7 +744,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 		}, "", user, nil)
 
 		b.StartTimer()
-		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput)
+		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, nil)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -784,7 +830,7 @@ func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
 	}
 
 	evaluator, err := NewWithConfig(context.Background(), moduleConfig, config, &Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &EvaluatorOptions{
 			MongoClient: mocks.MongoClientMock{},
 		},
 	})
@@ -805,7 +851,7 @@ func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
 		}, "", user, nil)
 
 		b.StartTimer()
-		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput)
+		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, nil)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -867,7 +913,7 @@ func BenchmarkEvaluateResponse(b *testing.B) {
 	}
 
 	evaluator, err := NewWithConfig(context.Background(), moduleConfig, config, &Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &EvaluatorOptions{
 			MongoClient: &mocks.MongoClientMock{},
 		},
 	})
@@ -907,7 +953,7 @@ func BenchmarkEvaluateResponse(b *testing.B) {
 		}, "", user, decodedBody)
 
 		b.StartTimer()
-		policyResult, err := evaluator.EvaluateResponsePolicy(context.Background(), rondInput)
+		policyResult, err := evaluator.EvaluateResponsePolicy(context.Background(), rondInput, nil)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -959,7 +1005,7 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 
 	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &Options{
 		Metrics: options.metrics,
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &EvaluatorOptions{
 			EnablePrintStatements: true,
 			MongoClient:           options.mongoClient,
 		},

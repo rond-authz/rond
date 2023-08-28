@@ -1812,7 +1812,7 @@ filter_policy {
 
 	logger, _ := test.NewNullLogger()
 	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{},
+		EvaluatorOptions: &sdk.EvaluatorOptions{},
 		Logger:           rondlogrus.NewLogger(logger),
 	})
 	require.NoError(t, err, "unexpected error")

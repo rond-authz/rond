@@ -130,7 +130,7 @@ func entrypoint(shutdown chan os.Signal) {
 	}
 	sdk, err := sdk.NewFromOAS(context.Background(), opaModuleConfig, oas, &sdk.Options{
 		Metrics: m,
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &sdk.EvaluatorOptions{
 			EnablePrintStatements: env.IsTraceLogLevel(),
 			MongoClient:           mongoClientForBuiltin,
 		},

@@ -16,7 +16,6 @@ package sdk
 
 import (
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
 
@@ -29,22 +28,21 @@ type oasImpl struct {
 
 	opaModuleConfig         *core.OPAModuleConfig
 	partialResultEvaluators core.PartialResultsEvaluators
-	opaEvaluatorOptions     *core.OPAEvaluatorOptions
+	evaluatorOptions        *EvaluatorOptions
 	metrics                 *metrics.Metrics
 }
 
-func (r oasImpl) FindEvaluator(logger logging.Logger, method, path string) (Evaluator, error) {
+func (r oasImpl) FindEvaluator(method, path string) (Evaluator, error) {
 	permission, routerInfo, err := r.oas.FindPermission(r.oasRouter, path, method)
 	if err != nil {
 		return nil, err
 	}
 	return evaluator{
 		rondConfig:              permission,
-		logger:                  logger,
 		opaModuleConfig:         r.opaModuleConfig,
 		partialResultEvaluators: r.partialResultEvaluators,
 
-		opaEvaluatorOptions: r.opaEvaluatorOptions,
+		evaluatorOptions: r.evaluatorOptions,
 		policyEvaluationOptions: &core.PolicyEvaluationOptions{
 			Metrics: r.metrics,
 			AdditionalLogFields: map[string]string{
@@ -57,5 +55,5 @@ func (r oasImpl) FindEvaluator(logger logging.Logger, method, path string) (Eval
 }
 
 type OASEvaluatorFinder interface {
-	FindEvaluator(logger logging.Logger, method, path string) (Evaluator, error)
+	FindEvaluator(method, path string) (Evaluator, error)
 }

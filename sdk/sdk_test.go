@@ -76,7 +76,7 @@ func TestNewFromOas(t *testing.T) {
 	})
 
 	t.Run("passes EvaluatorOptions and set metrics correctly", func(t *testing.T) {
-		evalOpts := &core.OPAEvaluatorOptions{
+		evalOpts := &EvaluatorOptions{
 			EnablePrintStatements: true,
 		}
 		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &Options{
@@ -88,7 +88,7 @@ func TestNewFromOas(t *testing.T) {
 		require.NotEmpty(t, sdk)
 		r, ok := sdk.(oasImpl)
 		require.True(t, ok)
-		require.Equal(t, evalOpts, r.opaEvaluatorOptions)
+		require.Equal(t, evalOpts, r.evaluatorOptions)
 	})
 
 	t.Run("creates OAS sdk correctly", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestNewFromOas(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run("and find evaluators", func(t *testing.T) {
-			evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
+			evaluator, err := sdk.FindEvaluator(http.MethodGet, "/users/")
 			require.NoError(t, err)
 			require.NotNil(t, evaluator)
 		})
@@ -108,7 +108,7 @@ func TestNewFromOas(t *testing.T) {
 		require.NotNil(t, sdk)
 
 		t.Run("and find evaluators", func(t *testing.T) {
-			evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
+			evaluator, err := sdk.FindEvaluator(http.MethodGet, "/users/")
 			require.NoError(t, err)
 			require.NotNil(t, evaluator)
 		})
@@ -120,7 +120,7 @@ func TestNewFromOas(t *testing.T) {
 		require.NotNil(t, sdk)
 
 		t.Run("and find evaluators", func(t *testing.T) {
-			evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
+			evaluator, err := sdk.FindEvaluator(http.MethodGet, "/users/")
 			require.NoError(t, err)
 			require.NotNil(t, evaluator)
 		})
@@ -165,7 +165,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil))
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil), nil)
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -180,7 +180,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil))
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil), nil)
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -190,7 +190,7 @@ func TestNewWithConfig(t *testing.T) {
 	})
 
 	t.Run("passes EvaluatorOptions and set metrics correctly", func(t *testing.T) {
-		evalOpts := &core.OPAEvaluatorOptions{
+		evalOpts := &EvaluatorOptions{
 			EnablePrintStatements: true,
 		}
 		eval, err := NewWithConfig(ctx, opaModule, rondConfig, &Options{
@@ -202,7 +202,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotEmpty(t, eval)
 		r, ok := eval.(evaluator)
 		require.True(t, ok)
-		require.Equal(t, evalOpts, r.opaEvaluatorOptions)
+		require.Equal(t, evalOpts, r.evaluatorOptions)
 	})
 
 	t.Run("creates config sdk correctly", func(t *testing.T) {
@@ -211,7 +211,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil))
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil), nil)
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -233,7 +233,7 @@ func TestNewWithConfig(t *testing.T) {
 		}
 		options := &Options{
 			Logger: logger,
-			EvaluatorOptions: &core.OPAEvaluatorOptions{
+			EvaluatorOptions: &EvaluatorOptions{
 				MongoClient: mocks.MongoClientMock{
 					FindOneResult: map[string]string{"myField": "1234"},
 					FindOneExpectation: func(collectionName string, query interface{}) {
@@ -249,7 +249,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil))
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil), nil)
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,

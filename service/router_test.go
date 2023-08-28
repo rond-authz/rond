@@ -239,6 +239,7 @@ func createContext(
 	env config.EnvironmentVariables,
 	evaluator sdk.Evaluator,
 	inputUserClient *fake.InputUserClient,
+	logEntry *logrus.Entry,
 ) context.Context {
 	t.Helper()
 
@@ -251,7 +252,11 @@ func createContext(
 		partialContext = inputuser.AddClientInContext(partialContext, inputUserClient)
 	}
 
-	partialContext = glogger.WithLogger(partialContext, logrus.NewEntry(logrus.New()))
+	logger := logEntry
+	if logger == nil {
+		logger = logrus.NewEntry(logrus.New())
+	}
+	partialContext = glogger.WithLogger(partialContext, logger)
 
 	return partialContext
 }
@@ -295,7 +300,7 @@ func getEvaluator(
 	}
 
 	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &sdk.EvaluatorOptions{
 			MongoClient: mongoClient,
 		},
 		Logger:  logger,
@@ -303,7 +308,7 @@ func getEvaluator(
 	})
 	require.NoError(t, err, "unexpected error")
 
-	evaluator, err := sdk.FindEvaluator(logger, method, path)
+	evaluator, err := sdk.FindEvaluator(method, path)
 	require.NoError(t, err)
 
 	return evaluator
@@ -338,6 +343,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
+			nil,
 			nil,
 		)
 
@@ -378,6 +384,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
 			nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/unknown/path?foo=bar", nil)
@@ -410,6 +417,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			config.EnvironmentVariables{LogLevel: "silent", TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			evaluator,
 			nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://crud-service/users/?foo=bar", nil)
@@ -437,6 +445,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{LogLevel: "silent", TargetServiceHost: "targetServiceHostWillNotBeInvoked"},
 			evaluator,
+			nil,
 			nil,
 		)
 
@@ -479,6 +488,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
 			nil,
+			nil,
 		)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", "http://my-service.com/foo/route-not-registered-explicitly", nil)
@@ -520,6 +530,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
+			nil,
 			nil,
 		)
 

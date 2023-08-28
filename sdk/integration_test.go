@@ -44,7 +44,7 @@ func TestUsageNewWithConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	input := core.Input{}
-	result, err := evaluator.EvaluateRequestPolicy(ctx, input)
+	result, err := evaluator.EvaluateRequestPolicy(ctx, input, nil)
 	require.NoError(t, err)
 	require.Equal(t, result, sdk.PolicyResult{
 		Allowed:      true,
@@ -65,7 +65,7 @@ func TestUsageNewWithConfigWithMongo(t *testing.T) {
 	}
 
 	evaluator, err := sdk.NewWithConfig(ctx, opaModuleConfig, rondConfig, &sdk.Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &sdk.EvaluatorOptions{
 			MongoClient: mocks.MongoClientMock{},
 		},
 	})
@@ -73,7 +73,7 @@ func TestUsageNewWithConfigWithMongo(t *testing.T) {
 
 	input := core.Input{}
 
-	result, err := evaluator.EvaluateRequestPolicy(ctx, input)
+	result, err := evaluator.EvaluateRequestPolicy(ctx, input, nil)
 	require.NoError(t, err)
 	require.Equal(t, result, sdk.PolicyResult{
 		Allowed:      true,
@@ -93,11 +93,13 @@ func TestUsageNewFromOas(t *testing.T) {
 	oasFinder, err := sdk.NewFromOAS(ctx, opaModuleConfig, openAPISpec, nil)
 	require.NoError(t, err)
 
-	evaluator, err := oasFinder.FindEvaluator(logger, http.MethodGet, "/users/")
+	evaluator, err := oasFinder.FindEvaluator(http.MethodGet, "/users/")
 	require.NoError(t, err)
 
 	input := core.Input{}
-	result, err := evaluator.EvaluateRequestPolicy(ctx, input)
+	result, err := evaluator.EvaluateRequestPolicy(ctx, input, &sdk.EvaluateOptions{
+		Logger: logger,
+	})
 	require.NoError(t, err)
 	require.Equal(t, result, sdk.PolicyResult{
 		Allowed:      true,
@@ -115,17 +117,19 @@ func TestUsageNewFromOasWithMongo(t *testing.T) {
 	logger := logging.NewNoOpLogger()
 
 	oasFinder, err := sdk.NewFromOAS(ctx, opaModuleConfig, openAPISpec, &sdk.Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &sdk.EvaluatorOptions{
 			MongoClient: mocks.MongoClientMock{},
 		},
 	})
 	require.NoError(t, err)
 
-	evaluator, err := oasFinder.FindEvaluator(logger, http.MethodGet, "/users/")
+	evaluator, err := oasFinder.FindEvaluator(http.MethodGet, "/users/")
 	require.NoError(t, err)
 
 	input := core.Input{}
-	result, err := evaluator.EvaluateRequestPolicy(ctx, input)
+	result, err := evaluator.EvaluateRequestPolicy(ctx, input, &sdk.EvaluateOptions{
+		Logger: logger,
+	})
 	require.NoError(t, err)
 	require.Equal(t, result, sdk.PolicyResult{
 		Allowed:      true,

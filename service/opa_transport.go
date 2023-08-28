@@ -25,6 +25,7 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/utils"
+	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/sdk"
 	rondhttp "github.com/rond-authz/rond/sdk/rondinput/http"
 	"github.com/rond-authz/rond/types"
@@ -115,7 +116,9 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return resp, nil
 	}
 
-	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, input)
+	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, input, &sdk.EvaluateOptions{
+		Logger: rondlogrus.NewEntry(t.logger),
+	})
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusForbidden)
 		return resp, nil

@@ -99,6 +99,7 @@ func TestDirectProxyHandler(t *testing.T) {
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
 			nil,
+			nil,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
@@ -130,6 +131,7 @@ func TestDirectProxyHandler(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
+			nil,
 			nil,
 		)
 
@@ -167,6 +169,7 @@ func TestDirectProxyHandler(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
+			nil,
 			nil,
 		)
 
@@ -214,6 +217,7 @@ func TestDirectProxyHandler(t *testing.T) {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
+			nil,
 			nil,
 		)
 
@@ -283,6 +287,7 @@ allow {
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
 			nil,
+			nil,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
@@ -336,6 +341,7 @@ allow {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
+			nil,
 			nil,
 		)
 
@@ -404,6 +410,7 @@ allow {
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
 			nil,
+			nil,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
@@ -460,6 +467,7 @@ allow {
 				context.Background(),
 				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 				evaluator,
+				nil,
 				nil,
 			)
 
@@ -518,6 +526,7 @@ allow {
 				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 				evaluator,
 				nil,
+				nil,
 			)
 
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
@@ -565,6 +574,7 @@ allow {
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
 			nil,
+			nil,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
@@ -609,6 +619,7 @@ allow {
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
+			nil,
 			nil,
 		)
 
@@ -676,6 +687,7 @@ allow {
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
 			nil,
+			nil,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
@@ -723,6 +735,7 @@ allow {
 				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 				evaluator,
 				nil,
+				logEntry,
 			)
 
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
@@ -799,6 +812,7 @@ allow {
 				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 				evaluator,
 				nil,
+				logEntry,
 			)
 
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
@@ -877,6 +891,7 @@ func TestStandaloneMode(t *testing.T) {
 			env,
 			evaluator,
 			nil,
+			nil,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
@@ -923,6 +938,7 @@ allow {
 			context.Background(),
 			env,
 			evaluator,
+			nil,
 			nil,
 		)
 
@@ -973,6 +989,7 @@ allow {
 				env,
 				evaluator,
 				nil,
+				nil,
 			)
 
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
@@ -1022,6 +1039,7 @@ allow {
 				env,
 				evaluator,
 				nil,
+				nil,
 			)
 
 			r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api", body)
@@ -1070,6 +1088,7 @@ allow {
 			context.Background(),
 			env,
 			evaluator,
+			nil,
 			nil,
 		)
 
@@ -1121,6 +1140,7 @@ allow {
 			context.Background(),
 			env,
 			evaluator,
+			nil,
 			nil,
 		)
 
@@ -1213,6 +1233,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 					evaluator,
 					nil,
+					nil,
 				)
 
 				t.Run("request respects the policy", func(t *testing.T) {
@@ -1252,6 +1273,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					context.Background(),
 					config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 					evaluator,
+					nil,
 					nil,
 				)
 
@@ -1315,6 +1337,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					ClientTypeHeader:     clientTypeHeaderKey,
 				},
 				evaluator,
+				nil,
 				nil,
 			)
 
@@ -1391,6 +1414,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 				evaluator,
 				nil,
+				nil,
 			)
 
 			t.Run("request respects the policy", func(t *testing.T) {
@@ -1435,6 +1459,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 				evaluator,
 				inputUserClientMock,
+				nil,
 			)
 
 			w := httptest.NewRecorder()
@@ -1479,6 +1504,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 				evaluator,
 				inputUserClientMock,
+				nil,
 			)
 
 			w := httptest.NewRecorder()
@@ -1562,6 +1588,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 				evaluator,
 				inputUserClientMock,
+				nil,
 			)
 
 			w := httptest.NewRecorder()
@@ -1649,6 +1676,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 				evaluator,
 				inputUserClientMock,
+				nil,
 			)
 
 			w := httptest.NewRecorder()
@@ -1748,6 +1776,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 				evaluator,
 				inputUserClientMock,
+				nil,
 			)
 
 			w := httptest.NewRecorder()
@@ -1798,6 +1827,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 				evaluator,
 				inputUserClientMock,
+				nil,
 			)
 
 			w := httptest.NewRecorder()
@@ -1856,6 +1886,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 				evaluator,
 				inputUserClientMock,
+				nil,
 			)
 
 			w := httptest.NewRecorder()
@@ -1961,6 +1992,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 				evaluator,
 				inputUserClientMock,
+				nil,
 			)
 
 			w := httptest.NewRecorder()
@@ -2035,6 +2067,7 @@ project.tenantId == "1234"
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
 			inputUserClientMock,
+			nil,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
@@ -2072,6 +2105,7 @@ project.tenantId == "1234"
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
+			nil,
 			nil,
 		)
 
@@ -2111,6 +2145,7 @@ project.tenantId == "1234"
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
 			nil,
+			nil,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)
@@ -2128,6 +2163,7 @@ project.tenantId == "1234"
 func findLogWithMessage(logs []*logrus.Entry, message string) []*logrus.Entry {
 	logToReturn := []*logrus.Entry{}
 	for _, log := range logs {
+		fmt.Printf("LOG MESSAGE %s\n", log.Message)
 		if log.Message == message {
 			logToReturn = append(logToReturn, log)
 		}

@@ -35,19 +35,18 @@ type Evaluator interface {
 
 	// EvaluateResponsePolicy evaluate request policy. In the response, it is specified if the
 	// request is allowed and the request query (if filter generation is requested)
-	EvaluateRequestPolicy(ctx context.Context, input core.Input) (PolicyResult, error)
+	EvaluateRequestPolicy(ctx context.Context, input core.Input, options *EvaluateOptions) (PolicyResult, error)
 	// EvaluateResponsePolicy evaluate response policy. The response is the response
 	// value returned by the policy.
-	EvaluateResponsePolicy(ctx context.Context, input core.Input) ([]byte, error)
+	EvaluateResponsePolicy(ctx context.Context, input core.Input, options *EvaluateOptions) ([]byte, error)
 }
 
 type evaluator struct {
-	logger                  logging.Logger
 	rondConfig              core.RondConfig
 	opaModuleConfig         *core.OPAModuleConfig
 	partialResultEvaluators core.PartialResultsEvaluators
 
-	opaEvaluatorOptions     *core.OPAEvaluatorOptions
+	evaluatorOptions        *EvaluatorOptions
 	policyEvaluationOptions *core.PolicyEvaluationOptions
 }
 
@@ -55,33 +54,50 @@ func (e evaluator) Config() core.RondConfig {
 	return e.rondConfig
 }
 
-func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Input) (PolicyResult, error) {
-	rondConfig := e.Config()
+type EvaluateOptions struct {
+	Logger logging.Logger
+}
 
-	regoInput, err := core.CreateRegoQueryInput(e.logger, rondInput, core.RegoInputOptions{
+func (e EvaluateOptions) GetLogger() logging.Logger {
+	if e.Logger == nil {
+		return logging.NewNoOpLogger()
+	}
+	return e.Logger
+}
+
+func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Input, options *EvaluateOptions) (PolicyResult, error) {
+	rondConfig := e.Config()
+	if options == nil {
+		options = &EvaluateOptions{}
+	}
+	logger := options.GetLogger()
+
+	regoInput, err := core.CreateRegoQueryInput(logger, rondInput, core.RegoInputOptions{
 		EnableResourcePermissionsMapOptimization: rondConfig.Options.EnableResourcePermissionsMapOptimization,
 	})
 	if err != nil {
 		return PolicyResult{}, nil
 	}
 
+	opaEvaluatorOptions := e.evaluatorOptions.opaEvaluatorOptions(logger)
+
 	var evaluatorAllowPolicy *core.OPAEvaluator
 	if !rondConfig.RequestFlow.GenerateQuery {
-		evaluatorAllowPolicy, err = e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, regoInput, e.opaEvaluatorOptions)
+		evaluatorAllowPolicy, err = e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, regoInput, opaEvaluatorOptions)
 		if err != nil {
 			return PolicyResult{}, err
 		}
 	} else {
-		evaluatorAllowPolicy, err = e.opaModuleConfig.CreateQueryEvaluator(ctx, e.logger, rondConfig.RequestFlow.PolicyName, regoInput, e.opaEvaluatorOptions)
+		evaluatorAllowPolicy, err = e.opaModuleConfig.CreateQueryEvaluator(ctx, logger, rondConfig.RequestFlow.PolicyName, regoInput, opaEvaluatorOptions)
 		if err != nil {
 			return PolicyResult{}, err
 		}
 	}
 
-	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(e.logger, e.policyEvaluationOptions)
+	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(logger, e.policyEvaluationOptions)
 
 	if err != nil {
-		e.logger.WithField("error", map[string]any{
+		logger.WithField("error", map[string]any{
 			"policyName": rondConfig.RequestFlow.PolicyName,
 			"message":    err.Error(),
 		}).Error("RBAC policy evaluation failed")
@@ -102,22 +118,28 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 	}, nil
 }
 
-func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.Input) ([]byte, error) {
+func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.Input, options *EvaluateOptions) ([]byte, error) {
 	rondConfig := e.Config()
+	if options == nil {
+		options = &EvaluateOptions{}
+	}
+	logger := options.GetLogger()
 
-	regoInput, err := core.CreateRegoQueryInput(e.logger, rondInput, core.RegoInputOptions{
+	regoInput, err := core.CreateRegoQueryInput(logger, rondInput, core.RegoInputOptions{
 		EnableResourcePermissionsMapOptimization: rondConfig.Options.EnableResourcePermissionsMapOptimization,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	evaluator, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, e.rondConfig.ResponseFlow.PolicyName, regoInput, e.opaEvaluatorOptions)
+	opaEvaluatorOptions := e.evaluatorOptions.opaEvaluatorOptions(logger)
+
+	evaluator, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, e.rondConfig.ResponseFlow.PolicyName, regoInput, opaEvaluatorOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	bodyToProxy, err := evaluator.Evaluate(e.logger, e.policyEvaluationOptions)
+	bodyToProxy, err := evaluator.Evaluate(logger, e.policyEvaluationOptions)
 	if err != nil {
 		return nil, err
 	}
