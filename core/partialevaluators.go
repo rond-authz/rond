@@ -45,8 +45,8 @@ func createPartialEvaluator(ctx context.Context, logger logging.Logger, policy s
 
 	logger.
 		WithFields(map[string]any{
-			"policyName":                   policy,
-			"computationTimeMicroserconds": time.Since(policyEvaluatorTime).Microseconds,
+			"policyName":                  policy,
+			"computationTimeMicroseconds": time.Since(policyEvaluatorTime).Microseconds(),
 		}).
 		Info("precomputation time")
 

@@ -273,7 +273,6 @@ func getEvaluator(
 	ctx context.Context,
 	opaModule *core.OPAModuleConfig,
 	mongoClient custom_builtins.IMongoClient,
-	rondConfig core.RondConfig,
 	oas *openapi.OpenAPISpec,
 	method, path string,
 	options *evaluatorParams,
@@ -333,7 +332,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/users/", nil)
+		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/users/", nil)
 
 		ctx := createContext(t,
 			context.Background(),
@@ -404,7 +403,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		router := mux.NewRouter()
 		setupRoutes(router, oas, envs)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, mockXPermission, oas, http.MethodGet, "/users/", nil)
+		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/users/", nil)
 
 		ctx := createContext(t,
 			context.Background(),
@@ -456,7 +455,6 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 	t.Run("invokes the API not explicitly set in the oas file", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
-		rondConfig := core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "foo"}}
 		var mockOPAModule = &core.OPAModuleConfig{
 			Name: "example.rego",
 			Content: `package policies
@@ -475,7 +473,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, rondConfig, oas, http.MethodGet, "/foo/route-not-registered-explicitly", nil)
+		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/foo/route-not-registered-explicitly", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -499,7 +497,6 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 	t.Run("invokes a specific API within a nested path", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
-		rondConfig := core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "foo"}}
 		var mockOPAModule = &core.OPAModuleConfig{
 			Name: "example.rego",
 			Content: `package policies
@@ -518,7 +515,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, rondConfig, oas, http.MethodGet, "/foo/bar/nested", nil)
+		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/foo/bar/nested", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
