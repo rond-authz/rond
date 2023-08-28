@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/internal/fake"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
 
@@ -92,7 +92,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 	})
 
 	t.Run("extract user with no id in headers does not perform queries", func(t *testing.T) {
-		mock := mocks.MongoClientMock{
+		mock := fake.InputUserClient{
 			UserBindingsError: fmt.Errorf("some error"),
 		}
 
@@ -101,7 +101,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 	})
 
 	t.Run("extract user but retrieve bindings fails", func(t *testing.T) {
-		mock := mocks.MongoClientMock{
+		mock := fake.InputUserClient{
 			UserBindingsError: fmt.Errorf("some error"),
 		}
 		user := types.User{
@@ -114,7 +114,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 	})
 
 	t.Run("extract user bindings but retrieve roles by role id fails", func(t *testing.T) {
-		mock := mocks.MongoClientMock{
+		mock := fake.InputUserClient{
 			UserBindings: []types.Binding{
 				{Roles: []string{"r1", "r2"}},
 			},
@@ -130,7 +130,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 	})
 
 	t.Run("extract user bindings and roles", func(t *testing.T) {
-		mock := mocks.MongoClientMock{
+		mock := fake.InputUserClient{
 			UserBindings: []types.Binding{
 				{Roles: []string{"r1", "r2"}},
 				{Roles: []string{"r3"}},

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mocks
+package fake
 
 import (
 	"context"
@@ -20,32 +20,27 @@ import (
 	"github.com/rond-authz/rond/types"
 )
 
-// TODO: rename this, is not related to mongo it's the mock of the inputuser client
-type MongoClientMock struct {
+type InputUserClient struct {
 	UserBindingsError error
 	UserRolesError    error
 	UserRoles         []types.Role
 	UserBindings      []types.Binding
 }
 
-func (mongoClient MongoClientMock) Disconnect() error {
+func (iUser InputUserClient) Disconnect() error {
 	return nil
 }
 
-func (mongoClient MongoClientMock) RetrieveRoles(ctx context.Context) ([]types.Role, error) {
-	return nil, nil
+func (iUser InputUserClient) RetrieveUserBindings(ctx context.Context, user types.User) ([]types.Binding, error) {
+	if iUser.UserBindings != nil {
+		return iUser.UserBindings, nil
+	}
+	return nil, iUser.UserBindingsError
 }
 
-func (mongoClient MongoClientMock) RetrieveUserBindings(ctx context.Context, user types.User) ([]types.Binding, error) {
-	if mongoClient.UserBindings != nil {
-		return mongoClient.UserBindings, nil
+func (iUser InputUserClient) RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]types.Role, error) {
+	if iUser.UserRoles != nil {
+		return iUser.UserRoles, nil
 	}
-	return nil, mongoClient.UserBindingsError
-}
-
-func (mongoClient MongoClientMock) RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]types.Role, error) {
-	if mongoClient.UserRoles != nil {
-		return mongoClient.UserRoles, nil
-	}
-	return nil, mongoClient.UserRolesError
+	return nil, iUser.UserRolesError
 }

@@ -29,7 +29,7 @@ import (
 	"github.com/rond-authz/rond/core"
 	cbmocks "github.com/rond-authz/rond/custom_builtins/mocks"
 	"github.com/rond-authz/rond/internal/config"
-	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/internal/fake"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
@@ -1431,7 +1431,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			serverURL, _ := url.Parse(server.URL)
 
-			mongoclientMock := &mocks.MongoClientMock{UserBindingsError: errors.New("Something went wrong"), UserBindings: nil, UserRoles: nil, UserRolesError: errors.New("Something went wrong")}
+			inputUserClientMock := &fake.InputUserClient{UserBindingsError: errors.New("Something went wrong"), UserBindings: nil, UserRoles: nil, UserRolesError: errors.New("Something went wrong")}
 			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
@@ -1446,7 +1446,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					BindingsCollectionName: "bindings",
 				},
 				evaluator,
-				mongoclientMock,
+				inputUserClientMock,
 			)
 
 			w := httptest.NewRecorder()
@@ -1474,7 +1474,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			serverURL, _ := url.Parse(server.URL)
 
-			mongoclientMock := &mocks.MongoClientMock{UserBindingsError: errors.New("MongoDB Error"), UserRolesError: errors.New("MongoDB Error")}
+			inputUserClientMock := &fake.InputUserClient{UserBindingsError: errors.New("MongoDB Error"), UserRolesError: errors.New("MongoDB Error")}
 
 			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
@@ -1490,7 +1490,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					BindingsCollectionName: "bindings",
 				},
 				evaluator,
-				mongoclientMock,
+				inputUserClientMock,
 			)
 
 			w := httptest.NewRecorder()
@@ -1557,7 +1557,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 			}
 
-			mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
+			inputUserClientMock := &fake.InputUserClient{UserBindings: userBindings, UserRoles: userRoles}
 
 			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
@@ -1573,7 +1573,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					BindingsCollectionName: "bindings",
 				},
 				evaluator,
-				mongoclientMock,
+				inputUserClientMock,
 			)
 
 			w := httptest.NewRecorder()
@@ -1644,7 +1644,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			}
 
 			serverURL, _ := url.Parse(server.URL)
-			mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
+			inputUserClientMock := &fake.InputUserClient{UserBindings: userBindings, UserRoles: userRoles}
 
 			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
@@ -1660,7 +1660,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					BindingsCollectionName: "bindings",
 				},
 				evaluator,
-				mongoclientMock,
+				inputUserClientMock,
 			)
 
 			w := httptest.NewRecorder()
@@ -1742,7 +1742,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 			}
 
-			mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
+			inputUserClientMock := &fake.InputUserClient{UserBindings: userBindings, UserRoles: userRoles}
 
 			serverURL, _ := url.Parse(server.URL)
 			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
@@ -1759,7 +1759,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					BindingsCollectionName: "bindings",
 				},
 				evaluator,
-				mongoclientMock,
+				inputUserClientMock,
 			)
 
 			w := httptest.NewRecorder()
@@ -1793,7 +1793,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			serverURL, _ := url.Parse(server.URL)
 
-			mongoclientMock := &mocks.MongoClientMock{UserBindings: nil}
+			inputUserClientMock := &fake.InputUserClient{UserBindings: nil}
 
 			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
@@ -1809,7 +1809,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					BindingsCollectionName: "bindings",
 				},
 				evaluator,
-				mongoclientMock,
+				inputUserClientMock,
 			)
 
 			w := httptest.NewRecorder()
@@ -1850,7 +1850,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			userBindings := []types.Binding{}
 
 			userRoles := []types.Role{}
-			mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
+			inputUserClientMock := &fake.InputUserClient{UserBindings: userBindings, UserRoles: userRoles}
 
 			serverURL, _ := url.Parse(server.URL)
 			evaluator := getEvaluator(t, ctx, opaModule, nil, mockXPermission, oas, http.MethodGet, "/api", nil)
@@ -1867,7 +1867,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					BindingsCollectionName: "bindings",
 				},
 				evaluator,
-				mongoclientMock,
+				inputUserClientMock,
 			)
 
 			w := httptest.NewRecorder()
@@ -1933,7 +1933,7 @@ project.tenantId == "1234"
 		userBindings := []types.Binding{}
 
 		userRoles := []types.Role{}
-		mongoclientMock := &mocks.MongoClientMock{UserBindings: userBindings, UserRoles: userRoles}
+		inputUserClientMock := &fake.InputUserClient{UserBindings: userBindings, UserRoles: userRoles}
 
 		serverURL, _ := url.Parse(server.URL)
 
@@ -1942,7 +1942,7 @@ project.tenantId == "1234"
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
 			evaluator,
-			mongoclientMock,
+			inputUserClientMock,
 		)
 
 		r, err := http.NewRequestWithContext(ctx, "GET", "http://www.example.com:8080/api?mockQuery=iamquery", nil)

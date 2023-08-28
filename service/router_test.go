@@ -27,7 +27,6 @@ import (
 	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/fake"
-	"github.com/rond-authz/rond/internal/mocks"
 	"github.com/rond-authz/rond/logging"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/metrics"
@@ -239,7 +238,7 @@ func createContext(
 	originalCtx context.Context,
 	env config.EnvironmentVariables,
 	evaluator sdk.Evaluator,
-	mongoClient *mocks.MongoClientMock,
+	inputUserClient *fake.InputUserClient,
 ) context.Context {
 	t.Helper()
 
@@ -248,8 +247,8 @@ func createContext(
 
 	partialContext = sdk.WithEvaluator(partialContext, evaluator)
 
-	if mongoClient != nil {
-		partialContext = inputuser.AddClientInContext(partialContext, mongoClient)
+	if inputUserClient != nil {
+		partialContext = inputuser.AddClientInContext(partialContext, inputUserClient)
 	}
 
 	partialContext = glogger.WithLogger(partialContext, logrus.NewEntry(logrus.New()))

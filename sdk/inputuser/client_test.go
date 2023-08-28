@@ -6,13 +6,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/internal/fake"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestClientInjectorMiddleware(t *testing.T) {
-	testCollections := &mocks.MongoClientMock{}
+	inputUserClient := &fake.InputUserClient{}
 
 	t.Run(`context gets updated`, func(t *testing.T) {
 		invoked := false
@@ -20,12 +20,12 @@ func TestClientInjectorMiddleware(t *testing.T) {
 			invoked = true
 			collection, err := GetClientFromContext(r.Context())
 			require.NoError(t, err, "client not found")
-			require.Equal(t, testCollections, collection)
+			require.Equal(t, inputUserClient, collection)
 
 			w.WriteHeader(http.StatusOK)
 		})
 
-		middleware := ClientInjectorMiddleware(testCollections)
+		middleware := ClientInjectorMiddleware(inputUserClient)
 		builtMiddleware := middleware(next)
 
 		w := httptest.NewRecorder()
@@ -47,7 +47,7 @@ func TestGetClientFromContext(t *testing.T) {
 	})
 
 	t.Run(`config found in context`, func(t *testing.T) {
-		testClient := &mocks.MongoClientMock{}
+		testClient := &fake.InputUserClient{}
 		ctx := AddClientInContext(context.Background(), testClient)
 		foundConfig, err := GetClientFromContext(ctx)
 		require.NoError(t, err, "unexpected error")
