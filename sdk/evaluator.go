@@ -94,6 +94,9 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 		}
 	}
 
+	// TODO: here if the evaluation result false, it is returned an error. This interface
+	// for the sdk should be improved, since it should use the PolicyResult and return error
+	// only if there is some error in policy evaluation.
 	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(logger, e.policyEvaluationOptions)
 
 	if err != nil {
