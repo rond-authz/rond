@@ -80,14 +80,24 @@ func (mongoClient *MongoClient) RetrieveUserBindings(ctx context.Context, user t
 	if mongoClient == nil {
 		return nil, fmt.Errorf("mongoClient is not defined")
 	}
+	if user.ID == "" {
+		return nil, fmt.Errorf("user id is required to fetch bindings")
+	}
+
+	userBindingsOrFilter := []bson.M{
+		{"subjects": bson.M{"$elemMatch": bson.M{"$eq": user.ID}}},
+	}
+
+	if user.Groups != nil {
+		userBindingsOrFilter = append(userBindingsOrFilter, bson.M{
+			"groups": bson.M{"$elemMatch": bson.M{"$in": user.Groups}},
+		})
+	}
 
 	filter := bson.M{
 		"$and": []bson.M{
 			{
-				"$or": []bson.M{
-					{"subjects": bson.M{"$elemMatch": bson.M{"$eq": user.ID}}},
-					{"groups": bson.M{"$elemMatch": bson.M{"$in": user.Groups}}},
-				},
+				"$or": userBindingsOrFilter,
 			},
 			{STATE: PUBLIC},
 		},

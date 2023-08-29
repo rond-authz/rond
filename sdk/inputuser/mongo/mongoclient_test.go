@@ -174,6 +174,86 @@ func TestMongoCollections(t *testing.T) {
 			"Error while getting permissions")
 	})
 
+	t.Run("testing retrieve user bindings from mongo - user without groups", func(t *testing.T) {
+		mongoHost := os.Getenv("MONGO_HOST_CI")
+		if mongoHost == "" {
+			mongoHost = testutils.LocalhostMongoDB
+			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
+		}
+
+		_, dbName, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
+		config := Config{
+			MongoDBURL:             fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName),
+			RolesCollectionName:    "roles",
+			BindingsCollectionName: "bindings",
+		}
+
+		log := logging.NewNoOpLogger()
+		mongoClient, err := NewMongoClient(log, config)
+		require.NoError(t, err)
+		defer mongoClient.Disconnect()
+
+		ctx := context.Background()
+
+		testutils.PopulateDBForTesting(t, ctx, rolesCollection, bindingsCollection)
+
+		result, err := mongoClient.RetrieveUserBindings(ctx, types.User{ID: "user1"})
+		expected := []types.Binding{
+			{
+				BindingID:         "binding1",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role1", "role2"},
+				Groups:            []string{"group1"},
+				Permissions:       []string{"permission4"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "binding2",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role3", "role4"},
+				Groups:            []string{"group4"},
+				Permissions:       []string{"permission7"},
+				CRUDDocumentState: "PUBLIC",
+			},
+			{
+				BindingID:         "binding5",
+				Subjects:          []string{"user1"},
+				Roles:             []string{"role3", "role4"},
+				Permissions:       []string{"permission12"},
+				CRUDDocumentState: "PUBLIC",
+			},
+		}
+		require.NoError(t, err)
+		require.Equal(t, result, expected, "Error while getting permissions")
+	})
+
+	t.Run("testing retrieve user bindings from mongo - no userId passed", func(t *testing.T) {
+		mongoHost := os.Getenv("MONGO_HOST_CI")
+		if mongoHost == "" {
+			mongoHost = testutils.LocalhostMongoDB
+			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
+		}
+
+		_, dbName, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
+		config := Config{
+			MongoDBURL:             fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName),
+			RolesCollectionName:    "roles",
+			BindingsCollectionName: "bindings",
+		}
+
+		log := logging.NewNoOpLogger()
+		mongoClient, err := NewMongoClient(log, config)
+		require.NoError(t, err)
+		defer mongoClient.Disconnect()
+
+		ctx := context.Background()
+
+		testutils.PopulateDBForTesting(t, ctx, rolesCollection, bindingsCollection)
+
+		_, err = mongoClient.RetrieveUserBindings(ctx, types.User{})
+		require.EqualError(t, err, "user id is required to fetch bindings")
+	})
+
 	t.Run("retrieve all roles by id from mongo", func(t *testing.T) {
 		mongoHost := os.Getenv("MONGO_HOST_CI")
 		if mongoHost == "" {
