@@ -239,7 +239,7 @@ func getInputUser(logger *logrus.Entry, env config.EnvironmentVariables, req *ht
 		return core.InputUser{}, err
 	}
 
-	rondInputUser, err := inputuser.GetInputUser(req.Context(), rondlogrus.NewEntry(logger), client, user)
+	rondInputUser, err := inputuser.Get(req.Context(), rondlogrus.NewEntry(logger), client, user)
 	if err != nil {
 		return core.InputUser{}, err
 	}

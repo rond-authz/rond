@@ -36,7 +36,7 @@ func rolesIDsFromBindings(bindings []types.Binding) []string {
 	return rolesIds
 }
 
-func GetInputUser(ctx context.Context, logger logging.Logger, client Client, user types.User) (core.InputUser, error) {
+func Get(ctx context.Context, logger logging.Logger, client Client, user types.User) (core.InputUser, error) {
 	inputUser := core.InputUser{
 		Groups:     user.Groups,
 		ID:         user.ID,

@@ -97,7 +97,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 			ID:     "userId",
 		}
 
-		user, err := GetInputUser(context.Background(), log, nil, inputUser)
+		user, err := Get(context.Background(), log, nil, inputUser)
 		require.NoError(t, err)
 		require.Equal(t, core.InputUser{
 			ID:     "userId",
@@ -110,7 +110,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 			UserBindingsError: fmt.Errorf("some error"),
 		}
 
-		_, err := GetInputUser(context.Background(), log, mock, types.User{})
+		_, err := Get(context.Background(), log, mock, types.User{})
 		require.NoError(t, err)
 	})
 
@@ -123,7 +123,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 			ID:     "userId",
 		}
 
-		_, err := GetInputUser(context.Background(), log, mock, user)
+		_, err := Get(context.Background(), log, mock, user)
 		require.Error(t, err, "Error while retrieving user bindings: some error")
 	})
 
@@ -139,7 +139,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 			ID:     "userId",
 		}
 
-		_, err := GetInputUser(context.Background(), log, mock, user)
+		_, err := Get(context.Background(), log, mock, user)
 		require.Error(t, err, "Error while retrieving user Roles: some error 2")
 	})
 
@@ -160,7 +160,7 @@ func TestRetrieveUserBindingsAndRoles(t *testing.T) {
 			ID:     "userId",
 		}
 
-		inputUser, err := GetInputUser(context.Background(), log, mock, user)
+		inputUser, err := Get(context.Background(), log, mock, user)
 
 		require.NoError(t, err)
 		require.Equal(t, core.InputUser{
