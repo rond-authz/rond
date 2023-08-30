@@ -24,10 +24,10 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
+	"github.com/rond-authz/rond/sdk/inputuser"
 	"github.com/rond-authz/rond/types"
 
 	swagger "github.com/davidebianchi/gswagger"
@@ -102,7 +102,7 @@ func SetupRouter(
 	opaModuleConfig *core.OPAModuleConfig,
 	oas *openapi.OpenAPISpec,
 	sdk sdk.OASEvaluatorFinder,
-	mongoClient *mongoclient.MongoClient,
+	inputUserClient inputuser.Client,
 	registry *prometheus.Registry,
 ) (*mux.Router, error) {
 	router := mux.NewRouter().UseEncodedPath()
@@ -157,8 +157,8 @@ func SetupRouter(
 		PathPrefixStandalone: env.PathPrefixStandalone,
 	}))
 
-	if mongoClient != nil {
-		evalRouter.Use(mongoclient.MongoClientInjectorMiddleware(mongoClient))
+	if inputUserClient != nil {
+		evalRouter.Use(inputuser.ClientInjectorMiddleware(inputUserClient))
 	}
 
 	setupRoutes(evalRouter, oas, env)

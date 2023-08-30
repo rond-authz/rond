@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/rond-authz/rond/custom_builtins"
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/logging"
 
 	"github.com/open-policy-agent/opa/ast"
@@ -46,8 +45,8 @@ func createPartialEvaluator(ctx context.Context, logger logging.Logger, policy s
 
 	logger.
 		WithFields(map[string]any{
-			"policyName":                   policy,
-			"computationTimeMicroserconds": time.Since(policyEvaluatorTime).Microseconds,
+			"policyName":                  policy,
+			"computationTimeMicroseconds": time.Since(policyEvaluatorTime).Microseconds(),
 		}).
 		Info("precomputation time")
 
@@ -141,7 +140,7 @@ func newPartialResultEvaluator(ctx context.Context, policy string, opaModuleConf
 		custom_builtins.GetHeaderFunction,
 	}
 	if evaluatorOptions.MongoClient != nil {
-		ctx = mongoclient.WithMongoClient(ctx, evaluatorOptions.MongoClient)
+		ctx = custom_builtins.WithMongoClient(ctx, evaluatorOptions.MongoClient)
 		options = append(options, custom_builtins.MongoFindOne, custom_builtins.MongoFindMany)
 	}
 	if evaluatorOptions.Logger != nil {

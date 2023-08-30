@@ -42,6 +42,7 @@ func TestRevokeHandler(t *testing.T) {
 		config.EnvironmentVariables{BindingsCrudServiceURL: "http://crud-service/bindings/"},
 		nil,
 		nil,
+		nil,
 	)
 
 	t.Run("400 on missing subjects and groups", func(t *testing.T) {
@@ -552,6 +553,7 @@ func TestGrantHandler(t *testing.T) {
 	ctx := createContext(t,
 		context.Background(),
 		config.EnvironmentVariables{BindingsCrudServiceURL: "http://crud-service/bindings/"},
+		nil,
 		nil,
 		nil,
 	)

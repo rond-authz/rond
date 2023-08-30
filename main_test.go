@@ -31,7 +31,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
@@ -1811,17 +1810,14 @@ filter_policy {
 		},
 	}
 
-	var mongoClient *mongoclient.MongoClient
 	logger, _ := test.NewNullLogger()
 	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
-			MongoClient: mongoClient,
-		},
-		Logger: rondlogrus.NewLogger(logger),
+		EvaluatorOptions: &sdk.EvaluatorOptions{},
+		Logger:           rondlogrus.NewLogger(logger),
 	})
 	require.NoError(t, err, "unexpected error")
 
-	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, nil)
+	router, err := service.SetupRouter(log, env, opa, oas, sdk, nil, nil)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("some eval API", func(t *testing.T) {
@@ -1971,14 +1967,10 @@ filter_policy {
 		},
 	}
 
-	var mongoClient *mongoclient.MongoClient
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
 	m := rondprometheus.SetupMetrics(registry)
 	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
-			MongoClient: mongoClient,
-		},
 		Logger:  rondlogrus.NewLogger(logger),
 		Metrics: m,
 	})
@@ -1988,7 +1980,7 @@ filter_policy {
 		"policy_name": "myPolicy",
 	}).Observe(123)
 
-	router, err := service.SetupRouter(log, env, opa, oas, sdk, mongoClient, registry)
+	router, err := service.SetupRouter(log, env, opa, oas, sdk, nil, registry)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("metrics API exposed correctly", func(t *testing.T) {

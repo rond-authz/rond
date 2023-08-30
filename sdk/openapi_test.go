@@ -48,13 +48,13 @@ func TestOasSDK(t *testing.T) {
 
 	t.Run("FindEvaluator", func(t *testing.T) {
 		t.Run("throws if path and method not found", func(t *testing.T) {
-			actual, err := sdk.FindEvaluator(logger, http.MethodGet, "/not-existent/path")
+			actual, err := sdk.FindEvaluator(http.MethodGet, "/not-existent/path")
 			require.ErrorContains(t, err, "not found oas definition: GET /not-existent/path")
 			require.Nil(t, actual)
 		})
 
 		t.Run("returns correct evaluator", func(t *testing.T) {
-			actual, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
+			actual, err := sdk.FindEvaluator(http.MethodGet, "/users/")
 			require.NoError(t, err)
 			evaluatorOptions := &core.PolicyEvaluationOptions{
 				Metrics: oas.metrics,
@@ -72,8 +72,8 @@ func TestOasSDK(t *testing.T) {
 				},
 				opaModuleConfig:         opaModule,
 				partialResultEvaluators: oas.partialResultEvaluators,
-				logger:                  logger,
 				policyEvaluationOptions: evaluatorOptions,
+				evaluatorOptions:        &EvaluatorOptions{},
 			}, actual)
 
 			t.Run("get permissions", func(t *testing.T) {

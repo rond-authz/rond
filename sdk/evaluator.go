@@ -17,11 +17,9 @@ package sdk
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/logging"
-	"github.com/rond-authz/rond/types"
 )
 
 type PolicyResult struct {
@@ -37,20 +35,18 @@ type Evaluator interface {
 
 	// EvaluateResponsePolicy evaluate request policy. In the response, it is specified if the
 	// request is allowed and the request query (if filter generation is requested)
-	EvaluateRequestPolicy(ctx context.Context, input core.RondInput, userInfo types.User) (PolicyResult, error)
-	// EvaluateResponsePolicy evaluate response policy, take as input the decodedBody body from response
-	// (unmarshalled) and it is usable as `input.response.body` in the policy. The response is the response
+	EvaluateRequestPolicy(ctx context.Context, input core.Input, options *EvaluateOptions) (PolicyResult, error)
+	// EvaluateResponsePolicy evaluate response policy. The response is the response
 	// value returned by the policy.
-	EvaluateResponsePolicy(ctx context.Context, input core.RondInput, userInfo types.User, decodedBody any) ([]byte, error)
+	EvaluateResponsePolicy(ctx context.Context, input core.Input, options *EvaluateOptions) ([]byte, error)
 }
 
 type evaluator struct {
-	logger                  logging.Logger
 	rondConfig              core.RondConfig
 	opaModuleConfig         *core.OPAModuleConfig
 	partialResultEvaluators core.PartialResultsEvaluators
 
-	opaEvaluatorOptions     *core.OPAEvaluatorOptions
+	evaluatorOptions        *EvaluatorOptions
 	policyEvaluationOptions *core.PolicyEvaluationOptions
 }
 
@@ -58,42 +54,53 @@ func (e evaluator) Config() core.RondConfig {
 	return e.rondConfig
 }
 
-func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req core.RondInput, userInfo types.User) (PolicyResult, error) {
-	if req == nil {
-		return PolicyResult{}, fmt.Errorf("RondInput cannot be empty")
-	}
+type EvaluateOptions struct {
+	Logger logging.Logger
+}
 
+func (e EvaluateOptions) GetLogger() logging.Logger {
+	if e.Logger == nil {
+		return logging.NewNoOpLogger()
+	}
+	return e.Logger
+}
+
+func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Input, options *EvaluateOptions) (PolicyResult, error) {
 	rondConfig := e.Config()
-
-	input, err := req.Input(userInfo, nil)
-	if err != nil {
-		return PolicyResult{}, err
+	if options == nil {
+		options = &EvaluateOptions{}
 	}
+	logger := options.GetLogger()
 
-	regoInput, err := core.CreateRegoQueryInput(e.logger, input, core.RegoInputOptions{
+	regoInput, err := core.CreateRegoQueryInput(logger, rondInput, core.RegoInputOptions{
 		EnableResourcePermissionsMapOptimization: rondConfig.Options.EnableResourcePermissionsMapOptimization,
 	})
 	if err != nil {
 		return PolicyResult{}, nil
 	}
 
+	opaEvaluatorOptions := e.evaluatorOptions.opaEvaluatorOptions(logger)
+
 	var evaluatorAllowPolicy *core.OPAEvaluator
 	if !rondConfig.RequestFlow.GenerateQuery {
-		evaluatorAllowPolicy, err = e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, regoInput, e.opaEvaluatorOptions)
+		evaluatorAllowPolicy, err = e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, regoInput, opaEvaluatorOptions)
 		if err != nil {
 			return PolicyResult{}, err
 		}
 	} else {
-		evaluatorAllowPolicy, err = e.opaModuleConfig.CreateQueryEvaluator(ctx, e.logger, rondConfig.RequestFlow.PolicyName, regoInput, e.opaEvaluatorOptions)
+		evaluatorAllowPolicy, err = e.opaModuleConfig.CreateQueryEvaluator(ctx, logger, rondConfig.RequestFlow.PolicyName, regoInput, opaEvaluatorOptions)
 		if err != nil {
 			return PolicyResult{}, err
 		}
 	}
 
-	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(e.logger, e.policyEvaluationOptions)
+	// TODO: here if the evaluation result false, it is returned an error. This interface
+	// for the sdk should be improved, since it should use the PolicyResult and return error
+	// only if there is some error in policy evaluation.
+	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(logger, e.policyEvaluationOptions)
 
 	if err != nil {
-		e.logger.WithField("error", map[string]any{
+		logger.WithField("error", map[string]any{
 			"policyName": rondConfig.RequestFlow.PolicyName,
 			"message":    err.Error(),
 		}).Error("RBAC policy evaluation failed")
@@ -114,31 +121,28 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, req core.RondInput
 	}, nil
 }
 
-func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.RondInput, userInfo types.User, decodedBody any) ([]byte, error) {
-	if rondInput == nil {
-		return nil, fmt.Errorf("RondInput cannot be empty")
-	}
-
+func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.Input, options *EvaluateOptions) ([]byte, error) {
 	rondConfig := e.Config()
-
-	input, err := rondInput.Input(userInfo, decodedBody)
-	if err != nil {
-		return nil, err
+	if options == nil {
+		options = &EvaluateOptions{}
 	}
+	logger := options.GetLogger()
 
-	regoInput, err := core.CreateRegoQueryInput(e.logger, input, core.RegoInputOptions{
+	regoInput, err := core.CreateRegoQueryInput(logger, rondInput, core.RegoInputOptions{
 		EnableResourcePermissionsMapOptimization: rondConfig.Options.EnableResourcePermissionsMapOptimization,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	evaluator, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, e.rondConfig.ResponseFlow.PolicyName, regoInput, e.opaEvaluatorOptions)
+	opaEvaluatorOptions := e.evaluatorOptions.opaEvaluatorOptions(logger)
+
+	evaluator, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, e.rondConfig.ResponseFlow.PolicyName, regoInput, opaEvaluatorOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	bodyToProxy, err := evaluator.Evaluate(e.logger, e.policyEvaluationOptions)
+	bodyToProxy, err := evaluator.Evaluate(logger, e.policyEvaluationOptions)
 	if err != nil {
 		return nil, err
 	}

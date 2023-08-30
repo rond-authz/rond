@@ -1,4 +1,4 @@
-// Copyright 2021 Mia srl
+// Copyright 2023 Mia srl
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@ package mocks
 
 import (
 	"context"
-
-	"github.com/rond-authz/rond/types"
 )
 
 type FindOneExpectation struct {
@@ -27,37 +25,15 @@ type FindOneExpectation struct {
 
 type MongoClientMock struct {
 	FindOneError        error
-	UserBindingsError   error
-	UserRolesError      error
 	FindOneResult       interface{}
 	FindManyError       error
 	FindOneExpectation  func(collectionName string, query interface{})
 	FindManyExpectation func(collectionName string, query interface{})
-	UserRoles           []types.Role
-	UserBindings        []types.Binding
 	FindManyResult      []interface{}
 }
 
 func (mongoClient MongoClientMock) Disconnect() error {
 	return nil
-}
-
-func (mongoClient MongoClientMock) RetrieveRoles(ctx context.Context) ([]types.Role, error) {
-	return nil, nil
-}
-
-func (mongoClient MongoClientMock) RetrieveUserBindings(ctx context.Context, user *types.User) ([]types.Binding, error) {
-	if mongoClient.UserBindings != nil {
-		return mongoClient.UserBindings, nil
-	}
-	return nil, mongoClient.UserBindingsError
-}
-
-func (mongoClient MongoClientMock) RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]types.Role, error) {
-	if mongoClient.UserRoles != nil {
-		return mongoClient.UserRoles, nil
-	}
-	return nil, mongoClient.UserRolesError
 }
 
 func (mongoClient MongoClientMock) FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error) {

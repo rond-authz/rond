@@ -110,7 +110,3 @@ func CreateRegoQueryInput(
 		Trace("input creation time")
 	return inputBytes, nil
 }
-
-type RondInput interface {
-	Input(user types.User, responseBody any) (Input, error)
-}

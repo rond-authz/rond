@@ -19,14 +19,28 @@ import (
 	"fmt"
 
 	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
 )
 
+type EvaluatorOptions struct {
+	MongoClient           custom_builtins.IMongoClient
+	EnablePrintStatements bool
+}
+
+func (e EvaluatorOptions) opaEvaluatorOptions(logger logging.Logger) *core.OPAEvaluatorOptions {
+	return &core.OPAEvaluatorOptions{
+		Logger:                logger,
+		MongoClient:           e.MongoClient,
+		EnablePrintStatements: e.EnablePrintStatements,
+	}
+}
+
 type Options struct {
+	EvaluatorOptions *EvaluatorOptions
 	Metrics          *metrics.Metrics
-	EvaluatorOptions *core.OPAEvaluatorOptions
 	Logger           logging.Logger
 }
 
@@ -44,12 +58,12 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 		logger = logging.NewNoOpLogger()
 	}
 
-	var evaluatorOptions *core.OPAEvaluatorOptions
-	if options.EvaluatorOptions != nil {
-		evaluatorOptions = options.EvaluatorOptions
+	evaluatorOptions := options.EvaluatorOptions
+	if evaluatorOptions == nil {
+		evaluatorOptions = &EvaluatorOptions{}
 	}
 
-	evaluator, err := openapi.SetupEvaluators(ctx, logger, oas, opaModuleConfig, evaluatorOptions)
+	evaluator, err := openapi.SetupEvaluators(ctx, logger, oas, opaModuleConfig, evaluatorOptions.opaEvaluatorOptions(logger))
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +81,7 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 
 		opaModuleConfig:         opaModuleConfig,
 		partialResultEvaluators: evaluator,
-		opaEvaluatorOptions:     evaluatorOptions,
+		evaluatorOptions:        evaluatorOptions,
 		metrics:                 options.Metrics,
 	}, nil
 }
@@ -81,18 +95,22 @@ func NewWithConfig(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, r
 		logger = logging.NewNoOpLogger()
 	}
 
+	evaluatorOptions := options.EvaluatorOptions
+	if evaluatorOptions == nil {
+		evaluatorOptions = &EvaluatorOptions{}
+	}
+
 	policyEvaluators := core.PartialResultsEvaluators{}
-	if err := policyEvaluators.AddFromConfig(ctx, logger, opaModuleConfig, &rondConfig, options.EvaluatorOptions); err != nil {
+	if err := policyEvaluators.AddFromConfig(ctx, logger, opaModuleConfig, &rondConfig, evaluatorOptions.opaEvaluatorOptions(logger)); err != nil {
 		return nil, err
 	}
 
 	return evaluator{
 		rondConfig:              rondConfig,
-		logger:                  logger,
 		opaModuleConfig:         opaModuleConfig,
 		partialResultEvaluators: policyEvaluators,
 
-		opaEvaluatorOptions: options.EvaluatorOptions,
+		evaluatorOptions: evaluatorOptions,
 		policyEvaluationOptions: &core.PolicyEvaluationOptions{
 			Metrics: options.Metrics,
 		},
