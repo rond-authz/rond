@@ -144,7 +144,6 @@ func EvaluateRequest(
 	if permission.RequestFlow.QueryOptions.HeaderName != "" {
 		queryHeaderKey = permission.RequestFlow.QueryOptions.HeaderName
 	}
-	// FIXME: header is always set, also if query to proxy is empty
 	if result.QueryToProxy != nil {
 		req.Header.Set(queryHeaderKey, string(result.QueryToProxy))
 	}
