@@ -123,6 +123,11 @@ func EvaluateRequest(
 		Logger: rondlogrus.NewEntry(logger),
 	})
 	if err != nil {
+		// opatranslator.ErrEmptyQuery throws when evaluator should return a query. In case
+		// there is an error returning a query, and the content type is `application/json`,
+		// it is a list and so returns 200 with an empty list (as if all elements would be filtered out).
+		// TODO: we needs to check content-type or accept header? Because the content-type in the request
+		// refers to the request body, not the response body.
 		if errors.Is(err, opatranslator.ErrEmptyQuery) && utils.HasApplicationJSONContentType(req.Header) {
 			w.Header().Set(utils.ContentTypeHeaderKey, utils.JSONContentTypeHeader)
 			w.WriteHeader(http.StatusOK)

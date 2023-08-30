@@ -545,13 +545,10 @@ allow {
 		})
 	})
 
-	// TODO: check this test
-	t.Run("sends empty filter query with application-json as content-type", func(t *testing.T) {
+	t.Run("when policy with query creation, if evaluate empty query with application/json as content-type returns empty array", func(t *testing.T) {
 		policy := `package policies
 allow {
 	false
-	employee := data.resources[_]
-	employee.name == "name_test"
 }
 `
 
@@ -591,13 +588,10 @@ allow {
 		require.Equal(t, "[]", string(buf), "Unexpected body response")
 	})
 
-	// TODO: check this test
-	t.Run("sends empty filter query with text/plain as content-type", func(t *testing.T) {
+	t.Run("403 when policy with query creation, if evaluate empty query with text/plain as content-type", func(t *testing.T) {
 		policy := `package policies
 allow {
 	false
-	employee := data.resources[_]
-	employee.name == "name_test"
 }
 `
 
