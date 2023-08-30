@@ -5,18 +5,18 @@ go 1.18
 require (
 	github.com/davidebianchi/gswagger v0.9.0
 	github.com/getkin/kin-openapi v0.118.0
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/gorilla/mux v1.8.0
 	github.com/mia-platform/configlib v1.0.0
 	github.com/mia-platform/glogger/v4 v4.0.0
-	github.com/mia-platform/go-crud-service-client v0.10.0
+	github.com/mia-platform/go-crud-service-client v0.11.0
 	github.com/open-policy-agent/opa v0.55.0
 	github.com/prometheus/client_golang v1.16.0
 	github.com/samber/lo v1.38.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
 	github.com/uptrace/bunrouter v1.0.20
-	go.mongodb.org/mongo-driver v1.12.0
+	go.mongodb.org/mongo-driver v1.12.1
 	gopkg.in/h2non/gock.v1 v1.1.2
 )
 

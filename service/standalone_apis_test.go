@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -41,13 +42,13 @@ func TestRevokeHandler(t *testing.T) {
 		config.EnvironmentVariables{BindingsCrudServiceURL: "http://crud-service/bindings/"},
 		nil,
 		nil,
+		nil,
 	)
 
 	t.Run("400 on missing subjects and groups", func(t *testing.T) {
 		reqBody := setupRevokeRequestBody(t, RevokeRequestBody{
-			Subjects:    []string{},
-			Groups:      []string{},
-			ResourceIDs: []string{"mike"},
+			Subjects: []string{},
+			Groups:   []string{},
 		})
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody))
 		require.NoError(t, err, "unexpected error")
@@ -59,10 +60,7 @@ func TestRevokeHandler(t *testing.T) {
 	})
 
 	t.Run("400 on missing resourceIds from body if resourceType request param is present", func(t *testing.T) {
-		reqBody := setupRevokeRequestBody(t, RevokeRequestBody{
-			Subjects: []string{"piero"},
-			Groups:   []string{"litfiba"},
-		})
+		reqBody := setupRevokeRequestBody(t, RevokeRequestBody{})
 
 		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
 			"resourceType": "project",
@@ -175,6 +173,52 @@ func TestRevokeHandler(t *testing.T) {
 		revokeHandler(w, req)
 
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+	})
+
+	t.Run("performs correct delete query only on resource type and id", func(t *testing.T) {
+		bindingsFromCrud := []types.Binding{
+			{
+				BindingID: "bindingToDelete",
+				Subjects:  []string{"piero"},
+				Resource: &types.Resource{
+					ResourceType: "project",
+					ResourceID:   "mike",
+				},
+			},
+		}
+		gock.DisableNetworking()
+		newGockScope(t, "http://crud-service", http.MethodGet, "/bindings/").
+			AddMatcher(func(req *http.Request, greq *gock.Request) (bool, error) {
+				expected := `{"resource.resourceId":{"$in":["mike"]},"resource.resourceType":"myResource"}`
+				mongoQuery := req.URL.Query().Get("_q")
+				return assert.Equal(t, expected, mongoQuery), nil
+			}).
+			Reply(http.StatusOK).
+			JSON(bindingsFromCrud)
+
+		newGockScope(t, "http://crud-service", http.MethodDelete, "/bindings/").
+			AddMatcher(func(req *http.Request, ereq *gock.Request) (bool, error) {
+				expected := `{"bindingId":{"$in":["bindingToDelete"]}}`
+				mongoQuery := req.URL.Query().Get("_q")
+				return assert.Equal(t, expected, mongoQuery), nil
+			}).
+			Reply(http.StatusOK).
+			BodyString("1")
+
+		reqBody := setupRevokeRequestBody(t, RevokeRequestBody{
+			ResourceIDs: []string{"mike"},
+		})
+
+		req := requestWithParams(t, ctx, http.MethodPost, "/", bytes.NewBuffer(reqBody), map[string]string{
+			"resourceType": "myResource",
+		})
+		w := httptest.NewRecorder()
+
+		revokeHandler(w, req)
+
+		body, _ := ioutil.ReadAll(w.Body)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode, string(body))
+		require.True(t, gock.IsDone())
 	})
 
 	t.Run("performs correct delete query only on subject", func(t *testing.T) {
@@ -509,6 +553,7 @@ func TestGrantHandler(t *testing.T) {
 	ctx := createContext(t,
 		context.Background(),
 		config.EnvironmentVariables{BindingsCrudServiceURL: "http://crud-service/bindings/"},
+		nil,
 		nil,
 		nil,
 	)

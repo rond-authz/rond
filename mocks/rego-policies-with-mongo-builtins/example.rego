@@ -4,6 +4,8 @@ import future.keywords.in
 
 foobar = true
 
+todo = true
+
 foo_bar = true
 
 allow_commit {

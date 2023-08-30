@@ -20,14 +20,15 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/sdk"
+	"github.com/rond-authz/rond/sdk/inputuser"
 	rondhttp "github.com/rond-authz/rond/sdk/rondinput/http"
 	"github.com/rond-authz/rond/types"
 
@@ -45,6 +46,7 @@ func ReverseProxyOrResponse(
 	w http.ResponseWriter,
 	req *http.Request,
 	evaluatorSdk sdk.Evaluator,
+	inputUser core.InputUser,
 ) {
 	var permission core.RondConfig
 	if evaluatorSdk != nil {
@@ -66,7 +68,7 @@ func ReverseProxyOrResponse(
 		}
 		return
 	}
-	ReverseProxy(logger, env, w, req, &permission, evaluatorSdk)
+	ReverseProxy(logger, env, w, req, &permission, evaluatorSdk, inputUser)
 }
 
 func rbacHandler(w http.ResponseWriter, req *http.Request) {
@@ -87,10 +89,17 @@ func rbacHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := EvaluateRequest(req, env, w, evaluatorSdk); err != nil {
+	rondInputUser, err := getInputUser(logger, env, req)
+	if err != nil {
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed to get input user")
+		utils.FailResponse(w, "failed to get input user", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
-	ReverseProxyOrResponse(logger, env, w, req, evaluatorSdk)
+
+	if err := EvaluateRequest(req, env, w, evaluatorSdk, rondInputUser); err != nil {
+		return
+	}
+	ReverseProxyOrResponse(logger, env, w, req, evaluatorSdk, rondInputUser)
 }
 
 func EvaluateRequest(
@@ -98,24 +107,21 @@ func EvaluateRequest(
 	env config.EnvironmentVariables,
 	w http.ResponseWriter,
 	evaluatorSdk sdk.Evaluator,
+	rondInputUser core.InputUser,
 ) error {
 	logger := glogrus.FromContext(req.Context())
 
 	permission := evaluatorSdk.Config()
 
-	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(rondlogrus.NewEntry(logger), req, types.UserHeadersKeys{
-		IDHeaderKey:         env.UserIdHeader,
-		GroupsHeaderKey:     env.UserGroupsHeader,
-		PropertiesHeaderKey: env.UserPropertiesHeader,
-	})
+	rondInput, err := rondhttp.NewInput(req, env.ClientTypeHeader, mux.Vars(req), rondInputUser, nil)
 	if err != nil {
-		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed user bindings and roles retrieving")
-		utils.FailResponseWithCode(w, http.StatusInternalServerError, "user bindings retrieval failed", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed to create rond input")
+		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed to create rond input", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return err
 	}
-
-	rondInput := rondhttp.NewInput(req, env.ClientTypeHeader, mux.Vars(req))
-	result, err := evaluatorSdk.EvaluateRequestPolicy(req.Context(), rondInput, userInfo)
+	result, err := evaluatorSdk.EvaluateRequestPolicy(req.Context(), rondInput, &sdk.EvaluateOptions{
+		Logger: rondlogrus.NewEntry(logger),
+	})
 	if err != nil {
 		if errors.Is(err, opatranslator.ErrEmptyQuery) && utils.HasApplicationJSONContentType(req.Header) {
 			w.Header().Set(utils.ContentTypeHeaderKey, utils.JSONContentTypeHeader)
@@ -138,6 +144,7 @@ func EvaluateRequest(
 	if permission.RequestFlow.QueryOptions.HeaderName != "" {
 		queryHeaderKey = permission.RequestFlow.QueryOptions.HeaderName
 	}
+	// FIXME: header is always set, also if query to proxy is empty
 	if result.QueryToProxy != nil {
 		req.Header.Set(queryHeaderKey, string(result.QueryToProxy))
 	}
@@ -151,6 +158,7 @@ func ReverseProxy(
 	req *http.Request,
 	permission *core.RondConfig,
 	evaluatorSdk sdk.Evaluator,
+	inputUser core.InputUser,
 ) {
 	targetHostFromEnv := env.TargetServiceHost
 	u, err := url.Parse(fmt.Sprintf("%s://%s", URL_SCHEME, targetHostFromEnv))
@@ -181,11 +189,7 @@ func ReverseProxy(
 		req,
 
 		env.ClientTypeHeader,
-		types.UserHeadersKeys{
-			IDHeaderKey:         env.UserIdHeader,
-			GroupsHeaderKey:     env.UserGroupsHeader,
-			PropertiesHeaderKey: env.UserPropertiesHeader,
-		},
+		inputUser,
 		evaluatorSdk,
 	)
 	proxy.ServeHTTP(w, req)
@@ -200,5 +204,57 @@ func alwaysProxyHandler(w http.ResponseWriter, req *http.Request) {
 		utils.FailResponse(w, "no environment found in context", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return
 	}
-	ReverseProxyOrResponse(logger, env, w, req, nil)
+	ReverseProxyOrResponse(logger, env, w, req, nil, core.InputUser{})
+}
+
+type userHeadersKeys struct {
+	GroupsHeaderKey     string
+	IDHeaderKey         string
+	PropertiesHeaderKey string
+}
+
+func getUserFromRequest(req *http.Request, userHeaders userHeadersKeys) (types.User, error) {
+	var user types.User
+
+	user.Groups = split(req.Header.Get(userHeaders.GroupsHeaderKey), ",")
+	user.ID = req.Header.Get(userHeaders.IDHeaderKey)
+
+	userProperties := make(map[string]interface{})
+	_, err := utils.UnmarshalHeader(req.Header, userHeaders.PropertiesHeaderKey, &userProperties)
+	if err != nil {
+		return types.User{}, fmt.Errorf("user properties header is not valid: %s", err.Error())
+	}
+	user.Properties = userProperties
+
+	return user, nil
+}
+
+func getInputUser(logger *logrus.Entry, env config.EnvironmentVariables, req *http.Request) (core.InputUser, error) {
+	user, err := getUserFromRequest(req, userHeadersKeys{
+		IDHeaderKey:         env.UserIdHeader,
+		GroupsHeaderKey:     env.UserGroupsHeader,
+		PropertiesHeaderKey: env.UserPropertiesHeader,
+	})
+	if err != nil {
+		return core.InputUser{}, fmt.Errorf("fails to get user from request: %s", err)
+	}
+
+	client, err := inputuser.GetClientFromContext(req.Context())
+	if err != nil {
+		return core.InputUser{}, err
+	}
+
+	rondInputUser, err := inputuser.Get(req.Context(), rondlogrus.NewEntry(logger), client, user)
+	if err != nil {
+		return core.InputUser{}, err
+	}
+
+	return rondInputUser, nil
+}
+
+func split(str, sep string) []string {
+	if str == "" {
+		return []string{}
+	}
+	return strings.Split(str, sep)
 }

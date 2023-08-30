@@ -21,11 +21,11 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/custom_builtins/mocks"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
-	"github.com/rond-authz/rond/types"
 
 	"github.com/stretchr/testify/require"
 )
@@ -76,7 +76,7 @@ func TestNewFromOas(t *testing.T) {
 	})
 
 	t.Run("passes EvaluatorOptions and set metrics correctly", func(t *testing.T) {
-		evalOpts := &core.OPAEvaluatorOptions{
+		evalOpts := &EvaluatorOptions{
 			EnablePrintStatements: true,
 		}
 		sdk, err := NewFromOAS(ctx, opaModule, openAPISpec, &Options{
@@ -88,7 +88,7 @@ func TestNewFromOas(t *testing.T) {
 		require.NotEmpty(t, sdk)
 		r, ok := sdk.(oasImpl)
 		require.True(t, ok)
-		require.Equal(t, evalOpts, r.opaEvaluatorOptions)
+		require.Equal(t, evalOpts, r.evaluatorOptions)
 	})
 
 	t.Run("creates OAS sdk correctly", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestNewFromOas(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run("and find evaluators", func(t *testing.T) {
-			evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
+			evaluator, err := sdk.FindEvaluator(http.MethodGet, "/users/")
 			require.NoError(t, err)
 			require.NotNil(t, evaluator)
 		})
@@ -108,7 +108,7 @@ func TestNewFromOas(t *testing.T) {
 		require.NotNil(t, sdk)
 
 		t.Run("and find evaluators", func(t *testing.T) {
-			evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
+			evaluator, err := sdk.FindEvaluator(http.MethodGet, "/users/")
 			require.NoError(t, err)
 			require.NotNil(t, evaluator)
 		})
@@ -120,7 +120,7 @@ func TestNewFromOas(t *testing.T) {
 		require.NotNil(t, sdk)
 
 		t.Run("and find evaluators", func(t *testing.T) {
-			evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
+			evaluator, err := sdk.FindEvaluator(http.MethodGet, "/users/")
 			require.NoError(t, err)
 			require.NotNil(t, evaluator)
 		})
@@ -165,7 +165,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, ""), types.User{})
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil), nil)
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -180,7 +180,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, ""), types.User{})
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil), nil)
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -190,7 +190,7 @@ func TestNewWithConfig(t *testing.T) {
 	})
 
 	t.Run("passes EvaluatorOptions and set metrics correctly", func(t *testing.T) {
-		evalOpts := &core.OPAEvaluatorOptions{
+		evalOpts := &EvaluatorOptions{
 			EnablePrintStatements: true,
 		}
 		eval, err := NewWithConfig(ctx, opaModule, rondConfig, &Options{
@@ -202,7 +202,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotEmpty(t, eval)
 		r, ok := eval.(evaluator)
 		require.True(t, ok)
-		require.Equal(t, evalOpts, r.opaEvaluatorOptions)
+		require.Equal(t, evalOpts, r.evaluatorOptions)
 	})
 
 	t.Run("creates config sdk correctly", func(t *testing.T) {
@@ -211,7 +211,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, ""), types.User{})
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil), nil)
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -233,7 +233,7 @@ func TestNewWithConfig(t *testing.T) {
 		}
 		options := &Options{
 			Logger: logger,
-			EvaluatorOptions: &core.OPAEvaluatorOptions{
+			EvaluatorOptions: &EvaluatorOptions{
 				MongoClient: mocks.MongoClientMock{
 					FindOneResult: map[string]string{"myField": "1234"},
 					FindOneExpectation: func(collectionName string, query interface{}) {
@@ -249,7 +249,7 @@ func TestNewWithConfig(t *testing.T) {
 		require.NotNil(t, evaluator)
 
 		t.Run("run evaluator correctly", func(t *testing.T) {
-			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, ""), types.User{})
+			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil), nil)
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
 				Allowed:      true,
@@ -263,7 +263,7 @@ type sdkOptions struct {
 	opaModuleContent string
 	oasFilePath      string
 
-	mongoClient types.IMongoClient
+	mongoClient custom_builtins.IMongoClient
 	metrics     *metrics.Metrics
 }
 
@@ -271,35 +271,17 @@ type tHelper interface {
 	Helper()
 }
 
-type FakeInput struct {
-	request    core.InputRequest
-	clientType string
-}
-
-func (i FakeInput) Input(user types.User, responseBody any) (core.Input, error) {
-	return core.Input{
-		User: core.InputUser{
-			ID:         user.UserID,
-			Properties: user.Properties,
-			Groups:     user.UserGroups,
-			Bindings:   user.UserBindings,
-			Roles:      user.UserRoles,
-		},
-		Request: i.request,
-		Response: core.InputResponse{
-			Body: responseBody,
-		},
-		ClientType: i.clientType,
-	}, nil
-}
-
-func getFakeInput(t require.TestingT, request core.InputRequest, clientType string) core.RondInput {
+func getFakeInput(t require.TestingT, request core.InputRequest, clientType string, user core.InputUser, responseBody any) core.Input {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
 	}
 
-	return FakeInput{
-		request:    request,
-		clientType: clientType,
+	return core.Input{
+		User:    user,
+		Request: request,
+		Response: core.InputResponse{
+			Body: responseBody,
+		},
+		ClientType: clientType,
 	}
 }

@@ -26,8 +26,7 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/internal/mocks"
-	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/openapi"
@@ -62,7 +61,7 @@ func TestRoundTripErrors(t *testing.T) {
 			logrus.NewEntry(logger),
 			req,
 			"",
-			types.UserHeadersKeys{},
+			core.InputUser{},
 			nil,
 		)
 
@@ -99,7 +98,7 @@ func TestOPATransportResponseWithError(t *testing.T) {
 		logrus.NewEntry(logger),
 		req,
 		"",
-		types.UserHeadersKeys{},
+		core.InputUser{},
 		nil,
 	)
 
@@ -159,11 +158,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			logrus.NewEntry(logger),
 			req,
 			"",
-			types.UserHeadersKeys{
-				IDHeaderKey:         "useridheader",
-				GroupsHeaderKey:     "usergroupsheader",
-				PropertiesHeaderKey: "userpropertiesheader",
-			},
+			core.InputUser{},
 			nil,
 		)
 
@@ -183,11 +178,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			context:      req.Context(),
 			logger:       logrus.NewEntry(logger),
 			request:      req,
-			userHeaders: types.UserHeadersKeys{
-				IDHeaderKey:         "useridheader",
-				GroupsHeaderKey:     "usergroupsheader",
-				PropertiesHeaderKey: "userpropertiesheader",
-			},
+			user:         core.InputUser{},
 		}
 
 		updatedResp, err := transport.RoundTrip(req)
@@ -211,11 +202,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			context:      req.Context(),
 			logger:       logrus.NewEntry(logger),
 			request:      req,
-			userHeaders: types.UserHeadersKeys{
-				IDHeaderKey:         "useridheader",
-				GroupsHeaderKey:     "usergroupsheader",
-				PropertiesHeaderKey: "userpropertiesheader",
-			},
+			user:         core.InputUser{},
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -238,11 +225,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			context:      req.Context(),
 			logger:       logrus.NewEntry(logger),
 			request:      req,
-			userHeaders: types.UserHeadersKeys{
-				IDHeaderKey:         "useridheader",
-				GroupsHeaderKey:     "usergroupsheader",
-				PropertiesHeaderKey: "userpropertiesheader",
-			},
+			user:         core.InputUser{},
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -264,11 +247,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			context:      req.Context(),
 			logger:       logrus.NewEntry(logger),
 			request:      req,
-			userHeaders: types.UserHeadersKeys{
-				IDHeaderKey:         "useridheader",
-				GroupsHeaderKey:     "usergroupsheader",
-				PropertiesHeaderKey: "userpropertiesheader",
-			},
+			user:         core.InputUser{},
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -284,14 +263,13 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			Header:        http.Header{"Content-Type": []string{"application/json"}},
 		}
 
-		logEntry := rondlogrus.NewLogger(logger)
 		req = req.Clone(context.Background())
 
 		evaluator := getSdk(t, &sdkOptions{
 			oasFilePath:      "../mocks/rondOasConfig.json",
 			opaModuleContent: "package policies responsepolicy [resources] { resources := input.response.body }",
 		})
-		evaluatorSDK, err := evaluator.FindEvaluator(logEntry, http.MethodGet, "/users/")
+		evaluatorSDK, err := evaluator.FindEvaluator(http.MethodGet, "/users/")
 		require.NoError(t, err)
 
 		transport := NewOPATransport(
@@ -300,11 +278,7 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			logrus.NewEntry(logger),
 			req,
 			"",
-			types.UserHeadersKeys{
-				IDHeaderKey:         "useridheader",
-				GroupsHeaderKey:     "usergroupsheader",
-				PropertiesHeaderKey: "userpropertiesheader",
-			},
+			core.InputUser{},
 			evaluatorSDK,
 		)
 
@@ -336,11 +310,6 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			context:      req.Context(),
 			logger:       logrus.NewEntry(logger),
 			request:      req,
-			userHeaders: types.UserHeadersKeys{
-				IDHeaderKey:         "useridheader",
-				GroupsHeaderKey:     "usergroupsheader",
-				PropertiesHeaderKey: "userpropertiesheader",
-			},
 		}
 
 		resp, err := transport.RoundTrip(req)
@@ -363,88 +332,11 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			context:      req.Context(),
 			logger:       logrus.NewEntry(logger),
 			request:      req,
-			userHeaders: types.UserHeadersKeys{
-				IDHeaderKey:         "useridheader",
-				GroupsHeaderKey:     "usergroupsheader",
-				PropertiesHeaderKey: "userpropertiesheader",
-			},
 		}
 
 		resp, err := transport.RoundTrip(req)
 		require.Nil(t, resp)
 		require.Error(t, err, "response body is not valid")
-	})
-
-	t.Run("failure on get user bindings and roles", func(t *testing.T) {
-		db := mocks.MongoClientMock{
-			UserBindingsError: fmt.Errorf("fail from mongoclient"),
-		}
-		ctx := mongoclient.WithMongoClient(req.Context(), db)
-		req := req.WithContext(ctx)
-		req.Header.Set("useridheader", "userid")
-		resp := &http.Response{
-			StatusCode:    http.StatusOK,
-			Body:          io.NopCloser(bytes.NewReader([]byte(`{"hey":"there"}`))),
-			ContentLength: 0,
-			Header:        http.Header{"Content-Type": []string{"application/json"}},
-		}
-		transport := &OPATransport{
-			RoundTripper: &MockRoundTrip{Response: resp},
-			context:      ctx,
-			logger:       logrus.NewEntry(logger),
-			request:      req,
-			userHeaders: types.UserHeadersKeys{
-				IDHeaderKey:         "useridheader",
-				GroupsHeaderKey:     "usergroupsheader",
-				PropertiesHeaderKey: "userpropertiesheader",
-			},
-		}
-		resp, err := transport.RoundTrip(req)
-		require.Nil(t, err)
-		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-		bodyBytes, err := io.ReadAll(resp.Body)
-		require.Nil(t, err)
-		require.Contains(t, string(bodyBytes), "error while retrieving user bindings")
-	})
-
-	t.Run("failure on create rego input", func(t *testing.T) {
-		req := req.Clone(req.Context())
-		req.Header.Set("useridheader", "userid")
-		req.Header.Set("groupsheader", "a,b,c")
-		req.Header.Set("userpropertiesheader", "{}{}{}{{")
-		resp := &http.Response{
-			StatusCode:    http.StatusOK,
-			Body:          io.NopCloser(bytes.NewReader([]byte(`{"hey":"there"}`))),
-			ContentLength: 0,
-			Header:        http.Header{"Content-Type": []string{"application/json"}},
-		}
-		evaluator := getSdk(t, &sdkOptions{
-			oasFilePath:      "../mocks/rondOasConfig.json",
-			opaModuleContent: "package policies responsepolicy [resources] { resources := input.response.body }",
-		})
-		logEntry := rondlogrus.NewLogger(logger)
-		evaluatorSDK, err := evaluator.FindEvaluator(logEntry, http.MethodGet, "/users/")
-		require.NoError(t, err)
-
-		transport := NewOPATransport(
-			&MockRoundTrip{Response: resp},
-			req.Context(),
-			logrus.NewEntry(logger),
-			req,
-			"",
-			types.UserHeadersKeys{
-				IDHeaderKey:         "useridheader",
-				GroupsHeaderKey:     "usergroupsheader",
-				PropertiesHeaderKey: "userpropertiesheader",
-			},
-			evaluatorSDK,
-		)
-		resp, err = transport.RoundTrip(req)
-		require.Nil(t, err)
-		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-		bodyBytes, err := io.ReadAll(resp.Body)
-		require.Nil(t, err)
-		require.Contains(t, string(bodyBytes), "user properties header is not valid")
 	})
 }
 
@@ -475,7 +367,7 @@ type sdkOptions struct {
 	opaModuleContent string
 	oasFilePath      string
 
-	mongoClient types.IMongoClient
+	mongoClient custom_builtins.IMongoClient
 }
 
 type tHelper interface {
@@ -509,7 +401,7 @@ func getSdk(t require.TestingT, options *sdkOptions) sdk.OASEvaluatorFinder {
 	}
 
 	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, openAPISpec, &sdk.Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &sdk.EvaluatorOptions{
 			MongoClient:           options.mongoClient,
 			EnablePrintStatements: true,
 		},

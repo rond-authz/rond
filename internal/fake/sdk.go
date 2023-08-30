@@ -19,7 +19,6 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/sdk"
-	"github.com/rond-authz/rond/types"
 )
 
 type RequestPolicyEvaluatorResult struct {
@@ -46,14 +45,14 @@ func NewSDKEvaluator(
 	}
 }
 
-func (s SDKEvaluator) EvaluateRequestPolicy(ctx context.Context, input core.RondInput, userInfo types.User) (sdk.PolicyResult, error) {
+func (s SDKEvaluator) EvaluateRequestPolicy(ctx context.Context, input core.Input, options *sdk.EvaluateOptions) (sdk.PolicyResult, error) {
 	if s.requestPolicyEvaluatorResult == nil {
 		return sdk.PolicyResult{}, nil
 	}
 	return sdk.PolicyResult{}, s.requestPolicyEvaluatorResult.Err
 }
 
-func (e SDKEvaluator) EvaluateResponsePolicy(ctx context.Context, input core.RondInput, userInfo types.User, decodedBody any) ([]byte, error) {
+func (e SDKEvaluator) EvaluateResponsePolicy(ctx context.Context, input core.Input, options *sdk.EvaluateOptions) ([]byte, error) {
 	return nil, nil
 }
 

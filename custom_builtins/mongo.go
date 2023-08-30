@@ -17,8 +17,6 @@ package custom_builtins
 import (
 	"fmt"
 
-	"github.com/rond-authz/rond/internal/mongoclient"
-
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/types"
@@ -41,7 +39,7 @@ var MongoFindOne = rego.Function2(
 		Decl: MongoFindOneDecl.Decl,
 	},
 	func(ctx rego.BuiltinContext, collectionNameTerm, queryTerm *ast.Term) (*ast.Term, error) {
-		mongoClient, err := mongoclient.GetMongoClientFromContext(ctx.Context)
+		mongoClient, err := GetMongoClientFromContext(ctx.Context)
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +88,7 @@ var MongoFindMany = rego.Function2(
 		Decl: MongoFindManyDecl.Decl,
 	},
 	func(ctx rego.BuiltinContext, collectionNameTerm, queryTerm *ast.Term) (*ast.Term, error) {
-		mongoClient, err := mongoclient.GetMongoClientFromContext(ctx.Context)
+		mongoClient, err := GetMongoClientFromContext(ctx.Context)
 		if err != nil {
 			return nil, err
 		}

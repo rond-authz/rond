@@ -22,7 +22,8 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/internal/mocks"
+	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/custom_builtins/mocks"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/logging/test"
 	"github.com/rond-authz/rond/metrics"
@@ -34,25 +35,14 @@ import (
 )
 
 func TestEvaluateRequestPolicy(t *testing.T) {
-	logger := logging.NewNoOpLogger()
-
-	t.Run("throws without RondInput", func(t *testing.T) {
-		sdk := getOASSdk(t, nil)
-		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
-		require.NoError(t, err)
-
-		_, err = evaluator.EvaluateRequestPolicy(context.Background(), nil, types.User{})
-		require.EqualError(t, err, "RondInput cannot be empty")
-	})
-
 	type testCase struct {
 		method           string
 		path             string
 		opaModuleContent string
 		oasFilePath      string
-		user             types.User
+		user             core.InputUser
 		reqHeaders       map[string]string
-		mongoClient      types.IMongoClient
+		mongoClient      custom_builtins.IMongoClient
 
 		expectedPolicy PolicyResult
 		expectedErr    error
@@ -72,8 +62,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"with user with policy true": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 				},
 
 				expectedPolicy: PolicyResult{
@@ -84,8 +74,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"not allow if not existing policy": {
 				method: http.MethodPost,
 				path:   "/users/",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 				},
 
 				expectedPolicy: PolicyResult{},
@@ -94,8 +84,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"not allowed policy result": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 				},
 				opaModuleContent: `package policies todo { false }`,
 
@@ -106,8 +96,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				method:      http.MethodGet,
 				path:        "/users/",
 				oasFilePath: "../mocks/rondOasConfig.json",
-				user: types.User{
-					UserGroups: []string{"my-group"},
+				user: core.InputUser{
+					Groups: []string{"my-group"},
 				},
 				reqHeaders: map[string]string{
 					"my-header-key": "ok",
@@ -129,8 +119,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				method:      http.MethodGet,
 				path:        "/users/",
 				oasFilePath: "../mocks/rondOasConfig.json",
-				user: types.User{
-					UserGroups: []string{"my-group"},
+				user: core.InputUser{
+					Groups: []string{"my-group"},
 				},
 				reqHeaders: map[string]string{
 					"my-header-key": "ok",
@@ -149,15 +139,15 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"check user": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: types.User{
-					UserID:     "the-user-id",
-					UserGroups: []string{"my-group"},
-					UserRoles: []types.Role{
+				user: core.InputUser{
+					ID:     "the-user-id",
+					Groups: []string{"my-group"},
+					Roles: []types.Role{
 						{
 							RoleID: "rid",
 						},
 					},
-					UserBindings: []types.Binding{
+					Bindings: []types.Binding{
 						{
 							Resource: &types.Resource{
 								ResourceType: "my-resource",
@@ -184,8 +174,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"with mongo client and find_one": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 				},
 				opaModuleContent: `package policies
 				todo {
@@ -208,8 +198,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"with mongo client and find_one with dynamic find_one query": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 					Properties: map[string]any{
 						"field": "1234",
 					},
@@ -237,8 +227,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"with mongo client and find_many": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 				},
 				mongoClient: &mocks.MongoClientMock{
 					FindManyResult: []interface{}{
@@ -264,8 +254,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				method:      http.MethodGet,
 				path:        "/users/",
 				oasFilePath: "../mocks/rondOasConfig.json",
-				user: types.User{
-					UserGroups: []string{"my-group"},
+				user: core.InputUser{
+					Groups: []string{"my-group"},
 				},
 				mongoClient: &mocks.MongoClientMock{
 					FindOneResult: map[string]string{"myField": "1234"},
@@ -291,8 +281,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				method:      http.MethodGet,
 				path:        "/users/",
 				oasFilePath: "../mocks/rondOasConfig.json",
-				user: types.User{
-					UserID: "my-user",
+				user: core.InputUser{
+					ID: "my-user",
 					Properties: map[string]any{
 						"field": "1234",
 					},
@@ -331,8 +321,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					metrics:          testMetrics,
 				})
 
-				logger := test.GetLogger()
-				evaluate, err := sdk.FindEvaluator(logger, testCase.method, testCase.path)
+				evaluate, err := sdk.FindEvaluator(testCase.method, testCase.path)
 				require.NoError(t, err)
 
 				headers := http.Header{}
@@ -345,9 +334,12 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					Headers: headers,
 					Path:    testCase.path,
 					Method:  testCase.method,
-				}, "")
+				}, "", testCase.user, nil)
 
-				actual, err := evaluate.EvaluateRequestPolicy(context.Background(), rondInput, testCase.user)
+				logger := test.GetLogger()
+				actual, err := evaluate.EvaluateRequestPolicy(context.Background(), rondInput, &EvaluateOptions{
+					Logger: logger,
+				})
 				if testCase.expectedErr != nil {
 					require.EqualError(t, err, testCase.expectedErr.Error())
 				} else {
@@ -403,27 +395,35 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("with nil options", func(t *testing.T) {
+		opaModule := &core.OPAModuleConfig{
+			Name: "example.rego",
+			Content: `package policies
+			todo { true }`,
+		}
+		sdk, err := NewWithConfig(context.Background(), opaModule, core.RondConfig{
+			RequestFlow: core.RequestFlow{PolicyName: "todo"},
+		}, nil)
+		require.NoError(t, err)
+
+		result, err := sdk.EvaluateRequestPolicy(context.Background(), core.Input{}, nil)
+		require.NoError(t, err)
+		require.Equal(t, PolicyResult{
+			Allowed:      true,
+			QueryToProxy: []byte(""),
+		}, result)
+	})
 }
 
 func TestEvaluateResponsePolicy(t *testing.T) {
-	logger := logging.NewNoOpLogger()
-
-	t.Run("throws without RondInput", func(t *testing.T) {
-		sdk := getOASSdk(t, nil)
-		evaluator, err := sdk.FindEvaluator(logger, http.MethodGet, "/users/")
-		require.NoError(t, err)
-
-		_, err = evaluator.EvaluateResponsePolicy(context.Background(), nil, types.User{}, nil)
-		require.EqualError(t, err, "RondInput cannot be empty")
-	})
-
 	type testCase struct {
 		method           string
 		path             string
 		opaModuleContent string
-		user             types.User
+		user             core.InputUser
 		reqHeaders       map[string]string
-		mongoClient      types.IMongoClient
+		mongoClient      custom_builtins.IMongoClient
 
 		decodedBody any
 
@@ -526,7 +526,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					metrics:          testMetrics,
 				})
 
-				evaluate, err := sdk.FindEvaluator(logger, testCase.method, testCase.path)
+				evaluate, err := sdk.FindEvaluator(testCase.method, testCase.path)
 				require.NoError(t, err)
 
 				req := httptest.NewRequest(testCase.method, testCase.path, nil)
@@ -545,9 +545,11 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					Headers: headers,
 					Path:    testCase.path,
 					Method:  testCase.method,
-				}, "")
+				}, "", testCase.user, testCase.decodedBody)
 
-				actual, err := evaluate.EvaluateResponsePolicy(context.Background(), rondInput, testCase.user, testCase.decodedBody)
+				actual, err := evaluate.EvaluateResponsePolicy(context.Background(), rondInput, &EvaluateOptions{
+					Logger: logger,
+				})
 				if testCase.expectedErr != nil {
 					require.EqualError(t, err, testCase.expectedErr.Error())
 				} else {
@@ -597,6 +599,29 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("with nil options", func(t *testing.T) {
+		opaModule := &core.OPAModuleConfig{
+			Name: "example.rego",
+			Content: `package policies
+			responsepolicy [body] {
+				body := input.response.body
+			}`,
+		}
+		sdk, err := NewWithConfig(context.Background(), opaModule, core.RondConfig{
+			RequestFlow:  core.RequestFlow{PolicyName: "todo"},
+			ResponseFlow: core.ResponseFlow{PolicyName: "responsepolicy"},
+		}, nil)
+		require.NoError(t, err)
+
+		result, err := sdk.EvaluateResponsePolicy(context.Background(), core.Input{
+			Response: core.InputResponse{
+				Body: map[string]string{"foo": "bar"},
+			},
+		}, nil)
+		require.NoError(t, err)
+		require.Equal(t, `{"foo":"bar"}`, string(result))
+	})
 }
 
 func BenchmarkEvaluateRequest(b *testing.B) {
@@ -626,9 +651,9 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 		},
 	}
 
-	user := types.User{
-		UserID: "user1",
-		UserBindings: []types.Binding{
+	user := core.InputUser{
+		ID: "user1",
+		Bindings: []types.Binding{
 			{
 				BindingID:   "binding1",
 				Subjects:    []string{"user1"},
@@ -660,7 +685,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 				CRUDDocumentState: "PUBLIC",
 			},
 		},
-		UserRoles: []types.Role{
+		Roles: []types.Role{
 			{
 				RoleID:            "company_owner",
 				Permissions:       []string{"console.company.project.view", "console.company.project.environment.view"},
@@ -696,7 +721,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 	}
 
 	evaluator, err := NewWithConfig(context.Background(), moduleConfig, config, &Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &EvaluatorOptions{
 			MongoClient: mongoClient,
 		},
 	})
@@ -716,10 +741,10 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 			PathParams: map[string]string{
 				"projectId": "project123",
 			},
-		}, "")
+		}, "", user, nil)
 
 		b.StartTimer()
-		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, user)
+		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, nil)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -741,9 +766,9 @@ func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
 		},
 	}
 
-	user := types.User{
-		UserID: "user1",
-		UserBindings: []types.Binding{
+	user := core.InputUser{
+		ID: "user1",
+		Bindings: []types.Binding{
 			{
 				BindingID:   "binding1",
 				Subjects:    []string{"user1"},
@@ -775,7 +800,7 @@ func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
 				CRUDDocumentState: "PUBLIC",
 			},
 		},
-		UserRoles: []types.Role{
+		Roles: []types.Role{
 			{
 				RoleID:            "company_owner",
 				Permissions:       []string{"console.company.project.view", "console.company.project.environment.view"},
@@ -805,7 +830,7 @@ func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
 	}
 
 	evaluator, err := NewWithConfig(context.Background(), moduleConfig, config, &Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &EvaluatorOptions{
 			MongoClient: mocks.MongoClientMock{},
 		},
 	})
@@ -823,10 +848,10 @@ func BenchmarkEvaluateRequestWithQueryGeneration(b *testing.B) {
 			Headers:    headers,
 			Method:     http.MethodGet,
 			PathParams: map[string]string{},
-		}, "")
+		}, "", user, nil)
 
 		b.StartTimer()
-		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, user)
+		policyResult, err := evaluator.EvaluateRequestPolicy(context.Background(), rondInput, nil)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -850,9 +875,9 @@ func BenchmarkEvaluateResponse(b *testing.B) {
 		},
 	}
 
-	user := types.User{
-		UserID: "user1",
-		UserBindings: []types.Binding{{
+	user := core.InputUser{
+		ID: "user1",
+		Bindings: []types.Binding{{
 			BindingID: "binding-env",
 			Subjects:  []string{"user1"},
 			Roles:     []string{"env-reader"},
@@ -873,7 +898,7 @@ func BenchmarkEvaluateResponse(b *testing.B) {
 				CRUDDocumentState: "PUBLIC",
 			},
 		},
-		UserRoles: []types.Role{
+		Roles: []types.Role{
 			{
 				RoleID:            "env-reader",
 				Permissions:       []string{"console.environment.view"},
@@ -888,7 +913,7 @@ func BenchmarkEvaluateResponse(b *testing.B) {
 	}
 
 	evaluator, err := NewWithConfig(context.Background(), moduleConfig, config, &Options{
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &EvaluatorOptions{
 			MongoClient: &mocks.MongoClientMock{},
 		},
 	})
@@ -900,15 +925,6 @@ func BenchmarkEvaluateResponse(b *testing.B) {
 		b.StopTimer()
 		headers := http.Header{}
 		headers.Set("my-header", "value")
-
-		rondInput := getFakeInput(b, core.InputRequest{
-			Path:    "/projects/projectWithEnv",
-			Headers: headers,
-			Method:  http.MethodGet,
-			PathParams: map[string]string{
-				"projectId": "projectWithEnv",
-			},
-		}, "")
 
 		decodedBody := map[string]any{
 			"_id":       "projectWithEnv",
@@ -927,8 +943,17 @@ func BenchmarkEvaluateResponse(b *testing.B) {
 			},
 		}
 
+		rondInput := getFakeInput(b, core.InputRequest{
+			Path:    "/projects/projectWithEnv",
+			Headers: headers,
+			Method:  http.MethodGet,
+			PathParams: map[string]string{
+				"projectId": "projectWithEnv",
+			},
+		}, "", user, decodedBody)
+
 		b.StartTimer()
-		policyResult, err := evaluator.EvaluateResponsePolicy(context.Background(), rondInput, user, decodedBody)
+		policyResult, err := evaluator.EvaluateResponsePolicy(context.Background(), rondInput, nil)
 		b.StopTimer()
 
 		require.NoError(b, err)
@@ -980,7 +1005,7 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 
 	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &Options{
 		Metrics: options.metrics,
-		EvaluatorOptions: &core.OPAEvaluatorOptions{
+		EvaluatorOptions: &EvaluatorOptions{
 			EnablePrintStatements: true,
 			MongoClient:           options.mongoClient,
 		},

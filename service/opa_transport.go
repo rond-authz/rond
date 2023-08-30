@@ -24,7 +24,6 @@ import (
 	"strconv"
 
 	"github.com/rond-authz/rond/core"
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/sdk"
@@ -48,7 +47,7 @@ type OPATransport struct {
 	request *http.Request
 
 	clientHeaderKey string
-	userHeaders     types.UserHeadersKeys
+	user            core.InputUser
 	evaluatorSDK    sdk.Evaluator
 }
 
@@ -58,7 +57,7 @@ func NewOPATransport(
 	logger *logrus.Entry,
 	req *http.Request,
 	clientHeaderKey string,
-	userHeadersKeys types.UserHeadersKeys,
+	user core.InputUser,
 	evaluatorSDK sdk.Evaluator,
 ) *OPATransport {
 	return &OPATransport{
@@ -67,8 +66,8 @@ func NewOPATransport(
 		logger:       logger,
 		request:      req,
 
+		user:            user,
 		clientHeaderKey: clientHeaderKey,
-		userHeaders:     userHeadersKeys,
 		evaluatorSDK:    evaluatorSDK,
 	}
 }
@@ -110,16 +109,16 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 		return nil, fmt.Errorf("%w: %s", ErrOPATransportInvalidResponseBody, err.Error())
 	}
 
-	userInfo, err := mongoclient.RetrieveUserBindingsAndRoles(rondlogrus.NewEntry(t.logger), t.request, t.userHeaders)
+	pathParams := mux.Vars(t.request)
+	input, err := rondhttp.NewInput(t.request, t.clientHeaderKey, pathParams, t.user, decodedBody)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusInternalServerError)
 		return resp, nil
 	}
 
-	pathParams := mux.Vars(t.request)
-	input := rondhttp.NewInput(t.request, t.clientHeaderKey, pathParams)
-
-	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, input, userInfo, decodedBody)
+	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, input, &sdk.EvaluateOptions{
+		Logger: rondlogrus.NewEntry(t.logger),
+	})
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusForbidden)
 		return resp, nil
