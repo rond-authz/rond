@@ -17,6 +17,7 @@ package sdk
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/logging"
@@ -76,7 +77,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 		EnableResourcePermissionsMapOptimization: rondConfig.Options.EnableResourcePermissionsMapOptimization,
 	})
 	if err != nil {
-		return PolicyResult{}, nil
+		return PolicyResult{}, err
 	}
 
 	opaEvaluatorOptions := e.evaluatorOptions.opaEvaluatorOptions(logger)
@@ -104,6 +105,9 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 			"policyName": rondConfig.RequestFlow.PolicyName,
 			"message":    err.Error(),
 		}).Error("RBAC policy evaluation failed")
+		if errors.Is(err, core.ErrPolicyNotAllowed) {
+			return PolicyResult{}, nil
+		}
 		return PolicyResult{}, err
 	}
 

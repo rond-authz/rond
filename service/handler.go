@@ -138,6 +138,11 @@ func EvaluateRequest(
 		utils.FailResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed", utils.NO_PERMISSIONS_ERROR_MESSAGE)
 		return err
 	}
+	if !result.Allowed {
+		logger.Error("RBAC policy evaluation failed")
+		utils.FailResponseWithCode(w, http.StatusForbidden, "RBAC policy evaluation failed", utils.NO_PERMISSIONS_ERROR_MESSAGE)
+		return fmt.Errorf("RBAC policy evaluation failed")
+	}
 
 	queryHeaderKey := BASE_ROW_FILTER_HEADER_KEY
 	if permission.RequestFlow.QueryOptions.HeaderName != "" {

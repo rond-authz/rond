@@ -79,7 +79,6 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				},
 
 				expectedPolicy: PolicyResult{},
-				expectedErr:    core.ErrPolicyEvalFailed,
 			},
 			"not allowed policy result": {
 				method: http.MethodGet,
@@ -90,7 +89,6 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				opaModuleContent: `package policies todo { false }`,
 
 				expectedPolicy: PolicyResult{},
-				expectedErr:    core.ErrPolicyEvalFailed,
 			},
 			"with empty filter query": {
 				method:      http.MethodGet,
@@ -473,7 +471,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					false
 					body := input.response.body
 				}`,
-				expectedErr:  core.ErrPolicyEvalFailed,
+				expectedErr:  core.ErrPolicyNotAllowed,
 				expectedBody: "",
 				notAllowed:   true,
 			},

@@ -27,6 +27,7 @@ var (
 	ErrPolicyEvalFailed         = fmt.Errorf("policy evaluation failed")
 	ErrPartialPolicyEvalFailed  = fmt.Errorf("partial %w", ErrPolicyEvalFailed)
 	ErrResponsePolicyEvalFailed = fmt.Errorf("response %w", ErrPolicyEvalFailed)
+	ErrPolicyNotAllowed         = fmt.Errorf("policy not allowed")
 
 	ErrFailedInputParse                  = fmt.Errorf("failed input parse")
 	ErrFailedInputEncode                 = fmt.Errorf("failed input encode")
