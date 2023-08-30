@@ -24,6 +24,7 @@ import (
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
+
 	"github.com/stretchr/testify/require"
 )
 
