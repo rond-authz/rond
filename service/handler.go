@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"strings"
 
 	"github.com/rond-authz/rond/core"
@@ -160,15 +161,19 @@ func ReverseProxy(
 	inputUser core.InputUser,
 ) {
 	targetHostFromEnv := env.TargetServiceHost
+	u, err := url.Parse(fmt.Sprintf("%s://%s", URL_SCHEME, targetHostFromEnv))
+	if err != nil {
+		// FIXME: maybe better error handling?
+		// targetHostFromEnv should not arrive here if
+		// it's not a valid host to be put in a URL!
+		panic(err)
+	}
+
 	proxy := httputil.ReverseProxy{
 		FlushInterval: -1,
-		Director: func(req *http.Request) {
-			req.URL.Host = targetHostFromEnv
-			req.URL.Scheme = URL_SCHEME
-			if _, ok := req.Header["User-Agent"]; !ok {
-				// explicitly disable User-Agent so it's not set to default value
-				req.Header.Del("User-Agent")
-			}
+		Rewrite: func(r *httputil.ProxyRequest) {
+			r.SetURL(u)
+			r.SetXForwarded()
 		},
 	}
 
