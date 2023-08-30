@@ -390,7 +390,7 @@ allow {
 			buf, err := io.ReadAll(r.Body)
 			require.NoError(t, err, "Mocked backend: Unexpected error")
 			require.Equal(t, mockBodySting, string(buf), "Mocked backend: Unexpected Body received")
-			_, ok := r.Header["rowfilterquery"]
+			_, ok := r.Header[http.CanonicalHeaderKey("rowfilterquery")]
 			require.False(t, ok)
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("Mocked Backend Body Example"))
