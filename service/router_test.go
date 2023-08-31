@@ -361,7 +361,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
-	t.Run("invokes unknown API", func(t *testing.T) {
+	t.Run("invokes unknown API - with mocked true evaluator", func(t *testing.T) {
 		var invoked bool
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			invoked = true
@@ -377,7 +377,11 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		eval, err := openapi.SetupEvaluators(ctx, logger, oas, mockOPAModule, nil)
 		require.NoError(t, err)
-		evaluator := fake.NewSDKEvaluator(eval, mockXPermission, nil)
+		evaluator := fake.NewSDKEvaluator(eval, mockXPermission, &fake.RequestPolicyEvaluatorResult{
+			PolicyResult: sdk.PolicyResult{
+				Allowed: true,
+			},
+		})
 
 		ctx := createContext(t,
 			context.Background(),

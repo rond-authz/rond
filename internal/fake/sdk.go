@@ -22,7 +22,8 @@ import (
 )
 
 type RequestPolicyEvaluatorResult struct {
-	Err error
+	Err          error
+	PolicyResult sdk.PolicyResult
 }
 
 type SDKEvaluator struct {
@@ -49,7 +50,7 @@ func (s SDKEvaluator) EvaluateRequestPolicy(ctx context.Context, input core.Inpu
 	if s.requestPolicyEvaluatorResult == nil {
 		return sdk.PolicyResult{}, nil
 	}
-	return sdk.PolicyResult{}, s.requestPolicyEvaluatorResult.Err
+	return s.requestPolicyEvaluatorResult.PolicyResult, s.requestPolicyEvaluatorResult.Err
 }
 
 func (e SDKEvaluator) EvaluateResponsePolicy(ctx context.Context, input core.Input, options *sdk.EvaluateOptions) ([]byte, error) {
