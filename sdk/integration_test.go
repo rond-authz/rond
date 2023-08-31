@@ -47,8 +47,7 @@ func TestUsageNewWithConfig(t *testing.T) {
 	result, err := evaluator.EvaluateRequestPolicy(ctx, input, nil)
 	require.NoError(t, err)
 	require.Equal(t, result, sdk.PolicyResult{
-		Allowed:      true,
-		QueryToProxy: []byte(""),
+		Allowed: true,
 	})
 }
 
@@ -76,8 +75,7 @@ func TestUsageNewWithConfigWithMongo(t *testing.T) {
 	result, err := evaluator.EvaluateRequestPolicy(ctx, input, nil)
 	require.NoError(t, err)
 	require.Equal(t, result, sdk.PolicyResult{
-		Allowed:      true,
-		QueryToProxy: []byte(""),
+		Allowed: true,
 	})
 }
 
@@ -102,8 +100,7 @@ func TestUsageNewFromOas(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, result, sdk.PolicyResult{
-		Allowed:      true,
-		QueryToProxy: []byte(""),
+		Allowed: true,
 	})
 }
 
@@ -132,7 +129,6 @@ func TestUsageNewFromOasWithMongo(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, result, sdk.PolicyResult{
-		Allowed:      true,
-		QueryToProxy: []byte(""),
+		Allowed: true,
 	})
 }

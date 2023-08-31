@@ -111,7 +111,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 		return PolicyResult{}, err
 	}
 
-	var queryToProxy = []byte{}
+	var queryToProxy []byte
 	if query != nil {
 		queryToProxy, err = json.Marshal(query)
 		if err != nil {

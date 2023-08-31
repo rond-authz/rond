@@ -55,8 +55,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				path:   "/users/",
 
 				expectedPolicy: PolicyResult{
-					Allowed:      true,
-					QueryToProxy: []byte{},
+					Allowed: true,
 				},
 			},
 			"with user with policy true": {
@@ -67,8 +66,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				},
 
 				expectedPolicy: PolicyResult{
-					Allowed:      true,
-					QueryToProxy: []byte{},
+					Allowed: true,
 				},
 			},
 			"not allow if not existing policy": {
@@ -109,8 +107,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					query := data.resources[_]
 				}`,
 				expectedPolicy: PolicyResult{
-					Allowed:      true,
-					QueryToProxy: []byte(""),
+					Allowed: true,
 				},
 			},
 			"with filter query": {
@@ -165,8 +162,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					input.user.properties.prop1 == "my-user-field"
 				}`,
 				expectedPolicy: PolicyResult{
-					Allowed:      true,
-					QueryToProxy: []byte(""),
+					Allowed: true,
 				},
 			},
 			"with mongo client and find_one": {
@@ -189,8 +185,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					},
 				},
 				expectedPolicy: PolicyResult{
-					Allowed:      true,
-					QueryToProxy: []byte{},
+					Allowed: true,
 				},
 			},
 			"with mongo client and find_one with dynamic find_one query": {
@@ -218,8 +213,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				}
 				`,
 				expectedPolicy: PolicyResult{
-					Allowed:      true,
-					QueryToProxy: []byte{},
+					Allowed: true,
 				},
 			},
 			"with mongo client and find_many": {
@@ -244,8 +238,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					}
 				`,
 				expectedPolicy: PolicyResult{
-					Allowed:      true,
-					QueryToProxy: []byte{},
+					Allowed: true,
 				},
 			},
 			"with query and mongo client": {
@@ -408,8 +401,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 		result, err := sdk.EvaluateRequestPolicy(context.Background(), core.Input{}, nil)
 		require.NoError(t, err)
 		require.Equal(t, PolicyResult{
-			Allowed:      true,
-			QueryToProxy: []byte(""),
+			Allowed: true,
 		}, result)
 	})
 }

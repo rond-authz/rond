@@ -168,8 +168,7 @@ func TestNewWithConfig(t *testing.T) {
 			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil), nil)
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
-				Allowed:      true,
-				QueryToProxy: []byte(""),
+				Allowed: true,
 			}, result)
 		})
 	})
@@ -183,8 +182,7 @@ func TestNewWithConfig(t *testing.T) {
 			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil), nil)
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
-				Allowed:      true,
-				QueryToProxy: []byte(""),
+				Allowed: true,
 			}, result)
 		})
 	})
@@ -214,8 +212,7 @@ func TestNewWithConfig(t *testing.T) {
 			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil), nil)
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
-				Allowed:      true,
-				QueryToProxy: []byte(""),
+				Allowed: true,
 			}, result)
 		})
 	})
@@ -252,8 +249,7 @@ func TestNewWithConfig(t *testing.T) {
 			result, err := evaluator.EvaluateRequestPolicy(ctx, getFakeInput(t, core.InputRequest{}, "", core.InputUser{}, nil), nil)
 			require.NoError(t, err)
 			require.Equal(t, PolicyResult{
-				Allowed:      true,
-				QueryToProxy: []byte(""),
+				Allowed: true,
 			}, result)
 		})
 	})
