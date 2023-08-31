@@ -108,7 +108,7 @@ func TestPartialResultEvaluators(t *testing.T) {
 			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(ctx, "column_policy", input, nil)
 			require.NoError(t, err)
 			_, err = evaluator.Evaluate(logger, nil)
-			require.EqualError(t, err, ErrPolicyEvalFailed.Error())
+			require.EqualError(t, err, ErrPolicyNotAllowed.Error())
 		})
 	})
 
@@ -357,7 +357,7 @@ func TestPartialResultEvaluators(t *testing.T) {
 			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "deny", input, nil)
 			require.NoError(t, err)
 			_, _, err = evaluator.PolicyEvaluation(logger, nil)
-			require.EqualError(t, err, ErrPolicyEvalFailed.Error())
+			require.EqualError(t, err, ErrPolicyNotAllowed.Error())
 		})
 	})
 }

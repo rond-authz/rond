@@ -211,7 +211,7 @@ func (evaluator *OPAEvaluator) Evaluate(logger logging.Logger, options *PolicyEv
 	if allowed {
 		return responseBodyOverwriter, nil
 	}
-	return nil, ErrPolicyEvalFailed
+	return nil, ErrPolicyNotAllowed
 }
 
 func (evaluator *OPAEvaluator) getContext() context.Context {
