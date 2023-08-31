@@ -651,11 +651,10 @@ allow {
 }
 `
 
-		invoked := false
 		mockBodySting := "I am a body"
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			invoked = true
+			t.Fail()
 		}))
 		defer server.Close()
 
@@ -683,7 +682,6 @@ allow {
 
 		rbacHandler(w, r)
 
-		require.True(t, !invoked, "Handler was not invoked.")
 		require.Equal(t, http.StatusForbidden, w.Result().StatusCode, "Unexpected status code.")
 		require.Equal(t, utils.JSONContentTypeHeader, w.Result().Header.Get(utils.ContentTypeHeaderKey), "Unexpected content type.")
 	})
