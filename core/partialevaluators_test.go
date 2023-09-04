@@ -360,4 +360,45 @@ func TestPartialResultEvaluators(t *testing.T) {
 			require.EqualError(t, err, ErrPolicyNotAllowed.Error())
 		})
 	})
+
+	t.Run("evaluate policy with custom metadata", func(t *testing.T) {
+		partialEvaluators := PartialResultsEvaluators{}
+		rondConfig := &RondConfig{
+			RequestFlow: RequestFlow{
+				PolicyName: "check_metadata",
+			},
+		}
+
+		evalOpts := OPAEvaluatorOptions{
+			Logger: logger,
+		}
+
+		opaModule := &OPAModuleConfig{
+			Content: `package policies
+			check_metadata {
+				input.metadata.field == "ok"
+			}`,
+			Name: "policies",
+		}
+
+		err := partialEvaluators.AddFromConfig(context.Background(), logger, opaModule, rondConfig, &evalOpts)
+		require.NoError(t, err)
+		require.NotNil(t, partialEvaluators["allow"])
+
+		rondInput := Input{
+			CustomMetadata: map[string]any{
+				"field": "ok",
+			},
+		}
+
+		input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
+		require.NoError(t, err)
+		evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "check_metadata", input, &evalOpts)
+		require.NoError(t, err)
+		res, query, err := evaluator.PolicyEvaluation(logger, nil)
+		require.NoError(t, err)
+		require.Empty(t, query)
+		require.Empty(t, res)
+	})
+
 }
