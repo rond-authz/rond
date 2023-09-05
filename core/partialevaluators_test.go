@@ -400,5 +400,4 @@ func TestPartialResultEvaluators(t *testing.T) {
 		require.Empty(t, query)
 		require.Empty(t, res)
 	})
-
 }
