@@ -280,6 +280,62 @@ func TestNewWithConfig(t *testing.T) {
 			Allowed: true,
 		}, res)
 	})
+
+	t.Run("with custom metadata as struct", func(t *testing.T) {
+		opaModule := &core.OPAModuleConfig{
+			Name: "example.rego",
+			Content: `package policies
+			check_metadata {
+				input.metadata.field1 == "pass"
+			}
+			`,
+		}
+		rondConfig := core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "check_metadata"}}
+
+		evaluator, err := NewWithConfig(ctx, opaModule, rondConfig, nil)
+		require.NoError(t, err)
+		require.NotNil(t, evaluator)
+
+		type Metadata struct {
+			Field string `json:"field1"`
+		}
+
+		res, err := evaluator.EvaluateRequestPolicy(context.Background(), core.Input{
+			CustomMetadata: Metadata{Field: "pass"},
+		}, &EvaluateOptions{Logger: logger})
+
+		require.NoError(t, err)
+		require.Equal(t, PolicyResult{
+			Allowed: true,
+		}, res)
+	})
+
+	t.Run("with custom metadata as slice", func(t *testing.T) {
+		opaModule := &core.OPAModuleConfig{
+			Name: "example.rego",
+			Content: `package policies
+			check_metadata {
+				input.metadata[0] == "pass"
+			}
+			`,
+		}
+		rondConfig := core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "check_metadata"}}
+
+		evaluator, err := NewWithConfig(ctx, opaModule, rondConfig, nil)
+		require.NoError(t, err)
+		require.NotNil(t, evaluator)
+
+		type Metadata []string
+
+		res, err := evaluator.EvaluateRequestPolicy(context.Background(), core.Input{
+			CustomMetadata: Metadata{"pass"},
+		}, &EvaluateOptions{Logger: logger})
+
+		require.NoError(t, err)
+		require.Equal(t, PolicyResult{
+			Allowed: true,
+		}, res)
+	})
 }
 
 type sdkOptions struct {
