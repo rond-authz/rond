@@ -287,6 +287,7 @@ func TestNewWithConfig(t *testing.T) {
 			Content: `package policies
 			check_metadata {
 				input.metadata.field1 == "pass"
+				input.metadata.nested.foo == "bar"
 			}
 			`,
 		}
@@ -296,12 +297,16 @@ func TestNewWithConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, evaluator)
 
+		type Nested struct {
+			Foo string `json:"foo"`
+		}
 		type Metadata struct {
-			Field string `json:"field1"`
+			Field  string `json:"field1"`
+			Nested Nested `json:"nested"`
 		}
 
 		res, err := evaluator.EvaluateRequestPolicy(context.Background(), core.Input{
-			CustomMetadata: Metadata{Field: "pass"},
+			CustomMetadata: Metadata{Field: "pass", Nested: Nested{Foo: "bar"}},
 		}, &EvaluateOptions{Logger: logger})
 
 		require.NoError(t, err)
