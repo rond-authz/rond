@@ -26,10 +26,11 @@ import (
 )
 
 type Input struct {
-	Request    InputRequest  `json:"request"`
-	Response   InputResponse `json:"response"`
-	ClientType string        `json:"clientType,omitempty"`
-	User       InputUser     `json:"user"`
+	Request        InputRequest   `json:"request"`
+	Response       InputResponse  `json:"response"`
+	ClientType     string         `json:"clientType,omitempty"`
+	User           InputUser      `json:"user"`
+	CustomMetadata map[string]any `json:"metadata,omitempty"`
 }
 
 type InputRequest struct {

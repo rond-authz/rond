@@ -253,6 +253,33 @@ func TestNewWithConfig(t *testing.T) {
 			}, result)
 		})
 	})
+
+	t.Run("with custom metadata", func(t *testing.T) {
+		opaModule := &core.OPAModuleConfig{
+			Name: "example.rego",
+			Content: `package policies
+			check_metadata {
+				input.metadata.field1 == "pass"
+			}
+			`,
+		}
+		rondConfig := core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "check_metadata"}}
+
+		evaluator, err := NewWithConfig(ctx, opaModule, rondConfig, nil)
+		require.NoError(t, err)
+		require.NotNil(t, evaluator)
+
+		res, err := evaluator.EvaluateRequestPolicy(context.Background(), core.Input{
+			CustomMetadata: map[string]any{
+				"field1": "pass",
+			},
+		}, &EvaluateOptions{Logger: logger})
+
+		require.NoError(t, err)
+		require.Equal(t, PolicyResult{
+			Allowed: true,
+		}, res)
+	})
 }
 
 type sdkOptions struct {
