@@ -23,19 +23,23 @@ import (
 	"syscall"
 	"time"
 
-	swagger "github.com/davidebianchi/gswagger"
-	"github.com/davidebianchi/gswagger/apirouter"
-	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/rond-authz/rond/helpers"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/config"
-	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/internal/helpers"
+	rondlogrus "github.com/rond-authz/rond/logging/logrus"
+	"github.com/rond-authz/rond/metrics"
+	rondprometheus "github.com/rond-authz/rond/metrics/prometheus"
+	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk"
+	mongoclient "github.com/rond-authz/rond/sdk/inputuser/mongo"
+	"github.com/rond-authz/rond/service"
 
-	"github.com/gorilla/mux"
-	"github.com/mia-platform/glogger/v2"
+	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
 	"github.com/sirupsen/logrus"
 )
-
-const HTTPScheme = "http"
 
 func main() {
 	entrypoint(make(chan os.Signal, 1))
@@ -46,7 +50,7 @@ func entrypoint(shutdown chan os.Signal) {
 	env := config.GetEnvOrDie()
 
 	// Init logger instance.
-	log, err := glogger.InitHelper(glogger.InitOptions{Level: env.LogLevel})
+	log, err := glogrus.InitHelper(glogrus.InitOptions{Level: env.LogLevel})
 	if err != nil {
 		panic(err.Error())
 	}
@@ -59,7 +63,7 @@ func entrypoint(shutdown chan os.Signal) {
 		return
 	}
 
-	opaModuleConfig, err := loadRegoModule(env.OPAModulesDirectory)
+	opaModuleConfig, err := core.LoadRegoModule(env.OPAModulesDirectory)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error":        logrus.Fields{"message": err.Error()},
@@ -69,7 +73,12 @@ func entrypoint(shutdown chan os.Signal) {
 	}
 	log.WithField("opaModuleFileName", opaModuleConfig.Name).Trace("rego module successfully loaded")
 
-	oas, err := loadOASFromFileOrNetwork(log, env)
+	rondLogger := rondlogrus.NewLogger(log)
+	oas, err := openapi.LoadOASFromFileOrNetwork(rondLogger, openapi.LoadOptions{
+		APIPermissionsFilePath: env.APIPermissionsFilePath,
+		TargetServiceOASPath:   env.TargetServiceOASPath,
+		TargetServiceHost:      env.TargetServiceHost,
+	})
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error":       logrus.Fields{"message": err.Error()},
@@ -83,33 +92,59 @@ func entrypoint(shutdown chan os.Signal) {
 		"oasApiPath":  env.TargetServiceOASPath,
 	}).Trace("OAS successfully loaded")
 
-	mongoClient, err := mongoclient.NewMongoClient(env, log)
+	mongoClient, err := mongoclient.NewMongoClient(rondLogger, mongoclient.Config{
+		MongoDBURL:             env.MongoDBUrl,
+		RolesCollectionName:    env.RolesCollectionName,
+		BindingsCollectionName: env.BindingsCollectionName,
+	})
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},
 		}).Errorf("MongoDB setup failed")
 		return
 	}
-
-	ctx := glogger.WithLogger(
-		mongoclient.WithMongoClient(context.Background(), mongoClient),
-		logrus.NewEntry(log),
-	)
-
-	policiesEvaluators, err := setupEvaluators(ctx, mongoClient, oas, opaModuleConfig, env)
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("failed to create evaluators")
-		return
-	}
-	log.WithField("policiesLength", len(policiesEvaluators)).Debug("policies evaluators partial results computed")
-
-	// Routing
-	router, err := setupRouter(log, env, opaModuleConfig, oas, policiesEvaluators, mongoClient)
 	if mongoClient != nil {
 		defer mongoClient.Disconnect()
 	}
+
+	mongoClientForBuiltin, err := custom_builtins.NewMongoClient(rondLogger, env.MongoDBUrl)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"error": logrus.Fields{"message": err.Error()},
+		}).Errorf("MongoDB for builtin setup failed")
+		return
+	}
+	if mongoClientForBuiltin != nil {
+		defer mongoClientForBuiltin.Disconnect()
+	}
+
+	var m *metrics.Metrics
+	var registry *prometheus.Registry
+	if env.ExposeMetrics {
+		registry = prometheus.NewRegistry()
+		registry.MustRegister(
+			collectors.NewGoCollector(),
+			collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+		)
+		m = rondprometheus.SetupMetrics(registry)
+	}
+	sdk, err := sdk.NewFromOAS(context.Background(), opaModuleConfig, oas, &sdk.Options{
+		Metrics: m,
+		EvaluatorOptions: &sdk.EvaluatorOptions{
+			EnablePrintStatements: env.IsTraceLogLevel(),
+			MongoClient:           mongoClientForBuiltin,
+		},
+		Logger: rondLogger,
+	})
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"error": logrus.Fields{"message": err.Error()},
+		}).Errorf("failed to create sdk")
+		return
+	}
+
+	// Routing
+	router, err := service.SetupRouter(log, env, opaModuleConfig, oas, sdk, mongoClient, registry)
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},
@@ -136,62 +171,4 @@ func entrypoint(shutdown chan os.Signal) {
 	// We'll accept graceful shutdowns when quit via  and SIGTERM (Ctrl+/)
 	// SIGINT (Ctrl+C), SIGKILL or SIGQUIT will not be caught.
 	helpers.GracefulShutdown(srv, shutdown, log, env.DelayShutdownSeconds)
-}
-
-func setupRouter(
-	log *logrus.Logger,
-	env config.EnvironmentVariables,
-	opaModuleConfig *OPAModuleConfig,
-	oas *OpenAPISpec,
-	policiesEvaluators PartialResultsEvaluators,
-	mongoClient *mongoclient.MongoClient,
-) (*mux.Router, error) {
-	router := mux.NewRouter().UseEncodedPath()
-	router.Use(glogger.RequestMiddlewareLogger(log, []string{"/-/"}))
-	serviceName := "rönd"
-	StatusRoutes(router, serviceName, env.ServiceVersion)
-
-	router.Use(config.RequestMiddlewareEnvironments(env))
-
-	evalRouter := router.NewRoute().Subrouter()
-	if env.Standalone {
-		swaggerRouter, err := swagger.NewRouter(apirouter.NewGorillaMuxRouter(router), swagger.Options{
-			Context: context.Background(),
-			Openapi: &openapi3.T{
-				Info: &openapi3.Info{
-					Title:   serviceName,
-					Version: env.ServiceVersion,
-				},
-			},
-			JSONDocumentationPath: "/openapi/json",
-			YAMLDocumentationPath: "/openapi/yaml",
-		})
-		if err != nil {
-			return nil, err
-		}
-		if err := addStandaloneRoutes(swaggerRouter); err != nil {
-			return nil, err
-		}
-
-		if err = swaggerRouter.GenerateAndExposeSwagger(); err != nil {
-			return nil, err
-		}
-	}
-
-	evalRouter.Use(OPAMiddleware(opaModuleConfig, oas, &env, policiesEvaluators))
-
-	if mongoClient != nil {
-		evalRouter.Use(mongoclient.MongoClientInjectorMiddleware(mongoClient))
-	}
-
-	setupRoutes(evalRouter, oas, env)
-
-	//#nosec G104 -- Produces a false positive
-	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		path, _ := route.GetPathTemplate()
-		log.Tracef("Registered path: %s", path)
-		return nil
-	})
-
-	return router, nil
 }

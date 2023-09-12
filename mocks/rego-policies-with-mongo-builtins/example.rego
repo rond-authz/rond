@@ -4,6 +4,8 @@ import future.keywords.in
 
 foobar = true
 
+todo = true
+
 foo_bar = true
 
 allow_commit {
@@ -29,7 +31,7 @@ filter_projects {
 }
 
 projection_feature_toggle[res] {
-	ft_not_allowed := {x | 
+	ft_not_allowed := {x |
 		some key, val in input.response.body
 			ft_checker with input.ft as key
 		x = key

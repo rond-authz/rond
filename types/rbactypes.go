@@ -12,20 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO: check if types should be removed from here, and set in correct packages
 package types
-
-import (
-	"context"
-)
-
-type User struct {
-	UserID       string
-	UserGroups   []string
-	UserRoles    []Role
-	UserBindings []Binding
-}
-
-type MongoClientContextKey struct{}
 
 type Resource struct {
 	ResourceType string `bson:"resourceType" json:"resourceType,omitempty"`
@@ -42,10 +30,6 @@ type Binding struct {
 	Roles             []string  `bson:"roles" json:"roles,omitempty"`
 }
 
-type BindingFilter struct {
-	BindingID string `bson:"bindingId" json:"bindingId"`
-}
-
 type BindingUpdate struct {
 	Groups   []string `bson:"groups" json:"groups"`
 	Subjects []string `bson:"subjects" json:"subjects"`
@@ -57,25 +41,19 @@ type BindingCreateResponse struct {
 
 type Role struct {
 	RoleID            string   `bson:"roleId" json:"roleId"`
+	RoleName          string   `bson:"name" json:"name"`
 	CRUDDocumentState string   `bson:"__STATE__" json:"-"`
 	Permissions       []string `bson:"permissions" json:"permissions"`
-}
-
-// MongoClientContextKey is the context key that shall be used to save
-// mongo Collection reference in request contexts.
-type IMongoClient interface {
-	Disconnect() error
-
-	RetrieveUserBindings(ctx context.Context, user *User) ([]Binding, error)
-	RetrieveRoles(ctx context.Context) ([]Role, error)
-	RetrieveUserRolesByRolesID(ctx context.Context, userRolesId []string) ([]Role, error)
-
-	FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error)
-	FindMany(ctx context.Context, collectionName string, query map[string]interface{}) ([]interface{}, error)
 }
 
 type RequestError struct {
 	Error      string `json:"error"`
 	Message    string `json:"message"`
 	StatusCode int    `json:"statusCode"`
+}
+
+type User struct {
+	ID         string
+	Groups     []string
+	Properties map[string]any
 }

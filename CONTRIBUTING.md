@@ -49,7 +49,7 @@ sure you run benchmarks and verify that results are not affected by tour changes
 To run benchmark use:
 
 ```sh
-go test ./... -bench=. -run=Bench  -benchmem
+make bench
 ```
 
 ### Bench results

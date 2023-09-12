@@ -28,11 +28,11 @@ import (
 
 	"github.com/rond-authz/rond/types"
 	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"gotest.tools/v3/assert"
 )
 
 const LocalhostMongoDB = "localhost:27017"
@@ -78,7 +78,7 @@ func GetMongoClient(t *testing.T) *mongo.Client {
 	}
 	clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
 	client, err := mongo.Connect(context.Background(), clientOpts)
-	assert.Assert(t, err == nil, "failed mongo db connection")
+	require.NoError(t, err, "failed mongo db connection")
 
 	return client
 }
@@ -99,24 +99,24 @@ func AssertResponseError(t *testing.T, resp *httptest.ResponseRecorder, statusCo
 func AssertResponseFullErrorMessages(t *testing.T, resp *httptest.ResponseRecorder, statusCode int, technicalErrMsg, businessErrMsg string) {
 	t.Helper()
 	respBodyBuff, err := io.ReadAll(resp.Body)
-	assert.Equal(t, err, nil, "Unexpected error in the response body")
+	require.NoError(t, err, "Unexpected error in the response body")
 
 	var respBody types.RequestError
 	err = json.Unmarshal(respBodyBuff, &respBody)
-	assert.Equal(t, err, nil, "Unexpected error during unmarshalling of the response body")
+	require.NoError(t, err, "Unexpected error during unmarshalling of the response body")
 
-	assert.Equal(t, respBody.StatusCode, statusCode, "Unexpected status code")
+	require.Equal(t, statusCode, respBody.StatusCode, "Unexpected status code")
 
 	if technicalErrMsg != "" {
-		assert.Equal(t, respBody.Error, technicalErrMsg, "Unexpected technical error message")
+		require.Equal(t, technicalErrMsg, respBody.Error, "Unexpected technical error message")
 	}
 
 	if businessErrMsg != "" {
-		assert.Equal(t, respBody.Message, businessErrMsg, "Unexpected technical error message")
+		require.Equal(t, businessErrMsg, respBody.Message, "Unexpected technical error message")
 	}
 }
 
-//#nosec G104 -- Ignored errors
+// #nosec G104 -- Ignored errors
 func PopulateDBForTesting(
 	t *testing.T,
 	ctx context.Context,
@@ -127,21 +127,25 @@ func PopulateDBForTesting(
 	roles := []interface{}{
 		types.Role{
 			RoleID:            "role1",
+			RoleName:          "Role1",
 			Permissions:       []string{"permission1", "permission2", "foobar"},
 			CRUDDocumentState: "PUBLIC",
 		},
 		types.Role{
 			RoleID:            "role3",
+			RoleName:          "Role3",
 			Permissions:       []string{"permission3", "permission5", "console.project.view"},
 			CRUDDocumentState: "PUBLIC",
 		},
 		types.Role{
 			RoleID:            "role6",
+			RoleName:          "Role6",
 			Permissions:       []string{"permission3", "permission5"},
 			CRUDDocumentState: "PRIVATE",
 		},
 		types.Role{
 			RoleID:            "notUsedByAnyone",
+			RoleName:          "Not Used By Anyone",
 			Permissions:       []string{"permissionNotUsed1", "permissionNotUsed2"},
 			CRUDDocumentState: "PUBLIC",
 		},

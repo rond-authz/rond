@@ -1,0 +1,476 @@
+// Copyright 2021 Mia srl
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package openapi
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/internal/utils"
+	"github.com/rond-authz/rond/logging"
+
+	"github.com/uptrace/bunrouter"
+)
+
+const HTTPScheme = "http"
+
+var AllHTTPMethod = "all"
+
+var OasSupportedHTTPMethods = []string{
+	http.MethodGet,
+	http.MethodPost,
+	http.MethodPut,
+	http.MethodPatch,
+	http.MethodDelete,
+	http.MethodHead,
+}
+var (
+	ErrRequestFailed = errors.New("request failed")
+)
+
+var ErrNotFoundOASDefinition = errors.New("not found oas definition")
+
+type RouterInfo struct {
+	MatchedPath   string
+	RequestedPath string
+	Method        string
+}
+
+type XPermissionKey struct{}
+
+// Config v1 //
+type ResourceFilter struct {
+	RowFilter RowFilterConfiguration `json:"rowFilter"`
+}
+
+type RowFilterConfiguration struct {
+	HeaderKey string `json:"headerKey"`
+	Enabled   bool   `json:"enabled"`
+}
+
+type ResponseFilterConfiguration struct {
+	Policy string `json:"policy"`
+}
+
+type XPermission struct {
+	AllowPermission string                      `json:"allow"`
+	ResponseFilter  ResponseFilterConfiguration `json:"responseFilter"`
+	ResourceFilter  ResourceFilter              `json:"resourceFilter"`
+	Options         core.PermissionOptions      `json:"options"`
+}
+
+// END Config v1 //
+
+type VerbConfig struct {
+	PermissionV1 *XPermission     `json:"x-permission"`
+	PermissionV2 *core.RondConfig `json:"x-rond"`
+}
+
+type PathVerbs map[string]VerbConfig
+
+type OpenAPIPaths map[string]PathVerbs
+
+type OpenAPISpec struct {
+	Paths OpenAPIPaths `json:"paths"`
+}
+
+func cleanWildcard(path string) string {
+	if strings.HasSuffix(path, "*") {
+		// is a wildcard parameter that matches everything and must always be at the end of the route
+		path = strings.ReplaceAll(path, "*", "*param")
+	}
+	return path
+}
+
+type RoutesMap map[string]bool
+
+func (oas *OpenAPISpec) createRoutesMap() RoutesMap {
+	routesMap := make(RoutesMap)
+	for OASPath, OASContent := range oas.Paths {
+		for method := range OASContent {
+			route := OASPath + "/" + strings.ToUpper(method)
+			routesMap[route] = true
+		}
+	}
+	return routesMap
+}
+
+func (rMap RoutesMap) contains(path string, method string) bool {
+	route := path + "/" + method
+	_, hasRoute := rMap[route]
+	return hasRoute
+}
+
+func createOasHandler(scopedMethodContent VerbConfig, oasPathCleaned string) func(http.ResponseWriter, *http.Request) {
+	permission := scopedMethodContent.PermissionV2
+	return func(w http.ResponseWriter, r *http.Request) {
+		header := w.Header()
+		header.Set("allow", permission.RequestFlow.PolicyName)
+		header.Set("resourceFilter.rowFilter.enabled", strconv.FormatBool(permission.RequestFlow.GenerateQuery))
+		header.Set("resourceFilter.rowFilter.headerKey", permission.RequestFlow.QueryOptions.HeaderName)
+		header.Set("responseFilter.policy", permission.ResponseFlow.PolicyName)
+		header.Set("options.enableResourcePermissionsMapOptimization", strconv.FormatBool(permission.Options.EnableResourcePermissionsMapOptimization))
+		header.Set("options.ignoreTrailingSlash", strconv.FormatBool(permission.Options.IgnoreTrailingSlash))
+		header.Set("pathTemplate", oasPathCleaned)
+	}
+}
+
+func (oas *OpenAPISpec) PrepareOASRouter() (*bunrouter.CompatRouter, error) {
+	OASRouter := bunrouter.New().Compat()
+	routeMap := oas.createRoutesMap()
+
+	configurationError := validateConfiguration(oas)
+	if configurationError != nil {
+		return nil, configurationError
+	}
+
+	for OASPath, OASContent := range oas.Paths {
+		pathWithPathVariablesToColons := ConvertPathVariablesToColons(OASPath)
+		OASPathCleaned := cleanWildcard(pathWithPathVariablesToColons)
+
+		for method, methodContent := range OASContent {
+			scopedMethod := strings.ToUpper(method)
+			handler := createOasHandler(methodContent, pathWithPathVariablesToColons)
+
+			if scopedMethod != strings.ToUpper(AllHTTPMethod) {
+				registerLaxPath(OASRouter, scopedMethod, methodContent, OASPathCleaned, handler)
+				continue
+			}
+
+			for _, method := range OasSupportedHTTPMethods {
+				if !routeMap.contains(OASPath, method) {
+					registerLaxPath(OASRouter, method, methodContent, OASPathCleaned, handler)
+				}
+			}
+		}
+	}
+
+	return OASRouter, nil
+}
+
+func registerLaxPath(OASRouter *bunrouter.CompatRouter, method string, methodContent VerbConfig, OASPathCleaned string, handler http.HandlerFunc) {
+	OASRouter.Handle(method, OASPathCleaned, handler)
+	if methodContent.PermissionV2 != nil && methodContent.PermissionV2.Options.IgnoreTrailingSlash {
+		slashLaxPathToRegister := OASPathCleaned
+		if strings.HasSuffix(OASPathCleaned, "/") {
+			slashLaxPathToRegister = strings.TrimSuffix(slashLaxPathToRegister, "/")
+		} else {
+			slashLaxPathToRegister += "/"
+		}
+		OASRouter.Handle(method, slashLaxPathToRegister, handler)
+	}
+}
+
+// FIXME: This is not a logic method of OAS, but could be a method of OASRouter
+func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path string, method string) (core.RondConfig, RouterInfo, error) {
+	routerInfo := RouterInfo{
+		Method:        method,
+		RequestedPath: path,
+	}
+
+	recorder := httptest.NewRecorder()
+	responseReader := strings.NewReader("request-permissions")
+	request, err := http.NewRequest(method, path, responseReader)
+	if err != nil {
+		return core.RondConfig{}, routerInfo, err
+	}
+	OASRouter.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		return core.RondConfig{}, routerInfo, fmt.Errorf("%w: %s %s", ErrNotFoundOASDefinition, utils.SanitizeString(method), utils.SanitizeString(path))
+	}
+
+	recorderResult := recorder.Result()
+	pathTemplate := recorderResult.Header.Get("pathTemplate")
+	routerInfo.MatchedPath = pathTemplate
+	rowFilterEnabled, err := strconv.ParseBool(recorderResult.Header.Get("resourceFilter.rowFilter.enabled"))
+	if err != nil {
+		return core.RondConfig{}, routerInfo, fmt.Errorf("error while parsing rowFilter.enabled: %s", err)
+	}
+	enableResourcePermissionsMapOptimization, err := strconv.ParseBool(recorderResult.Header.Get("options.enableResourcePermissionsMapOptimization"))
+	if err != nil {
+		return core.RondConfig{}, routerInfo, fmt.Errorf("error while parsing options.enableResourcePermissionsMapOptimization: %s", err)
+	}
+	ignoreTrailingSlash, err := strconv.ParseBool(recorderResult.Header.Get("options.ignoreTrailingSlash"))
+	if err != nil {
+		return core.RondConfig{}, routerInfo, fmt.Errorf("error while parsing options.ignoreTrailingSlash: %s", err)
+	}
+	return core.RondConfig{
+		RequestFlow: core.RequestFlow{
+			PolicyName:    recorderResult.Header.Get("allow"),
+			GenerateQuery: rowFilterEnabled,
+			QueryOptions: core.QueryOptions{
+				HeaderName: recorderResult.Header.Get("resourceFilter.rowFilter.headerKey"),
+			},
+		},
+		ResponseFlow: core.ResponseFlow{
+			PolicyName: recorderResult.Header.Get("responseFilter.policy"),
+		},
+		Options: core.PermissionOptions{
+			EnableResourcePermissionsMapOptimization: enableResourcePermissionsMapOptimization,
+			IgnoreTrailingSlash:                      ignoreTrailingSlash,
+		},
+	}, routerInfo, nil
+}
+
+func newRondConfigFromPermissionV1(v1Permission *XPermission) *core.RondConfig {
+	return &core.RondConfig{
+		RequestFlow: core.RequestFlow{
+			PolicyName:    v1Permission.AllowPermission,
+			GenerateQuery: v1Permission.ResourceFilter.RowFilter.Enabled,
+			QueryOptions: core.QueryOptions{
+				HeaderName: v1Permission.ResourceFilter.RowFilter.HeaderKey,
+			},
+		},
+		ResponseFlow: core.ResponseFlow{
+			PolicyName: v1Permission.ResponseFilter.Policy,
+		},
+		Options: core.PermissionOptions{
+			EnableResourcePermissionsMapOptimization: v1Permission.Options.EnableResourcePermissionsMapOptimization,
+			IgnoreTrailingSlash:                      v1Permission.Options.IgnoreTrailingSlash,
+		},
+	}
+}
+
+// adaptOASSpec transforms input OpenAPISpec transforming x-permission based configuration
+// to the x-rond based one.
+// If a configurations presents both x-permission and x-rond for a specific verb the
+// provided x-rond will be considered as the adapter will skip the verb.
+func adaptOASSpec(spec *OpenAPISpec) {
+	for path := range spec.Paths {
+		pathConfig := spec.Paths[path]
+		for verb := range pathConfig {
+			verbConfig := pathConfig[verb]
+			if verbConfig.PermissionV1 != nil {
+				if verbConfig.PermissionV2 == nil {
+					verbConfig.PermissionV2 = newRondConfigFromPermissionV1(verbConfig.PermissionV1)
+				}
+				verbConfig.PermissionV1 = nil
+			}
+			pathConfig[verb] = verbConfig
+		}
+		spec.Paths[path] = pathConfig
+	}
+}
+
+func deserializeSpec(spec []byte, errorWrapper error) (*OpenAPISpec, error) {
+	var oas OpenAPISpec
+	if err := json.Unmarshal(spec, &oas); err != nil {
+		return nil, fmt.Errorf("%w: unmarshal error: %s", errorWrapper, err.Error())
+	}
+
+	adaptOASSpec(&oas)
+
+	return &oas, nil
+}
+
+func fetchOpenAPI(log logging.Logger, url string) (*OpenAPISpec, error) {
+	resp, err := http.DefaultClient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrRequestFailed, err)
+	}
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.WithFields(map[string]any{
+				"error": map[string]any{"message": err.Error()},
+			}).Error("failed response body close")
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%w: invalid status code %d", ErrRequestFailed, resp.StatusCode)
+	}
+
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	return deserializeSpec(bodyBytes, ErrRequestFailed)
+}
+
+func LoadOASFile(APIPermissionsFilePath string) (*OpenAPISpec, error) {
+	fileContentByte, err := utils.ReadFile(APIPermissionsFilePath)
+	if err != nil {
+		return nil, err
+	}
+	return deserializeSpec(fileContentByte, utils.ErrFileLoadFailed)
+}
+
+type LoadOptions struct {
+	APIPermissionsFilePath string
+	TargetServiceOASPath   string
+	TargetServiceHost      string
+}
+
+func LoadOASFromFileOrNetwork(log logging.Logger, config LoadOptions) (*OpenAPISpec, error) {
+	if config.APIPermissionsFilePath != "" {
+		log.WithField("oasFilePath", config.APIPermissionsFilePath).Debug("Attempt to load OAS from file")
+		oas, err := LoadOASFile(config.APIPermissionsFilePath)
+		if err != nil {
+			log.WithFields(map[string]any{
+				"APIPermissionsFilePath": config.APIPermissionsFilePath,
+			}).Warn("failed api permissions file read")
+			return nil, err
+		}
+
+		return oas, nil
+	}
+
+	if config.TargetServiceOASPath != "" {
+		log.WithField("oasApiPath", config.TargetServiceOASPath).Debug("Attempt to load OAS from target service")
+		var oas *OpenAPISpec
+		documentationURL := fmt.Sprintf("%s://%s%s", HTTPScheme, config.TargetServiceHost, config.TargetServiceOASPath)
+		for {
+			fetchedOAS, err := fetchOpenAPI(log, documentationURL)
+			if err != nil {
+				log.WithFields(map[string]any{
+					"targetServiceHost": config.TargetServiceHost,
+					"targetOASPath":     config.TargetServiceOASPath,
+					"error":             map[string]any{"message": err.Error()},
+				}).Warn("failed OAS fetch, retry in 1s")
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			oas = fetchedOAS
+			break
+		}
+		return oas, nil
+	}
+
+	return nil, fmt.Errorf("missing openapi config: one of TargetServiceOASPath or APIPermissionsFilePath is required")
+}
+
+func WithXPermission(requestContext context.Context, permission *core.RondConfig) context.Context {
+	return context.WithValue(requestContext, XPermissionKey{}, permission)
+}
+
+// GetXPermission can be used by a request handler to get XPermission instance from its context.
+func GetXPermission(requestContext context.Context) (*core.RondConfig, error) {
+	permission, ok := requestContext.Value(XPermissionKey{}).(*core.RondConfig)
+	if !ok {
+		return nil, fmt.Errorf("no permission configuration found in request context")
+	}
+
+	return permission, nil
+}
+
+var matchColons = regexp.MustCompile(`\/:(\w+)`)
+
+func ConvertPathVariablesToBrackets(path string) string {
+	return matchColons.ReplaceAllString(path, "/{$1}")
+}
+
+var matchBrackets = regexp.MustCompile(`\/{(\w+)}`)
+
+func ConvertPathVariablesToColons(path string) string {
+	return matchBrackets.ReplaceAllString(path, "/:$1")
+}
+
+type IgnoreTrailingSlashMap map[string]map[string]bool
+
+func (i IgnoreTrailingSlashMap) Add(path, verb string, ignore bool) {
+	if verbMap, ok := i[path]; !ok || verbMap == nil {
+		i[path] = make(map[string]bool)
+	}
+	i[path][verb] = ignore
+}
+
+func findDuplicatesInList(list []string) map[string]bool {
+	duplicates := make(map[string]bool)
+	for i := 0; i < len(list)-1; i++ {
+		for j := i + 1; j < len(list); j++ {
+			if list[i] == list[j] {
+				duplicates[list[i]] = true
+			}
+		}
+	}
+	return duplicates
+}
+
+func listContainsString(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
+
+func validateConfiguration(oas *OpenAPISpec) error {
+	paths, methodsMap, ignoreTrailingSlashMap := oas.UnwrapConfiguration()
+	var pathsWithoutSuffix []string
+
+	for _, path := range paths {
+		pathsWithoutSuffix = append(pathsWithoutSuffix, strings.TrimSuffix(path, "/"))
+	}
+
+	duplicates := findDuplicatesInList(pathsWithoutSuffix)
+
+	for path := range duplicates {
+		pathWithSuffix := path + "/"
+		for _, method := range methodsMap[path] {
+			shouldIgnoreTrailingSlash := listContainsString(methodsMap[path], method) && listContainsString(methodsMap[pathWithSuffix], method) && (ignoreTrailingSlashMap[path][method] || ignoreTrailingSlashMap[pathWithSuffix][method])
+			if shouldIgnoreTrailingSlash {
+				return fmt.Errorf("duplicate paths: \"%s\" and \"%s\" with ignoreTrailingSlash flag active", path, pathWithSuffix)
+			}
+		}
+	}
+	return nil
+}
+
+func (oas *OpenAPISpec) UnwrapConfiguration() ([]string, map[string][]string, IgnoreTrailingSlashMap) {
+	paths := make([]string, 0)
+	methods := make(map[string][]string)
+	ignoreTrailingSlashMap := make(IgnoreTrailingSlashMap)
+
+	for path, pathMethods := range oas.Paths {
+		paths = append(paths, path)
+
+		for method, methodContent := range pathMethods {
+			upperCaseMethod := strings.ToUpper(method)
+
+			if methodContent.PermissionV2 != nil {
+				if method == AllHTTPMethod {
+					for _, verb := range OasSupportedHTTPMethods {
+						ignoreTrailingSlashMap.Add(path, strings.ToUpper(verb), methodContent.PermissionV2.Options.IgnoreTrailingSlash)
+						continue
+					}
+				}
+				ignoreTrailingSlashMap.Add(path, upperCaseMethod, methodContent.PermissionV2.Options.IgnoreTrailingSlash)
+			}
+
+			if method == AllHTTPMethod {
+				methods[path] = OasSupportedHTTPMethods
+				continue
+			}
+
+			if methods[path] == nil {
+				methods[path] = []string{}
+			}
+
+			methods[path] = append(methods[path], upperCaseMethod)
+		}
+	}
+
+	return paths, methods, ignoreTrailingSlashMap
+}

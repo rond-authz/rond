@@ -18,42 +18,45 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/mia-platform/configlib"
 )
 
 const (
-	APIPermissionsFilePathEnvKey = "API_PERMISSIONS_FILE_PATH"
-	TargetServiceOASPathEnvKey   = "TARGET_SERVICE_OAS_PATH"
-	StandaloneEnvKey             = "STANDALONE"
-	TargetServiceHostEnvKey      = "TARGET_SERVICE_HOST"
-	BindingsCrudServiceURL       = "BINDINGS_CRUD_SERVICE_URL"
+	apiPermissionsFilePathEnvKey = "API_PERMISSIONS_FILE_PATH"
+	targetServiceOASPathEnvKey   = "TARGET_SERVICE_OAS_PATH"
+	standaloneEnvKey             = "STANDALONE"
+	targetServiceHostEnvKey      = "TARGET_SERVICE_HOST"
+	bindingsCrudServiceURL       = "BINDINGS_CRUD_SERVICE_URL"
 
-	TraceLogLevel = "trace"
+	traceLogLevel = "trace"
 )
 
 // EnvironmentVariables struct with the mapping of desired
 // environment variables.
 type EnvironmentVariables struct {
-	LogLevel               string
-	HTTPPort               string
-	ServiceVersion         string
-	TargetServiceHost      string
-	TargetServiceOASPath   string
-	OPAModulesDirectory    string
-	APIPermissionsFilePath string
-	UserPropertiesHeader   string
-	UserGroupsHeader       string
-	UserIdHeader           string
-	ClientTypeHeader       string
-	BindingsCrudServiceURL string
-	MongoDBUrl             string
-	RolesCollectionName    string
-	BindingsCollectionName string
-	PathPrefixStandalone   string
-	DelayShutdownSeconds   int
-	Standalone             bool
+	LogLevel                 string
+	HTTPPort                 string
+	ServiceVersion           string
+	TargetServiceHost        string
+	TargetServiceOASPath     string
+	OPAModulesDirectory      string
+	APIPermissionsFilePath   string
+	UserPropertiesHeader     string
+	UserGroupsHeader         string
+	UserIdHeader             string
+	ClientTypeHeader         string
+	BindingsCrudServiceURL   string
+	MongoDBUrl               string
+	RolesCollectionName      string
+	BindingsCollectionName   string
+	PathPrefixStandalone     string
+	DelayShutdownSeconds     int
+	Standalone               bool
+	AdditionalHeadersToProxy string
+	ExposeMetrics            bool
 }
 
 var EnvVariablesConfig = []configlib.EnvConfig{
@@ -73,11 +76,11 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		DefaultValue: "latest",
 	},
 	{
-		Key:      TargetServiceHostEnvKey,
+		Key:      targetServiceHostEnvKey,
 		Variable: "TargetServiceHost",
 	},
 	{
-		Key:      TargetServiceOASPathEnvKey,
+		Key:      targetServiceOASPathEnvKey,
 		Variable: "TargetServiceOASPath",
 	},
 	{
@@ -86,7 +89,7 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		Required: true,
 	},
 	{
-		Key:      APIPermissionsFilePathEnvKey,
+		Key:      apiPermissionsFilePathEnvKey,
 		Variable: "APIPermissionsFilePath",
 	},
 	{
@@ -127,7 +130,7 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		Variable: "RolesCollectionName",
 	},
 	{
-		Key:      StandaloneEnvKey,
+		Key:      standaloneEnvKey,
 		Variable: "Standalone",
 	},
 	{
@@ -136,8 +139,18 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 		DefaultValue: "/eval",
 	},
 	{
-		Key:      BindingsCrudServiceURL,
+		Key:      bindingsCrudServiceURL,
 		Variable: "BindingsCrudServiceURL",
+	},
+	{
+		Key:          "ADDITIONAL_HEADERS_TO_PROXY",
+		Variable:     "AdditionalHeadersToProxy",
+		DefaultValue: "miauserid",
+	},
+	{
+		Key:          "EXPOSE_METRICS",
+		Variable:     "ExposeMetrics",
+		DefaultValue: "true",
 	},
 }
 
@@ -171,12 +184,42 @@ func GetEnvOrDie() EnvironmentVariables {
 	}
 
 	if env.TargetServiceHost == "" && !env.Standalone {
-		panic(fmt.Errorf("missing environment variables, one of %s or %s set to true is required", TargetServiceHostEnvKey, StandaloneEnvKey))
+		panic(fmt.Errorf("missing environment variables, one of %s or %s set to true is required", targetServiceHostEnvKey, standaloneEnvKey))
 	}
 
 	if env.Standalone && env.BindingsCrudServiceURL == "" {
-		panic(fmt.Errorf("missing environment variables, %s must be set if mode is standalone", BindingsCrudServiceURL))
+		panic(fmt.Errorf("missing environment variables, %s must be set if mode is standalone", bindingsCrudServiceURL))
+	}
+
+	if env.APIPermissionsFilePath == "" && env.TargetServiceOASPath == "" {
+		panic(fmt.Errorf("missing environment variables, one of %s or %s is required", apiPermissionsFilePathEnvKey, targetServiceOASPathEnvKey))
 	}
 
 	return env
+}
+
+var extraHeadersKeys = []string{"x-request-id", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-host"}
+
+func (env EnvironmentVariables) GetAdditionalHeadersToProxy() []string {
+	if env.AdditionalHeadersToProxy == "" {
+		return extraHeadersKeys
+	}
+	customHeaders := strings.Split(env.AdditionalHeadersToProxy, ",")
+	for _, extraHeaderKey := range extraHeadersKeys {
+		duplicate := false
+		for _, customHeader := range customHeaders {
+			if customHeader == extraHeaderKey {
+				duplicate = true
+				break
+			}
+		}
+		if !duplicate {
+			customHeaders = append(customHeaders, extraHeaderKey)
+		}
+	}
+	return customHeaders
+}
+
+func (env EnvironmentVariables) IsTraceLogLevel() bool {
+	return env.LogLevel == traceLogLevel
 }

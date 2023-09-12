@@ -43,8 +43,11 @@ Rönd natively allows you to build an RBAC solution based on Roles and Bindings 
 
 Here is a list of awesome people using Rönd, if you're using it but do not appear in this list feel free to open a PR!
 
- * [Mia-Platform](https://mia-platform.eu)
+ * [Cattolica Assicurazioni](https://www.cattolica.it/)
+ * [MDConcierge](https://www.mdconcierge.it/)
  * [Mia-Care](https://mia-care.io/)
+ * [Mia-Platform](https://mia-platform.eu)
+ * [PreviDigital](https://previdigital.com/)
 
 ## Local development
 
@@ -56,7 +59,15 @@ For local development you need to have Go installed locally, checkout the [go.mo
 make test
 ```
 
-Please note that in order to run tests you need Docker to be installed, since tests need a local instance of MongoDB to be up and running `make tests` takes care of it by creating a new `mongo` container.
+Please note that in order to run tests you need Docker to be installed; tests need a local instance of MongoDB to be up and running, the `make test` command will take care of it by creating a new `mongodb` container. The container is auomatically removed at the end of tests; if it remains leaked simply run `make clean`.
+
+#### With coverage
+
+To run test with coverage file in output, run
+
+```sh
+make coverage
+```
 
 ### Contributing
 

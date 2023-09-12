@@ -6,6 +6,13 @@
     "version": "3.2.3"
   },
   "paths": {
+    "/assert-user": {
+      "get": {
+        "x-permission": {
+          "allow": "assert_user"
+        }
+      }
+    },
     "/users/": {
       "head": {
         "x-permission": {

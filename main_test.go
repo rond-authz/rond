@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -27,20 +28,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mia-platform/glogger/v2"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
+	"github.com/rond-authz/rond/internal/utils"
+	rondlogrus "github.com/rond-authz/rond/logging/logrus"
+	"github.com/rond-authz/rond/metrics"
+	rondprometheus "github.com/rond-authz/rond/metrics/prometheus"
+	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/sdk"
+	"github.com/rond-authz/rond/service"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"gopkg.in/h2non/gock.v1"
-	"gotest.tools/v3/assert"
 )
 
 func TestProxyOASPath(t *testing.T) {
@@ -64,7 +70,7 @@ func TestProxyOASPath(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3000"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/custom/documentation/json"},
@@ -76,14 +82,13 @@ func TestProxyOASPath(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
 
 		resp, err := http.DefaultClient.Get("http://localhost:3000/custom/documentation/json")
 
-		require.Equal(t, nil, err, "error calling docs")
+		require.NoError(t, err, "error calling docs")
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.True(t, gock.IsDone(), "the proxy does not blocks the request for documentations path.")
 	})
@@ -108,7 +113,7 @@ func TestProxyOASPath(t *testing.T) {
 			Reply(200).
 			File("./mocks/documentationPathMock.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3007"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3006"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -119,7 +124,6 @@ func TestProxyOASPath(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -151,7 +155,7 @@ func TestProxyOASPath(t *testing.T) {
 			Reply(200).
 			File("./mocks/documentationPathMockWithPermissions.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3009"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3008"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -162,7 +166,6 @@ func TestProxyOASPath(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -176,7 +179,7 @@ func TestProxyOASPath(t *testing.T) {
 // FIXME: This function needs to be performed as last in order to make other tests working
 func TestEntrypoint(t *testing.T) {
 	t.Run("fails for invalid module path, no module found", func(t *testing.T) {
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3000"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -187,7 +190,6 @@ func TestEntrypoint(t *testing.T) {
 
 		entrypoint(shutdown)
 		require.True(t, true, "If we get here the service has not started")
-		unsetEnvs()
 	})
 
 	t.Run("opens server on port 3000", func(t *testing.T) {
@@ -204,7 +206,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3000"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -216,7 +218,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 
@@ -234,7 +235,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3000"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -258,7 +259,6 @@ func TestEntrypoint(t *testing.T) {
 
 		flag := <-done
 		require.Equal(t, true, flag)
-		unsetEnvs()
 	})
 
 	t.Run("opa integration", func(t *testing.T) {
@@ -272,7 +272,7 @@ func TestEntrypoint(t *testing.T) {
 			if r.URL.Path == "/documentation/json" {
 				return false
 			}
-			if r.URL.Path == "/users/" && r.URL.Host == "localhost:3001" {
+			if (r.URL.Path == "/users/" || r.URL.Path == "/assert-user") && r.URL.Host == "localhost:3001" {
 				return false
 			}
 			return true
@@ -283,7 +283,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3000"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -295,7 +295,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -309,6 +308,24 @@ func TestEntrypoint(t *testing.T) {
 
 			require.Equal(t, nil, err)
 			require.Equal(t, http.StatusOK, resp.StatusCode)
+			require.True(t, gock.IsDone(), "the proxy blocks the request when the permissions are granted.")
+		})
+
+		t.Run("ok - user assertions", func(t *testing.T) {
+			gock.Flush()
+
+			gock.New("http://localhost:3001/").
+				Get("/assert-user").
+				Reply(200)
+
+			req, err := http.NewRequest(http.MethodGet, "http://localhost:3000/assert-user", nil)
+			require.Nil(t, err)
+			req.Header.Set("miauserid", "the-user-id")
+
+			resp, err := http.DefaultClient.Do(req)
+			require.Equal(t, nil, err)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+
 			require.True(t, gock.IsDone(), "the proxy blocks the request when the permissions are granted.")
 		})
 
@@ -346,7 +363,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMock.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3026"},
 			{name: "LOG_LEVEL", value: "fatal"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3001"},
@@ -360,7 +377,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -396,7 +412,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/mockWithXPermissionEmpty.json")
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3005"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3004"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -408,7 +424,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -441,7 +456,7 @@ func TestEntrypoint(t *testing.T) {
 			return true
 		})
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3333"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:4000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/nestedPathsConfig.json"},
@@ -453,7 +468,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -490,7 +504,7 @@ func TestEntrypoint(t *testing.T) {
 			return true
 		})
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "5555"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
@@ -502,7 +516,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -539,7 +552,7 @@ func TestEntrypoint(t *testing.T) {
 			return true
 		})
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "5556"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
@@ -551,7 +564,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -588,7 +600,7 @@ func TestEntrypoint(t *testing.T) {
 			return true
 		})
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "5557"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:6000"},
 			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/mockForEncodedTest.json"},
@@ -600,7 +612,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -612,6 +623,124 @@ func TestEntrypoint(t *testing.T) {
 		resp, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5557%s", path), "application/json", nil)
 		require.Equal(t, nil, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code.")
+		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
+	})
+
+	t.Run("api permissions file path registered with and without trailing slash when ignoreTrailingSlash is true", func(t *testing.T) {
+		gock.Flush()
+		shutdown := make(chan os.Signal, 1)
+
+		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
+
+		gock.EnableNetworking()
+		gock.NetworkingFilter(func(r *http.Request) bool {
+			if r.URL.Path == "/documentation/json" {
+				return false
+			}
+			if r.URL.Path == "/with/trailing/slash/" && r.URL.Host == "localhost:3339" {
+				return false
+			}
+			if r.URL.Path == "/with/trailing/slash" && r.URL.Host == "localhost:3339" {
+				return false
+			}
+			if r.URL.Path == "/without/trailing/slash" && r.URL.Host == "localhost:3339" {
+				return false
+			}
+			if r.URL.Path == "/without/trailing/slash/" && r.URL.Host == "localhost:3339" {
+				return false
+			}
+			if r.URL.Path == "/ignore/trailing/slash" && r.URL.Host == "localhost:3339" {
+				return false
+			}
+			if r.URL.Path == "/ignore/trailing/slash/" && r.URL.Host == "localhost:3339" {
+				return false
+			}
+
+			return true
+		})
+
+		setEnvs(t, []env{
+			{name: "HTTP_PORT", value: "5559"},
+			{name: "TARGET_SERVICE_HOST", value: "localhost:3339"},
+			{name: "API_PERMISSIONS_FILE_PATH", value: "./mocks/nestedPathsConfig.json"},
+			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
+			{name: "LOG_LEVEL", value: "fatal"},
+		})
+
+		go func() {
+			entrypoint(shutdown)
+		}()
+		defer func() {
+			shutdown <- syscall.SIGTERM
+		}()
+		time.Sleep(1 * time.Second)
+
+		gock.New("http://localhost:3339").
+			Get("/with/trailing/slash/").
+			Reply(200).
+			JSON(map[string]interface{}{"originalMsg": "this is the original"})
+
+		gock.New("http://localhost:3339").
+			Get("/with/trailing/slash").
+			Reply(200).
+			JSON(map[string]interface{}{"originalMsg": "this is the original"})
+
+		gock.New("http://localhost:3339").
+			Post("/without/trailing/slash").
+			Reply(200)
+
+		gock.New("http://localhost:3339").
+			Post("/without/trailing/slash/").
+			Reply(200)
+
+		gock.New("http://localhost:3339").
+			Get("/ignore/trailing/slash/").
+			Reply(200).
+			JSON(map[string]interface{}{"originalMsg": "this is the original"})
+
+		gock.New("http://localhost:3339").
+			Get("/ignore/trailing/slash").
+			Reply(200).
+			JSON(map[string]interface{}{"originalMsg": "this is the original"})
+
+		resp1, err := http.DefaultClient.Get(fmt.Sprintf("http://localhost:5559%s", "/with/trailing/slash/"))
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp1.StatusCode, "unexpected status code.")
+
+		respBody1, _ := io.ReadAll(resp1.Body)
+		require.Equal(t, "\"/with/trailing/slash/\"", string(respBody1))
+
+		resp2, err := http.DefaultClient.Get(fmt.Sprintf("http://localhost:5559%s", "/with/trailing/slash"))
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp2.StatusCode, "unexpected status code.")
+
+		respBody2, _ := io.ReadAll(resp2.Body)
+		require.Equal(t, "\"/with/trailing/slash\"", string(respBody2))
+
+		resp3, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5559%s", "/without/trailing/slash"), "application/json", nil)
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp3.StatusCode, "unexpected status code.")
+
+		resp4, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5559%s", "/without/trailing/slash/"), "application/json", nil)
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp4.StatusCode, "unexpected status code.")
+
+		resp5, err := http.DefaultClient.Get(fmt.Sprintf("http://localhost:5559%s", "/ignore/trailing/slash/"))
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp5.StatusCode, "unexpected status code.")
+
+		respBody5, _ := io.ReadAll(resp5.Body)
+		require.Equal(t, "\"/ignore/trailing/slash/\"", string(respBody5))
+
+		resp6, err := http.DefaultClient.Get(fmt.Sprintf("http://localhost:5559%s", "/ignore/trailing/slash"))
+		require.Equal(t, nil, err)
+		require.Equal(t, http.StatusOK, resp6.StatusCode, "unexpected status code.")
+
+		respBody6, _ := io.ReadAll(resp6.Body)
+		require.Equal(t, "\"/ignore/trailing/slash\"", string(respBody6))
+
 		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
 	})
 
@@ -651,7 +780,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3003"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3002"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -686,7 +815,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -712,7 +840,7 @@ func TestEntrypoint(t *testing.T) {
 			require.NoError(t, err)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
-			req.Header.Set(ContentTypeHeaderKey, "application/json")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
 			client := &http.Client{}
 			resp, err := client.Do(req)
 			require.Equal(t, "user1", resp.Header.Get("someuserheader"))
@@ -758,7 +886,7 @@ func TestEntrypoint(t *testing.T) {
 			require.NoError(t, err)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
-			req.Header.Set(ContentTypeHeaderKey, "application/json")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
 			client := &http.Client{}
 			resp, err := client.Do(req)
 
@@ -795,7 +923,7 @@ func TestEntrypoint(t *testing.T) {
 
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
-			req.Header.Set(ContentTypeHeaderKey, "application/json")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
 			client := &http.Client{}
 			resp, err := client.Do(req)
 
@@ -826,7 +954,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMockWithRowFiltering.json")
 
-		unsetBaseEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3034"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3033"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -841,7 +969,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetOtherEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -872,8 +1000,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetBaseEnvs()
-			unsetOtherEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -922,7 +1048,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "5034"},
 			{name: "LOG_LEVEL", value: "fatal"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:5033"},
@@ -931,7 +1057,7 @@ func TestEntrypoint(t *testing.T) {
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
-			{name: "LOG_LEVEL", value: "trace"},
+			{name: "LOG_LEVEL", value: "fatal"},
 		})
 
 		clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
@@ -958,7 +1084,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -1006,7 +1131,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMockWithRowFiltering.json")
 
-		unsetBaseEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3036"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3035"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -1021,7 +1146,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetOtherEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1052,8 +1177,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetBaseEnvs()
-			unsetOtherEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -1092,7 +1215,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/pathsWithWildCardCollision.json")
 
-		unsetBaseEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3039"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3038"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -1105,7 +1228,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetOtherEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1136,8 +1259,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetBaseEnvs()
-			unsetOtherEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -1178,8 +1299,8 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/pathsWithWildCardCollision2.json")
 
-		unsetBaseEnvs := setEnvs([]env{
-			{name: "HTTP_PORT", value: "3039"},
+		setEnvs(t, []env{
+			{name: "HTTP_PORT", value: "3060"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3038"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
@@ -1191,7 +1312,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetOtherEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1222,8 +1343,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetBaseEnvs()
-			unsetOtherEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -1231,7 +1350,7 @@ func TestEntrypoint(t *testing.T) {
 		gock.New("http://localhost:3038/foo/count").
 			Get("/foo/count").
 			Reply(200)
-		req, err := http.NewRequest("GET", "http://localhost:3039/foo/count", nil)
+		req, err := http.NewRequest("GET", "http://localhost:3060/foo/count", nil)
 		require.NoError(t, err)
 
 		req.Header.Set("miausergroups", "group1")
@@ -1264,8 +1383,8 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/pathsWithWildCardCollision.json")
 
-		unsetBaseEnvs := setEnvs([]env{
-			{name: "HTTP_PORT", value: "3039"},
+		setEnvs(t, []env{
+			{name: "HTTP_PORT", value: "3070"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3038"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
 			{name: "OPA_MODULES_DIRECTORY", value: "./mocks/rego-policies"},
@@ -1277,7 +1396,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetOtherEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1308,8 +1427,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetBaseEnvs()
-			unsetOtherEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -1317,7 +1434,7 @@ func TestEntrypoint(t *testing.T) {
 		gock.New("http://localhost:3038/foo/count").
 			Patch("/foo/count").
 			Reply(200)
-		req, err := http.NewRequest("PATCH", "http://localhost:3039/foo/count", nil)
+		req, err := http.NewRequest("PATCH", "http://localhost:3070/foo/count", nil)
 		require.NoError(t, err)
 
 		req.Header.Set("miausergroups", "group1")
@@ -1350,7 +1467,7 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			File("./mocks/oasExampleCrud.json")
 
-		unsetBaseEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "HTTP_PORT", value: "3044"},
 			{name: "TARGET_SERVICE_HOST", value: "localhost:3043"},
 			{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -1363,7 +1480,7 @@ func TestEntrypoint(t *testing.T) {
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-		unsetOtherEnvs := setEnvs([]env{
+		setEnvs(t, []env{
 			{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 			{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 			{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1394,8 +1511,6 @@ func TestEntrypoint(t *testing.T) {
 			entrypoint(shutdown)
 		}()
 		defer func() {
-			unsetBaseEnvs()
-			unsetOtherEnvs()
 			shutdown <- syscall.SIGTERM
 		}()
 		time.Sleep(1 * time.Second)
@@ -1443,7 +1558,7 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 		Reply(200).
 		File("./mocks/mockForResponseFilteringOnResponse.json")
 
-	unsetBaseEnvs := setEnvs([]env{
+	setEnvs(t, []env{
 		{name: "HTTP_PORT", value: "3041"},
 		{name: "TARGET_SERVICE_HOST", value: "localhost:3040"},
 		{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -1458,7 +1573,7 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 	randomizedDBNamePart := testutils.GetRandomName(10)
 	mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-	unsetOtherEnvs := setEnvs([]env{
+	setEnvs(t, []env{
 		{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 		{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 		{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1489,8 +1604,6 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 		entrypoint(shutdown)
 	}()
 	defer func() {
-		unsetBaseEnvs()
-		unsetOtherEnvs()
 		shutdown <- syscall.SIGTERM
 	}()
 	time.Sleep(1 * time.Second)
@@ -1551,15 +1664,9 @@ type env struct {
 	value string
 }
 
-func setEnvs(envsToSet []env) func() {
+func setEnvs(t *testing.T, envsToSet []env) {
 	for _, env := range envsToSet {
-		os.Setenv(env.name, env.value)
-	}
-
-	return func() {
-		for _, env := range envsToSet {
-			os.Unsetenv(env.name)
-		}
+		t.Setenv(env.name, env.value)
 	}
 }
 
@@ -1585,7 +1692,7 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 		Reply(200).
 		File("./mocks/routesWithSamePath.json")
 
-	unsetBaseEnvs := setEnvs([]env{
+	setEnvs(t, []env{
 		{name: "HTTP_PORT", value: "3051"},
 		{name: "TARGET_SERVICE_HOST", value: "localhost:3050"},
 		{name: "TARGET_SERVICE_OAS_PATH", value: "/documentation/json"},
@@ -1600,7 +1707,7 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 	randomizedDBNamePart := testutils.GetRandomName(10)
 	mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
-	unsetOtherEnvs := setEnvs([]env{
+	setEnvs(t, []env{
 		{name: "MONGODB_URL", value: fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName)},
 		{name: "BINDINGS_COLLECTION_NAME", value: "bindings"},
 		{name: "ROLES_COLLECTION_NAME", value: "roles"},
@@ -1632,8 +1739,6 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 		entrypoint(shutdown)
 	}()
 	defer func() {
-		unsetBaseEnvs()
-		unsetOtherEnvs()
 		shutdown <- syscall.SIGTERM
 	}()
 	time.Sleep(1 * time.Second)
@@ -1662,15 +1767,16 @@ func TestSetupRouterStandaloneMode(t *testing.T) {
 	defer gock.Flush()
 
 	log, _ := test.NewNullLogger()
-	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
 
 	env := config.EnvironmentVariables{
-		Standalone:           true,
-		TargetServiceHost:    "my-service:4444",
-		PathPrefixStandalone: "/my-prefix",
-		ServiceVersion:       "my-version",
+		Standalone:               true,
+		TargetServiceHost:        "my-service:4444",
+		PathPrefixStandalone:     "/my-prefix",
+		ServiceVersion:           "my-version",
+		BindingsCrudServiceURL:   "http://crud:3030",
+		AdditionalHeadersToProxy: "miauserid",
 	}
-	opa := &OPAModuleConfig{
+	opa := &core.OPAModuleConfig{
 		Name: "policies",
 		Content: `package policies
 test_policy { true }
@@ -1681,38 +1787,45 @@ filter_policy {
 }
 `,
 	}
-	oas := &OpenAPISpec{
-		Paths: OpenAPIPaths{
-			"/evalapi": PathVerbs{
-				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "test_policy"},
+	oas := &openapi.OpenAPISpec{
+		Paths: openapi.OpenAPIPaths{
+			"/evalapi": openapi.PathVerbs{
+				"get": openapi.VerbConfig{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "test_policy"},
 					},
 				},
 			},
-			"/evalfilter": PathVerbs{
-				"get": VerbConfig{
-					PermissionV2: &RondConfig{
-						RequestFlow: RequestFlow{PolicyName: "filter_policy", GenerateQuery: true, QueryOptions: QueryOptions{HeaderName: "my-query"}},
+			"/evalfilter": openapi.PathVerbs{
+				"get": openapi.VerbConfig{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{
+							PolicyName:    "filter_policy",
+							GenerateQuery: true,
+							QueryOptions:  core.QueryOptions{HeaderName: "my-query"},
+						},
 					},
 				},
 			},
 		},
 	}
 
-	var mongoClient *mongoclient.MongoClient
-	evaluatorsMap, err := setupEvaluators(ctx, mongoClient, oas, opa, env)
-	assert.NilError(t, err, "unexpected error")
+	logger, _ := test.NewNullLogger()
+	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
+		EvaluatorOptions: &sdk.EvaluatorOptions{},
+		Logger:           rondlogrus.NewLogger(logger),
+	})
+	require.NoError(t, err, "unexpected error")
 
-	router, err := setupRouter(log, env, opa, oas, evaluatorsMap, mongoClient)
-	assert.NilError(t, err, "unexpected error")
+	router, err := service.SetupRouter(log, env, opa, oas, sdk, nil, nil)
+	require.NoError(t, err, "unexpected error")
 
 	t.Run("some eval API", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/my-prefix/evalapi", nil)
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("eval with request filter generation", func(t *testing.T) {
@@ -1720,9 +1833,9 @@ filter_policy {
 		req := httptest.NewRequest(http.MethodGet, "/my-prefix/evalfilter", nil)
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		queryHeader := w.Header().Get("my-query")
-		assert.Equal(t, queryHeader, `{"$or":[{"$and":[{"answer":{"$eq":42}}]}]}`)
+		require.Equal(t, `{"$or":[{"$and":[{"answer":{"$eq":42}}]}]}`, queryHeader)
 	})
 
 	t.Run("revoke API", func(t *testing.T) {
@@ -1731,13 +1844,13 @@ filter_policy {
 		router.ServeHTTP(w, req)
 
 		// Bad request expected for missing body and so decoder fails!
-		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+		require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 
 		var requestError types.RequestError
 		err := json.Unmarshal(w.Body.Bytes(), &requestError)
-		assert.NilError(t, err, "unexpected error")
-		assert.Equal(t, requestError.Message, "Internal server error, please try again later")
-		assert.Equal(t, requestError.Error, "EOF")
+		require.NoError(t, err, "unexpected error")
+		require.Equal(t, "Internal server error, please try again later", requestError.Message)
+		require.Equal(t, "EOF", requestError.Error)
 	})
 
 	t.Run("grant API", func(t *testing.T) {
@@ -1746,13 +1859,39 @@ filter_policy {
 		router.ServeHTTP(w, req)
 
 		// Bad request expected for missing body and so decoder fails!
-		assert.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
+		require.Equal(t, http.StatusInternalServerError, w.Result().StatusCode)
 
 		var requestError types.RequestError
 		err := json.Unmarshal(w.Body.Bytes(), &requestError)
-		assert.NilError(t, err, "unexpected error")
-		assert.Equal(t, requestError.Message, "Internal server error, please try again later")
-		assert.Equal(t, requestError.Error, "EOF")
+		require.NoError(t, err, "unexpected error")
+		require.Equal(t, "Internal server error, please try again later", requestError.Message)
+		require.Equal(t, "EOF", requestError.Error)
+	})
+
+	t.Run("grant API with headers to proxy", func(t *testing.T) {
+		reqBody := service.GrantRequestBody{
+			ResourceID:  "my-company",
+			Subjects:    []string{"subj"},
+			Groups:      []string{"group1"},
+			Roles:       []string{"role1"},
+			Permissions: []string{"permission1"},
+		}
+		reqBodyBytes, err := json.Marshal(reqBody)
+		require.Nil(t, err, "Unexpected error")
+
+		w := httptest.NewRecorder()
+
+		gock.New("http://crud:3030").
+			Post("/").
+			MatchHeader("miauserid", "my user id to proxy").
+			Reply(200).
+			JSON([]byte(`{"_id":"theobjectid"}`))
+
+		req := httptest.NewRequest(http.MethodPost, "/grant/bindings/resource/some-resource", bytes.NewReader(reqBodyBytes))
+		req.Header.Set("miauserid", "my user id to proxy")
+		router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("API documentation is correctly exposed - json", func(t *testing.T) {
@@ -1760,10 +1899,10 @@ filter_policy {
 		req := httptest.NewRequest(http.MethodGet, "/openapi/json", nil)
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
 		responseBody := getResponseBody(t, w)
-		assert.Assert(t, string(responseBody) != "")
+		require.True(t, string(responseBody) != "")
 	})
 
 	t.Run("API documentation is correctly exposed - yaml", func(t *testing.T) {
@@ -1771,9 +1910,96 @@ filter_policy {
 		req := httptest.NewRequest(http.MethodGet, "/openapi/yaml", nil)
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
 		responseBody := getResponseBody(t, w)
-		assert.Assert(t, string(responseBody) != "")
+		require.True(t, string(responseBody) != "")
 	})
+}
+
+func TestSetupRouterMetrics(t *testing.T) {
+	defer gock.Off()
+	defer gock.DisableNetworkingFilters()
+	defer gock.Flush()
+
+	log, _ := test.NewNullLogger()
+
+	env := config.EnvironmentVariables{
+		Standalone:               true,
+		TargetServiceHost:        "my-service:4444",
+		PathPrefixStandalone:     "/my-prefix",
+		ServiceVersion:           "my-version",
+		BindingsCrudServiceURL:   "http://crud:3030",
+		AdditionalHeadersToProxy: "miauserid",
+		ExposeMetrics:            true,
+	}
+	opa := &core.OPAModuleConfig{
+		Name: "policies",
+		Content: `package policies
+test_policy { true }
+
+filter_policy {
+	query := data.resources[_]
+	query.answer = 42
+}
+`,
+	}
+	oas := &openapi.OpenAPISpec{
+		Paths: openapi.OpenAPIPaths{
+			"/evalapi": openapi.PathVerbs{
+				"get": openapi.VerbConfig{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "test_policy"},
+					},
+				},
+			},
+			"/evalfilter": openapi.PathVerbs{
+				"get": openapi.VerbConfig{
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{
+							PolicyName:    "filter_policy",
+							GenerateQuery: true,
+							QueryOptions:  core.QueryOptions{HeaderName: "my-query"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	registry := prometheus.NewRegistry()
+	logger, _ := test.NewNullLogger()
+	m := rondprometheus.SetupMetrics(registry)
+	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
+		Logger:  rondlogrus.NewLogger(logger),
+		Metrics: m,
+	})
+	require.NoError(t, err, "unexpected error")
+
+	m.PolicyEvaluationDurationMilliseconds.With(metrics.Labels{
+		"policy_name": "myPolicy",
+	}).Observe(123)
+
+	router, err := service.SetupRouter(log, env, opa, oas, sdk, nil, registry)
+	require.NoError(t, err, "unexpected error")
+
+	t.Run("metrics API exposed correctly", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/-/rond/metrics", nil)
+		router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+		responseBody := getResponseBody(t, w)
+		require.Contains(t, string(responseBody), fmt.Sprintf("rond_%s", metrics.PolicyEvalDurationMetricName))
+	})
+}
+
+func getResponseBody(t *testing.T, w *httptest.ResponseRecorder) []byte {
+	t.Helper()
+
+	responseBody, err := io.ReadAll(w.Result().Body)
+	require.NoError(t, err)
+
+	return responseBody
 }
