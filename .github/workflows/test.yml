@@ -131,14 +131,14 @@ jobs:
         uses: docker/setup-qemu-action@v2
 
       - name: Docker Login to ghcr.io
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.BOT_DOCKER_USERNAME }}
           password: ${{ secrets.BOT_DOCKER_TOKEN }}
