@@ -89,7 +89,7 @@ func TestStatusRoutes(t *testing.T) {
 
 		testRouter.ServeHTTP(responseRecorder, request)
 		statusCode := responseRecorder.Result().StatusCode
-		require.Equal(t, http.StatusOK, statusCode, "The response statusCode should be 200")
+		require.Equal(t, http.StatusServiceUnavailable, statusCode, "The response statusCode should be 200")
 
 		rawBody := responseRecorder.Result().Body
 		body, readBodyError := io.ReadAll(rawBody)

@@ -78,10 +78,10 @@ func handleSDKReadyHandler(sdkBoot *SDKBootState, serviceName, serviceVersion st
 
 	sdkReady := false
 	go func(sdkBoot *SDKBootState, readyFlagLock *sync.Mutex) {
+		sdkBoot.Get()
+
 		readyFlagLock.Lock()
 		defer readyFlagLock.Unlock()
-
-		sdkBoot.Get()
 		sdkReady = true
 	}(sdkBoot, readyFlagLock)
 
