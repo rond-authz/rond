@@ -117,7 +117,8 @@ test_policy { true }
 			TargetServiceHost:    "my-service:4444",
 			PathPrefixStandalone: "/my-prefix",
 		}
-		router, err := SetupRouter(log, env, opa, oas, sdk, nil, nil)
+		router, completionChan := SetupRouter(log, env, opa, oas, sdk, nil, nil)
+		err := <-completionChan
 		require.NoError(t, err, "unexpected error")
 
 		t.Run("/-/rbac-ready", func(t *testing.T) {
@@ -150,7 +151,8 @@ test_policy { true }
 			PathPrefixStandalone: "/my-prefix",
 			ServiceVersion:       "latest",
 		}
-		router, err := SetupRouter(log, env, opa, oas, sdk, nil, nil)
+		router, completionChan := SetupRouter(log, env, opa, oas, sdk, nil, nil)
+		err := <-completionChan
 		require.NoError(t, err, "unexpected error")
 		t.Run("/-/rbac-ready", func(t *testing.T) {
 			w := httptest.NewRecorder()

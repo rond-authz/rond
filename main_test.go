@@ -1817,7 +1817,8 @@ filter_policy {
 	})
 	require.NoError(t, err, "unexpected error")
 
-	router, err := service.SetupRouter(log, env, opa, oas, sdk, nil, nil)
+	router, completionChan := service.SetupRouter(log, env, opa, oas, sdk, nil, nil)
+	err = <-completionChan
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("some eval API", func(t *testing.T) {
@@ -1980,7 +1981,8 @@ filter_policy {
 		"policy_name": "myPolicy",
 	}).Observe(123)
 
-	router, err := service.SetupRouter(log, env, opa, oas, sdk, nil, registry)
+	router, completionChan := service.SetupRouter(log, env, opa, oas, sdk, nil, registry)
+	err = <-completionChan
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("metrics API exposed correctly", func(t *testing.T) {

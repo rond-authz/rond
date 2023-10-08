@@ -144,27 +144,37 @@ func entrypoint(shutdown chan os.Signal) {
 	}
 
 	// Routing
-	router, err := service.SetupRouter(log, env, opaModuleConfig, oas, sdk, mongoClient, registry)
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("failed router setup")
-		return
-	}
-	log.Trace("router setup completed")
+	log.Trace("router setup initialization")
+	router, errChan := service.SetupRouter(log, env, opaModuleConfig, oas, sdk, mongoClient, registry)
+	// if err != nil {
+	// 	log.WithFields(logrus.Fields{
+	// 		"error": logrus.Fields{"message": err.Error()},
+	// 	}).Errorf("failed router setup")
+	// 	return
+	// }
+	log.Trace("router setup initialization done")
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf("0.0.0.0:%s", env.HTTPPort),
 		Handler:           router,
 		ReadHeaderTimeout: time.Second,
 	}
-
 	go func() {
 		log.WithField("port", env.HTTPPort).Info("Starting server")
 		if err := srv.ListenAndServe(); err != nil {
 			log.Println(err)
 		}
 	}()
+
+	log.Trace("waiting for router setup initialization to be completed")
+	setupError := <-errChan
+	log.Trace("router setup initialization completed")
+	if setupError != nil {
+		log.WithField("error", logrus.Fields{"message": err.Error()}).Error("router setup initialization has failed")
+		srv.Close()
+		log.Error("Server closed")
+		return
+	}
 
 	// sigterm signal sent from kubernetes
 	signal.Notify(shutdown, syscall.SIGTERM)
