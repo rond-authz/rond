@@ -110,7 +110,7 @@ func SetupRouter(
 	serviceName := "rönd"
 	StatusRoutes(router, serviceName, env.ServiceVersion)
 
-	errorChan := make(chan error, 1)
+	completionChan := make(chan error, 1)
 
 	go func() {
 		if env.ExposeMetrics {
@@ -134,31 +134,31 @@ func SetupRouter(
 				YAMLDocumentationPath: "/openapi/yaml",
 			})
 			if err != nil {
-				errorChan <- err
+				completionChan <- err
 				return
 			}
 
 			// standalone routes
 			if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings/resource/{resourceType}", revokeHandler, revokeDefinitions); err != nil {
-				errorChan <- err
+				completionChan <- err
 				return
 				// return nil, err
 			}
 			if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings/resource/{resourceType}", grantHandler, grantDefinitions); err != nil {
-				errorChan <- err
+				completionChan <- err
 				return
 			}
 			if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings", revokeHandler, revokeDefinitions); err != nil {
-				errorChan <- err
+				completionChan <- err
 				return
 			}
 			if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings", grantHandler, grantDefinitions); err != nil {
-				errorChan <- err
+				completionChan <- err
 				return
 			}
 
 			if err = swaggerRouter.GenerateAndExposeOpenapi(); err != nil {
-				errorChan <- err
+				completionChan <- err
 				return
 			}
 		}
@@ -185,10 +185,10 @@ func SetupRouter(
 		})
 
 		log.Trace("router setup completed")
-		errorChan <- nil
+		completionChan <- nil
 	}()
 
-	return router, errorChan
+	return router, completionChan
 }
 
 func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.EnvironmentVariables) {
