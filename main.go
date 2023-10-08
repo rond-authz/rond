@@ -128,30 +128,31 @@ func entrypoint(shutdown chan os.Signal) {
 		)
 		m = rondprometheus.SetupMetrics(registry)
 	}
-	sdk, err := sdk.NewFromOAS(context.Background(), opaModuleConfig, oas, &sdk.Options{
-		Metrics: m,
-		EvaluatorOptions: &sdk.EvaluatorOptions{
-			EnablePrintStatements: env.IsTraceLogLevel(),
-			MongoClient:           mongoClientForBuiltin,
-		},
-		Logger: rondLogger,
-	})
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("failed to create sdk")
-		return
-	}
+
+	sdkBoot := service.NewSDKBootState()
+	// TODO: extract func!!
+	go func() {
+		sdk, err := sdk.NewFromOAS(context.Background(), opaModuleConfig, oas, &sdk.Options{
+			Metrics: m,
+			EvaluatorOptions: &sdk.EvaluatorOptions{
+				EnablePrintStatements: env.IsTraceLogLevel(),
+				MongoClient:           mongoClientForBuiltin,
+			},
+			Logger: rondLogger,
+		})
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"error": logrus.Fields{"message": err.Error()},
+			}).Errorf("failed to create sdk")
+			// FIXME: better exit strategy?
+			os.Exit(1)
+		}
+		sdkBoot.Ready(sdk)
+	}()
 
 	// Routing
 	log.Trace("router setup initialization")
-	router, errChan := service.SetupRouter(log, env, opaModuleConfig, oas, sdk, mongoClient, registry)
-	// if err != nil {
-	// 	log.WithFields(logrus.Fields{
-	// 		"error": logrus.Fields{"message": err.Error()},
-	// 	}).Errorf("failed router setup")
-	// 	return
-	// }
+	router, errChan := service.SetupRouter(log, env, opaModuleConfig, oas, sdkBoot, mongoClient, registry)
 	log.Trace("router setup initialization done")
 
 	srv := &http.Server{
@@ -171,8 +172,12 @@ func entrypoint(shutdown chan os.Signal) {
 	log.Trace("router setup initialization completed")
 	if setupError != nil {
 		log.WithField("error", logrus.Fields{"message": err.Error()}).Error("router setup initialization has failed")
-		srv.Close()
-		log.Error("Server closed")
+		if err := srv.Close(); err != nil {
+			log.
+				WithField("error", logrus.Fields{"messaage": err.Error()}).
+				Fatal("Server close failed")
+		}
+		log.Trace("Server closed")
 		return
 	}
 

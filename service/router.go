@@ -26,7 +26,6 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
-	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/sdk/inputuser"
 	"github.com/rond-authz/rond/types"
 
@@ -101,18 +100,20 @@ func SetupRouter(
 	env config.EnvironmentVariables,
 	opaModuleConfig *core.OPAModuleConfig,
 	oas *openapi.OpenAPISpec,
-	sdk sdk.OASEvaluatorFinder,
+	sdkBoot *SDKBootState,
 	inputUserClient inputuser.Client,
 	registry *prometheus.Registry,
 ) (*mux.Router, chan error) {
 	router := mux.NewRouter().UseEncodedPath()
 	router.Use(gmux.RequestMiddlewareLogger(glogrus.GetLogger(logrus.NewEntry(log)), []string{"/-/"}))
 	serviceName := "rönd"
-	StatusRoutes(router, serviceName, env.ServiceVersion)
+
+	StatusRoutes(router, sdkBoot, serviceName, env.ServiceVersion)
 
 	completionChan := make(chan error, 1)
 
 	go func() {
+		sdk := sdkBoot.Get()
 		if env.ExposeMetrics {
 			metricsRoute(router, registry)
 		}
@@ -142,7 +143,6 @@ func SetupRouter(
 			if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings/resource/{resourceType}", revokeHandler, revokeDefinitions); err != nil {
 				completionChan <- err
 				return
-				// return nil, err
 			}
 			if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings/resource/{resourceType}", grantHandler, grantDefinitions); err != nil {
 				completionChan <- err
