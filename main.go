@@ -29,6 +29,7 @@ import (
 	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/helpers"
+	"github.com/rond-authz/rond/logging"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/metrics"
 	rondprometheus "github.com/rond-authz/rond/metrics/prometheus"
@@ -130,23 +131,8 @@ func entrypoint(shutdown chan os.Signal) {
 	}
 
 	sdkBoot := service.NewSDKBootState()
-	// TODO: extract func!!
 	go func() {
-		sdk, err := sdk.NewFromOAS(context.Background(), opaModuleConfig, oas, &sdk.Options{
-			Metrics: m,
-			EvaluatorOptions: &sdk.EvaluatorOptions{
-				EnablePrintStatements: env.IsTraceLogLevel(),
-				MongoClient:           mongoClientForBuiltin,
-			},
-			Logger: rondLogger,
-		})
-		if err != nil {
-			log.WithFields(logrus.Fields{
-				"error": logrus.Fields{"message": err.Error()},
-			}).Errorf("failed to create sdk")
-			// FIXME: better exit strategy?
-			os.Exit(1)
-		}
+		sdk := prepSDKOrDie(log, env, opaModuleConfig, oas, mongoClientForBuiltin, rondLogger, m)
 		sdkBoot.Ready(sdk)
 	}()
 
@@ -186,4 +172,31 @@ func entrypoint(shutdown chan os.Signal) {
 	// We'll accept graceful shutdowns when quit via  and SIGTERM (Ctrl+/)
 	// SIGINT (Ctrl+C), SIGKILL or SIGQUIT will not be caught.
 	helpers.GracefulShutdown(srv, shutdown, log, env.DelayShutdownSeconds)
+}
+
+func prepSDKOrDie(
+	log *logrus.Logger,
+	env config.EnvironmentVariables,
+	opaModuleConfig *core.OPAModuleConfig,
+	oas *openapi.OpenAPISpec,
+	mongoClientForBuiltin custom_builtins.IMongoClient,
+	rondLogger logging.Logger,
+	m *metrics.Metrics,
+) sdk.OASEvaluatorFinder {
+	sdk, err := sdk.NewFromOAS(context.Background(), opaModuleConfig, oas, &sdk.Options{
+		Metrics: m,
+		EvaluatorOptions: &sdk.EvaluatorOptions{
+			EnablePrintStatements: env.IsTraceLogLevel(),
+			MongoClient:           mongoClientForBuiltin,
+		},
+		Logger: rondLogger,
+	})
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"error": logrus.Fields{"message": err.Error()},
+		}).Errorf("failed to create sdk")
+		// FIXME: better exit strategy?
+		os.Exit(1)
+	}
+	return sdk
 }
