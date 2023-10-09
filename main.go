@@ -138,7 +138,7 @@ func entrypoint(shutdown chan os.Signal) {
 
 	// Routing
 	log.Trace("router setup initialization")
-	router, errChan := service.SetupRouter(log, env, opaModuleConfig, oas, sdkBoot, mongoClient, registry)
+	router, completionChan := service.SetupRouter(log, env, opaModuleConfig, oas, sdkBoot, mongoClient, registry)
 	log.Trace("router setup initialization done")
 
 	srv := &http.Server{
@@ -154,7 +154,7 @@ func entrypoint(shutdown chan os.Signal) {
 	}()
 
 	log.Trace("waiting for router setup initialization to be completed")
-	setupError := <-errChan
+	setupError := <-completionChan
 	log.Trace("router setup initialization completed")
 	if setupError != nil {
 		log.WithField("error", logrus.Fields{"message": err.Error()}).Error("router setup initialization has failed")
