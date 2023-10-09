@@ -12,27 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package service
+package fake
 
-import (
-	"testing"
+import "github.com/rond-authz/rond/sdk"
 
-	"github.com/rond-authz/rond/internal/fake"
-	"github.com/stretchr/testify/require"
-)
+type SDKEvaluatorFinder struct {
+}
 
-func TestSDKBootState(t *testing.T) {
-	sdkBootState := NewSDKBootState()
-
-	t.Run("flow with routine", func(t *testing.T) {
-		completed := make(chan bool, 1)
-		go func() {
-			sdkBootState.Ready(fake.SDKEvaluatorFinder{})
-			completed <- true
-		}()
-
-		sdk := sdkBootState.Get()
-		require.NotNil(t, sdk)
-		require.True(t, <-completed)
-	})
+func (s SDKEvaluatorFinder) FindEvaluator(method, path string) (sdk.Evaluator, error) {
+	return SDKEvaluator{}, nil
 }
