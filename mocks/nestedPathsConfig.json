@@ -179,6 +179,16 @@
               }
             }
         },
+        "/with/preventbodyload": {
+            "get": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "foo_bar",
+                  "preventBodyLoad": true
+                }
+              }
+            }
+        },
         "/without/trailing/slash": {
             "post": {
               "x-rond": {
