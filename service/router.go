@@ -150,7 +150,16 @@ func setupEvalRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.En
 		}
 		if strings.Contains(pathToRegister, "*") {
 			pathWithoutAsterisk := strings.ReplaceAll(pathToRegister, "*", "")
-			router.PathPrefix(openapi.ConvertPathVariablesToBrackets(pathWithoutAsterisk)).HandlerFunc(rbacHandler).Methods(methodsMap[path]...)
+
+			// FIXME: mux overwites methods input setting them uppercase
+			// this leads to a race condition on the methods; to prevent
+			// test failing for race detection we create here a copy before
+			// submitting them to mux!
+			originalMethods := methodsMap[path]
+			methods := make([]string, 0)
+			methods = append(methods, originalMethods...)
+
+			router.PathPrefix(openapi.ConvertPathVariablesToBrackets(pathWithoutAsterisk)).HandlerFunc(rbacHandler).Methods(methods...)
 			continue
 		}
 		if path == env.TargetServiceOASPath && documentationPermission == "" {
