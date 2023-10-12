@@ -50,6 +50,7 @@ func OPAMiddleware(
 
 			rondSDK := sdkState.Get()
 			if rondSDK == nil {
+				// TODO: error messages
 				utils.FailResponseWithCode(w, http.StatusServiceUnavailable, "asd", "dsa")
 				return
 			}
