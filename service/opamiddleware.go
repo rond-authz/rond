@@ -29,6 +29,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var (
+	ErrSDKNotReadyMessage         = "service not ready to work yet"
+	ErrSDKNotReadyBusinessMessage = "the service is not ready to work yet, try again in a few moments"
+)
+
 type OPAMiddlewareOptions struct {
 	IsStandalone         bool
 	PathPrefixStandalone string
@@ -50,8 +55,7 @@ func OPAMiddleware(
 
 			rondSDK := sdkState.Get()
 			if rondSDK == nil {
-				// TODO: error messages
-				utils.FailResponseWithCode(w, http.StatusServiceUnavailable, "asd", "dsa")
+				utils.FailResponseWithCode(w, http.StatusServiceUnavailable, ErrSDKNotReadyMessage, ErrSDKNotReadyBusinessMessage)
 				return
 			}
 
