@@ -44,6 +44,7 @@ type OPATransport struct {
 	// FIXME: this overlaps with the req.Context used during RoundTrip.
 	context context.Context
 	logger  *logrus.Entry
+	config  *core.RondConfig
 	request *http.Request
 
 	clientHeaderKey string
@@ -54,6 +55,7 @@ type OPATransport struct {
 func NewOPATransport(
 	transport http.RoundTripper,
 	context context.Context,
+	config *core.RondConfig,
 	logger *logrus.Entry,
 	req *http.Request,
 	clientHeaderKey string,
@@ -64,6 +66,7 @@ func NewOPATransport(
 		RoundTripper: transport,
 		context:      req.Context(),
 		logger:       logger,
+		config:       config,
 		request:      req,
 
 		user:            user,
@@ -110,7 +113,7 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 	}
 
 	pathParams := mux.Vars(t.request)
-	input, err := rondhttp.NewInput(t.request, t.clientHeaderKey, pathParams, t.user, decodedBody)
+	input, err := rondhttp.NewInput(t.config, t.request, t.clientHeaderKey, pathParams, t.user, decodedBody)
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusInternalServerError)
 		return resp, nil
