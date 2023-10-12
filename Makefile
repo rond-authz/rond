@@ -16,12 +16,12 @@ mongo-start:
 
 .PHONY: test
 test: clean mongo-start
-	go test ./... -cover -count=1
+	go test ./... -cover -count=1 -race
 	$(MAKE) clean
 
 .PHONY: coverage
 coverage: clean mongo-start
-	go test ./... -coverprofile coverage.out -count=1
+	go test ./... -coverprofile coverage.out -count=1 -race=1
 	$(MAKE) clean
 
 .PHONY: bench
