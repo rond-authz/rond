@@ -1820,7 +1820,6 @@ filter_policy {
 	sdkState := service.NewSDKBootState()
 	sdkState.Ready(rondSDK)
 	router, err := service.SetupRouter(log, env, opa, oas, sdkState, nil, nil)
-	// err = <-completionChan
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("some eval API", func(t *testing.T) {
@@ -1985,7 +1984,6 @@ filter_policy {
 	sdkState := service.NewSDKBootState()
 	sdkState.Ready(rondSDK)
 	router, err := service.SetupRouter(log, env, opa, oas, sdkState, nil, registry)
-	// err = <-completionChan
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("metrics API exposed correctly", func(t *testing.T) {
