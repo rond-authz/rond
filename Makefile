@@ -16,7 +16,7 @@ mongo-start:
 
 .PHONY: test
 test: clean mongo-start
-	go test ./... -cover -count=1 -race
+	go test ./... -cover -race
 	$(MAKE) clean
 
 .PHONY: coverage
