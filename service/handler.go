@@ -113,7 +113,7 @@ func EvaluateRequest(
 
 	permission := evaluatorSdk.Config()
 
-	rondInput, err := rondhttp.NewInput(req, env.ClientTypeHeader, mux.Vars(req), rondInputUser, nil)
+	rondInput, err := rondhttp.NewInput(&permission, req, env.ClientTypeHeader, mux.Vars(req), rondInputUser, nil)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed to create rond input")
 		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed to create rond input", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
@@ -196,6 +196,7 @@ func ReverseProxy(
 	proxy.Transport = NewOPATransport(
 		http.DefaultTransport,
 		req.Context(),
+		permission,
 		logger,
 		req,
 

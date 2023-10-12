@@ -47,13 +47,15 @@ func parseRequestBody(req *http.Request) (any, error) {
 // TODO: before to have a stable interface, remove the usage of clientTypeHeaderKey.
 // We could add to the core.Input a map[string]any to add any data passed from
 // outside instead
-func NewInput(req *http.Request, clientTypeHeaderKey string, pathParams map[string]string, user core.InputUser, responseBody any) (core.Input, error) {
-	requestBody, err := parseRequestBody(req)
-	if err != nil {
-		return core.Input{}, err
-	}
-
-	return core.Input{
+func NewInput(
+	config *core.RondConfig,
+	req *http.Request,
+	clientTypeHeaderKey string,
+	pathParams map[string]string,
+	user core.InputUser,
+	responseBody any,
+) (core.Input, error) {
+	input := core.Input{
 		ClientType: req.Header.Get(clientTypeHeaderKey),
 		Request: core.InputRequest{
 			Method:     req.Method,
@@ -61,11 +63,20 @@ func NewInput(req *http.Request, clientTypeHeaderKey string, pathParams map[stri
 			Headers:    req.Header,
 			Query:      req.URL.Query(),
 			PathParams: pathParams,
-			Body:       requestBody,
 		},
 		Response: core.InputResponse{
 			Body: responseBody,
 		},
 		User: user,
-	}, nil
+	}
+
+	if !config.RequestFlow.PreventBodyLoad {
+		requestBody, err := parseRequestBody(req)
+		if err != nil {
+			return core.Input{}, err
+		}
+		input.Request.Body = requestBody
+	}
+
+	return input, nil
 }
