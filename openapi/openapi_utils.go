@@ -132,6 +132,7 @@ func createOasHandler(scopedMethodContent VerbConfig, oasPathCleaned string) fun
 		header.Set("resourceFilter.rowFilter.headerKey", permission.RequestFlow.QueryOptions.HeaderName)
 		header.Set("responseFilter.policy", permission.ResponseFlow.PolicyName)
 		header.Set("options.enableResourcePermissionsMapOptimization", strconv.FormatBool(permission.Options.EnableResourcePermissionsMapOptimization))
+		header.Set("requestFlow.preventBodyLoad", strconv.FormatBool(permission.RequestFlow.PreventBodyLoad))
 		header.Set("options.ignoreTrailingSlash", strconv.FormatBool(permission.Options.IgnoreTrailingSlash))
 		header.Set("pathTemplate", oasPathCleaned)
 	}
@@ -217,10 +218,15 @@ func (oas *OpenAPISpec) FindPermission(OASRouter *bunrouter.CompatRouter, path s
 	if err != nil {
 		return core.RondConfig{}, routerInfo, fmt.Errorf("error while parsing options.ignoreTrailingSlash: %s", err)
 	}
+	preventRequestBodyLoad, err := strconv.ParseBool(recorderResult.Header.Get("requestFlow.preventBodyLoad"))
+	if err != nil {
+		return core.RondConfig{}, routerInfo, fmt.Errorf("error while parsing requestFlow.preventBodyLoad")
+	}
 	return core.RondConfig{
 		RequestFlow: core.RequestFlow{
-			PolicyName:    recorderResult.Header.Get("allow"),
-			GenerateQuery: rowFilterEnabled,
+			PolicyName:      recorderResult.Header.Get("allow"),
+			GenerateQuery:   rowFilterEnabled,
+			PreventBodyLoad: preventRequestBodyLoad,
 			QueryOptions: core.QueryOptions{
 				HeaderName: recorderResult.Header.Get("resourceFilter.rowFilter.headerKey"),
 			},

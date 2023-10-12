@@ -111,9 +111,9 @@ func EvaluateRequest(
 ) error {
 	logger := glogrus.FromContext(req.Context())
 
-	permission := evaluatorSdk.Config()
+	evaluationConfig := evaluatorSdk.Config()
 
-	rondInput, err := rondhttp.NewInput(req, env.ClientTypeHeader, mux.Vars(req), rondInputUser, nil)
+	rondInput, err := rondhttp.NewInput(&evaluationConfig, req, env.ClientTypeHeader, mux.Vars(req), rondInputUser, nil)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed to create rond input")
 		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed to create rond input", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
@@ -153,8 +153,8 @@ func EvaluateRequest(
 	}
 
 	queryHeaderKey := BASE_ROW_FILTER_HEADER_KEY
-	if permission.RequestFlow.QueryOptions.HeaderName != "" {
-		queryHeaderKey = permission.RequestFlow.QueryOptions.HeaderName
+	if evaluationConfig.RequestFlow.QueryOptions.HeaderName != "" {
+		queryHeaderKey = evaluationConfig.RequestFlow.QueryOptions.HeaderName
 	}
 	if result.QueryToProxy != nil {
 		req.Header.Set(queryHeaderKey, string(result.QueryToProxy))
@@ -196,6 +196,7 @@ func ReverseProxy(
 	proxy.Transport = NewOPATransport(
 		http.DefaultTransport,
 		req.Context(),
+		permission,
 		logger,
 		req,
 

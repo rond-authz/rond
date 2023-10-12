@@ -45,9 +45,10 @@ type QueryOptions struct {
 }
 
 type RequestFlow struct {
-	PolicyName    string       `json:"policyName"`
-	GenerateQuery bool         `json:"generateQuery"`
-	QueryOptions  QueryOptions `json:"queryOptions"`
+	PolicyName      string       `json:"policyName"`
+	GenerateQuery   bool         `json:"generateQuery"`
+	QueryOptions    QueryOptions `json:"queryOptions"`
+	PreventBodyLoad bool         `json:"preventBodyLoad"`
 }
 
 type ResponseFlow struct {
