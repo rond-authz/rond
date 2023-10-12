@@ -128,8 +128,8 @@ func TestStatusRoutesIntegration(t *testing.T) {
 			TargetServiceHost:    "my-service:4444",
 			PathPrefixStandalone: "/my-prefix",
 		}
-		router, completionChan := SetupRouter(log, env, opa, oas, sdkState, nil, nil)
-		err := <-completionChan
+		router, err := SetupRouter(log, env, opa, oas, sdkState, nil, nil)
+		// err := <-completionChan
 		require.NoError(t, err, "unexpected error")
 
 		t.Run("/-/rbac-ready", func(t *testing.T) {
@@ -164,8 +164,8 @@ func TestStatusRoutesIntegration(t *testing.T) {
 			PathPrefixStandalone: "/my-prefix",
 			ServiceVersion:       "latest",
 		}
-		router, completionChan := SetupRouter(log, env, opa, oas, sdkState, nil, nil)
-		err := <-completionChan
+		router, err := SetupRouter(log, env, opa, oas, sdkState, nil, nil)
+		// err := <-completionChan
 		require.NoError(t, err, "unexpected error")
 		t.Run("/-/rbac-ready", func(t *testing.T) {
 			w := httptest.NewRecorder()

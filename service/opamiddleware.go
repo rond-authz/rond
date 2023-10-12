@@ -36,7 +36,7 @@ type OPAMiddlewareOptions struct {
 
 func OPAMiddleware(
 	opaModuleConfig *core.OPAModuleConfig,
-	rondSDK sdk.OASEvaluatorFinder,
+	sdkState *SDKBootState,
 	routesToNotProxy []string,
 	targetServiceOASPath string,
 	options *OPAMiddlewareOptions,
@@ -45,6 +45,12 @@ func OPAMiddleware(
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if utils.Contains(routesToNotProxy, r.URL.RequestURI()) {
 				next.ServeHTTP(w, r)
+				return
+			}
+
+			rondSDK := sdkState.Get()
+			if rondSDK == nil {
+				utils.FailResponseWithCode(w, http.StatusServiceUnavailable, "asd", "dsa")
 				return
 			}
 

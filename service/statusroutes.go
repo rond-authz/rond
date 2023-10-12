@@ -17,7 +17,6 @@ package service
 import (
 	"encoding/json"
 	"net/http"
-	"sync"
 
 	"github.com/rond-authz/rond/internal/utils"
 
@@ -74,20 +73,11 @@ func handleOKHandler(serviceName, serviceVersion string) func(http.ResponseWrite
 }
 
 func handleSDKReadyHandler(sdkBoot *SDKBootState, serviceName, serviceVersion string) func(http.ResponseWriter, *http.Request) {
-	readyFlagLock := &sync.Mutex{}
-
-	sdkReady := false
-	go func(sdkBoot *SDKBootState, readyFlagLock *sync.Mutex) {
-		sdkBoot.Get()
-
-		readyFlagLock.Lock()
-		defer readyFlagLock.Unlock()
-		sdkReady = true
-	}(sdkBoot, readyFlagLock)
-
 	return func(w http.ResponseWriter, req *http.Request) {
-		readyFlagLock.Lock()
-		defer readyFlagLock.Unlock()
+		sdkReady := false
+		if sdk := sdkBoot.Get(); sdk != nil {
+			sdkReady = true
+		}
 
 		sendStatusRoutes(
 			w,

@@ -25,14 +25,12 @@ func TestSDKBootState(t *testing.T) {
 	sdkBootState := NewSDKBootState()
 
 	t.Run("flow with routine", func(t *testing.T) {
-		completed := make(chan bool, 1)
-		go func() {
-			sdkBootState.Ready(fake.SDKEvaluatorFinder{})
-			completed <- true
-		}()
-
 		sdk := sdkBootState.Get()
+		require.Nil(t, sdk)
+
+		sdkBootState.Ready(fake.SDKEvaluatorFinder{})
+
+		sdk = sdkBootState.Get()
 		require.NotNil(t, sdk)
-		require.True(t, <-completed)
 	})
 }

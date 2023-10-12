@@ -26,7 +26,6 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
-	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/sdk/inputuser"
 	"github.com/rond-authz/rond/types"
 
@@ -39,6 +38,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
+
+const serviceName = "rönd"
 
 var routesToNotProxy = utils.Union(statusRoutes, []string{metricsRoutePath})
 
@@ -104,24 +105,33 @@ func SetupRouter(
 	sdkBoot *SDKBootState,
 	inputUserClient inputuser.Client,
 	registry *prometheus.Registry,
-) (*mux.Router, chan error) {
+) (*mux.Router, error) {
 	router := mux.NewRouter().UseEncodedPath()
 	router.Use(gmux.RequestMiddlewareLogger(glogrus.GetLogger(logrus.NewEntry(log)), []string{"/-/"}))
-	serviceName := "rönd"
 
 	StatusRoutes(router, sdkBoot, serviceName, env.ServiceVersion)
 
-	completionChan := make(chan error, 1)
+	if err := setupServiceRouter(env, log, router, opaModuleConfig, oas, sdkBoot, registry, inputUserClient); err != nil {
+		return nil, err
+	}
 
-	go func(sdkBoot *SDKBootState) {
-		sdk := sdkBoot.Get()
-		setupSDKBasedRouter(router, serviceName, completionChan, log, env, opaModuleConfig, oas, sdk, inputUserClient, registry)
-	}(sdkBoot)
+	//#nosec G104 -- Produces a false positive
+	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		path, _ := route.GetPathTemplate()
+		log.Tracef("Registered path: %s", path)
+		return nil
+	})
+	log.Trace("router setup completed")
 
-	return router, completionChan
+	// go func(sdkBoot *SDKBootState) {
+	// 	sdk := sdkBoot.Get()
+	// setupSDKBasedRouter(router, serviceName, completionChan, log, env, opaModuleConfig, oas, sdkBoot, inputUserClient, registry)
+	// }(sdkBoot)
+
+	return router, nil
 }
 
-func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.EnvironmentVariables) {
+func setupEvalRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.EnvironmentVariables) {
 	var documentationPermission string
 	documentationPathInOAS := oas.Paths[env.TargetServiceOASPath]
 	if documentationPathInOAS != nil {
@@ -176,18 +186,16 @@ func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.Enviro
 	router.PathPrefix(fallbackRoute).HandlerFunc(rbacHandler)
 }
 
-func setupSDKBasedRouter(
-	router *mux.Router,
-	serviceName string,
-	completionChan chan error,
-	log *logrus.Logger,
+func setupServiceRouter(
 	env config.EnvironmentVariables,
+	log *logrus.Logger,
+	router *mux.Router,
 	opaModuleConfig *core.OPAModuleConfig,
 	oas *openapi.OpenAPISpec,
-	sdk sdk.OASEvaluatorFinder,
-	inputUserClient inputuser.Client,
+	sdkBootState *SDKBootState,
 	registry *prometheus.Registry,
-) {
+	inputUserClient inputuser.Client,
+) error {
 	if env.ExposeMetrics {
 		metricsRoute(router, registry)
 	}
@@ -209,36 +217,30 @@ func setupSDKBasedRouter(
 			YAMLDocumentationPath: "/openapi/yaml",
 		})
 		if err != nil {
-			completionChan <- err
-			return
+			return err
 		}
 
 		// standalone routes
 		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings/resource/{resourceType}", revokeHandler, revokeDefinitions); err != nil {
-			completionChan <- err
-			return
+			return err
 		}
 		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings/resource/{resourceType}", grantHandler, grantDefinitions); err != nil {
-			completionChan <- err
-			return
+			return err
 		}
 		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings", revokeHandler, revokeDefinitions); err != nil {
-			completionChan <- err
-			return
+			return err
 		}
 		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings", grantHandler, grantDefinitions); err != nil {
-			completionChan <- err
-			return
+			return err
 		}
 
 		if err = swaggerRouter.GenerateAndExposeOpenapi(); err != nil {
-			completionChan <- err
-			return
+			return err
 		}
 	}
 
 	log.Trace("register OPA middleware")
-	evalRouter.Use(OPAMiddleware(opaModuleConfig, sdk, routesToNotProxy, env.TargetServiceOASPath, &OPAMiddlewareOptions{
+	evalRouter.Use(OPAMiddleware(opaModuleConfig, sdkBootState, routesToNotProxy, env.TargetServiceOASPath, &OPAMiddlewareOptions{
 		IsStandalone:         env.Standalone,
 		PathPrefixStandalone: env.PathPrefixStandalone,
 	}))
@@ -249,15 +251,92 @@ func setupSDKBasedRouter(
 	}
 
 	log.Trace("setup evaluation routes")
-	setupRoutes(evalRouter, oas, env)
-
-	//#nosec G104 -- Produces a false positive
-	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		path, _ := route.GetPathTemplate()
-		log.Tracef("Registered path: %s", path)
-		return nil
-	})
-
-	log.Trace("router setup completed")
-	completionChan <- nil
+	setupEvalRoutes(evalRouter, oas, env)
+	return nil
 }
+
+// func setupSDKBasedRouter(
+// 	router *mux.Router,
+// 	serviceName string,
+// 	completionChan chan error,
+// 	log *logrus.Logger,
+// 	env config.EnvironmentVariables,
+// 	opaModuleConfig *core.OPAModuleConfig,
+// 	oas *openapi.OpenAPISpec,
+// 	sdkBootState *SDKBootState,
+// 	inputUserClient inputuser.Client,
+// 	registry *prometheus.Registry,
+// ) {
+// 	if env.ExposeMetrics {
+// 		metricsRoute(router, registry)
+// 	}
+
+// 	log.Trace("register env variables middleware")
+// 	router.Use(config.RequestMiddlewareEnvironments(env))
+
+// 	evalRouter := router.NewRoute().Subrouter()
+// 	if env.Standalone {
+// 		swaggerRouter, err := swagger.NewRouter(gorilla.NewRouter(router), swagger.Options{
+// 			Context: context.Background(),
+// 			Openapi: &openapi3.T{
+// 				Info: &openapi3.Info{
+// 					Title:   serviceName,
+// 					Version: env.ServiceVersion,
+// 				},
+// 			},
+// 			JSONDocumentationPath: "/openapi/json",
+// 			YAMLDocumentationPath: "/openapi/yaml",
+// 		})
+// 		if err != nil {
+// 			completionChan <- err
+// 			return
+// 		}
+
+// 		// standalone routes
+// 		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings/resource/{resourceType}", revokeHandler, revokeDefinitions); err != nil {
+// 			completionChan <- err
+// 			return
+// 		}
+// 		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings/resource/{resourceType}", grantHandler, grantDefinitions); err != nil {
+// 			completionChan <- err
+// 			return
+// 		}
+// 		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings", revokeHandler, revokeDefinitions); err != nil {
+// 			completionChan <- err
+// 			return
+// 		}
+// 		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings", grantHandler, grantDefinitions); err != nil {
+// 			completionChan <- err
+// 			return
+// 		}
+
+// 		if err = swaggerRouter.GenerateAndExposeOpenapi(); err != nil {
+// 			completionChan <- err
+// 			return
+// 		}
+// 	}
+
+// 	log.Trace("register OPA middleware")
+// 	evalRouter.Use(OPAMiddleware(opaModuleConfig, sdkBootState, routesToNotProxy, env.TargetServiceOASPath, &OPAMiddlewareOptions{
+// 		IsStandalone:         env.Standalone,
+// 		PathPrefixStandalone: env.PathPrefixStandalone,
+// 	}))
+
+// 	log.Trace("register input user client builder middleware")
+// 	if inputUserClient != nil {
+// 		evalRouter.Use(inputuser.ClientInjectorMiddleware(inputUserClient))
+// 	}
+
+// 	log.Trace("setup evaluation routes")
+// 	setupEvalRoutes(evalRouter, oas, env)
+
+// 	//#nosec G104 -- Produces a false positive
+// 	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+// 		path, _ := route.GetPathTemplate()
+// 		log.Tracef("Registered path: %s", path)
+// 		return nil
+// 	})
+
+// 	log.Trace("router setup completed")
+// 	completionChan <- nil
+// }
