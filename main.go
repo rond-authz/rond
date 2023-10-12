@@ -180,9 +180,7 @@ func prepSDKOrDie(
 	if err != nil {
 		log.WithFields(logrus.Fields{
 			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("failed to create sdk")
-		// FIXME: better exit strategy?
-		os.Exit(1)
+		}).Fatalf("failed to create sdk")
 	}
 	return sdk
 }
