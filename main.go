@@ -131,10 +131,10 @@ func entrypoint(shutdown chan os.Signal) {
 	}
 
 	sdkBoot := service.NewSDKBootState()
-	go func() {
+	go func(sdkBoot *service.SDKBootState) {
 		sdk := prepSDKOrDie(log, env, opaModuleConfig, oas, mongoClientForBuiltin, rondLogger, m)
 		sdkBoot.Ready(sdk)
-	}()
+	}(sdkBoot)
 
 	// Routing
 	log.Trace("router setup initialization")
