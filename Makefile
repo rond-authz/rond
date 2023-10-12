@@ -21,7 +21,7 @@ test: clean mongo-start
 
 .PHONY: coverage
 coverage: clean mongo-start
-	go test ./... -coverprofile -count=1 coverage.out
+	go test ./... -coverprofile coverage.out -count=1
 	$(MAKE) clean
 
 .PHONY: bench
