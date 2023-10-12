@@ -21,30 +21,18 @@ import (
 )
 
 type SDKBootState struct {
-	// wg   *sync.WaitGroup
 	mtx  *sync.Mutex
 	rond sdk.OASEvaluatorFinder
 }
 
 func NewSDKBootState() *SDKBootState {
-	// wg := &sync.WaitGroup{}
-	// wg.Add(1)
-	return &SDKBootState{
-		// wg: wg,
-		mtx: &sync.Mutex{},
-	}
+	return &SDKBootState{mtx: &sync.Mutex{}}
 }
-
-// func (s *SDKBootState) Wait() sdk.OASEvaluatorFinder {
-// 	s.wg.Wait()
-// 	return s.rond
-// }
 
 func (s *SDKBootState) Ready(rond sdk.OASEvaluatorFinder) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	s.rond = rond
-	// s.wg.Done()
 }
 
 func (s *SDKBootState) Get() sdk.OASEvaluatorFinder {
