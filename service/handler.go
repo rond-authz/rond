@@ -113,6 +113,11 @@ func EvaluateRequest(
 
 	evaluationConfig := evaluatorSdk.Config()
 
+	logger.WithFields(logrus.Fields{
+		"preventBodyLoad":        evaluationConfig.RequestFlow.PreventBodyLoad,
+		"generateQuery":          evaluationConfig.RequestFlow.GenerateQuery,
+		"resourceOptmizationMap": evaluationConfig.Options.EnableResourcePermissionsMapOptimization,
+	}).Trace("creating rond input")
 	rondInput, err := rondhttp.NewInput(&evaluationConfig, req, env.ClientTypeHeader, mux.Vars(req), rondInputUser, nil)
 	if err != nil {
 		logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed to create rond input")
