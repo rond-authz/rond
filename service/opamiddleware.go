@@ -29,6 +29,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var (
+	ErrSDKNotReadyMessage         = "service not ready to work yet"
+	ErrSDKNotReadyBusinessMessage = "the service is not ready to work yet, try again in a few moments"
+)
+
 type OPAMiddlewareOptions struct {
 	IsStandalone         bool
 	PathPrefixStandalone string
@@ -36,7 +41,7 @@ type OPAMiddlewareOptions struct {
 
 func OPAMiddleware(
 	opaModuleConfig *core.OPAModuleConfig,
-	rondSDK sdk.OASEvaluatorFinder,
+	sdkState *SDKBootState,
 	routesToNotProxy []string,
 	targetServiceOASPath string,
 	options *OPAMiddlewareOptions,
@@ -45,6 +50,12 @@ func OPAMiddleware(
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if utils.Contains(routesToNotProxy, r.URL.RequestURI()) {
 				next.ServeHTTP(w, r)
+				return
+			}
+
+			rondSDK := sdkState.Get()
+			if rondSDK == nil {
+				utils.FailResponseWithCode(w, http.StatusServiceUnavailable, ErrSDKNotReadyMessage, ErrSDKNotReadyBusinessMessage)
 				return
 			}
 
