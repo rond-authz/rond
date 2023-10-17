@@ -99,8 +99,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davidebianchi/go-jsonclient v1.5.0 h1:PVDunAF/6c30D2SSx711efsrUP3hhml+uGT6oD3lzVY=
 github.com/davidebianchi/go-jsonclient v1.5.0/go.mod h1:lXd/hkx23H590Dod74j5GsmpgxF8RIAGZDt1P5+2mqo=
-github.com/davidebianchi/gswagger v0.9.0 h1:wztdl5oSQ0PGgrbhivPr71VNIf4QUKQCeOffbd6lnTE=
-github.com/davidebianchi/gswagger v0.9.0/go.mod h1:Ge69aGQIAWZs63UzaStPfqGT5u/gEXLsQ6vTM3gzDCE=
+github.com/davidebianchi/gswagger v0.8.0 h1:szFH4hYEyVPfhcpggWQgKDNnIek5rXXIW04EvNlG/M0=
+github.com/davidebianchi/gswagger v0.8.0/go.mod h1:coXlWOGJDhZ1Zm/1ORvELzejxewFJIeB6DDD1vYo9zU=
 github.com/dgraph-io/badger/v3 v3.2103.5 h1:ylPa6qzbjYRQMU6jokoj4wzcaweHylt//CH0AKt0akg=
 github.com/dgraph-io/ristretto v0.1.1 h1:6CWw5tJNgpegArSHpNHJKldNeq03FQCwYvfMVWajOK8=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
@@ -345,8 +345,8 @@ github.com/matttproud/golang_protobuf_extensions v1.0.4 h1:mmDVorXM7PCGKw94cs5zk
 github.com/matttproud/golang_protobuf_extensions v1.0.4/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
 github.com/mia-platform/configlib v1.0.0 h1:8sh40jZlCxrtGBq87nbjKa4zisgccuXxBrjKD5OWJ1s=
 github.com/mia-platform/configlib v1.0.0/go.mod h1:oyELirRsp1AzPaSF7GzcMe/R3Rf7uRvw3FclA9Q4fFQ=
-github.com/mia-platform/glogger/v4 v4.0.1 h1:bxWUG+DYvHGGLYfISkm18XfxphEeMTHuxdmK+S7o/+M=
-github.com/mia-platform/glogger/v4 v4.0.1/go.mod h1:Sr1Ydsal05PRoEehM+mr7pcBD5tmGD35uCTnGytGMPw=
+github.com/mia-platform/glogger/v4 v4.1.0 h1:rqs4/qwfe7j7VyLEtZG++xpVpM+XOdlZlq7f/YHbj2Y=
+github.com/mia-platform/glogger/v4 v4.1.0/go.mod h1:0Dqqthkv2jWdeoyghPIaMEKSWu+vyjSLQ85wfgNWEYs=
 github.com/mia-platform/go-crud-service-client v0.11.0 h1:6/4OFe2N2z2gQuVrAocTrKBPgttb244f74JzZ1ZNz4g=
 github.com/mia-platform/go-crud-service-client v0.11.0/go.mod h1:Sj3BEGMu0RTdeye/fPBVwRoojOjKuhWl5j+psY3s40s=
 github.com/mia-platform/jsonschema v0.1.0 h1:tjQf7TaYROsAqk7SXTL+44TrfKk3bSEvhRGPS51IA5Y=
