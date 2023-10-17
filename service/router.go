@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
@@ -31,7 +32,6 @@ import (
 
 	swagger "github.com/davidebianchi/gswagger"
 	"github.com/davidebianchi/gswagger/support/gorilla"
-	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gorilla/mux"
 	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
 	gmux "github.com/mia-platform/glogger/v4/middleware/mux"
