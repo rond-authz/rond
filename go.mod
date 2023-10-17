@@ -3,12 +3,12 @@ module github.com/rond-authz/rond
 go 1.18
 
 require (
-	github.com/davidebianchi/gswagger v0.9.0
+	github.com/davidebianchi/gswagger v0.8.0
 	github.com/getkin/kin-openapi v0.120.0
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/mux v1.8.0
 	github.com/mia-platform/configlib v1.0.0
-	github.com/mia-platform/glogger/v4 v4.0.1
+	github.com/mia-platform/glogger/v4 v4.1.0
 	github.com/mia-platform/go-crud-service-client v0.11.0
 	github.com/open-policy-agent/opa v0.57.0
 	github.com/prometheus/client_golang v1.17.0
