@@ -6,7 +6,7 @@ require (
 	github.com/davidebianchi/gswagger v0.8.0
 	github.com/getkin/kin-openapi v0.120.0
 	github.com/google/uuid v1.4.0
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/mia-platform/configlib v1.0.0
 	github.com/mia-platform/glogger/v4 v4.1.0
 	github.com/mia-platform/go-crud-service-client v0.11.0
