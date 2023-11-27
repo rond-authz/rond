@@ -54,9 +54,7 @@ func NewMongoClient(logger logging.Logger, mongodbURL string, connectionOptions 
 		return nil, fmt.Errorf("failed MongoDB connection string validation: %s", err.Error())
 	}
 
-	clientOpts := options.Client().
-		ApplyURI(mongodbURL)
-
+	clientOpts := options.Client().ApplyURI(mongodbURL)
 	if connectionOptions.MaxIdleTimeMs != 0 {
 		clientOpts = clientOpts.SetMaxConnIdleTime(time.Duration(connectionOptions.MaxIdleTimeMs) * time.Millisecond)
 	}
