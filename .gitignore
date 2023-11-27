@@ -6,3 +6,5 @@
 rond
 coverage.out
 output.txt
+test-data
+*.bin

@@ -30,7 +30,6 @@ import (
 type IMongoClient interface {
 	FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error)
 	FindMany(ctx context.Context, collectionName string, query map[string]interface{}) ([]interface{}, error)
-	Disconnect() error
 }
 
 type mongoClientCustomBuiltinContextKey struct{}
@@ -56,14 +55,7 @@ type MongoClient struct {
 	client *mongoclient.MongoClient
 }
 
-func NewMongoClient(logger logging.Logger, mongodbURL string) (IMongoClient, error) {
-	mongoClient, err := mongoclient.NewMongoClient(logger, mongodbURL)
-	if err != nil {
-		return nil, err
-	}
-	if mongoClient == nil {
-		return nil, nil
-	}
+func NewMongoClient(logger logging.Logger, mongoClient *mongoclient.MongoClient) (IMongoClient, error) {
 	return &MongoClient{
 		client: mongoClient,
 	}, nil
@@ -142,8 +134,4 @@ func (mongoClient *MongoClient) FindMany(ctx context.Context, collectionName str
 		}
 	}
 	return results, nil
-}
-
-func (mongoClient *MongoClient) Disconnect() error {
-	return mongoClient.client.Disconnect()
 }
