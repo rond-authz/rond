@@ -32,7 +32,7 @@ func TestNewMongoClient(t *testing.T) {
 	log := logging.NewNoOpLogger()
 
 	mongoDBURL, _ := getMongoDBURL(t)
-	mongoClient, err := mongoclient.NewMongoClient(log, mongoDBURL)
+	mongoClient, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
 	require.NoError(t, err)
 
 	client, err := NewMongoClient(logging.NewNoOpLogger(), mongoClient)
@@ -67,7 +67,7 @@ func TestGetMongoCollectionFromContext(t *testing.T) {
 func TestMongoFindOne(t *testing.T) {
 	log := logging.NewNoOpLogger()
 	mongoDBURL, dbName := getMongoDBURL(t)
-	client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+	client, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
 	require.NoError(t, err)
 	defer client.Disconnect()
 
@@ -109,7 +109,7 @@ func TestMongoFindOne(t *testing.T) {
 func TestMongoFindMany(t *testing.T) {
 	log := logging.NewNoOpLogger()
 	mongoDBURL, dbName := getMongoDBURL(t)
-	client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+	client, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
 	require.NoError(t, err)
 	defer client.Disconnect()
 

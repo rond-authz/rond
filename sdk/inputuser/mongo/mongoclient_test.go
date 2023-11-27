@@ -35,7 +35,7 @@ func TestSetupMongoCollection(t *testing.T) {
 
 	t.Run("if RolesCollectionName empty, returns error", func(t *testing.T) {
 		mongoDBURL, _, _, _ := getMongoDBURL(t)
-		client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+		client, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
 		require.NoError(t, err)
 
 		config := Config{
@@ -49,7 +49,7 @@ func TestSetupMongoCollection(t *testing.T) {
 
 	t.Run("correctly returns mongodb client", func(t *testing.T) {
 		mongoDBURL, _, _, _ := getMongoDBURL(t)
-		client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+		client, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
 		require.NoError(t, err)
 
 		config := Config{
@@ -70,7 +70,7 @@ func TestMongoCollections(t *testing.T) {
 
 	t.Run("testing retrieve user bindings from mongo", func(t *testing.T) {
 		mongoDBURL, _, rolesCollection, bindingsCollection := getMongoDBURL(t)
-		client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+		client, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
 		require.NoError(t, err)
 
 		config := Config{
@@ -151,7 +151,7 @@ func TestMongoCollections(t *testing.T) {
 
 	t.Run("testing retrieve user bindings from mongo - user without groups", func(t *testing.T) {
 		mongoDBURL, _, rolesCollection, bindingsCollection := getMongoDBURL(t)
-		client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+		client, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
 		require.NoError(t, err)
 
 		config := Config{
@@ -200,7 +200,7 @@ func TestMongoCollections(t *testing.T) {
 
 	t.Run("testing retrieve user bindings from mongo - no userId passed", func(t *testing.T) {
 		mongoDBURL, _, rolesCollection, bindingsCollection := getMongoDBURL(t)
-		client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+		client, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
 		require.NoError(t, err)
 		config := Config{
 			RolesCollectionName:    "roles",
@@ -230,7 +230,7 @@ func TestMongoCollections(t *testing.T) {
 		_, dbName, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
 		mongoDBURL := fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName)
 
-		client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+		client, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
 		require.NoError(t, err)
 
 		config := Config{

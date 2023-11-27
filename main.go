@@ -97,7 +97,9 @@ func entrypoint(shutdown chan os.Signal) {
 
 	var mongoDriver *mongoclient.MongoClient
 	if env.MongoDBUrl != "" {
-		client, err := mongoclient.NewMongoClient(rondLogger, env.MongoDBUrl)
+		client, err := mongoclient.NewMongoClient(rondLogger, env.MongoDBUrl, mongoclient.ConnectionOpts{
+			MaxIdleTimeMs: env.MongoDBConnectionMaxIdleTimeMs,
+		})
 		if err != nil {
 			log.WithFields(logrus.Fields{
 				"error": logrus.Fields{"message": err.Error()},
