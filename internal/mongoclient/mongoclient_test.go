@@ -67,7 +67,9 @@ func TestSetupMongoCollection(t *testing.T) {
 		}
 
 		log := logging.NewNoOpLogger()
-		mongoClient, err := NewMongoClient(log, fmt.Sprintf("mongodb://%s/%s", mongoHost, testutils.GetRandomName(10)), connOptions)
+		mongoClient, err := NewMongoClient(log, fmt.Sprintf("mongodb://%s/%s", mongoHost, testutils.GetRandomName(10)), ConnectionOpts{
+			MaxIdleTimeMs: 2000,
+		})
 
 		collName := "a-collection"
 		coll := mongoClient.Collection(collName)
