@@ -36,31 +36,13 @@ type MongoClient struct {
 const STATE string = "__STATE__"
 const PUBLIC string = "PUBLIC"
 
-func (mongoClient *MongoClient) Disconnect() error {
-	if mongoClient != nil {
-		return mongoClient.MongoClient.Disconnect()
-	}
-	return nil
-}
-
 type Config struct {
-	MongoDBURL string
-
 	RolesCollectionName    string
 	BindingsCollectionName string
 }
 
-// NewMongoClient tries to setup a new MongoClient instance.
-// The function returns a `nil` client if the environment variable `MongoDBUrl` is not specified.
-func NewMongoClient(logger logging.Logger, config Config) (inputuser.Client, error) {
-	client, err := mongoclient.NewMongoClient(logger, config.MongoDBURL)
-	if err != nil {
-		return nil, err
-	}
-	if client == nil {
-		return nil, nil
-	}
-
+// NewMongoClient creates the struct for accessing user bindings
+func NewMongoClient(logger logging.Logger, client *mongoclient.MongoClient, config Config) (inputuser.Client, error) {
 	if config.RolesCollectionName == "" || config.BindingsCollectionName == "" {
 		return nil, fmt.Errorf(
 			`MongoDB url is not empty, required variables might be missing: BindingsCollectionName: "%s",  RolesCollectionName: "%s"`,

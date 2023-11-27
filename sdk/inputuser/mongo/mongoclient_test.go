@@ -21,67 +21,43 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestSetupMongoCollection(t *testing.T) {
-	t.Run("if MongoDBUrl empty, returns nil", func(t *testing.T) {
-		log := logging.NewNoOpLogger()
-		adapter, _ := NewMongoClient(log, Config{})
-		require.Nil(t, adapter, "MongoDBUrl is not nil")
-	})
+	log := logging.NewNoOpLogger()
 
 	t.Run("if RolesCollectionName empty, returns error", func(t *testing.T) {
-		mongoHost := os.Getenv("MONGO_HOST_CI")
-		if mongoHost == "" {
-			mongoHost = testutils.LocalhostMongoDB
-			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-		}
+		mongoDBURL, _, _, _ := getMongoDBURL(t)
+		client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+		require.NoError(t, err)
 
 		config := Config{
-			MongoDBURL:             fmt.Sprintf("mongodb://%s/test", mongoHost),
 			BindingsCollectionName: "Some different name",
 		}
-		log := logging.NewNoOpLogger()
-		adapter, err := NewMongoClient(log, config)
+		adapter, err := NewMongoClient(log, client, config)
+
 		require.Nil(t, adapter, "RolesCollectionName collection is not nil")
 		require.EqualError(t, err, `MongoDB url is not empty, required variables might be missing: BindingsCollectionName: "Some different name",  RolesCollectionName: ""`)
 	})
 
-	t.Run("throws if mongo url is without protocol", func(t *testing.T) {
-		mongoHost := "not-valid-mongo-url"
-
-		config := Config{
-			MongoDBURL:             mongoHost,
-			RolesCollectionName:    "something new",
-			BindingsCollectionName: "Some different name",
-		}
-		log := logging.NewNoOpLogger()
-		adapter, err := NewMongoClient(log, config)
-		require.True(t, err != nil, "setup mongo not returns error")
-		require.Contains(t, err.Error(), "failed MongoDB connection string validation:")
-		require.True(t, adapter == nil)
-	})
-
 	t.Run("correctly returns mongodb client", func(t *testing.T) {
-		mongoHost := os.Getenv("MONGO_HOST_CI")
-		if mongoHost == "" {
-			mongoHost = testutils.LocalhostMongoDB
-			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-		}
+		mongoDBURL, _, _, _ := getMongoDBURL(t)
+		client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+		require.NoError(t, err)
 
 		config := Config{
-			MongoDBURL:             fmt.Sprintf("mongodb://%s/test", mongoHost),
 			RolesCollectionName:    "roles",
 			BindingsCollectionName: "bindings",
 		}
 
-		log := logging.NewNoOpLogger()
-		mongoClient, err := NewMongoClient(log, config)
+		mongoClient, err := NewMongoClient(log, client, config)
 
 		defer mongoClient.Disconnect()
 		require.True(t, err == nil, "setup mongo returns error")
@@ -90,22 +66,20 @@ func TestSetupMongoCollection(t *testing.T) {
 }
 
 func TestMongoCollections(t *testing.T) {
-	t.Run("testing retrieve user bindings from mongo", func(t *testing.T) {
-		mongoHost := os.Getenv("MONGO_HOST_CI")
-		if mongoHost == "" {
-			mongoHost = testutils.LocalhostMongoDB
-			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-		}
+	log := logging.NewNoOpLogger()
 
-		_, dbName, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
+	t.Run("testing retrieve user bindings from mongo", func(t *testing.T) {
+		mongoDBURL, _, rolesCollection, bindingsCollection := getMongoDBURL(t)
+		client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+		require.NoError(t, err)
+
 		config := Config{
-			MongoDBURL:             fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName),
 			RolesCollectionName:    "roles",
 			BindingsCollectionName: "bindings",
 		}
 
 		log := logging.NewNoOpLogger()
-		mongoClient, err := NewMongoClient(log, config)
+		mongoClient, err := NewMongoClient(log, client, config)
 		require.NoError(t, err)
 		defer mongoClient.Disconnect()
 
@@ -176,21 +150,17 @@ func TestMongoCollections(t *testing.T) {
 	})
 
 	t.Run("testing retrieve user bindings from mongo - user without groups", func(t *testing.T) {
-		mongoHost := os.Getenv("MONGO_HOST_CI")
-		if mongoHost == "" {
-			mongoHost = testutils.LocalhostMongoDB
-			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-		}
+		mongoDBURL, _, rolesCollection, bindingsCollection := getMongoDBURL(t)
+		client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+		require.NoError(t, err)
 
-		_, dbName, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
 		config := Config{
-			MongoDBURL:             fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName),
 			RolesCollectionName:    "roles",
 			BindingsCollectionName: "bindings",
 		}
 
 		log := logging.NewNoOpLogger()
-		mongoClient, err := NewMongoClient(log, config)
+		mongoClient, err := NewMongoClient(log, client, config)
 		require.NoError(t, err)
 		defer mongoClient.Disconnect()
 
@@ -229,21 +199,16 @@ func TestMongoCollections(t *testing.T) {
 	})
 
 	t.Run("testing retrieve user bindings from mongo - no userId passed", func(t *testing.T) {
-		mongoHost := os.Getenv("MONGO_HOST_CI")
-		if mongoHost == "" {
-			mongoHost = testutils.LocalhostMongoDB
-			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-		}
-
-		_, dbName, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
+		mongoDBURL, _, rolesCollection, bindingsCollection := getMongoDBURL(t)
+		client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+		require.NoError(t, err)
 		config := Config{
-			MongoDBURL:             fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName),
 			RolesCollectionName:    "roles",
 			BindingsCollectionName: "bindings",
 		}
 
 		log := logging.NewNoOpLogger()
-		mongoClient, err := NewMongoClient(log, config)
+		mongoClient, err := NewMongoClient(log, client, config)
 		require.NoError(t, err)
 		defer mongoClient.Disconnect()
 
@@ -263,14 +228,17 @@ func TestMongoCollections(t *testing.T) {
 		}
 
 		_, dbName, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
+		mongoDBURL := fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName)
+
+		client, err := mongoclient.NewMongoClient(log, mongoDBURL)
+		require.NoError(t, err)
 
 		config := Config{
-			MongoDBURL:             fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName),
 			RolesCollectionName:    "roles",
 			BindingsCollectionName: "bindings",
 		}
 		log := logging.NewNoOpLogger()
-		mongoClient, err := NewMongoClient(log, config)
+		mongoClient, err := NewMongoClient(log, client, config)
 		defer mongoClient.Disconnect()
 		require.NoError(t, err, "setup mongo returns error")
 
@@ -301,10 +269,6 @@ func TestMongoCollections(t *testing.T) {
 func TestMongoClientNil(t *testing.T) {
 	var mongoClient *MongoClient
 
-	t.Run("disconnect", func(t *testing.T) {
-		require.Nil(t, mongoClient.Disconnect())
-	})
-
 	t.Run("retrieve user bindings", func(t *testing.T) {
 		_, err := mongoClient.RetrieveUserBindings(context.Background(), types.User{})
 		require.EqualError(t, err, "mongoClient is not defined")
@@ -314,4 +278,17 @@ func TestMongoClientNil(t *testing.T) {
 		_, err := mongoClient.RetrieveUserRolesByRolesID(context.Background(), []string{"id"})
 		require.EqualError(t, err, "mongoClient is not defined")
 	})
+}
+
+func getMongoDBURL(t *testing.T) (
+	mongoDBURL string, dbName string, rolesCollection *mongo.Collection, bindingsCollection *mongo.Collection) {
+	mongoHost := os.Getenv("MONGO_HOST_CI")
+	if mongoHost == "" {
+		mongoHost = testutils.LocalhostMongoDB
+		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
+	}
+
+	_, dbName, rolesCollection, bindingsCollection = testutils.GetAndDisposeTestClientsAndCollections(t)
+	mongoDBURL = fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName)
+	return
 }

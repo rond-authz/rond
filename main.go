@@ -29,13 +29,15 @@ import (
 	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/helpers"
+	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/logging"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/metrics"
 	rondprometheus "github.com/rond-authz/rond/metrics/prometheus"
 	"github.com/rond-authz/rond/openapi"
 	"github.com/rond-authz/rond/sdk"
-	mongoclient "github.com/rond-authz/rond/sdk/inputuser/mongo"
+	"github.com/rond-authz/rond/sdk/inputuser"
+	inputusermongoclient "github.com/rond-authz/rond/sdk/inputuser/mongo"
 	"github.com/rond-authz/rond/service"
 
 	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
@@ -93,30 +95,48 @@ func entrypoint(shutdown chan os.Signal) {
 		"oasApiPath":  env.TargetServiceOASPath,
 	}).Trace("OAS successfully loaded")
 
-	mongoClient, err := mongoclient.NewMongoClient(rondLogger, mongoclient.Config{
-		MongoDBURL:             env.MongoDBUrl,
-		RolesCollectionName:    env.RolesCollectionName,
-		BindingsCollectionName: env.BindingsCollectionName,
-	})
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("MongoDB setup failed")
-		return
-	}
-	if mongoClient != nil {
-		defer mongoClient.Disconnect()
+	var mongoDriver *mongoclient.MongoClient
+	if env.MongoDBUrl != "" {
+		client, err := mongoclient.NewMongoClient(rondLogger, env.MongoDBUrl)
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"error": logrus.Fields{"message": err.Error()},
+			}).Errorf("MongoDB setup failed")
+			return
+		}
+		defer func() {
+			if err := client.Disconnect(); err != nil {
+				log.WithFields(logrus.Fields{
+					"error": logrus.Fields{"message": err.Error()},
+				}).Errorf("MongoDB disconnection failed")
+			}
+		}()
+		mongoDriver = client
 	}
 
-	mongoClientForBuiltin, err := custom_builtins.NewMongoClient(rondLogger, env.MongoDBUrl)
-	if err != nil {
-		log.WithFields(logrus.Fields{
-			"error": logrus.Fields{"message": err.Error()},
-		}).Errorf("MongoDB for builtin setup failed")
-		return
-	}
-	if mongoClientForBuiltin != nil {
-		defer mongoClientForBuiltin.Disconnect()
+	var mongoClientForUserBindings inputuser.Client
+	var mongoClientForBuiltin custom_builtins.IMongoClient
+	if mongoDriver != nil {
+		client, err := inputusermongoclient.NewMongoClient(rondLogger, mongoDriver, inputusermongoclient.Config{
+			RolesCollectionName:    env.RolesCollectionName,
+			BindingsCollectionName: env.BindingsCollectionName,
+		})
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"error": logrus.Fields{"message": err.Error()},
+			}).Errorf("MongoDB setup failed")
+			return
+		}
+		mongoClientForUserBindings = client
+
+		clientForBuiltin, err := custom_builtins.NewMongoClient(rondLogger, mongoDriver)
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"error": logrus.Fields{"message": err.Error()},
+			}).Errorf("MongoDB for builtin setup failed")
+			return
+		}
+		mongoClientForBuiltin = clientForBuiltin
 	}
 
 	var m *metrics.Metrics
@@ -138,7 +158,7 @@ func entrypoint(shutdown chan os.Signal) {
 
 	// Routing
 	log.Trace("router setup initialization")
-	router, _ := service.SetupRouter(log, env, opaModuleConfig, oas, sdkBoot, mongoClient, registry)
+	router, _ := service.SetupRouter(log, env, opaModuleConfig, oas, sdkBoot, mongoClientForUserBindings, registry)
 	log.Trace("router setup initialization done")
 
 	srv := &http.Server{
