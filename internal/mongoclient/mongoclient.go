@@ -35,9 +35,13 @@ type MongoClient struct {
 const STATE string = "__STATE__"
 const PUBLIC string = "PUBLIC"
 
+type ConnectionOpts struct {
+	MaxIdleTimeMs int
+}
+
 // NewMongoClient tries to setup a new MongoClient instance.
 // The function returns a `nil` client if the environment variable `MongoDBUrl` is not specified.
-func NewMongoClient(logger logging.Logger, mongodbURL string) (*MongoClient, error) {
+func NewMongoClient(logger logging.Logger, mongodbURL string, connectionOptions ConnectionOpts) (*MongoClient, error) {
 	if mongodbURL == "" {
 		logger.Info("No MongoDB configuration provided, skipping setup")
 		return nil, nil
@@ -50,7 +54,13 @@ func NewMongoClient(logger logging.Logger, mongodbURL string) (*MongoClient, err
 		return nil, fmt.Errorf("failed MongoDB connection string validation: %s", err.Error())
 	}
 
-	clientOpts := options.Client().ApplyURI(mongodbURL)
+	clientOpts := options.Client().
+		ApplyURI(mongodbURL)
+
+	if connectionOptions.MaxIdleTimeMs != 0 {
+		clientOpts = clientOpts.SetMaxConnIdleTime(time.Duration(connectionOptions.MaxIdleTimeMs) * time.Millisecond)
+	}
+
 	client, err := mongo.Connect(context.Background(), clientOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to MongoDB: %s", err.Error())
