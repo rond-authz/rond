@@ -20,8 +20,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/logging"
+	"github.com/rond-authz/rond/types"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -52,13 +52,11 @@ func GetMongoClientFromContext(ctx context.Context) (IMongoClient, error) {
 }
 
 type MongoClient struct {
-	client *mongoclient.MongoClient
+	client types.MongoClient
 }
 
-func NewMongoClient(logger logging.Logger, mongoClient *mongoclient.MongoClient) (IMongoClient, error) {
-	return &MongoClient{
-		client: mongoClient,
-	}, nil
+func NewMongoClient(logger logging.Logger, mongoClient types.MongoClient) (IMongoClient, error) {
+	return &MongoClient{client: mongoClient}, nil
 }
 
 func (mongoClient *MongoClient) FindOne(ctx context.Context, collectionName string, query map[string]interface{}) (interface{}, error) {
