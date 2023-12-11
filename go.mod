@@ -1,6 +1,6 @@
 module github.com/rond-authz/rond
 
-go 1.18
+go 1.21
 
 require (
 	github.com/davidebianchi/gswagger v0.8.0
