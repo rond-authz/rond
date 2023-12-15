@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/sdk/inputuser"
 	"github.com/rond-authz/rond/types"
@@ -28,7 +27,7 @@ import (
 )
 
 type MongoClient struct {
-	*mongoclient.MongoClient
+	types.MongoClient
 	bindings *mongo.Collection
 	roles    *mongo.Collection
 }
@@ -42,7 +41,7 @@ type Config struct {
 }
 
 // NewMongoClient creates the struct for accessing user bindings
-func NewMongoClient(logger logging.Logger, client *mongoclient.MongoClient, config Config) (inputuser.Client, error) {
+func NewMongoClient(logger logging.Logger, client types.MongoClient, config Config) (inputuser.Client, error) {
 	if config.RolesCollectionName == "" || config.BindingsCollectionName == "" {
 		return nil, fmt.Errorf(
 			`MongoDB url is not empty, required variables might be missing: BindingsCollectionName: "%s",  RolesCollectionName: "%s"`,

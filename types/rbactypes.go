@@ -15,6 +15,8 @@
 // TODO: check if types should be removed from here, and set in correct packages
 package types
 
+import "go.mongodb.org/mongo-driver/mongo"
+
 type Resource struct {
 	ResourceType string `bson:"resourceType" json:"resourceType,omitempty"`
 	ResourceID   string `bson:"resourceId" json:"resourceId,omitempty"`
@@ -56,4 +58,9 @@ type User struct {
 	ID         string
 	Groups     []string
 	Properties map[string]any
+}
+
+type MongoClient interface {
+	Collection(collectionName string) *mongo.Collection
+	Disconnect() error
 }
