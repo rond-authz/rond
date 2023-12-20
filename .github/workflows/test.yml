@@ -28,7 +28,8 @@ jobs:
         uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: coverage.out
-
+          flag-name: Go-${{ matrix.go_version }}
+          parallel: true
   test-latest:
     name: Test latest
     strategy:
