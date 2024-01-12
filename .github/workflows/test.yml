@@ -59,10 +59,6 @@ jobs:
         run: go get -v -t -d ./...
       - name: Run tests
         run: make coverage
-      - name: Send the coverage output
-        uses: shogo82148/actions-goveralls@v1
-        with:
-          path-to-profile: coverage.out
 
   bench:
     name: Benchmark
