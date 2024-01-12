@@ -35,7 +35,7 @@ jobs:
       runs-on: ubuntu-latest
       needs: tests
       steps:
-        - name: Send the coverage output
+        - name: Close coverage report
           uses: shogo82148/actions-goveralls@v1
           with:
             parallel-finished: true
