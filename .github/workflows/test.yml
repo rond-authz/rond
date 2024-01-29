@@ -156,7 +156,7 @@ jobs:
         with:
           registry: nexus.mia-platform.eu
           username: ${{ secrets.MIA_PLATFORM_DOCKER_REGISTRY_USERNAME }}
-          password: ${{ secrets.MIA_PLATFORM_DOCKER_REGISTRYPASSWORD }}
+          password: ${{ secrets.MIA_PLATFORM_DOCKER_REGISTRY_PASSWORD }}
 
       - name: Prepare build cache
         uses: actions/cache@v4
