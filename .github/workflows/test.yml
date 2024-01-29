@@ -115,6 +115,7 @@ jobs:
           images: |
             ghcr.io/rond-authz/rond
             docker.io/rondauthz/rond
+            nexus.mia-platform.eu/rond-authz/rond
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
