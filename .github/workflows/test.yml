@@ -144,6 +144,13 @@ jobs:
           username: ${{ secrets.BOT_DOCKER_USERNAME }}
           password: ${{ secrets.BOT_DOCKER_TOKEN }}
 
+      - name: Docker Login to Mia-Platform Registry
+        uses: docker/login-action@v3
+        with:
+          registry: nexus.mia-platform.eu
+          username: ${{ secrets.MIA_PLATFORM_DOCKER_REGISTRY_USERNAME }}
+          password: ${{ secrets.MIA_PLATFORM_DOCKER_REGISTRYPASSWORD }}
+
       - name: Prepare build cache
         uses: actions/cache@v3
         with:
