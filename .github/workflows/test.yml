@@ -53,6 +53,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           check-latest: true
+          cache: false
       - name: Go version
         run: go version
       - name: Go get dependencies
