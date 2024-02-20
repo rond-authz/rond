@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/mia-platform/configlib v1.0.2
 	github.com/mia-platform/glogger/v4 v4.1.0
-	github.com/mia-platform/go-crud-service-client v0.11.0
+	github.com/mia-platform/go-crud-service-client v0.12.0
 	github.com/open-policy-agent/opa v0.61.0
 	github.com/prometheus/client_golang v1.18.0
 	github.com/samber/lo v1.39.0
