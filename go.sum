@@ -343,8 +343,8 @@ github.com/mia-platform/configlib v1.0.2 h1:vpb0oXFh5fO/WAAfz/lFiLY6VjyNv/jPViee
 github.com/mia-platform/configlib v1.0.2/go.mod h1:9TwR6CsqEQfdCyBdSCiZ5xUlpsvkOUFjXbgFzvmehQU=
 github.com/mia-platform/glogger/v4 v4.1.0 h1:rqs4/qwfe7j7VyLEtZG++xpVpM+XOdlZlq7f/YHbj2Y=
 github.com/mia-platform/glogger/v4 v4.1.0/go.mod h1:0Dqqthkv2jWdeoyghPIaMEKSWu+vyjSLQ85wfgNWEYs=
-github.com/mia-platform/go-crud-service-client v0.11.0 h1:6/4OFe2N2z2gQuVrAocTrKBPgttb244f74JzZ1ZNz4g=
-github.com/mia-platform/go-crud-service-client v0.11.0/go.mod h1:Sj3BEGMu0RTdeye/fPBVwRoojOjKuhWl5j+psY3s40s=
+github.com/mia-platform/go-crud-service-client v0.12.0 h1:KZqMUwEiWoPNJSMdTe4WqQdV2a1VRTNbhN4FO0UTqns=
+github.com/mia-platform/go-crud-service-client v0.12.0/go.mod h1:Sj3BEGMu0RTdeye/fPBVwRoojOjKuhWl5j+psY3s40s=
 github.com/mia-platform/jsonschema v0.1.0 h1:tjQf7TaYROsAqk7SXTL+44TrfKk3bSEvhRGPS51IA5Y=
 github.com/mia-platform/jsonschema v0.1.0/go.mod h1:r2DJjPA/+6S+WPnXZt1xONMvO2b4hlhfXfUYV0po/Dk=
 github.com/miekg/dns v1.1.26/go.mod h1:bPDLeHnStXmXAq1m/Ch/hvfNHr14JKNPMBo3VZKjuso=
