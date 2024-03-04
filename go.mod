@@ -14,7 +14,7 @@ require (
 	github.com/prometheus/client_golang v1.19.0
 	github.com/samber/lo v1.39.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/uptrace/bunrouter v1.0.21
 	go.mongodb.org/mongo-driver v1.14.0
 	gopkg.in/h2non/gock.v1 v1.1.2
