@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/logging"
 
@@ -28,17 +29,15 @@ import (
 )
 
 func TestNewMongoClient(t *testing.T) {
-	t.Run("return nil client if mongodb url not passed", func(t *testing.T) {
-		client, err := NewMongoClient(logging.NewNoOpLogger(), "")
-		require.NoError(t, err)
-		require.Nil(t, client)
-	})
+	log := logging.NewNoOpLogger()
 
-	t.Run("fails if mongo url is wrong", func(t *testing.T) {
-		client, err := NewMongoClient(logging.NewNoOpLogger(), "wrong-url")
-		require.EqualError(t, err, "failed MongoDB connection string validation: error parsing uri: scheme must be \"mongodb\" or \"mongodb+srv\"")
-		require.Nil(t, client)
-	})
+	mongoDBURL, _ := getMongoDBURL(t)
+	mongoClient, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
+	require.NoError(t, err)
+
+	client, err := NewMongoClient(logging.NewNoOpLogger(), mongoClient)
+	require.NoError(t, err)
+	require.NotNil(t, client)
 }
 
 func TestGetMongoCollectionFromContext(t *testing.T) {
@@ -66,18 +65,14 @@ func TestGetMongoCollectionFromContext(t *testing.T) {
 }
 
 func TestMongoFindOne(t *testing.T) {
-	mongoHost := os.Getenv("MONGO_HOST_CI")
-	if mongoHost == "" {
-		mongoHost = testutils.LocalhostMongoDB
-		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-	}
-
-	dbName := testutils.GetRandomName(10)
 	log := logging.NewNoOpLogger()
-	mongoClient, err := NewMongoClient(log, fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName))
+	mongoDBURL, dbName := getMongoDBURL(t)
+	client, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
 	require.NoError(t, err)
-	defer mongoClient.Disconnect()
-	require.True(t, err == nil, "setup mongo returns error")
+	defer client.Disconnect()
+
+	mongoClient, err := NewMongoClient(log, client)
+	require.NoError(t, err)
 
 	collectionName := "my-collection"
 	populateCollection(t, dbName, collectionName)
@@ -112,18 +107,14 @@ func TestMongoFindOne(t *testing.T) {
 }
 
 func TestMongoFindMany(t *testing.T) {
-	mongoHost := os.Getenv("MONGO_HOST_CI")
-	if mongoHost == "" {
-		mongoHost = testutils.LocalhostMongoDB
-		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-	}
-
-	dbName := testutils.GetRandomName(10)
 	log := logging.NewNoOpLogger()
-	mongoClient, err := NewMongoClient(log, fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName))
+	mongoDBURL, dbName := getMongoDBURL(t)
+	client, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
 	require.NoError(t, err)
-	defer mongoClient.Disconnect()
-	require.True(t, err == nil, "setup mongo returns error")
+	defer client.Disconnect()
+
+	mongoClient, err := NewMongoClient(log, client)
+	require.NoError(t, err)
 
 	collectionName := "my-collection"
 	populateCollection(t, dbName, collectionName)
@@ -209,4 +200,17 @@ func populateCollection(t *testing.T, dbName string, collectionName string) {
 		collection.Drop(ctx)
 		db.Drop(ctx)
 	})
+}
+
+func getMongoDBURL(t *testing.T) (connectionString string, dbName string) {
+	t.Helper()
+	mongoHost := os.Getenv("MONGO_HOST_CI")
+	if mongoHost == "" {
+		mongoHost = testutils.LocalhostMongoDB
+		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
+	}
+
+	dbName = testutils.GetRandomName(10)
+	connectionString = fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName)
+	return
 }

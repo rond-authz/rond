@@ -1811,13 +1811,15 @@ filter_policy {
 	}
 
 	logger, _ := test.NewNullLogger()
-	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
+	rondSDK, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
 		EvaluatorOptions: &sdk.EvaluatorOptions{},
 		Logger:           rondlogrus.NewLogger(logger),
 	})
 	require.NoError(t, err, "unexpected error")
 
-	router, err := service.SetupRouter(log, env, opa, oas, sdk, nil, nil)
+	sdkState := service.NewSDKBootState()
+	sdkState.Ready(rondSDK)
+	router, err := service.SetupRouter(log, env, opa, oas, sdkState, nil, nil)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("some eval API", func(t *testing.T) {
@@ -1970,7 +1972,7 @@ filter_policy {
 	registry := prometheus.NewRegistry()
 	logger, _ := test.NewNullLogger()
 	m := rondprometheus.SetupMetrics(registry)
-	sdk, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
+	rondSDK, err := sdk.NewFromOAS(context.Background(), opa, oas, &sdk.Options{
 		Logger:  rondlogrus.NewLogger(logger),
 		Metrics: m,
 	})
@@ -1979,8 +1981,9 @@ filter_policy {
 	m.PolicyEvaluationDurationMilliseconds.With(metrics.Labels{
 		"policy_name": "myPolicy",
 	}).Observe(123)
-
-	router, err := service.SetupRouter(log, env, opa, oas, sdk, nil, registry)
+	sdkState := service.NewSDKBootState()
+	sdkState.Ready(rondSDK)
+	router, err := service.SetupRouter(log, env, opa, oas, sdkState, nil, registry)
 	require.NoError(t, err, "unexpected error")
 
 	t.Run("metrics API exposed correctly", func(t *testing.T) {

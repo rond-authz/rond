@@ -25,6 +25,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var statusRoutes = []string{"/-/rbac-healthz", "/-/rbac-ready", "/-/rbac-check-up"}
+
 // StatusResponse type.
 type StatusResponse struct {
 	Status  string `json:"status"`
@@ -32,40 +34,69 @@ type StatusResponse struct {
 	Version string `json:"version"`
 }
 
-func handleStatusRoutes(w http.ResponseWriter, serviceName, serviceVersion string) (*StatusResponse, []byte) {
+func sendStatusRoutes(w http.ResponseWriter, logger *logrus.Entry, ok bool, serviceName, serviceVersion string) {
+	statusMessage := "OK"
+	statusCode := http.StatusOK
+	if !ok {
+		statusMessage = "KO"
+		statusCode = http.StatusServiceUnavailable
+	}
+
 	w.Header().Add(utils.ContentTypeHeaderKey, utils.JSONContentTypeHeader)
 	status := StatusResponse{
-		Status:  "OK",
+		Status:  statusMessage,
 		Name:    serviceName,
 		Version: serviceVersion,
 	}
 	body, err := json.Marshal(&status)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		return nil, nil
+		return
 	}
 
-	return &status, body
+	w.WriteHeader(statusCode)
+	if _, err := w.Write(body); err != nil {
+		logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
+	}
 }
 
-var statusRoutes = []string{"/-/rbac-healthz", "/-/rbac-ready", "/-/rbac-check-up"}
-
-func handleStatusEndpoint(serviceName, serviceVersion string) func(http.ResponseWriter, *http.Request) {
+func handleOKHandler(serviceName, serviceVersion string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
-		_, body := handleStatusRoutes(w, serviceName, serviceVersion)
-		if _, err := w.Write(body); err != nil {
-			logger := glogrus.FromContext(req.Context())
-			logger.WithField("error", logrus.Fields{"message": err.Error()}).Warn("failed response write")
+		sendStatusRoutes(
+			w,
+			glogrus.FromContext(req.Context()),
+			true,
+			serviceName,
+			serviceVersion,
+		)
+	}
+}
+
+func handleSDKReadyHandler(sdkBoot *SDKBootState, serviceName, serviceVersion string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		sdkReady := false
+		if sdk := sdkBoot.Get(); sdk != nil {
+			sdkReady = true
 		}
+
+		sendStatusRoutes(
+			w,
+			glogrus.FromContext(req.Context()),
+			sdkReady,
+			serviceName,
+			serviceVersion,
+		)
 	}
 }
 
 // StatusRoutes add status routes to router.
-func StatusRoutes(r *mux.Router, serviceName, serviceVersion string) {
-	statusEndpointHandler := handleStatusEndpoint(serviceName, serviceVersion)
-	r.HandleFunc("/-/rbac-healthz", statusEndpointHandler)
+func StatusRoutes(r *mux.Router, sdkBoot *SDKBootState, serviceName, serviceVersion string) {
+	sdkReadyHandler := handleSDKReadyHandler(sdkBoot, serviceName, serviceVersion)
+	alwaysOKHandler := handleOKHandler(serviceName, serviceVersion)
 
-	r.HandleFunc("/-/rbac-ready", statusEndpointHandler)
+	r.HandleFunc("/-/rbac-healthz", alwaysOKHandler)
 
-	r.HandleFunc("/-/rbac-check-up", statusEndpointHandler)
+	r.HandleFunc("/-/rbac-ready", sdkReadyHandler)
+
+	r.HandleFunc("/-/rbac-check-up", alwaysOKHandler)
 }

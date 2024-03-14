@@ -167,13 +167,24 @@
             "get": {
               "x-rond": {
                 "requestFlow": {
-                  "policyName": "foo_bar"
+                  "policyName": "foo_bar",
+                  "preventBodyLoad": true
                 },
                 "responseFlow": {
                   "policyName": "original_path"
                 },
                 "options": {
                     "ignoreTrailingSlash": true
+                }
+              }
+            }
+        },
+        "/with/preventbodyload": {
+            "get": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "foo_bar",
+                  "preventBodyLoad": true
                 }
               }
             }

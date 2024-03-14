@@ -554,6 +554,30 @@ func TestFindPermission(t *testing.T) {
 			RequestedPath: "/without/trailing/slash/",
 			Method:        "POST",
 		}, matchedPath)
+
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/ignore/trailing/slash/", "GET")
+		require.NoError(t, err)
+		require.Equal(t, core.RondConfig{
+			RequestFlow:  core.RequestFlow{PolicyName: "foo_bar", PreventBodyLoad: true},
+			ResponseFlow: core.ResponseFlow{PolicyName: "original_path"},
+			Options:      core.PermissionOptions{IgnoreTrailingSlash: true},
+		}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/ignore/trailing/slash/",
+			RequestedPath: "/ignore/trailing/slash/",
+			Method:        "GET",
+		}, matchedPath)
+
+		found, matchedPath, err = oas.FindPermission(OASRouter, "/with/preventbodyload", "GET")
+		require.NoError(t, err)
+		require.Equal(t, core.RondConfig{
+			RequestFlow: core.RequestFlow{PolicyName: "foo_bar", PreventBodyLoad: true},
+		}, found)
+		require.Equal(t, RouterInfo{
+			MatchedPath:   "/with/preventbodyload",
+			RequestedPath: "/with/preventbodyload",
+			Method:        "GET",
+		}, matchedPath)
 	})
 
 	t.Run("encoded cases", func(t *testing.T) {

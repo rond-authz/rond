@@ -59,8 +59,12 @@ func GetAndDisposeTestClientsAndCollections(t *testing.T) (*mongo.Client, string
 	t.Cleanup(func() {
 		// This sleep has been added to avoid mongo race condition
 		time.Sleep(100 * time.Millisecond)
-		db.Drop(context.Background())
-		client.Disconnect(context.Background())
+		if err := db.Drop(context.Background()); err != nil {
+			t.Fatalf("drop collcetion failed %s", err.Error())
+		}
+		if err := client.Disconnect(context.Background()); err != nil {
+			t.Fatalf("db disconnect failed %s", err.Error())
+		}
 	})
 
 	return client, db.Name(), rolesCollection, bindingsCollection
@@ -150,8 +154,12 @@ func PopulateDBForTesting(
 			CRUDDocumentState: "PUBLIC",
 		},
 	}
-	rolesCollection.DeleteMany(ctx, bson.D{})
-	rolesCollection.InsertMany(ctx, roles)
+	if _, err := rolesCollection.DeleteMany(ctx, bson.D{}); err != nil {
+		t.Fatalf("roles collection delete failed: %s", err.Error())
+	}
+	if _, err := rolesCollection.InsertMany(ctx, roles); err != nil {
+		t.Fatalf("roles collection insert failed: %s", err.Error())
+	}
 
 	bindings := []interface{}{
 		types.Binding{
@@ -228,6 +236,10 @@ func PopulateDBForTesting(
 			CRUDDocumentState: "PRIVATE",
 		},
 	}
-	bindingsCollection.DeleteMany(ctx, bson.D{})
-	bindingsCollection.InsertMany(ctx, bindings)
+	if _, err := bindingsCollection.DeleteMany(ctx, bson.D{}); err != nil {
+		t.Fatalf("bindings collection delete failed: %s", err.Error())
+	}
+	if _, err := bindingsCollection.InsertMany(ctx, bindings); err != nil {
+		t.Fatalf("bindings collection insert failed: %s", err.Error())
+	}
 }

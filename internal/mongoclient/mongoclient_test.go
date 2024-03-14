@@ -26,9 +26,11 @@ import (
 )
 
 func TestSetupMongoCollection(t *testing.T) {
+	connOptions := ConnectionOpts{}
+
 	t.Run("if MongoDBUrl empty, returns nil", func(t *testing.T) {
 		log := logging.NewNoOpLogger()
-		adapter, _ := NewMongoClient(log, "")
+		adapter, _ := NewMongoClient(log, "", connOptions)
 		require.True(t, adapter == nil, "MongoDBUrl is not nil")
 	})
 
@@ -36,7 +38,7 @@ func TestSetupMongoCollection(t *testing.T) {
 		mongoHost := "not-valid-mongo-url"
 
 		log := logging.NewNoOpLogger()
-		adapter, err := NewMongoClient(log, mongoHost)
+		adapter, err := NewMongoClient(log, mongoHost, connOptions)
 		require.True(t, err != nil, "setup mongo not returns error")
 		require.Contains(t, err.Error(), "failed MongoDB connection string validation:")
 		require.True(t, adapter == nil)
@@ -50,7 +52,7 @@ func TestSetupMongoCollection(t *testing.T) {
 		}
 
 		log := logging.NewNoOpLogger()
-		mongoClient, err := NewMongoClient(log, fmt.Sprintf("mongodb://%s/%s", mongoHost, testutils.GetRandomName(10)))
+		mongoClient, err := NewMongoClient(log, fmt.Sprintf("mongodb://%s/%s", mongoHost, testutils.GetRandomName(10)), connOptions)
 
 		defer mongoClient.Disconnect()
 		require.True(t, err == nil, "setup mongo returns error")
@@ -65,7 +67,9 @@ func TestSetupMongoCollection(t *testing.T) {
 		}
 
 		log := logging.NewNoOpLogger()
-		mongoClient, err := NewMongoClient(log, fmt.Sprintf("mongodb://%s/%s", mongoHost, testutils.GetRandomName(10)))
+		mongoClient, err := NewMongoClient(log, fmt.Sprintf("mongodb://%s/%s", mongoHost, testutils.GetRandomName(10)), ConnectionOpts{
+			MaxIdleTimeMs: 2000,
+		})
 
 		collName := "a-collection"
 		coll := mongoClient.Collection(collName)

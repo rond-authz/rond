@@ -88,7 +88,7 @@ func TestSetupRoutes(t *testing.T) {
 			"/{/with/trailing/slash:/with/trailing/slash\\/?}",
 		}
 
-		setupRoutes(router, oas, envs)
+		setupEvalRoutes(router, oas, envs)
 
 		foundPaths := make([]string, 0)
 		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
@@ -132,7 +132,7 @@ func TestSetupRoutes(t *testing.T) {
 		}
 		sort.Strings(expectedPaths)
 
-		setupRoutes(router, oas, envs)
+		setupEvalRoutes(router, oas, envs)
 
 		foundPaths := make([]string, 0)
 		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
@@ -168,7 +168,7 @@ func TestSetupRoutes(t *testing.T) {
 		expectedPaths := []string{"/validate/", "/validate/documentation/json", "/validate/foo/", "/validate/foo/bar/", "/validate/foo/bar/nested", "/validate/foo/bar/{barId}"}
 		sort.Strings(expectedPaths)
 
-		setupRoutes(router, oas, envs)
+		setupEvalRoutes(router, oas, envs)
 
 		foundPaths := make([]string, 0)
 		router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
@@ -333,7 +333,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		defer server.Close()
 
 		router := mux.NewRouter()
-		setupRoutes(router, oas, envs)
+		setupEvalRoutes(router, oas, envs)
 
 		serverURL, _ := url.Parse(server.URL)
 
@@ -373,7 +373,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		serverURL, _ := url.Parse(server.URL)
 
 		router := mux.NewRouter()
-		setupRoutes(router, oas, envs)
+		setupEvalRoutes(router, oas, envs)
 
 		eval, err := openapi.SetupEvaluators(ctx, logger, oas, mockOPAModule, nil)
 		require.NoError(t, err)
@@ -412,7 +412,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		todo { false }`,
 		}
 		router := mux.NewRouter()
-		setupRoutes(router, oas, envs)
+		setupEvalRoutes(router, oas, envs)
 
 		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/users/", nil)
 
@@ -439,7 +439,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 	t.Run("blocks request on policy evaluation error", func(t *testing.T) {
 		router := mux.NewRouter()
-		setupRoutes(router, oas, envs)
+		setupEvalRoutes(router, oas, envs)
 
 		evaluator := fake.NewSDKEvaluator(nil, mockXPermission, &fake.RequestPolicyEvaluatorResult{
 			Err: fmt.Errorf("fails to evaluate policy"),
@@ -482,7 +482,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		defer server.Close()
 
 		router := mux.NewRouter()
-		setupRoutes(router, oas, envs)
+		setupEvalRoutes(router, oas, envs)
 
 		serverURL, _ := url.Parse(server.URL)
 
@@ -525,7 +525,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		defer server.Close()
 
 		router := mux.NewRouter()
-		setupRoutes(router, oas, envs)
+		setupEvalRoutes(router, oas, envs)
 
 		serverURL, _ := url.Parse(server.URL)
 

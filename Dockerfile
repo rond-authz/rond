@@ -1,7 +1,7 @@
 ############################
 # STEP 1 build executable binary
 ############################
-FROM golang:1.21.1 AS builder
+FROM golang:1.22.1 AS builder
 
 WORKDIR /app
 
@@ -33,7 +33,7 @@ LABEL maintainer="rond@rond-authz.io" \
 
 LABEL org.opencontainers.image.description "Rönd is a lightweight container that distributes security policy enforcement throughout your application."
 
-ENV SERVICE_VERSION="1.10.1"
+ENV SERVICE_VERSION="1.12.3"
 
 # Import the user and group files from the builder.
 COPY --from=builder /etc/passwd /etc/passwd

@@ -37,26 +37,27 @@ const (
 // EnvironmentVariables struct with the mapping of desired
 // environment variables.
 type EnvironmentVariables struct {
-	LogLevel                 string
-	HTTPPort                 string
-	ServiceVersion           string
-	TargetServiceHost        string
-	TargetServiceOASPath     string
-	OPAModulesDirectory      string
-	APIPermissionsFilePath   string
-	UserPropertiesHeader     string
-	UserGroupsHeader         string
-	UserIdHeader             string
-	ClientTypeHeader         string
-	BindingsCrudServiceURL   string
-	MongoDBUrl               string
-	RolesCollectionName      string
-	BindingsCollectionName   string
-	PathPrefixStandalone     string
-	DelayShutdownSeconds     int
-	Standalone               bool
-	AdditionalHeadersToProxy string
-	ExposeMetrics            bool
+	LogLevel                       string
+	HTTPPort                       string
+	ServiceVersion                 string
+	TargetServiceHost              string
+	TargetServiceOASPath           string
+	OPAModulesDirectory            string
+	APIPermissionsFilePath         string
+	UserPropertiesHeader           string
+	UserGroupsHeader               string
+	UserIdHeader                   string
+	ClientTypeHeader               string
+	BindingsCrudServiceURL         string
+	MongoDBUrl                     string
+	MongoDBConnectionMaxIdleTimeMs int
+	RolesCollectionName            string
+	BindingsCollectionName         string
+	PathPrefixStandalone           string
+	DelayShutdownSeconds           int
+	Standalone                     bool
+	AdditionalHeadersToProxy       string
+	ExposeMetrics                  bool
 }
 
 var EnvVariablesConfig = []configlib.EnvConfig{
@@ -120,6 +121,11 @@ var EnvVariablesConfig = []configlib.EnvConfig{
 	{
 		Key:      "MONGODB_URL",
 		Variable: "MongoDBUrl",
+	},
+	{
+		Key:          "MONGODB_CONNECTION_MAX_IDLE_TIME_MS",
+		Variable:     "MongoDBConnectionMaxIdleTimeMs",
+		DefaultValue: "1000",
 	},
 	{
 		Key:      "BINDINGS_COLLECTION_NAME",

@@ -35,7 +35,7 @@ import (
 )
 
 func TestOPAMiddleware(t *testing.T) {
-	getSDK := func(t *testing.T, oas *openapi.OpenAPISpec, opaModule *core.OPAModuleConfig) sdk.OASEvaluatorFinder {
+	getSDK := func(t *testing.T, oas *openapi.OpenAPISpec, opaModule *core.OPAModuleConfig) *SDKBootState {
 		t.Helper()
 
 		logger, _ := test.NewNullLogger()
@@ -43,8 +43,9 @@ func TestOPAMiddleware(t *testing.T) {
 			Logger: rondlogrus.NewLogger(logger),
 		})
 		require.NoError(t, err, "unexpected error")
-
-		return sdk
+		sdkState := NewSDKBootState()
+		sdkState.Ready(sdk)
+		return sdkState
 	}
 	routesNotToProxy := make([]string, 0)
 
@@ -299,7 +300,7 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 		IsStandalone:         true,
 		PathPrefixStandalone: "/eval",
 	}
-	getSdk := func(t *testing.T, opaModule *core.OPAModuleConfig) sdk.OASEvaluatorFinder {
+	getSdk := func(t *testing.T, opaModule *core.OPAModuleConfig) *SDKBootState {
 		t.Helper()
 
 		log, _ := test.NewNullLogger()
@@ -308,8 +309,9 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 			Logger: logger,
 		})
 		require.NoError(t, err, "unexpected error")
-
-		return sdk
+		sdkState := NewSDKBootState()
+		sdkState.Ready(sdk)
+		return sdkState
 	}
 
 	t.Run("injects correct path removing prefix", func(t *testing.T) {
@@ -343,6 +345,7 @@ very_very_composed_permission_with_eval { true }`,
 		}
 
 		rondSDK := getSdk(t, opaModule)
+
 		middleware := OPAMiddleware(opaModule, rondSDK, routesNotToProxy, "", options)
 		builtHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			actual, err := sdk.GetEvaluator(r.Context())

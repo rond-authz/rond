@@ -26,7 +26,6 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/openapi"
-	"github.com/rond-authz/rond/sdk"
 	"github.com/rond-authz/rond/sdk/inputuser"
 	"github.com/rond-authz/rond/types"
 
@@ -39,6 +38,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
+
+const serviceName = "rönd"
 
 var routesToNotProxy = utils.Union(statusRoutes, []string{metricsRoutePath})
 
@@ -101,67 +102,18 @@ func SetupRouter(
 	env config.EnvironmentVariables,
 	opaModuleConfig *core.OPAModuleConfig,
 	oas *openapi.OpenAPISpec,
-	sdk sdk.OASEvaluatorFinder,
+	sdkBoot *SDKBootState,
 	inputUserClient inputuser.Client,
 	registry *prometheus.Registry,
 ) (*mux.Router, error) {
 	router := mux.NewRouter().UseEncodedPath()
 	router.Use(gmux.RequestMiddlewareLogger(glogrus.GetLogger(logrus.NewEntry(log)), []string{"/-/"}))
-	serviceName := "rönd"
-	StatusRoutes(router, serviceName, env.ServiceVersion)
 
-	if env.ExposeMetrics {
-		metricsRoute(router, registry)
+	StatusRoutes(router, sdkBoot, serviceName, env.ServiceVersion)
+
+	if err := setupServiceRouter(env, log, router, opaModuleConfig, oas, sdkBoot, registry, inputUserClient); err != nil {
+		return nil, err
 	}
-
-	router.Use(config.RequestMiddlewareEnvironments(env))
-
-	evalRouter := router.NewRoute().Subrouter()
-	if env.Standalone {
-		swaggerRouter, err := swagger.NewRouter(gorilla.NewRouter(router), swagger.Options{
-			Context: context.Background(),
-			Openapi: &openapi3.T{
-				Info: &openapi3.Info{
-					Title:   serviceName,
-					Version: env.ServiceVersion,
-				},
-			},
-			JSONDocumentationPath: "/openapi/json",
-			YAMLDocumentationPath: "/openapi/yaml",
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		// standalone routes
-		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings/resource/{resourceType}", revokeHandler, revokeDefinitions); err != nil {
-			return nil, err
-		}
-		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings/resource/{resourceType}", grantHandler, grantDefinitions); err != nil {
-			return nil, err
-		}
-		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings", revokeHandler, revokeDefinitions); err != nil {
-			return nil, err
-		}
-		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings", grantHandler, grantDefinitions); err != nil {
-			return nil, err
-		}
-
-		if err = swaggerRouter.GenerateAndExposeOpenapi(); err != nil {
-			return nil, err
-		}
-	}
-
-	evalRouter.Use(OPAMiddleware(opaModuleConfig, sdk, routesToNotProxy, env.TargetServiceOASPath, &OPAMiddlewareOptions{
-		IsStandalone:         env.Standalone,
-		PathPrefixStandalone: env.PathPrefixStandalone,
-	}))
-
-	if inputUserClient != nil {
-		evalRouter.Use(inputuser.ClientInjectorMiddleware(inputUserClient))
-	}
-
-	setupRoutes(evalRouter, oas, env)
 
 	//#nosec G104 -- Produces a false positive
 	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
@@ -169,11 +121,11 @@ func SetupRouter(
 		log.Tracef("Registered path: %s", path)
 		return nil
 	})
-
+	log.Trace("router setup completed")
 	return router, nil
 }
 
-func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.EnvironmentVariables) {
+func setupEvalRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.EnvironmentVariables) {
 	var documentationPermission string
 	documentationPathInOAS := oas.Paths[env.TargetServiceOASPath]
 	if documentationPathInOAS != nil {
@@ -198,7 +150,16 @@ func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.Enviro
 		}
 		if strings.Contains(pathToRegister, "*") {
 			pathWithoutAsterisk := strings.ReplaceAll(pathToRegister, "*", "")
-			router.PathPrefix(openapi.ConvertPathVariablesToBrackets(pathWithoutAsterisk)).HandlerFunc(rbacHandler).Methods(methodsMap[path]...)
+
+			// FIXME: mux overwites methods input setting them uppercase
+			// this leads to a race condition on the methods; to prevent
+			// test failing for race detection we create here a copy before
+			// submitting them to mux!
+			originalMethods := methodsMap[path]
+			methods := make([]string, 0)
+			methods = append(methods, originalMethods...)
+
+			router.PathPrefix(openapi.ConvertPathVariablesToBrackets(pathWithoutAsterisk)).HandlerFunc(rbacHandler).Methods(methods...)
 			continue
 		}
 		if path == env.TargetServiceOASPath && documentationPermission == "" {
@@ -226,4 +187,73 @@ func setupRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.Enviro
 		fallbackRoute = fmt.Sprintf("%s/", path.Join(env.PathPrefixStandalone, fallbackRoute))
 	}
 	router.PathPrefix(fallbackRoute).HandlerFunc(rbacHandler)
+}
+
+func setupServiceRouter(
+	env config.EnvironmentVariables,
+	log *logrus.Logger,
+	router *mux.Router,
+	opaModuleConfig *core.OPAModuleConfig,
+	oas *openapi.OpenAPISpec,
+	sdkBootState *SDKBootState,
+	registry *prometheus.Registry,
+	inputUserClient inputuser.Client,
+) error {
+	if env.ExposeMetrics {
+		metricsRoute(router, registry)
+	}
+
+	log.Trace("register env variables middleware")
+	router.Use(config.RequestMiddlewareEnvironments(env))
+
+	evalRouter := router.NewRoute().Subrouter()
+	if env.Standalone {
+		swaggerRouter, err := swagger.NewRouter(gorilla.NewRouter(router), swagger.Options{
+			Context: context.Background(),
+			Openapi: &openapi3.T{
+				Info: &openapi3.Info{
+					Title:   serviceName,
+					Version: env.ServiceVersion,
+				},
+			},
+			JSONDocumentationPath: "/openapi/json",
+			YAMLDocumentationPath: "/openapi/yaml",
+		})
+		if err != nil {
+			return err
+		}
+
+		// standalone routes
+		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings/resource/{resourceType}", revokeHandler, revokeDefinitions); err != nil {
+			return err
+		}
+		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings/resource/{resourceType}", grantHandler, grantDefinitions); err != nil {
+			return err
+		}
+		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/revoke/bindings", revokeHandler, revokeDefinitions); err != nil {
+			return err
+		}
+		if _, err := swaggerRouter.AddRoute(http.MethodPost, "/grant/bindings", grantHandler, grantDefinitions); err != nil {
+			return err
+		}
+
+		if err = swaggerRouter.GenerateAndExposeOpenapi(); err != nil {
+			return err
+		}
+	}
+
+	log.Trace("register OPA middleware")
+	evalRouter.Use(OPAMiddleware(opaModuleConfig, sdkBootState, routesToNotProxy, env.TargetServiceOASPath, &OPAMiddlewareOptions{
+		IsStandalone:         env.Standalone,
+		PathPrefixStandalone: env.PathPrefixStandalone,
+	}))
+
+	log.Trace("register input user client builder middleware")
+	if inputUserClient != nil {
+		evalRouter.Use(inputuser.ClientInjectorMiddleware(inputUserClient))
+	}
+
+	log.Trace("setup evaluation routes")
+	setupEvalRoutes(evalRouter, oas, env)
+	return nil
 }

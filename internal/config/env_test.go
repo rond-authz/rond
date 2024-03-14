@@ -78,10 +78,11 @@ func TestGetEnvOrDie(t *testing.T) {
 		PathPrefixStandalone: "/eval",
 		ServiceVersion:       "latest",
 
-		OPAModulesDirectory:      "/modules",
-		APIPermissionsFilePath:   "/oas",
-		AdditionalHeadersToProxy: "miauserid",
-		ExposeMetrics:            true,
+		OPAModulesDirectory:            "/modules",
+		APIPermissionsFilePath:         "/oas",
+		AdditionalHeadersToProxy:       "miauserid",
+		ExposeMetrics:                  true,
+		MongoDBConnectionMaxIdleTimeMs: 1000,
 	}
 
 	t.Run(`returns correctly - with TargetServiceHost`, func(t *testing.T) {
