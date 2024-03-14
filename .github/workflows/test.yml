@@ -49,7 +49,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Use golang ${{ matrix.go_version }}
+      - name: Use golang latest
         uses: actions/setup-go@v5
         with:
           go-version: 'stable'
@@ -66,7 +66,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go_version: ['1.20']
+        go_version: ['1.22']
         os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v4
@@ -74,7 +74,7 @@ jobs:
         with:
           go-version: ${{ matrix.go_version }}
       - name: Run benchmark
-        run: make bench | tee output.txt
+        run: make bench | tee output.txt; exit ${PIPESTATUS[0]}
       - name: Download previous benchmark data
         uses: actions/cache/restore@v4
         with:
