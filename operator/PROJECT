@@ -9,5 +9,5 @@ plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: rond-operator
-repo: github.com/rond-authz/rond
+repo: github.com/rond-authz/rond/operator
 version: "3"
