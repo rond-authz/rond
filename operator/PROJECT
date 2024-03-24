@@ -10,14 +10,4 @@ plugins:
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: rond-operator
 repo: github.com/rond-authz/rond
-resources:
-- api:
-    crdVersion: v1
-    namespaced: true
-  controller: true
-  domain: rond-authz.io
-  group: rond
-  kind: APISecurityRule
-  path: github.com/rond-authz/rond/api/v1alpha1
-  version: v1alpha1
 version: "3"
