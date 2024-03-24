@@ -1,0 +1,27 @@
+# permissions for end users to view apisecurityrules.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: apisecurityrule-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: rond-operator
+    app.kubernetes.io/part-of: rond-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: apisecurityrule-viewer-role
+rules:
+- apiGroups:
+  - rond.rond-authz.io
+  resources:
+  - apisecurityrules
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - rond.rond-authz.io
+  resources:
+  - apisecurityrules/status
+  verbs:
+  - get

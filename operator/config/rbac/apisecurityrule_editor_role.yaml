@@ -1,0 +1,31 @@
+# permissions for end users to edit apisecurityrules.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: apisecurityrule-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: rond-operator
+    app.kubernetes.io/part-of: rond-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: apisecurityrule-editor-role
+rules:
+- apiGroups:
+  - rond.rond-authz.io
+  resources:
+  - apisecurityrules
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rond.rond-authz.io
+  resources:
+  - apisecurityrules/status
+  verbs:
+  - get
