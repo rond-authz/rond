@@ -2,10 +2,6 @@
 
 # CHANGELOG
 
-### Changed
-
-- update glogger middleware to support protocol switch (e.g. from http to websocket)
-
 ## 1.5.0 - 19-10-2022
 
 ## 1.4.3 - 12-10-2022
