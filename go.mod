@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/mia-platform/configlib v1.0.2
-	github.com/mia-platform/glogger/v4 v4.1.0
+	github.com/mia-platform/glogger/v4 v4.2.0
 	github.com/mia-platform/go-crud-service-client v0.14.0
 	github.com/open-policy-agent/opa v0.62.1
 	github.com/prometheus/client_golang v1.19.0
@@ -43,7 +43,7 @@ require (
 	github.com/invopop/jsonschema v0.12.0 // indirect
 	github.com/invopop/yaml v0.2.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/klauspost/compress v1.17.0 // indirect
+	github.com/klauspost/compress v1.17.6 // indirect
 	github.com/knadh/koanf v1.4.3 // indirect
 	github.com/knadh/koanf/v2 v2.0.1 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect

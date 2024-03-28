@@ -225,8 +225,8 @@ github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7V
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
-github.com/klauspost/compress v1.17.0 h1:Rnbp4K9EjcDuVuHtd0dgA4qNuv9yKDYKK1ulpJwgrqM=
-github.com/klauspost/compress v1.17.0/go.mod h1:ntbaceVETuRiXiv4DpjP66DpAtAGkEQskQzEyD//IeE=
+github.com/klauspost/compress v1.17.6 h1:60eq2E/jlfwQXtvZEeBUYADs+BwKBWURIY+Gj2eRGjI=
+github.com/klauspost/compress v1.17.6/go.mod h1:/dCuZOvVtNoHsyb+cuJD3itjs3NbnF6KH9zAO4BDxPM=
 github.com/knadh/koanf v1.4.3 h1:rSJcSH5LSFhvzBRsAYfT3k7eLP0I4UxeZqjtAatk+wc=
 github.com/knadh/koanf v1.4.3/go.mod h1:5FAkuykKXZvLqhAbP4peWgM5CTcZmn7L1d27k/a+kfg=
 github.com/knadh/koanf/v2 v2.0.1 h1:1dYGITt1I23x8cfx8ZnldtezdyaZtfAuRtIFOiRzK7g=
@@ -257,8 +257,8 @@ github.com/mattn/go-isatty v0.0.12/go.mod h1:cbi8OIDigv2wuxKPP5vlRcQ1OAZbq2CE4Ky
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/mia-platform/configlib v1.0.2 h1:vpb0oXFh5fO/WAAfz/lFiLY6VjyNv/jPViee9/fF6kU=
 github.com/mia-platform/configlib v1.0.2/go.mod h1:9TwR6CsqEQfdCyBdSCiZ5xUlpsvkOUFjXbgFzvmehQU=
-github.com/mia-platform/glogger/v4 v4.1.0 h1:rqs4/qwfe7j7VyLEtZG++xpVpM+XOdlZlq7f/YHbj2Y=
-github.com/mia-platform/glogger/v4 v4.1.0/go.mod h1:0Dqqthkv2jWdeoyghPIaMEKSWu+vyjSLQ85wfgNWEYs=
+github.com/mia-platform/glogger/v4 v4.2.0 h1:p4dhcYfHE5+5jIa2/r6B3Bk7q/1qvfe5H7YiJvdLlUM=
+github.com/mia-platform/glogger/v4 v4.2.0/go.mod h1:pdFh/+B09Gup8KH3HSeWlV9tHn1ndCMZ7tdsQjIFRKw=
 github.com/mia-platform/go-crud-service-client v0.14.0 h1:18bVVC92/Tcdb1sPOVfwOuRzmUy98HH15mScTceq8ik=
 github.com/mia-platform/go-crud-service-client v0.14.0/go.mod h1:FpRRAmwBojnD8iEPrY0utgjkKlJBcGiXPfkioK1/Gz0=
 github.com/miekg/dns v1.1.26/go.mod h1:bPDLeHnStXmXAq1m/Ch/hvfNHr14JKNPMBo3VZKjuso=
