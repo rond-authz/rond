@@ -2,6 +2,10 @@
 
 # CHANGELOG
 
+### Changed
+
+- update glogger middleware to support protocol switch (e.g. from http to websocket)
+
 ## 1.5.0 - 19-10-2022
 
 ## 1.4.3 - 12-10-2022
@@ -24,7 +28,7 @@
 
 ### Fixed
 
-- migrated from `io/ioutil` package to `os` and `io` packages 
+- migrated from `io/ioutil` package to `os` and `io` packages
 - [#65](https://github.com/rond-authz/rond/issues/65): router now match specific verbs
 
 ## 1.4.0 - 11-08-2022
@@ -130,7 +134,7 @@
 
 ### Fixed
 
-- Prevent status routes to run into the OPA Middleware 
+- Prevent status routes to run into the OPA Middleware
 
 ## 0.8.1 - 14/03/2022
 
