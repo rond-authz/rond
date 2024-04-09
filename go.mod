@@ -10,7 +10,7 @@ require (
 	github.com/mia-platform/configlib v1.0.2
 	github.com/mia-platform/glogger/v4 v4.2.0
 	github.com/mia-platform/go-crud-service-client v0.14.0
-	github.com/open-policy-agent/opa v0.62.1
+	github.com/open-policy-agent/opa v0.63.0
 	github.com/prometheus/client_golang v1.19.0
 	github.com/samber/lo v1.39.0
 	github.com/sirupsen/logrus v1.9.3
