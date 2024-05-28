@@ -30,9 +30,6 @@ jobs:
           path-to-profile: coverage.out
           flag-name: Go-${{ matrix.go_version }}
           parallel: true
-      - name: Test github sha
-        run: echo ${{ github.sha }}
-
   post-tests:
       runs-on: ubuntu-latest
       needs: tests
