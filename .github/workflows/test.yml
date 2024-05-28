@@ -30,6 +30,8 @@ jobs:
           path-to-profile: coverage.out
           flag-name: Go-${{ matrix.go_version }}
           parallel: true
+      - name: Test github sha
+        run: echo ${{ github.sha }}
 
   post-tests:
       runs-on: ubuntu-latest
@@ -179,4 +181,5 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
           build-args: |
             BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}]
+            COMMIT_SHA=${{ github.sha }}
