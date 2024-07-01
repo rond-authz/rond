@@ -12,7 +12,7 @@ require (
 	github.com/mia-platform/go-crud-service-client v0.14.0
 	github.com/open-policy-agent/opa v0.65.0
 	github.com/prometheus/client_golang v1.19.1
-	github.com/samber/lo v1.39.0
+	github.com/samber/lo v1.42.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	github.com/uptrace/bunrouter v1.0.21
@@ -89,7 +89,7 @@ require (
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
