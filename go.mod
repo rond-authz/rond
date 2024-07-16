@@ -12,7 +12,7 @@ require (
 	github.com/mia-platform/go-crud-service-client v0.14.0
 	github.com/open-policy-agent/opa v0.65.0
 	github.com/prometheus/client_golang v1.19.1
-	github.com/samber/lo v1.42.0
+	github.com/samber/lo v1.46.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	github.com/uptrace/bunrouter v1.0.21
