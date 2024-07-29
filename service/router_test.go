@@ -73,6 +73,16 @@ func TestSetupRoutes(t *testing.T) {
 						},
 					},
 				},
+				// "/trailing-slash-with-variables/{id}": openapi.PathVerbs{
+				// 	"get": openapi.VerbConfig{
+				// 		PermissionV2: &core.RondConfig{
+				// 			RequestFlow: core.RequestFlow{
+				// 				PolicyName: "filter_policy",
+				// 			},
+				// 			Options: core.PermissionOptions{IgnoreTrailingSlash: true},
+				// 		},
+				// 	},
+				// },
 			},
 		}
 		expectedPaths := []string{
@@ -275,7 +285,6 @@ type evaluatorParams struct {
 
 func getEvaluator(
 	t *testing.T,
-	ctx context.Context,
 	opaModule *core.OPAModuleConfig,
 	mongoClient custom_builtins.IMongoClient,
 	oas *openapi.OpenAPISpec,
@@ -301,7 +310,8 @@ func getEvaluator(
 
 	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, oas, &sdk.Options{
 		EvaluatorOptions: &sdk.EvaluatorOptions{
-			MongoClient: mongoClient,
+			MongoClient:           mongoClient,
+			EnablePrintStatements: true,
 		},
 		Logger:  logger,
 		Metrics: m,
@@ -337,7 +347,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/users/", nil)
+		evaluator := getEvaluator(t, mockOPAModule, nil, oas, http.MethodGet, "/users/", nil)
 
 		ctx := createContext(t,
 			context.Background(),
@@ -355,7 +365,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		require.True(t, ok, "Route not found")
 
 		w := httptest.NewRecorder()
-		matchedRouted.Handler.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 
 		require.True(t, invoked, "mock server was not invoked")
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
@@ -399,7 +409,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		require.True(t, ok, "Route not found")
 
 		w := httptest.NewRecorder()
-		matchedRouted.Handler.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 
 		require.True(t, invoked, "mock server was not invoked")
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
@@ -414,7 +424,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		router := mux.NewRouter()
 		setupEvalRoutes(router, oas, envs)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/users/", nil)
+		evaluator := getEvaluator(t, mockOPAModule, nil, oas, http.MethodGet, "/users/", nil)
 
 		ctx := createContext(t,
 			context.Background(),
@@ -432,7 +442,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		require.True(t, ok, "Route not found")
 
 		w := httptest.NewRecorder()
-		matchedRouted.Handler.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusForbidden, w.Result().StatusCode, w.Body.String())
 	})
@@ -461,7 +471,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		require.True(t, ok, "Route not found")
 
 		w := httptest.NewRecorder()
-		matchedRouted.Handler.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusForbidden, w.Result().StatusCode)
 	})
@@ -486,7 +496,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/foo/route-not-registered-explicitly", nil)
+		evaluator := getEvaluator(t, mockOPAModule, nil, oas, http.MethodGet, "/foo/route-not-registered-explicitly", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -503,7 +513,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		require.True(t, ok, "Route not found")
 
 		w := httptest.NewRecorder()
-		matchedRouted.Handler.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 
 		require.True(t, invoked, "mock server was not invoked")
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
@@ -529,7 +539,7 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/foo/bar/nested", nil)
+		evaluator := getEvaluator(t, mockOPAModule, nil, oas, http.MethodGet, "/foo/bar/nested", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -546,7 +556,55 @@ func TestSetupRoutesIntegration(t *testing.T) {
 		require.True(t, ok, "Route not found")
 
 		w := httptest.NewRecorder()
-		matchedRouted.Handler.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
+
+		require.True(t, invoked, "mock server was not invoked")
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+	})
+
+	t.Run("invokes a specific API with trailing slash", func(t *testing.T) {
+		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
+		var mockOPAModule = &core.OPAModuleConfig{
+			Name: "example.rego",
+			Content: `package policies
+
+allow_params_trailing_slash {
+	id := object.get(input,["request","pathParams", "id"], false)
+	id == "my-id"
+}
+`,
+		}
+
+		var invoked bool
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			invoked = true
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		router := mux.NewRouter()
+		setupEvalRoutes(router, oas, envs)
+
+		serverURL, _ := url.Parse(server.URL)
+
+		evaluator := getEvaluator(t, mockOPAModule, nil, oas, http.MethodGet, "/trailing-slash-with-variables/id/", nil)
+		ctx := createContext(t,
+			context.Background(),
+			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
+			evaluator,
+			nil,
+			nil,
+		)
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://host/trailing-slash-with-variables/my-id/", nil)
+		require.NoError(t, err, "Unexpected error")
+
+		var matchedRouted mux.RouteMatch
+		ok := router.Match(req, &matchedRouted)
+		require.True(t, ok, "Route not found")
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
 
 		require.True(t, invoked, "mock server was not invoked")
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)

@@ -200,6 +200,18 @@
                 }
               }
             }
+        },
+        "/trailing-slash-with-variables/:id/": {
+            "get": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "allow_params_trailing_slash"
+                },
+                "options": {
+                    "ignoreTrailingSlash": true
+                }
+              }
+            }
         }
     }
 }

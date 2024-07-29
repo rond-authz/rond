@@ -46,7 +46,7 @@ filter_projects {
 }
 
 projection_feature_toggle[res] {
-	ft_not_allowed := {x | 
+	ft_not_allowed := {x |
 		some key, val in input.response.body
 			ft_checker with input.ft as key
 		x = key
@@ -76,7 +76,7 @@ filter_req {
 testingPathParamsAbsence {
 	object.get(input, ["request", "method"], false) == "GET"
 	object.get(input, ["request", "pathParams"], false) == false
-} {	
+} {
 	object.get(input, ["request", "method"], false) == "PATCH"
 	object.get(input, ["request", "pathParams"], false) != false
 }

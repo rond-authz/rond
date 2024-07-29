@@ -93,7 +93,7 @@ func TestDirectProxyHandler(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, mockOPAModule, nil, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -126,7 +126,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		defer server.Close()
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, mockOPAModule, nil, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -164,7 +164,7 @@ func TestDirectProxyHandler(t *testing.T) {
 		body := strings.NewReader(mockBodySting)
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, mockOPAModule, nil, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -211,7 +211,7 @@ func TestDirectProxyHandler(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, OPAModuleConfig, nil, oas, http.MethodGet, "/api", nil)
 
 		ctx := createContext(t,
 			context.Background(),
@@ -281,7 +281,7 @@ allow {
 		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -336,7 +336,7 @@ allow {
 		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -403,7 +403,7 @@ allow {
 
 		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -460,7 +460,7 @@ allow {
 
 			OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-			evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
 			serverURL, _ := url.Parse(server.URL)
 			ctx := createContext(t,
 				context.Background(),
@@ -517,7 +517,7 @@ allow {
 
 			OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-			evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
 
 			serverURL, _ := url.Parse(server.URL)
 			ctx := createContext(t,
@@ -565,7 +565,7 @@ allow {
 
 		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -608,7 +608,7 @@ allow {
 
 		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -664,7 +664,7 @@ allow {
 
 		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -708,7 +708,7 @@ allow {
 
 			registry := prometheus.NewRegistry()
 
-			evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/api", &evaluatorParams{
+			evaluator := getEvaluator(t, mockOPAModule, nil, oas, http.MethodGet, "/api", &evaluatorParams{
 				logger:   logger,
 				registry: registry,
 			})
@@ -785,7 +785,7 @@ allow {
 
 			registry := prometheus.NewRegistry()
 
-			evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", &evaluatorParams{
+			evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", &evaluatorParams{
 				logger:   logger,
 				registry: registry,
 			})
@@ -872,7 +872,7 @@ todo {
 
 		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
 
-		evaluator := getEvaluator(t, ctx, OPAModuleConfig, nil, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, OPAModuleConfig, nil, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -930,11 +930,8 @@ func TestStandaloneMode(t *testing.T) {
 		},
 	}
 
-	log, _ := test.NewNullLogger()
-	ctx := glogger.WithLogger(context.Background(), logrus.NewEntry(log))
-
 	t.Run("ok", func(t *testing.T) {
-		evaluator := getEvaluator(t, ctx, mockOPAModule, nil, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, mockOPAModule, nil, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			env,
@@ -982,7 +979,7 @@ allow {
 		body := strings.NewReader(mockBodySting)
 
 		opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-		evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			env,
@@ -1032,7 +1029,7 @@ allow {
 			body := strings.NewReader(mockBodySting)
 
 			opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-			evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				env,
@@ -1082,7 +1079,7 @@ allow {
 			body := strings.NewReader(mockBodySting)
 
 			opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-			evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				env,
@@ -1132,7 +1129,7 @@ allow {
 		body := strings.NewReader(mockBodySting)
 
 		opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-		evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			env,
@@ -1184,7 +1181,7 @@ allow {
 		body := strings.NewReader(mockBodySting)
 
 		opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-		evaluator := getEvaluator(t, ctx, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			env,
@@ -1248,8 +1245,6 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
-
 	// TODO: this tests verifies policy execution based on request header evaluation, it is
 	// useful as a documentation because right now headers are provided as-is from the
 	// http.Header type which transforms any header key in `Camel-Case`, meaning a policy
@@ -1276,7 +1271,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					todo { count(input.request.headers["%s"]) != 0 }`, mockHeader),
 				}
 
-				evaluator := getEvaluator(t, ctx, opaModule, nil, oas, http.MethodGet, "/api", nil)
+				evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 				ctx := createContext(t,
 					context.Background(),
 					config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -1317,7 +1312,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					todo { get_header("x-backdoor", input.request.headers) == "mocked value" }`,
 				}
 
-				evaluator := getEvaluator(t, ctx, opaModule, nil, oas, http.MethodGet, "/api", nil)
+				evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 				ctx := createContext(t,
 					context.Background(),
 					config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -1376,7 +1371,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				}`, mockedUserProperties["my"], mockedClientType),
 			}
 
-			evaluator := getEvaluator(t, ctx, opaModule, nil, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1457,7 +1452,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 			}
 
-			evaluator := getEvaluator(t, ctx, opaModule, nil, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -1493,7 +1488,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			serverURL, _ := url.Parse(server.URL)
 
 			inputUserClientMock := &fake.InputUserClient{UserBindingsError: errors.New("Something went wrong"), UserBindings: nil, UserRoles: nil, UserRolesError: errors.New("Something went wrong")}
-			evaluator := getEvaluator(t, ctx, opaModule, nil, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1538,7 +1533,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			inputUserClientMock := &fake.InputUserClient{UserBindingsError: errors.New("MongoDB Error"), UserRolesError: errors.New("MongoDB Error")}
 
-			evaluator := getEvaluator(t, ctx, opaModule, nil, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1622,7 +1617,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			inputUserClientMock := &fake.InputUserClient{UserBindings: userBindings, UserRoles: userRoles}
 
-			evaluator := getEvaluator(t, ctx, opaModule, nil, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1710,7 +1705,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			serverURL, _ := url.Parse(server.URL)
 			inputUserClientMock := &fake.InputUserClient{UserBindings: userBindings, UserRoles: userRoles}
 
-			evaluator := getEvaluator(t, ctx, opaModule, nil, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1810,7 +1805,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			inputUserClientMock := &fake.InputUserClient{UserBindings: userBindings, UserRoles: userRoles}
 
 			serverURL, _ := url.Parse(server.URL)
-			evaluator := getEvaluator(t, ctx, opaModule, nil, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1861,7 +1856,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			inputUserClientMock := &fake.InputUserClient{UserBindings: nil}
 
-			evaluator := getEvaluator(t, ctx, opaModule, nil, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -1920,7 +1915,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			inputUserClientMock := &fake.InputUserClient{UserBindings: userBindings, UserRoles: userRoles}
 
 			serverURL, _ := url.Parse(server.URL)
-			evaluator := getEvaluator(t, ctx, opaModule, nil, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -2026,7 +2021,7 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 				},
 			}
 
-			evaluator := getEvaluator(t, ctx, opaModule, nil, oas, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				config.EnvironmentVariables{
@@ -2110,7 +2105,7 @@ project.tenantId == "1234"
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, context.Background(), mockOPAModule, mongoMock, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, mockOPAModule, mongoMock, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -2149,7 +2144,7 @@ project.tenantId == "1234"
 		}
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, context.Background(), mockOPAModule, mongoMock, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, mockOPAModule, mongoMock, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -2188,7 +2183,7 @@ project.tenantId == "1234"
 		}
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, context.Background(), mockOPAModule, mongoMock, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, mockOPAModule, mongoMock, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
