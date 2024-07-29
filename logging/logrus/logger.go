@@ -24,12 +24,12 @@ type logrusEntryWrapper struct {
 }
 
 func (l *logrusEntryWrapper) WithField(key string, value any) logging.Logger {
-	entry := l.Logger.WithField(key, value)
+	entry := l.Entry.WithField(key, value)
 	return &logrusEntryWrapper{entry}
 }
 
 func (l *logrusEntryWrapper) WithFields(fields map[string]any) logging.Logger {
-	entry := l.Logger.WithFields(fields)
+	entry := l.Entry.WithFields(fields)
 	return &logrusEntryWrapper{entry}
 }
 

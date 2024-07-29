@@ -27,6 +27,7 @@ import (
 func TestLogrusAdapter(t *testing.T) {
 	testCases := []struct {
 		name          string
+		customEntry   func() (*logrus.Entry, *test.Hook)
 		test          func(t *testing.T, log logging.Logger)
 		expectedMsg   string
 		expectedLevel logrus.Level
@@ -96,11 +97,36 @@ func TestLogrusAdapter(t *testing.T) {
 				"some": "value",
 			},
 		},
+		{
+			name: "inherit fields",
+			customEntry: func() (*logrus.Entry, *test.Hook) {
+				logrusLogger, hook := test.NewNullLogger()
+				logrusLogger.SetLevel(logrus.TraceLevel)
+				entry := logrusLogger.WithFields(logrus.Fields{
+					"parent": "value",
+				})
+				return entry, hook
+			},
+			test: func(t *testing.T, log logging.Logger) {
+				log.WithFields(map[string]any{
+					"some": "value",
+				}).Info("a message")
+			},
+			expectedMsg:   "a message",
+			expectedLevel: logrus.InfoLevel,
+			expectedData: logrus.Fields{
+				"parent": "value",
+				"some":   "value",
+			},
+		},
 	}
 
 	t.Run("from logger", func(t *testing.T) {
 		for _, testCase := range testCases {
 			t.Run(testCase.name, func(t *testing.T) {
+				if testCase.customEntry != nil {
+					t.Skip("test not supported")
+				}
 				logrusLogger, hook := test.NewNullLogger()
 				logrusLogger.SetLevel(logrus.TraceLevel)
 				logger := NewLogger(logrusLogger)
@@ -119,9 +145,16 @@ func TestLogrusAdapter(t *testing.T) {
 	t.Run("from entry", func(t *testing.T) {
 		for _, testCase := range testCases {
 			t.Run(testCase.name, func(t *testing.T) {
-				logrusLogger, hook := test.NewNullLogger()
-				logrusLogger.SetLevel(logrus.TraceLevel)
-				entry := logrus.NewEntry(logrusLogger)
+				var entry *logrus.Entry
+				var hook *test.Hook
+				if testCase.customEntry == nil {
+					var logrusLogger *logrus.Logger
+					logrusLogger, hook = test.NewNullLogger()
+					logrusLogger.SetLevel(logrus.TraceLevel)
+					entry = logrus.NewEntry(logrusLogger)
+				} else {
+					entry, hook = testCase.customEntry()
+				}
 				logger := NewEntry(entry)
 
 				testCase.test(t, logger)
