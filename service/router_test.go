@@ -73,16 +73,36 @@ func TestSetupRoutes(t *testing.T) {
 						},
 					},
 				},
-				// "/trailing-slash-with-variables/{id}": openapi.PathVerbs{
-				// 	"get": openapi.VerbConfig{
-				// 		PermissionV2: &core.RondConfig{
-				// 			RequestFlow: core.RequestFlow{
-				// 				PolicyName: "filter_policy",
-				// 			},
-				// 			Options: core.PermissionOptions{IgnoreTrailingSlash: true},
-				// 		},
-				// 	},
-				// },
+				"/with/trailing/slash/": openapi.PathVerbs{
+					"get": openapi.VerbConfig{
+						PermissionV2: &core.RondConfig{
+							RequestFlow: core.RequestFlow{
+								PolicyName: "filter_policy",
+							},
+							Options: core.PermissionOptions{IgnoreTrailingSlash: true},
+						},
+					},
+				},
+				"/trailing-slash-with-variables/{id}": openapi.PathVerbs{
+					"get": openapi.VerbConfig{
+						PermissionV2: &core.RondConfig{
+							RequestFlow: core.RequestFlow{
+								PolicyName: "filter_policy",
+							},
+							Options: core.PermissionOptions{IgnoreTrailingSlash: true},
+						},
+					},
+				},
+				"/trailing-slash-with-variables/{id}/": openapi.PathVerbs{
+					"get": openapi.VerbConfig{
+						PermissionV2: &core.RondConfig{
+							RequestFlow: core.RequestFlow{
+								PolicyName: "filter_policy",
+							},
+							Options: core.PermissionOptions{IgnoreTrailingSlash: true},
+						},
+					},
+				},
 			},
 		}
 		expectedPaths := []string{
@@ -95,7 +115,10 @@ func TestSetupRoutes(t *testing.T) {
 			"/documentation/json",
 			"/foo",
 			"/foo/bar",
-			"/{/with/trailing/slash:/with/trailing/slash\\/?}",
+			"/trailing-slash-with-variables/{id}{/:\\/?}",
+			"/trailing-slash-with-variables/{id}{/:\\/?}",
+			"/with/trailing/slash{/:\\/?}",
+			"/with/trailing/slash{/:\\/?}",
 		}
 
 		setupEvalRoutes(router, oas, envs)
@@ -575,9 +598,9 @@ allow_params_trailing_slash {
 `,
 		}
 
-		var invoked bool
+		var invokedTimes int
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			invoked = true
+			invokedTimes++
 			w.WriteHeader(http.StatusOK)
 		}))
 		defer server.Close()
@@ -587,27 +610,87 @@ allow_params_trailing_slash {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, mockOPAModule, nil, oas, http.MethodGet, "/trailing-slash-with-variables/id/", nil)
-		ctx := createContext(t,
-			context.Background(),
-			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
-			evaluator,
-			nil,
-			nil,
-		)
+		t.Run("/trailing-slash-with-variables/:id", func(t *testing.T) {
+			evaluator := getEvaluator(t, mockOPAModule, nil, oas, http.MethodGet, "/trailing-slash-with-variables/my-id", nil)
+			ctx := createContext(t,
+				context.Background(),
+				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
+				evaluator,
+				nil,
+				nil,
+			)
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://host/trailing-slash-with-variables/my-id/", nil)
-		require.NoError(t, err, "Unexpected error")
+			t.Run("with trailing slash", func(t *testing.T) {
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://host/trailing-slash-with-variables/my-id/", nil)
+				require.NoError(t, err, "Unexpected error")
 
-		var matchedRouted mux.RouteMatch
-		ok := router.Match(req, &matchedRouted)
-		require.True(t, ok, "Route not found")
+				var matchedRouted mux.RouteMatch
+				ok := router.Match(req, &matchedRouted)
+				require.True(t, ok, "Route not found")
 
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
 
-		require.True(t, invoked, "mock server was not invoked")
-		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+				require.Equal(t, http.StatusOK, w.Result().StatusCode)
+				require.Equal(t, 1, invokedTimes, "mock server was not invoked")
+			})
+
+			t.Run("without trailing slash", func(t *testing.T) {
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://host/trailing-slash-with-variables/my-id", nil)
+				require.NoError(t, err, "Unexpected error")
+
+				var matchedRouted mux.RouteMatch
+				ok := router.Match(req, &matchedRouted)
+				require.True(t, ok, "Route not found")
+
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusOK, w.Result().StatusCode)
+				require.Equal(t, 2, invokedTimes, "mock server was not invoked")
+			})
+		})
+
+		t.Run("/ends-with-trailing-slash/:id/", func(t *testing.T) {
+			evaluator := getEvaluator(t, mockOPAModule, nil, oas, http.MethodGet, "/ends-with-trailing-slash/my-id/", nil)
+			ctx := createContext(t,
+				context.Background(),
+				config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
+				evaluator,
+				nil,
+				nil,
+			)
+
+			t.Run("with trailing slash", func(t *testing.T) {
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://host/ends-with-trailing-slash/my-id/", nil)
+				require.NoError(t, err, "Unexpected error")
+
+				var matchedRouted mux.RouteMatch
+				ok := router.Match(req, &matchedRouted)
+				require.True(t, ok, "Route not found")
+
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusOK, w.Result().StatusCode)
+				require.Equal(t, 3, invokedTimes, "mock server was not invoked")
+			})
+
+			t.Run("without trailing slash", func(t *testing.T) {
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://host/ends-with-trailing-slash/my-id", nil)
+				require.NoError(t, err, "Unexpected error")
+
+				var matchedRouted mux.RouteMatch
+				ok := router.Match(req, &matchedRouted)
+				require.True(t, ok, "Route not found")
+
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusOK, w.Result().StatusCode)
+				require.Equal(t, 4, invokedTimes, "mock server was not invoked")
+			})
+		})
 	})
 }
 
