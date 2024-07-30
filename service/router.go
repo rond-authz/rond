@@ -39,7 +39,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const serviceName = "rönd"
+const (
+	serviceName           = "rönd"
+	trailingSlashVariable = "/"
+)
 
 var routesToNotProxy = utils.Union(statusRoutes, []string{metricsRoutePath})
 
@@ -170,7 +173,7 @@ func setupEvalRoutes(router *mux.Router, oas *openapi.OpenAPISpec, env config.En
 			actualPathToRegister := openapi.ConvertPathVariablesToBrackets(pathToRegister)
 			shouldIgnoreTrailingSlash := ignoreTrailingSlashMap[path][method]
 			if shouldIgnoreTrailingSlash {
-				actualPathToRegister = fmt.Sprintf("/{%s:%s\\/?}", openapi.ConvertPathVariablesToBrackets(pathToRegister), openapi.ConvertPathVariablesToBrackets(pathToRegister))
+				actualPathToRegister = fmt.Sprintf("%s{%s:\\/?}", removeTrailingSlash(openapi.ConvertPathVariablesToBrackets(pathToRegister)), trailingSlashVariable)
 			}
 			router.HandleFunc(actualPathToRegister, rbacHandler).Methods(method)
 		}
@@ -256,4 +259,11 @@ func setupServiceRouter(
 	log.Trace("setup evaluation routes")
 	setupEvalRoutes(evalRouter, oas, env)
 	return nil
+}
+
+func removeTrailingSlash(s string) string {
+	if strings.HasSuffix(s, "/") {
+		return s[:len(s)-1]
+	}
+	return s
 }
