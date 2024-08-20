@@ -8,7 +8,7 @@ jobs:
     name: Test
     strategy:
       matrix:
-        go_version: ['1.20', '1.21', '1.22']
+        go_version: ['1.21', '1.22', '1.23']
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
 
