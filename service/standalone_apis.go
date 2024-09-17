@@ -97,11 +97,6 @@ func revokeHandler(w http.ResponseWriter, r *http.Request) {
 
 	if len(bindingsToDelete) > 0 {
 		query := buildQueryForBindingsToDelete(bindingsToDelete)
-		if err != nil {
-			logger.WithField("error", logrus.Fields{"message": err.Error()}).Error("failed delete query crud setup")
-			utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed delete query crud setup", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
-			return
-		}
 
 		logger.WithFields(logrus.Fields{
 			"bindingsToDeleteQuery": query,

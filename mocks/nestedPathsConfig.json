@@ -200,6 +200,30 @@
                 }
               }
             }
+        },
+        "/trailing-slash-with-variables/:id": {
+            "get": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "allow_params_trailing_slash"
+                },
+                "options": {
+                    "ignoreTrailingSlash": true
+                }
+              }
+            }
+        },
+        "/ends-with-trailing-slash/:id/": {
+            "get": {
+              "x-rond": {
+                "requestFlow": {
+                  "policyName": "allow_params_trailing_slash"
+                },
+                "options": {
+                    "ignoreTrailingSlash": true
+                }
+              }
+            }
         }
     }
 }

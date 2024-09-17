@@ -739,7 +739,7 @@ func BenchmarkEvaluateRequest(b *testing.B) {
 
 		require.NoError(b, err)
 		require.Equal(b, PolicyResult{
-			QueryToProxy: []byte(""),
+			QueryToProxy: nil,
 			Allowed:      true,
 		}, policyResult)
 	}
