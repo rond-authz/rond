@@ -1,6 +1,7 @@
 module github.com/rond-authz/rond
 
 go 1.21
+toolchain go1.22.5
 
 require (
 	github.com/davidebianchi/gswagger v0.10.0
@@ -15,7 +16,7 @@ require (
 	github.com/samber/lo v1.42.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
-	github.com/uptrace/bunrouter v1.0.21
+	github.com/uptrace/bunrouter v1.0.22
 	go.mongodb.org/mongo-driver v1.17.0
 	gopkg.in/h2non/gock.v1 v1.1.2
 )
