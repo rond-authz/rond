@@ -2,15 +2,18 @@ name: Release
 on:
   push:
     tags:
-      - '*'
+    - '*'
+
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          prerelease: ${{ startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-rc.') }}
+    - name: Checkout repository
+      uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+      with:
+        show-progress: false
+    - name: Release
+      uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
+      with:
+        generate_release_notes: true
+        prerelease: ${{ startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-rc.') }}
