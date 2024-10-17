@@ -1,21 +1,51 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
-
 version: 2
+
 updates:
-  - package-ecosystem: "gomod"
-    directory: "/"
-    schedule:
-      interval: "daily"
+# keep up to date the github actions
+- package-ecosystem: github-actions
+  directory: /
+  schedule:
+    interval: monthly
+    timezone: Europe/Rome
+  groups:
+    minor-actions-dependencies:
+      update-types:
+      - minor
+      - patch
+  commit-message:
+    include: scope
+    prefix: ci
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "daily"
+# keep up to date the base docker image
+- package-ecosystem: docker
+  directory: /
+  schedule:
+    interval: daily
+    time: "07:00"
+    timezone: Europe/Rome
+  commit-message:
+    include: scope
+    prefix: build
 
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "daily"
+# enable go dependencies security updates
+- directory: /
+  open-pull-requests-limit: 0
+  package-ecosystem: gomod
+  rebase-strategy: auto
+  schedule:
+    interval: daily
+    time: "07:00"
+    timezone: Europe/Rome
+  commit-message:
+    include: scope
+    prefix: chore
+
+# keep up to date devcontainers
+- package-ecosystem: devcontainers
+  directory: "/"
+  schedule:
+    interval: monthly
+    timezone: Europe/Rome
+  commit-message:
+    include: scope
+    prefix: build
