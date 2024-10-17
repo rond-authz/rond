@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+      uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
       with:
         show-progress: false
     - name: Use golang ${{ matrix.go_version }}
@@ -30,7 +30,7 @@ jobs:
     - name: Run tests
       run: make coverage
     - name: Send the coverage output
-      uses: coverallsapp/github-action@43f11c4e058174f808ee9cd63701b6c42fe3f5e3 # v2.3.2
+      uses: coverallsapp/github-action@4cdef0b2dbe0c9aa26bed48edb868db738625e79 # v2.3.3
       with:
         flag-name: go-${{ join(matrix.*, '-') }}
         parallel: true
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Coveralls Finished
-      uses: coverallsapp/github-action@43f11c4e058174f808ee9cd63701b6c42fe3f5e3 # v2.3.2
+      uses: coverallsapp/github-action@4cdef0b2dbe0c9aa26bed48edb868db738625e79 # v2.3.3
       with:
         parallel-finished: true
 
@@ -51,7 +51,7 @@ jobs:
     continue-on-error: true
     steps:
     - name: Checkout repository
-      uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+      uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
       with:
         show-progress: false
     - name: Use golang stable
@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+      uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
       with:
         show-progress: false
     - name: Setup golang
@@ -121,7 +121,7 @@ jobs:
       id-token: write
     steps:
     - name: Checkout code
-      uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+      uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
       with:
         show-progress: false
     - name: Docker Login to GitHub Repository
@@ -169,7 +169,7 @@ jobs:
           org.opencontainers.image.documentation=https://rond-authz.io
           org.opencontainers.image.vendor=rond authz
     - name: Setup Buildx Context
-      uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
+      uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
       id: buildx
       with:
         platforms: linux/amd64,linux/arm64
@@ -186,7 +186,7 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
     - name: Generate SBOM
-      uses: anchore/sbom-action@f5e124a5e5e1d497a692818ae907d3c45829d033 # v0.17.3
+      uses: anchore/sbom-action@8d0a6505bf28ced3e85154d13dc6af83299e13f1 # v0.17.4
       if: github.ref_type == 'tag'
       with:
         artifact-name: rond-authz-sbom.spdx.json
