@@ -1,7 +1,8 @@
-############################
-# STEP 1 build executable binary
-############################
-FROM golang:1.23.1 AS builder
+# syntax=docker/dockerfile:1
+FROM docker.io/library/golang:1.23.2@sha256:cf5209fd902b5b22bbb79e20c35bccac5adbb08b235800d06f32c54237d8fcae AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /app
 
@@ -13,7 +14,7 @@ RUN go mod verify
 
 COPY . .
 
-RUN GOOS=linux CGO_ENABLED=0 GOARCH=amd64 go build -ldflags="-w -s" -o main .
+RUN GOOS="${TARGETOS}" CGO_ENABLED=0 GOARCH="${TARGETARCH}" go build -ldflags="-w -s" -o main .
 
 WORKDIR /app/build
 
@@ -24,14 +25,6 @@ RUN cp -r /app/main /app/LICENSE .
 ############################
 
 FROM scratch
-
-ARG COMMIT_SHA=<not-specified>
-
-LABEL maintainer="rond@rond-authz.io" \
-  name="rond" \
-  vcs.sha="$COMMIT_SHA"
-
-LABEL org.opencontainers.image.description "Rönd is a lightweight container that distributes security policy enforcement throughout your application."
 
 ENV SERVICE_VERSION="1.12.6"
 
