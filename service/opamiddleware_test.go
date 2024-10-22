@@ -50,11 +50,8 @@ func TestOPAMiddleware(t *testing.T) {
 	routesNotToProxy := make([]string, 0)
 
 	t.Run(`strict mode failure`, func(t *testing.T) {
-		opaModule := &core.OPAModuleConfig{
-			Name: "example.rego",
-			Content: `package policies
-todo { true }`,
-		}
+		opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
+todo { true }`)
 		var openAPISpec *openapi.OpenAPISpec
 		openAPISpecContent, err := os.ReadFile("../mocks/simplifiedMock.json")
 		require.NoError(t, err)
@@ -114,11 +111,8 @@ todo { true }`,
 	})
 
 	t.Run(`documentation request`, func(t *testing.T) {
-		opaModule := &core.OPAModuleConfig{
-			Name: "example.rego",
-			Content: `package policies
-foobar { true }`,
-		}
+		opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
+foobar { true }`)
 
 		t.Run(`ok - path is known on oas with no permission declared`, func(t *testing.T) {
 			openAPISpec, err := openapi.LoadOASFile("../mocks/documentationPathMock.json")
@@ -180,10 +174,7 @@ foobar { true }`,
 		require.NoError(t, err)
 
 		t.Run(`rego package doesn't contain expected policy`, func(t *testing.T) {
-			opaModule := &core.OPAModuleConfig{
-				Name:    "example.rego",
-				Content: `package policies another { true }`,
-			}
+			opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies another { true }`)
 			rondSDK := getSDK(t, openAPISpec, opaModule)
 
 			middleware := OPAMiddleware(opaModule, rondSDK, routesNotToProxy, "", nil)
@@ -202,10 +193,7 @@ foobar { true }`,
 		})
 
 		t.Run(`rego package contains expected permission`, func(t *testing.T) {
-			opaModule := &core.OPAModuleConfig{
-				Name:    "example.rego",
-				Content: `package policies todo { true }`,
-			}
+			opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies todo { true }`)
 			rondSDK := getSDK(t, openAPISpec, opaModule)
 
 			middleware := OPAMiddleware(opaModule, rondSDK, routesNotToProxy, "", nil)
@@ -224,11 +212,8 @@ foobar { true }`,
 		})
 
 		t.Run(`rego package contains composed permission`, func(t *testing.T) {
-			opaModule := &core.OPAModuleConfig{
-				Name: "example.rego",
-				Content: `package policies
-very_very_composed_permission { true }`,
-			}
+			opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
+very_very_composed_permission { true }`)
 			rondSDK := getSDK(t, openAPISpec, opaModule)
 
 			middleware := OPAMiddleware(opaModule, rondSDK, routesNotToProxy, "", nil)
@@ -247,11 +232,8 @@ very_very_composed_permission { true }`,
 		})
 
 		t.Run("injects correct permission", func(t *testing.T) {
-			opaModule := &core.OPAModuleConfig{
-				Name: "example.rego",
-				Content: `package policies
-very_very_composed_permission_with_eval { true }`,
-			}
+			opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
+very_very_composed_permission_with_eval { true }`)
 
 			options := &OPAMiddlewareOptions{
 				IsStandalone:         false,
@@ -315,11 +297,8 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 	}
 
 	t.Run("injects correct path removing prefix", func(t *testing.T) {
-		opaModule := &core.OPAModuleConfig{
-			Name: "example.rego",
-			Content: `package policies
-			very_very_composed_permission { true }`,
-		}
+		opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
+			very_very_composed_permission { true }`)
 
 		rondSDK := getSdk(t, opaModule)
 		middleware := OPAMiddleware(opaModule, rondSDK, routesNotToProxy, "", options)
@@ -338,11 +317,8 @@ func TestOPAMiddlewareStandaloneIntegration(t *testing.T) {
 	})
 
 	t.Run("injects correct path removing only one prefix", func(t *testing.T) {
-		opaModule := &core.OPAModuleConfig{
-			Name: "example.rego",
-			Content: `package policies
-very_very_composed_permission_with_eval { true }`,
-		}
+		opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
+very_very_composed_permission_with_eval { true }`)
 
 		rondSDK := getSdk(t, opaModule)
 

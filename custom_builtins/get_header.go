@@ -19,6 +19,7 @@ import (
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/topdown"
 	"github.com/open-policy-agent/opa/types"
 )
 
@@ -52,3 +53,21 @@ var GetHeaderFunction = rego.Function2(
 		return ast.StringTerm(headers.Get(headerKey)), nil
 	},
 )
+
+func GetHeaderFunctionAst(bctx topdown.BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
+	var headerKey string
+	var headers http.Header
+
+	a := operands[0]
+	b := operands[1]
+
+	if err := ast.As(a.Value, &headerKey); err != nil {
+		return err
+	}
+	if err := ast.As(b.Value, &headers); err != nil {
+		return err
+	}
+
+	result := ast.StringTerm(headers.Get(headerKey))
+	return iter(result)
+}

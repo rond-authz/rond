@@ -388,11 +388,8 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 	})
 
 	t.Run("with nil options", func(t *testing.T) {
-		opaModule := &core.OPAModuleConfig{
-			Name: "example.rego",
-			Content: `package policies
-			todo { true }`,
-		}
+		opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
+			todo { true }`)
 		sdk, err := NewWithConfig(context.Background(), opaModule, core.RondConfig{
 			RequestFlow: core.RequestFlow{PolicyName: "todo"},
 		}, nil)
@@ -591,13 +588,10 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 	})
 
 	t.Run("with nil options", func(t *testing.T) {
-		opaModule := &core.OPAModuleConfig{
-			Name: "example.rego",
-			Content: `package policies
+		opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
 			responsepolicy [body] {
 				body := input.response.body
-			}`,
-		}
+		}`)
 		sdk, err := NewWithConfig(context.Background(), opaModule, core.RondConfig{
 			RequestFlow:  core.RequestFlow{PolicyName: "todo"},
 			ResponseFlow: core.ResponseFlow{PolicyName: "responsepolicy"},
@@ -984,14 +978,12 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 
 	openAPISpec, err := openapi.LoadOASFile(oasFilePath)
 	require.NoError(t, err)
-	opaModule := &core.OPAModuleConfig{
-		Name: "example.rego",
-		Content: `package policies
-		todo { true }`,
-	}
+	content := `package policies
+		todo { true }`
 	if options.opaModuleContent != "" {
-		opaModule.Content = options.opaModuleContent
+		content = options.opaModuleContent
 	}
+	opaModule := core.MustNewOPAModuleConfig("example.rego", content)
 
 	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &Options{
 		Metrics: options.metrics,

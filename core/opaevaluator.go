@@ -28,7 +28,9 @@ import (
 	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/types"
 
+	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/topdown"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -219,8 +221,38 @@ func buildRolesMap(roles []types.Role) map[string][]string {
 }
 
 type OPAModuleConfig struct {
-	Name    string
-	Content string
+	Name     string
+	Content  string
+	compiler *ast.Compiler
+}
+
+func init() {
+	ast.RegisterBuiltin(custom_builtins.GetHeaderDecl)
+	topdown.RegisterBuiltinFunc(custom_builtins.GetHeaderDecl.Name, custom_builtins.GetHeaderFunctionAst)
+
+	ast.RegisterBuiltin(custom_builtins.MongoFindOneDecl)
+	topdown.RegisterBuiltinFunc(custom_builtins.MongoFindOneDecl.Name, custom_builtins.MongoFindOneAst)
+
+	ast.RegisterBuiltin(custom_builtins.MongoFindManyDecl)
+	topdown.RegisterBuiltinFunc(custom_builtins.MongoFindManyDecl.Name, custom_builtins.MongoFindManyAst)
+}
+
+func NewOPAModuleConfig(name string, content string) (*OPAModuleConfig, error) {
+	return &OPAModuleConfig{
+		Name:    name,
+		Content: content,
+		compiler: ast.MustCompileModules(map[string]string{
+			name: content,
+		}),
+	}, nil
+}
+
+func MustNewOPAModuleConfig(name string, content string) *OPAModuleConfig {
+	opaModule, err := NewOPAModuleConfig(name, content)
+	if err != nil {
+		panic(err)
+	}
+	return opaModule
 }
 
 type PermissionOnResourceKey string
@@ -256,10 +288,7 @@ func LoadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 		return nil, fmt.Errorf("%w: %s", ErrRegoModuleReadFailed, err.Error())
 	}
 
-	return &OPAModuleConfig{
-		Name:    filepath.Base(regoModulePath),
-		Content: string(fileContent),
-	}, nil
+	return NewOPAModuleConfig(filepath.Base(regoModulePath), string(fileContent))
 }
 
 func processResults(results rego.ResultSet) (allowed bool, responseBodyOverwriter any) {

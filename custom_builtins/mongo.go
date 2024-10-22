@@ -19,6 +19,7 @@ import (
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/topdown"
 	"github.com/open-policy-agent/opa/types"
 )
 
@@ -119,3 +120,72 @@ var MongoFindMany = rego.Function2(
 		return ast.NewTerm(t), nil
 	},
 )
+
+func MongoFindOneAst(ctx topdown.BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
+	mongoClient, err := GetMongoClientFromContext(ctx.Context)
+	if err != nil {
+		return err
+	}
+	if mongoClient == nil {
+		return fmt.Errorf("mongo client not set")
+	}
+
+	collectionNameTerm := operands[0]
+	queryTerm := operands[1]
+
+	var collectionName string
+	if err := ast.As(collectionNameTerm.Value, &collectionName); err != nil {
+		return err
+	}
+
+	query := make(map[string]interface{})
+	if err := ast.As(queryTerm.Value, &query); err != nil {
+		return err
+	}
+
+	result, err := mongoClient.FindOne(ctx.Context, collectionName, query)
+	if err != nil {
+		return err
+	}
+
+	t, err := ast.InterfaceToValue(result)
+	if err != nil {
+		return err
+	}
+
+	return iter(ast.NewTerm(t))
+}
+
+func MongoFindManyAst(ctx topdown.BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
+	mongoClient, err := GetMongoClientFromContext(ctx.Context)
+	if err != nil {
+		return err
+	}
+	if mongoClient == nil {
+		return fmt.Errorf("mongo client not set")
+	}
+	collectionNameTerm := operands[0]
+	queryTerm := operands[1]
+
+	var collectionName string
+	if err := ast.As(collectionNameTerm.Value, &collectionName); err != nil {
+		return err
+	}
+
+	query := make(map[string]interface{})
+	if err := ast.As(queryTerm.Value, &query); err != nil {
+		return err
+	}
+
+	result, err := mongoClient.FindMany(ctx.Context, collectionName, query)
+	if err != nil {
+		return err
+	}
+
+	t, err := ast.InterfaceToValue(result)
+	if err != nil {
+		return err
+	}
+
+	return iter(ast.NewTerm(t))
+}

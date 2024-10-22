@@ -398,11 +398,8 @@ func getSdk(t require.TestingT, options *sdkOptions) sdk.OASEvaluatorFinder {
 
 	openAPISpec, err := openapi.LoadOASFile(oasFilePath)
 	require.NoError(t, err)
-	opaModule := &core.OPAModuleConfig{
-		Name: "example.rego",
-		Content: `package policies
-		todo { true }`,
-	}
+	opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
+		todo { true }`)
 	if options.opaModuleContent != "" {
 		opaModule.Content = options.opaModuleContent
 	}

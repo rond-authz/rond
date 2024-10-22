@@ -31,11 +31,8 @@ import (
 )
 
 func TestNewFromOas(t *testing.T) {
-	opaModule := &core.OPAModuleConfig{
-		Name: "example.rego",
-		Content: `package policies
-		very_very_composed_permission { true }`,
-	}
+	opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
+		very_very_composed_permission { true }`)
 	ctx := context.Background()
 
 	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
@@ -128,13 +125,10 @@ func TestNewFromOas(t *testing.T) {
 }
 
 func TestNewWithConfig(t *testing.T) {
-	opaModule := &core.OPAModuleConfig{
-		Name: "example.rego",
-		Content: `package policies
+	opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
 		allow { true }
 		projection_field { true }
-		`,
-	}
+		`)
 	ctx := context.Background()
 
 	logger := logging.NewNoOpLogger()
@@ -218,16 +212,13 @@ func TestNewWithConfig(t *testing.T) {
 	})
 
 	t.Run("creates config sdk correctly - using mongo functions", func(t *testing.T) {
-		opaModule := &core.OPAModuleConfig{
-			Name: "example.rego",
-			Content: `package policies
+		opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
 			allow {
 				project := find_one("my-collection", {"myField": "1234"})
 				project.myField == "1234"
 			}
 			projection_field { true }
-			`,
-		}
+			`)
 		options := &Options{
 			Logger: logger,
 			EvaluatorOptions: &EvaluatorOptions{
@@ -255,14 +246,11 @@ func TestNewWithConfig(t *testing.T) {
 	})
 
 	t.Run("with custom metadata", func(t *testing.T) {
-		opaModule := &core.OPAModuleConfig{
-			Name: "example.rego",
-			Content: `package policies
+		opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
 			check_metadata {
 				input.metadata.field1 == "pass"
 			}
-			`,
-		}
+			`)
 		rondConfig := core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "check_metadata"}}
 
 		evaluator, err := NewWithConfig(ctx, opaModule, rondConfig, nil)
@@ -282,15 +270,12 @@ func TestNewWithConfig(t *testing.T) {
 	})
 
 	t.Run("with custom metadata as struct", func(t *testing.T) {
-		opaModule := &core.OPAModuleConfig{
-			Name: "example.rego",
-			Content: `package policies
+		opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
 			check_metadata {
 				input.metadata.field1 == "pass"
 				input.metadata.nested.foo == "bar"
 			}
-			`,
-		}
+			`)
 		rondConfig := core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "check_metadata"}}
 
 		evaluator, err := NewWithConfig(ctx, opaModule, rondConfig, nil)
@@ -316,14 +301,11 @@ func TestNewWithConfig(t *testing.T) {
 	})
 
 	t.Run("with custom metadata as slice", func(t *testing.T) {
-		opaModule := &core.OPAModuleConfig{
-			Name: "example.rego",
-			Content: `package policies
+		opaModule := core.MustNewOPAModuleConfig("example.rego", `package policies
 			check_metadata {
 				input.metadata[0] == "pass"
 			}
-			`,
-		}
+			`)
 		rondConfig := core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "check_metadata"}}
 
 		evaluator, err := NewWithConfig(ctx, opaModule, rondConfig, nil)

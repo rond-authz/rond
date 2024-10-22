@@ -210,9 +210,7 @@ func TestPartialResultEvaluators(t *testing.T) {
 			},
 		}
 
-		opaModule := &OPAModuleConfig{
-			Name: "example.rego",
-			Content: `
+		opaModule := MustNewOPAModuleConfig("example.rego", `
 			package policies
 			filter_projects {
 				field := input.user.properties.field
@@ -223,8 +221,7 @@ func TestPartialResultEvaluators(t *testing.T) {
 				query := data.resources[_]
 				query.filterField == myCollDoc.filterField
 			}
-			`,
-		}
+			`)
 
 		evalOpts := OPAEvaluatorOptions{
 			MongoClient: mocks.MongoClientMock{
@@ -277,9 +274,7 @@ func TestPartialResultEvaluators(t *testing.T) {
 			},
 		}
 
-		opaModule := &OPAModuleConfig{
-			Name: "example.rego",
-			Content: `
+		opaModule := MustNewOPAModuleConfig("example.rego", `
 			package policies
 			filter_projects {
 				field := input.user.properties.field
@@ -290,8 +285,7 @@ func TestPartialResultEvaluators(t *testing.T) {
 				query := data.resources[_]
 				query.filterField == myCollDoc.filterField
 			}
-			`,
-		}
+			`)
 
 		evalOpts := OPAEvaluatorOptions{
 			MongoClient: mocks.MongoClientMock{
