@@ -243,6 +243,10 @@ func NewOPAModuleConfig(name string, content string) (*OPAModuleConfig, error) {
 		Content: content,
 		compiler: ast.MustCompileModules(map[string]string{
 			name: content,
+		}).WithBuiltins(map[string]*ast.Builtin{
+			custom_builtins.GetHeaderDecl.Name:     custom_builtins.GetHeaderDecl,
+			custom_builtins.MongoFindOneDecl.Name:  custom_builtins.MongoFindOneDecl,
+			custom_builtins.MongoFindManyDecl.Name: custom_builtins.MongoFindManyDecl,
 		}),
 	}, nil
 }

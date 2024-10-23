@@ -30,8 +30,7 @@ import (
 func TestPartialResultEvaluators(t *testing.T) {
 	logger := logging.NewNoOpLogger()
 
-	opaModule := &OPAModuleConfig{
-		Content: `package policies
+	opaModule := MustNewOPAModuleConfig("example.rego", `package policies
 		allow {
 			true
 		}
@@ -41,9 +40,7 @@ func TestPartialResultEvaluators(t *testing.T) {
 		column_policy{
 			false
 		}
-		`,
-		Name: "policies",
-	}
+		`)
 	rondInput := Input{
 		Request:    InputRequest{},
 		Response:   InputResponse{},
@@ -365,13 +362,10 @@ func TestPartialResultEvaluators(t *testing.T) {
 			Logger: logger,
 		}
 
-		opaModule := &OPAModuleConfig{
-			Content: `package policies
+		opaModule := MustNewOPAModuleConfig("example.rego", `package policies
 			check_metadata {
 				input.metadata.field == "ok"
-			}`,
-			Name: "policies",
-		}
+			}`)
 
 		err := partialEvaluators.AddFromConfig(context.Background(), logger, opaModule, rondConfig, &evalOpts)
 		require.NoError(t, err)

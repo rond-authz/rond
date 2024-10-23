@@ -38,7 +38,7 @@ func newRegoInstanceBuilder(policy string, opaModuleConfig *OPAModuleConfig, eva
 
 	options := []func(*rego.Rego){
 		rego.Query(queryString),
-		rego.Module(opaModuleConfig.Name, opaModuleConfig.Content),
+		rego.Compiler(opaModuleConfig.compiler),
 		rego.Unknowns(Unknowns),
 		rego.EnablePrintStatements(evaluatorOptions.EnablePrintStatements),
 		rego.PrintHook(NewPrintHook(os.Stdout, policy)),
