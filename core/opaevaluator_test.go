@@ -26,22 +26,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// func TestNewOPAEvaluator(t *testing.T) {
-// 	input := map[string]interface{}{}
-// 	inputBytes, _ := json.Marshal(input)
-// 	t.Run("policy sanitization", func(t *testing.T) {
-// 		evaluator, _ := newQueryOPAEvaluator(context.Background(), "very.composed.policy", &OPAModuleConfig{Content: "package policies very_composed_policy {true}"}, inputBytes, nil)
-
-// 		result, err := evaluator.policyEvaluator.Eval(context.TODO())
-// 		require.Nil(t, err, "unexpected error")
-// 		require.True(t, result.Allowed(), "Unexpected failing policy")
-
-// 		parialResult, err := evaluator.policyEvaluator.Partial(context.TODO())
-// 		require.Nil(t, err, "unexpected error")
-// 		require.Equal(t, 1, len(parialResult.Queries), "Unexpected failing policy")
-// 	})
-// }
-
 func TestOPAEvaluator(t *testing.T) {
 	t.Run("get context", func(t *testing.T) {
 		t.Run("no context", func(t *testing.T) {
@@ -118,55 +102,3 @@ func TestBuildRolesMap(t *testing.T) {
 	}
 	require.Equal(t, expected, result)
 }
-
-// func TestGetHeaderFunction(t *testing.T) {
-// 	headerKeyMocked := "exampleKey"
-// 	headerValueMocked := "value"
-
-// 	opaModule := &OPAModuleConfig{
-// 		Name: "example.rego",
-// 		Content: `package policies
-// 		todo { get_header("ExAmPlEkEy", input.headers) == "value" }`,
-// 	}
-// 	queryString := "todo"
-
-// 	t.Run("if header key exists", func(t *testing.T) {
-// 		headers := http.Header{}
-// 		headers.Add(headerKeyMocked, headerValueMocked)
-// 		input := map[string]interface{}{
-// 			"headers": headers,
-// 		}
-// 		inputBytes, _ := json.Marshal(input)
-
-// 		opaEvaluator, err := newQueryOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, nil)
-// 		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
-
-// 		results, err := opaEvaluator.policyEvaluator.Eval(context.TODO())
-// 		require.NoError(t, err, "Unexpected error during rego validation")
-// 		require.True(t, results.Allowed(), "The input is not allowed by rego")
-
-// 		partialResults, err := opaEvaluator.policyEvaluator.Partial(context.TODO())
-// 		require.NoError(t, err, "Unexpected error during rego validation")
-
-// 		require.Len(t, partialResults.Queries, 1, "Rego policy allows illegal input")
-// 	})
-
-// 	t.Run("if header key not exists", func(t *testing.T) {
-// 		input := map[string]interface{}{
-// 			"headers": http.Header{},
-// 		}
-// 		inputBytes, _ := json.Marshal(input)
-
-// 		opaEvaluator, err := newQueryOPAEvaluator(context.Background(), queryString, opaModule, inputBytes, nil)
-// 		require.NoError(t, err, "Unexpected error during creation of opaEvaluator")
-
-// 		results, err := opaEvaluator.policyEvaluator.Eval(context.TODO())
-// 		require.NoError(t, err, "Unexpected error during rego validation")
-// 		require.True(t, !results.Allowed(), "Rego policy allows illegal input")
-
-// 		partialResults, err := opaEvaluator.policyEvaluator.Partial(context.TODO())
-// 		require.NoError(t, err, "Unexpected error during rego validation")
-
-// 		require.Len(t, partialResults.Queries, 0, "Rego policy allows illegal input")
-// 	})
-// }
