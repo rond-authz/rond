@@ -30,7 +30,6 @@ import (
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
-	"github.com/open-policy-agent/opa/topdown"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -226,28 +225,22 @@ type OPAModuleConfig struct {
 	compiler *ast.Compiler
 }
 
-func init() {
-	ast.RegisterBuiltin(custom_builtins.GetHeaderDecl)
-	topdown.RegisterBuiltinFunc(custom_builtins.GetHeaderDecl.Name, custom_builtins.GetHeaderFunctionAst)
-
-	ast.RegisterBuiltin(custom_builtins.MongoFindOneDecl)
-	topdown.RegisterBuiltinFunc(custom_builtins.MongoFindOneDecl.Name, custom_builtins.MongoFindOneAst)
-
-	ast.RegisterBuiltin(custom_builtins.MongoFindManyDecl)
-	topdown.RegisterBuiltinFunc(custom_builtins.MongoFindManyDecl.Name, custom_builtins.MongoFindManyAst)
-}
-
 func NewOPAModuleConfig(name string, content string) (*OPAModuleConfig, error) {
+	compiler := ast.NewCompiler().WithBuiltins(map[string]*ast.Builtin{
+		custom_builtins.GetHeaderDecl.Name:     custom_builtins.GetHeaderDecl,
+		custom_builtins.MongoFindOneDecl.Name:  custom_builtins.MongoFindOneDecl,
+		custom_builtins.MongoFindManyDecl.Name: custom_builtins.MongoFindManyDecl,
+	})
+	compiler.Compile(map[string]*ast.Module{name: ast.MustParseModule(content)})
+
+	if compiler.Failed() {
+		return nil, fmt.Errorf("fails to compile the module: %s", compiler.Errors)
+	}
+
 	return &OPAModuleConfig{
-		Name:    name,
-		Content: content,
-		compiler: ast.MustCompileModules(map[string]string{
-			name: content,
-		}).WithBuiltins(map[string]*ast.Builtin{
-			custom_builtins.GetHeaderDecl.Name:     custom_builtins.GetHeaderDecl,
-			custom_builtins.MongoFindOneDecl.Name:  custom_builtins.MongoFindOneDecl,
-			custom_builtins.MongoFindManyDecl.Name: custom_builtins.MongoFindManyDecl,
-		}),
+		Name:     name,
+		Content:  content,
+		compiler: compiler,
 	}, nil
 }
 
