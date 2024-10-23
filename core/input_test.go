@@ -30,7 +30,7 @@ func TestCreateRegoInput(t *testing.T) {
 	t.Run("returns correctly", func(t *testing.T) {
 		actual, err := CreateRegoQueryInput(log, Input{}, RegoInputOptions{})
 		require.NoError(t, err)
-		require.Equal(t, "{\"request\":{\"method\":\"\",\"path\":\"\"},\"response\":{},\"user\":{}}", string(actual))
+		require.Equal(t, "{\"request\":{\"method\":\"\",\"path\":\"\"},\"response\":{},\"user\":{}}", string(actual.Location.Text))
 	})
 
 	t.Run("buildOptimizedResourcePermissionsMap", func(t *testing.T) {

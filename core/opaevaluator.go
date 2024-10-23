@@ -28,7 +28,6 @@ import (
 	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/types"
 
-	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -59,22 +58,16 @@ type PermissionOptions struct {
 	IgnoreTrailingSlash                      bool `json:"ignoreTrailingSlash,omitempty"`
 }
 
-type Evaluator interface {
-	Eval(ctx context.Context) (rego.ResultSet, error)
-}
-
 var Unknowns = []string{"data.resources"}
 
 type OPAEvaluator struct {
-	policyEvaluator      Evaluator
-	preparedPartialQuery *rego.PreparedPartialQuery
-	PolicyName           string
+	PolicyName string
 
+	evaluator     PartialEvaluator
 	context       context.Context
 	mongoClient   custom_builtins.IMongoClient
 	generateQuery bool
 	logger        logging.Logger
-	input         []byte
 }
 
 type OPAEvaluatorOptions struct {
@@ -83,17 +76,17 @@ type OPAEvaluatorOptions struct {
 	Logger                logging.Logger
 }
 
-func (evaluator *OPAEvaluator) partiallyEvaluate(logger logging.Logger, options *PolicyEvaluationOptions) (primitive.M, error) {
+func (opaEval *OPAEvaluator) partiallyEvaluate(logger logging.Logger, input EvalInput, options *PolicyEvaluationOptions) (primitive.M, error) {
 	if options == nil {
 		options = &PolicyEvaluationOptions{}
 	}
 	opaEvaluationTimeStart := time.Now()
-	inputTerm, err := ast.ParseTerm(string(evaluator.input))
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrFailedInputParse, err)
-	}
 
-	partialResults, err := evaluator.preparedPartialQuery.Partial(evaluator.getContext(), rego.EvalParsedInput(inputTerm.Value))
+	partialResults, err := opaEval.evaluator.preparedPartialQuery.Partial(
+		opaEval.getContext(),
+		rego.EvalParsedInput(input.Value),
+		rego.EvalPrintHook(NewPrintHook(os.Stdout, opaEval.PolicyName)),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrPartialPolicyEvalFailed, err.Error())
 	}
@@ -101,12 +94,12 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger logging.Logger, options 
 	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
 
 	options.metrics().PolicyEvaluationDurationMilliseconds.With(metrics.Labels{
-		"policy_name": evaluator.PolicyName,
+		"policy_name": opaEval.PolicyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
 	fields := map[string]any{
 		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
-		"policyName":                 evaluator.PolicyName,
+		"policyName":                 opaEval.PolicyName,
 		"partialEval":                true,
 		"allowed":                    true,
 	}
@@ -128,27 +121,31 @@ func (evaluator *OPAEvaluator) partiallyEvaluate(logger logging.Logger, options 
 	return q, nil
 }
 
-func (evaluator *OPAEvaluator) Evaluate(logger logging.Logger, options *PolicyEvaluationOptions) (interface{}, error) {
+func (opaEval *OPAEvaluator) Evaluate(logger logging.Logger, input EvalInput, options *PolicyEvaluationOptions) (interface{}, error) {
 	if options == nil {
 		options = &PolicyEvaluationOptions{}
 	}
 
 	opaEvaluationTimeStart := time.Now()
 
-	results, err := evaluator.policyEvaluator.Eval(evaluator.getContext())
+	results, err := opaEval.evaluator.preparedEvalQuery.Eval(
+		opaEval.getContext(),
+		rego.EvalParsedInput(input.Value),
+		rego.EvalPrintHook(NewPrintHook(os.Stdout, opaEval.PolicyName)),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrPolicyEvalFailed, err.Error())
 	}
 
 	opaEvaluationTime := time.Since(opaEvaluationTimeStart)
 	options.metrics().PolicyEvaluationDurationMilliseconds.With(metrics.Labels{
-		"policy_name": evaluator.PolicyName,
+		"policy_name": opaEval.PolicyName,
 	}).Observe(float64(opaEvaluationTime.Milliseconds()))
 
 	allowed, responseBodyOverwriter := processResults(results)
 	fields := map[string]any{
 		"evaluationTimeMicroseconds": opaEvaluationTime.Microseconds(),
-		"policyName":                 evaluator.PolicyName,
+		"policyName":                 opaEval.PolicyName,
 		"partialEval":                false,
 		"allowed":                    allowed,
 		"resultsLength":              len(results),
@@ -158,7 +155,7 @@ func (evaluator *OPAEvaluator) Evaluate(logger logging.Logger, options *PolicyEv
 	logger.WithFields(fields).Debug("policy evaluation completed")
 
 	logger.WithFields(map[string]any{
-		"policyName": evaluator.PolicyName,
+		"policyName": opaEval.PolicyName,
 		"allowed":    allowed,
 	}).Info("policy result")
 
@@ -194,12 +191,12 @@ func (evaluator *PolicyEvaluationOptions) metrics() *metrics.Metrics {
 	return metrics.NoOpMetrics()
 }
 
-func (evaluator *OPAEvaluator) PolicyEvaluation(logger logging.Logger, options *PolicyEvaluationOptions) (interface{}, primitive.M, error) {
+func (evaluator *OPAEvaluator) PolicyEvaluation(logger logging.Logger, input EvalInput, options *PolicyEvaluationOptions) (interface{}, primitive.M, error) {
 	if evaluator.generateQuery {
-		query, err := evaluator.partiallyEvaluate(logger, options)
+		query, err := evaluator.partiallyEvaluate(logger, input, options)
 		return nil, query, err
 	}
-	dataFromEvaluation, err := evaluator.Evaluate(logger, options)
+	dataFromEvaluation, err := evaluator.Evaluate(logger, input, options)
 	if err != nil {
 		return nil, nil, err
 	}

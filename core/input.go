@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/open-policy-agent/opa/ast"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/types"
 )
@@ -93,11 +94,13 @@ type RegoInputOptions struct {
 	EnableResourcePermissionsMapOptimization bool
 }
 
+type EvalInput *ast.Term
+
 func CreateRegoQueryInput(
 	logger logging.Logger,
 	input Input,
 	options RegoInputOptions,
-) ([]byte, error) {
+) (EvalInput, error) {
 	opaInputCreationTime := time.Now()
 
 	input.buildOptimizedResourcePermissionsMap(logger, options.EnableResourcePermissionsMapOptimization)
@@ -109,5 +112,10 @@ func CreateRegoQueryInput(
 	logger.
 		WithField("inputCreationTimeMicroseconds", time.Since(opaInputCreationTime).Microseconds()).
 		Trace("input creation time")
-	return inputBytes, nil
+
+	astInput, err := ast.ParseTerm(string(inputBytes))
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrFailedInputEncode, err)
+	}
+	return EvalInput(astInput), nil
 }
