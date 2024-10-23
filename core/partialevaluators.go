@@ -48,7 +48,7 @@ func (policyEvaluators PartialResultsEvaluators) AddFromConfig(ctx context.Conte
 	}
 
 	if _, ok := policyEvaluators[allowPolicy]; !ok {
-		evaluator, err := createPartialEvaluator(logger, allowPolicy, opaModuleConfig, options, isFilterQuery)
+		evaluator, err := createPartialEvaluator(ctx, logger, allowPolicy, opaModuleConfig, options, isFilterQuery)
 		if err != nil {
 			return fmt.Errorf("%w: %s", ErrEvaluatorCreationFailed, err.Error())
 		}
@@ -57,7 +57,7 @@ func (policyEvaluators PartialResultsEvaluators) AddFromConfig(ctx context.Conte
 
 	if responsePolicy != "" {
 		if _, ok := policyEvaluators[responsePolicy]; !ok {
-			evaluator, err := createPartialEvaluator(logger, responsePolicy, opaModuleConfig, options, false)
+			evaluator, err := createPartialEvaluator(ctx, logger, responsePolicy, opaModuleConfig, options, false)
 			if err != nil {
 				return fmt.Errorf("%w: %s", ErrEvaluatorCreationFailed, err.Error())
 			}
@@ -87,7 +87,7 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 	return nil, fmt.Errorf("%w: %s", ErrEvaluatorNotFound, policy)
 }
 
-func createPartialEvaluator(logger logging.Logger, policy string, opaModuleConfig *OPAModuleConfig, options *OPAEvaluatorOptions, isPartial bool) (*PartialEvaluator, error) {
+func createPartialEvaluator(ctx context.Context, logger logging.Logger, policy string, opaModuleConfig *OPAModuleConfig, options *OPAEvaluatorOptions, isPartial bool) (*PartialEvaluator, error) {
 	logger.WithField("policyName", policy).Info("precomputing rego policy")
 
 	preparedPartialEvaluator := &PartialEvaluator{}
@@ -99,13 +99,13 @@ func createPartialEvaluator(logger logging.Logger, policy string, opaModuleConfi
 		return nil, err
 	}
 	if isPartial {
-		preparedPartialQuery, err := regoInstance.PrepareForPartial(context.TODO())
+		preparedPartialQuery, err := regoInstance.PrepareForPartial(ctx)
 		if err != nil {
 			return nil, err
 		}
 		preparedPartialEvaluator.preparedPartialQuery = &preparedPartialQuery
 	} else {
-		partialResultEvaluator, err := regoInstance.PrepareForEval(context.TODO())
+		partialResultEvaluator, err := regoInstance.PrepareForEval(ctx)
 		if err != nil {
 			return nil, err
 		}
