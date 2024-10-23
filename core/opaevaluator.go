@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/rond-authz/rond/custom_builtins"
@@ -62,19 +61,20 @@ type PermissionOptions struct {
 
 type Evaluator interface {
 	Eval(ctx context.Context) (rego.ResultSet, error)
-	Partial(ctx context.Context) (*rego.PartialQueries, error)
 }
 
 var Unknowns = []string{"data.resources"}
 
 type OPAEvaluator struct {
-	PolicyEvaluator Evaluator
-	PolicyName      string
+	policyEvaluator      Evaluator
+	preparedPartialQuery *rego.PreparedPartialQuery
+	PolicyName           string
 
 	context       context.Context
 	mongoClient   custom_builtins.IMongoClient
 	generateQuery bool
 	logger        logging.Logger
+	input         []byte
 }
 
 type OPAEvaluatorOptions struct {
@@ -83,64 +83,17 @@ type OPAEvaluatorOptions struct {
 	Logger                logging.Logger
 }
 
-func newQueryOPAEvaluator(ctx context.Context, policy string, opaModuleConfig *OPAModuleConfig, input []byte, options *OPAEvaluatorOptions) (*OPAEvaluator, error) {
-	if options == nil {
-		options = &OPAEvaluatorOptions{}
-	}
-	inputTerm, err := ast.ParseTerm(string(input))
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrFailedInputParse, err)
-	}
-
-	sanitizedPolicy := strings.Replace(policy, ".", "_", -1)
-	queryString := fmt.Sprintf("data.policies.%s", sanitizedPolicy)
-	query := rego.New(
-		rego.Query(queryString),
-		rego.Module(opaModuleConfig.Name, opaModuleConfig.Content),
-		rego.ParsedInput(inputTerm.Value),
-		rego.Unknowns(Unknowns),
-		rego.Capabilities(ast.CapabilitiesForThisVersion()),
-		rego.EnablePrintStatements(options.EnablePrintStatements),
-		rego.PrintHook(NewPrintHook(os.Stdout, policy)),
-		custom_builtins.GetHeaderFunction,
-		custom_builtins.MongoFindOne,
-		custom_builtins.MongoFindMany,
-	)
-
-	return &OPAEvaluator{
-		PolicyEvaluator: query,
-		PolicyName:      policy,
-
-		context:       ctx,
-		mongoClient:   options.MongoClient,
-		generateQuery: true,
-		logger:        options.Logger,
-	}, nil
-}
-
-func (config *OPAModuleConfig) CreateQueryEvaluator(ctx context.Context, logger logging.Logger, policy string, input []byte, options *OPAEvaluatorOptions) (*OPAEvaluator, error) {
-	logger.WithFields(map[string]any{
-		"policyName": policy,
-	}).Info("Policy to be evaluated")
-
-	opaEvaluatorInstanceTime := time.Now()
-	evaluator, err := newQueryOPAEvaluator(ctx, policy, config, input, options)
-	if err != nil {
-		logger.WithField("error", err).Error(ErrEvaluatorCreationFailed)
-		return nil, err
-	}
-	logger.
-		WithField("evaluatorCreationTimeMicroseconds", time.Since(opaEvaluatorInstanceTime).Microseconds()).
-		Trace("evaluator creation time")
-	return evaluator, nil
-}
-
 func (evaluator *OPAEvaluator) partiallyEvaluate(logger logging.Logger, options *PolicyEvaluationOptions) (primitive.M, error) {
 	if options == nil {
 		options = &PolicyEvaluationOptions{}
 	}
 	opaEvaluationTimeStart := time.Now()
-	partialResults, err := evaluator.PolicyEvaluator.Partial(evaluator.getContext())
+	inputTerm, err := ast.ParseTerm(string(evaluator.input))
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrFailedInputParse, err)
+	}
+
+	partialResults, err := evaluator.preparedPartialQuery.Partial(evaluator.getContext(), rego.EvalParsedInput(inputTerm.Value))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrPartialPolicyEvalFailed, err.Error())
 	}
@@ -182,7 +135,7 @@ func (evaluator *OPAEvaluator) Evaluate(logger logging.Logger, options *PolicyEv
 
 	opaEvaluationTimeStart := time.Now()
 
-	results, err := evaluator.PolicyEvaluator.Eval(evaluator.getContext())
+	results, err := evaluator.policyEvaluator.Eval(evaluator.getContext())
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", ErrPolicyEvalFailed, err.Error())
 	}

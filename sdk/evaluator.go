@@ -82,17 +82,9 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 
 	opaEvaluatorOptions := e.evaluatorOptions.opaEvaluatorOptions(logger)
 
-	var evaluatorAllowPolicy *core.OPAEvaluator
-	if !rondConfig.RequestFlow.GenerateQuery {
-		evaluatorAllowPolicy, err = e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, regoInput, opaEvaluatorOptions)
-		if err != nil {
-			return PolicyResult{}, err
-		}
-	} else {
-		evaluatorAllowPolicy, err = e.opaModuleConfig.CreateQueryEvaluator(ctx, logger, rondConfig.RequestFlow.PolicyName, regoInput, opaEvaluatorOptions)
-		if err != nil {
-			return PolicyResult{}, err
-		}
+	evaluatorAllowPolicy, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, regoInput, opaEvaluatorOptions)
+	if err != nil {
+		return PolicyResult{}, err
 	}
 
 	// TODO: here if the evaluation result false, it is returned an error. This interface

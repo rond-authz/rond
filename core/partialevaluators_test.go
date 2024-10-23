@@ -256,14 +256,13 @@ func TestPartialResultEvaluators(t *testing.T) {
 		t.Run("find and evaluate policy", func(t *testing.T) {
 			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
 			require.NoError(t, err)
-			evaluator, err := opaModule.CreateQueryEvaluator(context.Background(), logger, "filter_projects", input, &evalOpts)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "filter_projects", input, &evalOpts)
 			require.NoError(t, err)
 			res, query, err := evaluator.PolicyEvaluation(logger, nil)
 			require.NoError(t, err)
 			require.Empty(t, res)
 
-			var actualQuery = []byte{}
-			actualQuery, err = json.Marshal(query)
+			actualQuery, err := json.Marshal(query)
 			require.NoError(t, err)
 			require.JSONEq(t, `{"$or":[{"$and":[{"filterField":{"$eq":"something"}}]}]}`, string(actualQuery))
 		})
@@ -324,7 +323,7 @@ func TestPartialResultEvaluators(t *testing.T) {
 		t.Run("find and evaluate policy", func(t *testing.T) {
 			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
 			require.NoError(t, err)
-			evaluator, err := opaModule.CreateQueryEvaluator(context.Background(), logger, "filter_projects", input, &evalOpts)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "filter_projects", input, &evalOpts)
 			require.NoError(t, err)
 			opts := PolicyEvaluationOptions{
 				Metrics: metrics.NoOpMetrics(),
@@ -333,8 +332,7 @@ func TestPartialResultEvaluators(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, res)
 
-			var actualQuery = []byte{}
-			actualQuery, err = json.Marshal(query)
+			actualQuery, err := json.Marshal(query)
 			require.NoError(t, err)
 			require.JSONEq(t, `{"$or":[{"$and":[{"filterField":{"$eq":"something"}}]}]}`, string(actualQuery))
 		})
