@@ -73,7 +73,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 	}
 	logger := options.GetLogger()
 
-	regoInput, err := core.CreateRegoQueryInput(logger, rondInput, core.RegoInputOptions{
+	evalInput, err := core.CreateRegoQueryInput(logger, rondInput, core.RegoInputOptions{
 		EnableResourcePermissionsMapOptimization: rondConfig.Options.EnableResourcePermissionsMapOptimization,
 	})
 	if err != nil {
@@ -82,23 +82,15 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 
 	opaEvaluatorOptions := e.evaluatorOptions.opaEvaluatorOptions(logger)
 
-	var evaluatorAllowPolicy *core.OPAEvaluator
-	if !rondConfig.RequestFlow.GenerateQuery {
-		evaluatorAllowPolicy, err = e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, regoInput, opaEvaluatorOptions)
-		if err != nil {
-			return PolicyResult{}, err
-		}
-	} else {
-		evaluatorAllowPolicy, err = e.opaModuleConfig.CreateQueryEvaluator(ctx, logger, rondConfig.RequestFlow.PolicyName, regoInput, opaEvaluatorOptions)
-		if err != nil {
-			return PolicyResult{}, err
-		}
+	evaluatorAllowPolicy, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, opaEvaluatorOptions)
+	if err != nil {
+		return PolicyResult{}, err
 	}
 
 	// TODO: here if the evaluation result false, it is returned an error. This interface
 	// for the sdk should be improved, since it should use the PolicyResult and return error
 	// only if there is some error in policy evaluation.
-	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(logger, e.policyEvaluationOptions)
+	_, query, err := evaluatorAllowPolicy.PolicyEvaluation(logger, evalInput, e.policyEvaluationOptions)
 
 	if err != nil {
 		logger.WithField("error", map[string]any{
@@ -132,7 +124,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 	}
 	logger := options.GetLogger()
 
-	regoInput, err := core.CreateRegoQueryInput(logger, rondInput, core.RegoInputOptions{
+	evalInput, err := core.CreateRegoQueryInput(logger, rondInput, core.RegoInputOptions{
 		EnableResourcePermissionsMapOptimization: rondConfig.Options.EnableResourcePermissionsMapOptimization,
 	})
 	if err != nil {
@@ -141,12 +133,12 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 
 	opaEvaluatorOptions := e.evaluatorOptions.opaEvaluatorOptions(logger)
 
-	evaluator, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, e.rondConfig.ResponseFlow.PolicyName, regoInput, opaEvaluatorOptions)
+	evaluator, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, e.rondConfig.ResponseFlow.PolicyName, opaEvaluatorOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	bodyToProxy, err := evaluator.Evaluate(logger, e.policyEvaluationOptions)
+	bodyToProxy, err := evaluator.Evaluate(logger, evalInput, e.policyEvaluationOptions)
 	if err != nil {
 		return nil, err
 	}
