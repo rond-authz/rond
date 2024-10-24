@@ -75,7 +75,7 @@ func handleOKHandler(serviceName, serviceVersion string) func(http.ResponseWrite
 func handleSDKReadyHandler(sdkBoot *SDKBootState, serviceName, serviceVersion string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		sdkReady := false
-		if sdk := sdkBoot.Get(); sdk != nil {
+		if sdkBoot.IsReady() {
 			sdkReady = true
 		}
 

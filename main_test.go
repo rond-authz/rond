@@ -60,9 +60,8 @@ func getEnvs(t *testing.T, envMap map[string]string) config.EnvironmentVariables
 }
 
 func TestProxyOASPath(t *testing.T) {
+	log, _ := test.NewNullLogger()
 	t.Run("200 - without oas documentation api defined", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
@@ -81,31 +80,27 @@ func TestProxyOASPath(t *testing.T) {
 			File("./mocks/simplifiedMock.json")
 
 		envs := getEnvs(t, map[string]string{
-			"HTTP_PORT":               "3000",
 			"TARGET_SERVICE_HOST":     "localhost:3001",
 			"TARGET_SERVICE_OAS_PATH": "/custom/documentation/json",
 			"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies",
 			"LOG_LEVEL":               "fatal",
 		})
 
-		go func(envs config.EnvironmentVariables) {
-			entrypoint(shutdown, envs)
-		}(envs)
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
 
-		resp, err := http.DefaultClient.Get("http://localhost:3000/custom/documentation/json")
+		require.True(t, <-app.sdkBootState.IsReadyChan())
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/custom/documentation/json", nil)
+		app.router.ServeHTTP(w, req)
 
 		require.NoError(t, err, "error calling docs")
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		require.True(t, gock.IsDone(), "the proxy does not blocks the request for documentations path.")
 	})
 
 	t.Run("200 - with oas documentation api defined", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
@@ -123,32 +118,26 @@ func TestProxyOASPath(t *testing.T) {
 			File("./mocks/documentationPathMock.json")
 
 		envs := getEnvs(t, map[string]string{
-			"HTTP_PORT":               "3007",
 			"TARGET_SERVICE_HOST":     "localhost:3006",
 			"TARGET_SERVICE_OAS_PATH": "/documentation/json",
 			"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies",
 			"LOG_LEVEL":               "fatal",
 		})
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
 
-		resp, err := http.DefaultClient.Get("http://localhost:3007/documentation/json")
+		require.True(t, <-app.sdkBootState.IsReadyChan())
 
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/documentation/json", nil)
+		app.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		require.True(t, gock.IsDone(), "the proxy allows the request.")
 	})
 
 	t.Run("403 - if oas documentation api defined with permission and user has not", func(t *testing.T) {
-
-		shutdown := make(chan os.Signal, 1)
-
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
@@ -173,22 +162,21 @@ func TestProxyOASPath(t *testing.T) {
 			"LOG_LEVEL":               "fatal",
 		})
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
 
-		resp, _ := http.DefaultClient.Get("http://localhost:3009/documentation/json")
-		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/documentation/json", nil)
+		app.router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusForbidden, w.Result().StatusCode)
 		require.False(t, gock.IsDone(), "the proxy allows the request.")
 	})
 }
 
-// FIXME: This function needs to be performed as last in order to make other tests working
-func TestEntrypoint(t *testing.T) {
+func TestSetupApp(t *testing.T) {
+	log, _ := test.NewNullLogger()
+
 	t.Run("fails for invalid module path, no module found", func(t *testing.T) {
 		envs := getEnvs(t, map[string]string{
 			"HTTP_PORT":               "3000",
@@ -198,84 +186,11 @@ func TestEntrypoint(t *testing.T) {
 			"LOG_LEVEL":               "fatal",
 		})
 
-		shutdown := make(chan os.Signal, 1)
-
-		entrypoint(shutdown, envs)
-		require.True(t, true, "If we get here the service has not started")
-	})
-
-	t.Run("opens server on port 3000", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-		defer gock.Off()
-		defer gock.DisableNetworkingFilters()
-		defer gock.DisableNetworking()
-		gock.EnableNetworking()
-		gock.NetworkingFilter(func(r *http.Request) bool {
-			return r.URL.Path != "/documentation/json"
-		})
-		gock.New("http://localhost:3001").
-			Get("/documentation/json").
-			Reply(200).
-			File("./mocks/simplifiedMock.json")
-
-		envs := getEnvs(t, map[string]string{
-			"HTTP_PORT":               "3000",
-			"TARGET_SERVICE_HOST":     "localhost:3001",
-			"TARGET_SERVICE_OAS_PATH": "/documentation/json",
-			"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies",
-			"LOG_LEVEL":               "fatal",
-		})
-
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-
-		time.Sleep(1 * time.Second)
-		resp, err := http.DefaultClient.Get("http://localhost:3000/-/rbac-ready")
-		require.Equal(t, nil, err)
-		require.Equal(t, 200, resp.StatusCode)
-	})
-
-	t.Run("GracefulShutdown works properly", func(t *testing.T) {
-		defer gock.Off()
-		defer gock.DisableNetworkingFilters()
-		gock.New("http://localhost:3001").
-			Get("/documentation/json").
-			Reply(200).
-			File("./mocks/simplifiedMock.json")
-
-		envs := getEnvs(t, map[string]string{
-			"HTTP_PORT":               "3000",
-			"TARGET_SERVICE_HOST":     "localhost:3001",
-			"TARGET_SERVICE_OAS_PATH": "/documentation/json",
-			"DELAY_SHUTDOWN_SECONDS":  "3",
-			"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies",
-			"LOG_LEVEL":               "fatal",
-		})
-		shutdown := make(chan os.Signal, 1)
-		done := make(chan bool, 1)
-
-		go func() {
-			time.Sleep(5 * time.Second)
-			done <- false
-		}()
-
-		go func() {
-			entrypoint(shutdown, envs)
-			done <- true
-		}()
-		shutdown <- syscall.SIGTERM
-
-		flag := <-done
-		require.Equal(t, true, flag)
+		_, err := setupService(envs, log)
+		require.EqualError(t, err, core.ErrMissingRegoModules.Error())
 	})
 
 	t.Run("opa integration", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
@@ -296,30 +211,27 @@ func TestEntrypoint(t *testing.T) {
 			File("./mocks/simplifiedMock.json")
 
 		envs := getEnvs(t, map[string]string{
-			"HTTP_PORT":               "3000",
 			"TARGET_SERVICE_HOST":     "localhost:3001",
 			"TARGET_SERVICE_OAS_PATH": "/documentation/json",
 			"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies",
 			"LOG_LEVEL":               "fatal",
 		})
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
 
 		t.Run("ok - opa evaluation success", func(t *testing.T) {
 			gock.Flush()
 			gock.New("http://localhost:3001/users/").
 				Get("/users/").
 				Reply(200)
-			resp, err := http.DefaultClient.Get("http://localhost:3000/users/")
 
-			require.Equal(t, nil, err)
-			require.Equal(t, http.StatusOK, resp.StatusCode)
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/users/", nil)
+			app.router.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 			require.True(t, gock.IsDone(), "the proxy blocks the request when the permissions are granted.")
 		})
 
@@ -330,13 +242,13 @@ func TestEntrypoint(t *testing.T) {
 				Get("/assert-user").
 				Reply(200)
 
-			req, err := http.NewRequest(http.MethodGet, "http://localhost:3000/assert-user", nil)
-			require.Nil(t, err)
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/assert-user", nil)
 			req.Header.Set("miauserid", "the-user-id")
+			app.router.ServeHTTP(w, req)
 
-			resp, err := http.DefaultClient.Do(req)
-			require.Equal(t, nil, err)
-			require.Equal(t, http.StatusOK, resp.StatusCode)
+			app.router.ServeHTTP(w, req)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
 			require.True(t, gock.IsDone(), "the proxy blocks the request when the permissions are granted.")
 		})
@@ -346,16 +258,17 @@ func TestEntrypoint(t *testing.T) {
 			gock.New("http://localhost:3001/").
 				Post("/users/").
 				Reply(200)
-			resp, err := http.DefaultClient.Post("http://localhost:3000/users/", "text/plain", nil)
-			require.Equal(t, nil, err)
-			require.Equal(t, http.StatusForbidden, resp.StatusCode, "unexpected status code.")
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/users/", nil)
+			app.router.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusForbidden, w.Result().StatusCode, "unexpected status code.")
 			require.False(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
 		})
 	})
 
 	t.Run("standalone integration", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
@@ -385,25 +298,21 @@ func TestEntrypoint(t *testing.T) {
 			"BINDINGS_CRUD_SERVICE_URL": "http://crud-service",
 		})
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
 
 		t.Run("ok - standalone evaluation success", func(t *testing.T) {
-			resp, err := http.DefaultClient.Get("http://localhost:3026/eval/users/")
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/eval/users/", nil)
+			app.router.ServeHTTP(w, req)
 
-			require.Equal(t, nil, err)
-			require.Equal(t, http.StatusOK, resp.StatusCode)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
 	})
 
 	t.Run("x-permissions is empty", func(t *testing.T) {
 		gock.Flush()
-		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
@@ -432,26 +341,24 @@ func TestEntrypoint(t *testing.T) {
 			"LOG_LEVEL":               "fatal",
 		})
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
 
 		gock.New("http://localhost:3004/").
 			Post("/users/").
 			Reply(200)
-		resp, err := http.DefaultClient.Post("http://localhost:3005/users/", "text/plain", nil)
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusForbidden, resp.StatusCode, "unexpected status code.")
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/users/", nil)
+		app.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Result().StatusCode, "unexpected status code.")
 		require.False(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
 	})
 
 	t.Run("api permissions file path with nested routes with wildcard", func(t *testing.T) {
 		gock.Flush()
-		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
@@ -476,27 +383,24 @@ func TestEntrypoint(t *testing.T) {
 			"LOG_LEVEL":                 "fatal",
 		})
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
 
 		gock.New("http://localhost:4000/").
 			Get("foo/bar/not/registered/explicitly").
 			Reply(200)
 
-		resp, err := http.DefaultClient.Get("http://localhost:3333/foo/bar/not/registered/explicitly")
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code.")
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/foo/bar/not/registered/explicitly", nil)
+		app.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode, "unexpected status code.")
 		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
 	})
 
 	t.Run("api permissions file path with nested routes with pathParams", func(t *testing.T) {
 		gock.Flush()
-		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
@@ -524,27 +428,24 @@ func TestEntrypoint(t *testing.T) {
 			"LOG_LEVEL":                 "fatal",
 		})
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
 
 		gock.New("http://localhost:6000").
 			Post(decodedPath).
 			Reply(200)
 
-		resp, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5555%s", path), "application/json", nil)
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code.")
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path, nil)
+		app.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode, "unexpected status code.")
 		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
 	})
 
 	t.Run("api permissions file path with nested routes with pathParams access", func(t *testing.T) {
 		gock.Flush()
-		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
@@ -572,27 +473,23 @@ func TestEntrypoint(t *testing.T) {
 			"LOG_LEVEL":                 "fatal",
 		})
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
 
 		gock.New("http://localhost:6000").
 			Post(decodedPath).
 			Reply(200)
 
-		resp, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5556%s", path), "application/json", nil)
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code.")
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path, nil)
+		app.router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode, "unexpected status code.")
 		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
 	})
 
 	t.Run("api permissions file path with nested routes with pathParams access with escaped value", func(t *testing.T) {
 		gock.Flush()
-		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
@@ -620,27 +517,23 @@ func TestEntrypoint(t *testing.T) {
 			"LOG_LEVEL":                 "fatal",
 		})
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
 
 		gock.New("http://localhost:6000").
 			Post(decodedPath).
 			Reply(200)
 
-		resp, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5557%s", path), "application/json", nil)
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code.")
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path, nil)
+		app.router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode, "unexpected status code.")
 		require.True(t, gock.IsDone(), "the proxy forwards the request when the permissions aren't granted.")
 	})
 
 	t.Run("api permissions file path registered with and without trailing slash when ignoreTrailingSlash is true", func(t *testing.T) {
 		gock.Flush()
-		shutdown := make(chan os.Signal, 1)
 
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
@@ -681,13 +574,9 @@ func TestEntrypoint(t *testing.T) {
 			"LOG_LEVEL":                 "fatal",
 		})
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
 
 		gock.New("http://localhost:3339").
 			Get("/with/trailing/slash/").
@@ -717,38 +606,44 @@ func TestEntrypoint(t *testing.T) {
 			Reply(200).
 			JSON(map[string]interface{}{"originalMsg": "this is the original"})
 
-		resp1, err := http.DefaultClient.Get(fmt.Sprintf("http://localhost:5559%s", "/with/trailing/slash/"))
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp1.StatusCode, "unexpected status code.")
+		resp1 := httptest.NewRecorder()
+		req1 := httptest.NewRequest(http.MethodGet, "/with/trailing/slash/", nil)
+		app.router.ServeHTTP(resp1, req1)
+		require.Equal(t, http.StatusOK, resp1.Result().StatusCode, "unexpected status code.")
 
 		respBody1, _ := io.ReadAll(resp1.Body)
 		require.Equal(t, "\"/with/trailing/slash/\"", string(respBody1))
 
-		resp2, err := http.DefaultClient.Get(fmt.Sprintf("http://localhost:5559%s", "/with/trailing/slash"))
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp2.StatusCode, "unexpected status code.")
+		resp2 := httptest.NewRecorder()
+		req2 := httptest.NewRequest(http.MethodGet, "/with/trailing/slash", nil)
+		app.router.ServeHTTP(resp2, req2)
+		require.Equal(t, http.StatusOK, resp2.Result().StatusCode, "unexpected status code.")
 
 		respBody2, _ := io.ReadAll(resp2.Body)
 		require.Equal(t, "\"/with/trailing/slash\"", string(respBody2))
 
-		resp3, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5559%s", "/without/trailing/slash"), "application/json", nil)
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp3.StatusCode, "unexpected status code.")
+		resp3 := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/without/trailing/slash", nil)
+		app.router.ServeHTTP(resp3, req)
+		require.Equal(t, http.StatusOK, resp3.Result().StatusCode, "unexpected status code.")
 
-		resp4, err := http.DefaultClient.Post(fmt.Sprintf("http://localhost:5559%s", "/without/trailing/slash/"), "application/json", nil)
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp4.StatusCode, "unexpected status code.")
+		resp4 := httptest.NewRecorder()
+		req4 := httptest.NewRequest(http.MethodPost, "/without/trailing/slash/", nil)
+		app.router.ServeHTTP(resp4, req4)
+		require.Equal(t, http.StatusOK, resp4.Result().StatusCode, "unexpected status code.")
 
-		resp5, err := http.DefaultClient.Get(fmt.Sprintf("http://localhost:5559%s", "/ignore/trailing/slash/"))
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp5.StatusCode, "unexpected status code.")
+		resp5 := httptest.NewRecorder()
+		req5 := httptest.NewRequest(http.MethodGet, "/ignore/trailing/slash/", nil)
+		app.router.ServeHTTP(resp5, req5)
+		require.Equal(t, http.StatusOK, resp5.Result().StatusCode, "unexpected status code.")
 
 		respBody5, _ := io.ReadAll(resp5.Body)
 		require.Equal(t, "\"/ignore/trailing/slash/\"", string(respBody5))
 
-		resp6, err := http.DefaultClient.Get(fmt.Sprintf("http://localhost:5559%s", "/ignore/trailing/slash"))
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp6.StatusCode, "unexpected status code.")
+		resp6 := httptest.NewRecorder()
+		req6 := httptest.NewRequest(http.MethodGet, "/ignore/trailing/slash", nil)
+		app.router.ServeHTTP(resp6, req6)
+		require.Equal(t, http.StatusOK, resp6.Result().StatusCode, "unexpected status code.")
 
 		respBody6, _ := io.ReadAll(resp6.Body)
 		require.Equal(t, "\"/ignore/trailing/slash\"", string(respBody6))
@@ -757,8 +652,6 @@ func TestEntrypoint(t *testing.T) {
 	})
 
 	t.Run("mongo integration", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
@@ -806,13 +699,13 @@ func TestEntrypoint(t *testing.T) {
 		clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
 		client, err := mongo.Connect(context.Background(), clientOpts)
 		if err != nil {
-			fmt.Printf("error connecting to MongoDB: %s", err.Error())
+			t.Errorf("error connecting to MongoDB: %s", err.Error())
 		}
 
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
 		if err = client.Ping(ctx, readpref.Primary()); err != nil {
-			fmt.Printf("error verifying MongoDB connection: %s", err.Error())
+			t.Errorf("error verifying MongoDB connection: %s", err.Error())
 		}
 		defer client.Disconnect(ctx)
 
@@ -823,22 +716,20 @@ func TestEntrypoint(t *testing.T) {
 			client.Database(mongoDBName).Collection("bindings"),
 		)
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
 
 		t.Run("200 - even without headers", func(t *testing.T) {
 			gock.Flush()
 			gock.New("http://localhost:3002/users/").
 				Get("/users/").
 				Reply(200)
-			resp, err := http.DefaultClient.Get("http://localhost:3003/users/")
-			require.Equal(t, nil, err)
-			require.Equal(t, http.StatusOK, resp.StatusCode)
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/users/", nil)
+			app.router.ServeHTTP(w, req)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
 		t.Run("200 - integration passed", func(t *testing.T) {
 			gock.Flush()
@@ -848,16 +739,15 @@ func TestEntrypoint(t *testing.T) {
 				SetHeader("someuserheader", "user1").
 				JSON(map[string]string{"foo": "bar"})
 
-			req, err := http.NewRequest("GET", "http://localhost:3003/users/", nil)
-			require.NoError(t, err)
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/users/", nil)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
 			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
-			client := &http.Client{}
-			resp, err := client.Do(req)
-			require.Equal(t, "user1", resp.Header.Get("someuserheader"))
-			require.Equal(t, nil, err)
-			require.Equal(t, http.StatusOK, resp.StatusCode)
+
+			app.router.ServeHTTP(w, req)
+			require.Equal(t, "user1", w.Result().Header.Get("someuserheader"))
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
 		t.Run("200 - integration passed without groups", func(t *testing.T) {
 			gock.Flush()
@@ -865,13 +755,12 @@ func TestEntrypoint(t *testing.T) {
 				Get("/users/").
 				Reply(200).
 				SetHeader("headerProxiedTest", "user1")
-			req, err := http.NewRequest("GET", "http://localhost:3003/users/", nil)
-			require.NoError(t, err)
-			client := &http.Client{}
-			resp, err := client.Do(req)
-			require.Equal(t, "user1", resp.Header.Get("headerProxiedTest"))
-			require.Equal(t, nil, err)
-			require.Equal(t, http.StatusOK, resp.StatusCode)
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "http://localhost:3003/users/", nil)
+			app.router.ServeHTTP(w, req)
+
+			require.Equal(t, "user1", w.Result().Header.Get("headerProxiedTest"))
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
 
 		t.Run("200 - integration find_one builtin", func(t *testing.T) {
@@ -894,16 +783,14 @@ func TestEntrypoint(t *testing.T) {
 				SetHeader("someuserheader", "user1").
 				JSON(map[string]string{"foo": "bar"})
 
-			req, err := http.NewRequest("GET", "http://localhost:3003/with-mongo-find-one/some-project", nil)
-			require.NoError(t, err)
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "http://localhost:3003/with-mongo-find-one/some-project", nil)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
 			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
-			client := &http.Client{}
-			resp, err := client.Do(req)
 
-			require.Equal(t, nil, err)
-			require.Equal(t, http.StatusOK, resp.StatusCode)
+			app.router.ServeHTTP(w, req)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
 
 		t.Run("200 - integration find_many builtin", func(t *testing.T) {
@@ -930,23 +817,19 @@ func TestEntrypoint(t *testing.T) {
 				SetHeader("someuserheader", "user1").
 				JSON(map[string]string{"foo": "bar"})
 
-			req, err := http.NewRequest("GET", "http://localhost:3003/with-mongo-find-many/some-project", nil)
-			require.NoError(t, err)
-
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/with-mongo-find-many/some-project", nil)
 			req.Header.Set("miauserid", "user1")
 			req.Header.Set("miausergroups", "user1,user2")
 			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
-			client := &http.Client{}
-			resp, err := client.Do(req)
 
-			require.Equal(t, nil, err)
-			require.Equal(t, http.StatusOK, resp.StatusCode)
+			app.router.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
 	})
 
 	t.Run("200 - integration passed with query generation", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
@@ -1005,32 +888,27 @@ func TestEntrypoint(t *testing.T) {
 			client.Database(mongoDBName).Collection("bindings"),
 		)
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
+
 		gock.Flush()
 		gock.New("http://localhost:3033/users/").
 			Get("/users/").
 			MatchHeader("acl_rows", `{"$or":[{"$and":[{"_id":{"$eq":"9876"}}]},{"$and":[{"_id":{"$eq":"12345"}}]},{"$and":[{"_id":{"$eq":"9876"}}]},{"$and":[{"_id":{"$eq":"12345"}}]}]}`).
 			Reply(200)
-		req, err := http.NewRequest("GET", "http://localhost:3034/users/", nil)
-		require.NoError(t, err)
 
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/users/", nil)
 		req.Header.Set("miausergroups", "group1")
 		req.Header.Set("miauserid", "filter_test")
-		client1 := &http.Client{}
-		resp, err := client1.Do(req)
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		app.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("200 - integration passed with x-rond configuration in oas", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
@@ -1088,38 +966,31 @@ func TestEntrypoint(t *testing.T) {
 			client.Database(mongoDBName).Collection("bindings"),
 		)
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
+
 		gock.Flush()
 		gock.New("http://localhost:5033/users/").
 			Get("/users/").
 			MatchHeader("x-query-header", `{"$or":[{"$and":[{"name":{"$eq":"jane"}}]}]}`).
 			Reply(200).
 			JSON(map[string]interface{}{"originalMsg": "this is the original"})
-		req, err := http.NewRequest("GET", "http://localhost:5034/users/", nil)
-		require.NoError(t, err)
 
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/users/", nil)
 		req.Header.Set("miausergroups", "group1")
 		req.Header.Set("miauserid", "filter_test")
-		client1 := &http.Client{}
-		resp, err := client1.Do(req)
-		require.Equal(t, nil, err)
 
-		bodyBytes, err := io.ReadAll(resp.Body)
-		require.Equal(t, nil, err)
+		app.router.ServeHTTP(w, req)
 
+		bodyBytes, err := io.ReadAll(w.Result().Body)
+		require.NoError(t, err)
 		require.Equal(t, `{"msg":"hey there"}`, string(bodyBytes))
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("403 - integration not passed with query generation and without user authenticated", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
@@ -1178,29 +1049,24 @@ func TestEntrypoint(t *testing.T) {
 			client.Database(mongoDBName).Collection("bindings"),
 		)
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
+
 		gock.Flush()
 		gock.New("http://localhost:3035/users/").
 			Get("/users/").
 			Reply(200)
-		req, err := http.NewRequest("GET", "http://localhost:3036/users/", nil)
-		require.NoError(t, err)
 
-		client1 := &http.Client{}
-		resp, err := client1.Do(req)
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:3036/users/", nil)
+
+		app.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Result().StatusCode)
 	})
 
 	t.Run("200 - test correcting routing", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
@@ -1258,31 +1124,26 @@ func TestEntrypoint(t *testing.T) {
 			client.Database(mongoDBName).Collection("bindings"),
 		)
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
+
 		gock.Flush()
 		gock.New("http://localhost:3038/foo/count").
 			Get("/foo/count").
 			Reply(200)
-		req, err := http.NewRequest("GET", "http://localhost:3039/foo/count", nil)
-		require.NoError(t, err)
 
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:3039/foo/count", nil)
 		req.Header.Set("miausergroups", "group1")
 		req.Header.Set("miauserid", "filter_test")
-		client1 := &http.Client{}
-		resp, err := client1.Do(req)
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		app.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("200 - test correcting routing inverted oas", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
@@ -1340,31 +1201,26 @@ func TestEntrypoint(t *testing.T) {
 			client.Database(mongoDBName).Collection("bindings"),
 		)
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
+
 		gock.Flush()
 		gock.New("http://localhost:3038/foo/count").
 			Get("/foo/count").
 			Reply(200)
-		req, err := http.NewRequest("GET", "http://localhost:3060/foo/count", nil)
-		require.NoError(t, err)
 
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:3060/foo/count", nil)
 		req.Header.Set("miausergroups", "group1")
 		req.Header.Set("miauserid", "filter_test")
-		client1 := &http.Client{}
-		resp, err := client1.Do(req)
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		app.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("200 - test correcting routing with pathParameters", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
@@ -1422,31 +1278,26 @@ func TestEntrypoint(t *testing.T) {
 			client.Database(mongoDBName).Collection("bindings"),
 		)
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
+
 		gock.Flush()
 		gock.New("http://localhost:3038/foo/count").
 			Patch("/foo/count").
 			Reply(200)
-		req, err := http.NewRequest("PATCH", "http://localhost:3070/foo/count", nil)
-		require.NoError(t, err)
 
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("PATCH", "http://localhost:3070/foo/count", nil)
 		req.Header.Set("miausergroups", "group1")
 		req.Header.Set("miauserid", "filter_test")
-		client1 := &http.Client{}
-		resp, err := client1.Do(req)
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		app.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("200 - test correcting routing with pathParameters on compex OAS", func(t *testing.T) {
-		shutdown := make(chan os.Signal, 1)
-
 		defer gock.Off()
 		defer gock.DisableNetworkingFilters()
 		defer gock.DisableNetworking()
@@ -1504,31 +1355,28 @@ func TestEntrypoint(t *testing.T) {
 			client.Database(mongoDBName).Collection("bindings"),
 		)
 
-		go func() {
-			entrypoint(shutdown, envs)
-		}()
-		defer func() {
-			shutdown <- syscall.SIGTERM
-		}()
-		time.Sleep(1 * time.Second)
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
+
 		gock.Flush()
 		gock.New("http://localhost:3043").
 			Get("/api/restaurants/1234").
 			Reply(200)
-		req, err := http.NewRequest("GET", "http://localhost:3044/api/restaurants/1234", nil)
-		require.NoError(t, err)
 
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:3044/api/restaurants/1234", nil)
 		req.Header.Set("miausergroups", "group1")
 		req.Header.Set("miauserid", "filter_test")
-		client1 := &http.Client{}
-		resp, err := client1.Do(req)
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		app.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 }
 
 func TestEntrypointWithResponseFiltering(t *testing.T) {
-	shutdown := make(chan os.Signal, 1)
+	log, _ := test.NewNullLogger()
 
 	defer gock.Off()
 	defer gock.DisableNetworkingFilters()
@@ -1594,13 +1442,9 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 		client.Database(mongoDBName).Collection("bindings"),
 	)
 
-	go func() {
-		entrypoint(shutdown, envs)
-	}()
-	defer func() {
-		shutdown <- syscall.SIGTERM
-	}()
-	time.Sleep(1 * time.Second)
+	app, err := setupService(envs, log)
+	require.NoError(t, err)
+	require.True(t, <-app.sdkBootState.IsReadyChan())
 
 	t.Run("200 - without body", func(t *testing.T) {
 		gock.Flush()
@@ -1608,15 +1452,14 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 			Get("/users/").
 			Reply(200)
 
-		req, err := http.NewRequest("GET", "http://localhost:3041/users/", nil)
-		require.NoError(t, err)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:3041/users/", nil)
 
-		client1 := &http.Client{}
-		resp, err := client1.Do(req)
-		resp.Body.Close()
+		app.router.ServeHTTP(w, req)
+
+		w.Result().Body.Close()
 		gock.Flush()
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 
 	t.Run("200 - with correct body filtered returned", func(t *testing.T) {
@@ -1627,11 +1470,13 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 			Reply(200).
 			JSON(map[string]interface{}{"FT_1": true, "TEST_FT_1": true})
 
-		req, _ := http.NewRequest("GET", "http://localhost:3041/filters/", nil)
-		client1 := &http.Client{}
-		resp, _ := client1.Do(req)
-		respBody, _ := io.ReadAll(resp.Body)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:3041/filters/", nil)
+
+		app.router.ServeHTTP(w, req)
+
+		respBody, _ := io.ReadAll(w.Result().Body)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		require.Equal(t, `{"FT_1":true}`, string(respBody))
 	})
 
@@ -1644,17 +1489,19 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 			Reply(200).
 			JSON(map[string]interface{}{"FT_1": true, "TEST_FT_1": true})
 
-		req, _ := http.NewRequest("GET", "http://localhost:3041/body-edit-with-request-filter/", nil)
-		client1 := &http.Client{}
-		resp, _ := client1.Do(req)
-		respBody, _ := io.ReadAll(resp.Body)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:3041/body-edit-with-request-filter/", nil)
+
+		app.router.ServeHTTP(w, req)
+
+		respBody, _ := io.ReadAll(w.Result().Body)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		require.Equal(t, `{"FT_1":true}`, string(respBody))
 	})
 }
 
 func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
-	shutdown := make(chan os.Signal, 1)
+	log, _ := test.NewNullLogger()
 
 	defer gock.Off()
 	defer gock.DisableNetworkingFilters()
@@ -1715,13 +1562,9 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 		client.Database(mongoDBName).Collection("bindings"),
 	)
 
-	go func() {
-		entrypoint(shutdown, envs)
-	}()
-	defer func() {
-		shutdown <- syscall.SIGTERM
-	}()
-	time.Sleep(1 * time.Second)
+	app, err := setupService(envs, log)
+	require.NoError(t, err)
+	require.True(t, <-app.sdkBootState.IsReadyChan())
 
 	t.Run("200 - without body", func(t *testing.T) {
 		gock.Flush()
@@ -1729,15 +1572,14 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 			Get("/api/backend/projects/testabc/").
 			Reply(200)
 
-		req, err := http.NewRequest("GET", "http://localhost:3051/api/backend/projects/testabc/", nil)
-		require.NoError(t, err)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:3051/api/backend/projects/testabc/", nil)
 
-		client1 := &http.Client{}
-		resp, err := client1.Do(req)
-		resp.Body.Close()
+		app.router.ServeHTTP(w, req)
+
+		w.Result().Body.Close()
 		gock.Flush()
-		require.Equal(t, nil, err)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 	})
 }
 
@@ -1985,4 +1827,51 @@ func getResponseBody(t *testing.T, w *httptest.ResponseRecorder) []byte {
 	require.NoError(t, err)
 
 	return responseBody
+}
+
+func TestEntrypoint(t *testing.T) {
+	t.Run("start server on port 3000 and close with graceful shutdown", func(t *testing.T) {
+		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
+		gock.EnableNetworking()
+		gock.NetworkingFilter(func(r *http.Request) bool {
+			return r.URL.Path != "/documentation/json"
+		})
+		gock.New("http://localhost:3001").
+			Get("/documentation/json").
+			Reply(200).
+			File("./mocks/simplifiedMock.json")
+
+		envs := getEnvs(t, map[string]string{
+			"HTTP_PORT":               "3000",
+			"TARGET_SERVICE_HOST":     "localhost:3001",
+			"TARGET_SERVICE_OAS_PATH": "/documentation/json",
+			"DELAY_SHUTDOWN_SECONDS":  "3",
+			"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies",
+			"LOG_LEVEL":               "fatal",
+		})
+		shutdown := make(chan os.Signal, 1)
+		done := make(chan bool, 1)
+
+		go func() {
+			time.Sleep(5 * time.Second)
+			done <- false
+		}()
+
+		go func() {
+			entrypoint(shutdown, envs)
+			done <- true
+		}()
+		time.Sleep(1 * time.Second)
+
+		resp, err := http.DefaultClient.Get("http://localhost:3000/-/rbac-ready")
+		require.NoError(t, err)
+		require.Equal(t, 200, resp.StatusCode)
+
+		shutdown <- syscall.SIGTERM
+
+		flag := <-done
+		require.Equal(t, true, flag)
+	})
 }

@@ -22,9 +22,8 @@ import (
 )
 
 func TestSDKBootState(t *testing.T) {
-	sdkBootState := NewSDKBootState()
-
 	t.Run("flow with routine", func(t *testing.T) {
+		sdkBootState := NewSDKBootState()
 		sdk := sdkBootState.Get()
 		require.Nil(t, sdk)
 
@@ -32,5 +31,53 @@ func TestSDKBootState(t *testing.T) {
 
 		sdk = sdkBootState.Get()
 		require.NotNil(t, sdk)
+	})
+
+	t.Run("is ready", func(t *testing.T) {
+		sdkBootState := NewSDKBootState()
+		sdk := sdkBootState.Get()
+		require.Nil(t, sdk)
+
+		require.False(t, sdkBootState.IsReady())
+
+		sdkBootState.Ready(fake.SDKEvaluatorFinder{})
+
+		require.True(t, sdkBootState.IsReady())
+
+		sdk = sdkBootState.Get()
+		require.NotNil(t, sdk)
+	})
+
+	t.Run("is ready with channel", func(t *testing.T) {
+		sdkBootState := NewSDKBootState()
+		sdk := sdkBootState.Get()
+		require.Nil(t, sdk)
+
+		ch := sdkBootState.IsReadyChan()
+		ch1 := sdkBootState.IsReadyChan()
+
+		require.Equal(t, ch, ch1)
+
+		go sdkBootState.Ready(fake.SDKEvaluatorFinder{})
+
+		val, ok := <-ch
+		require.True(t, ok)
+		require.True(t, val)
+
+		_, ok2 := <-ch1
+		require.False(t, ok2)
+	})
+
+	t.Run("- is ready with channel after the first ready sent", func(t *testing.T) {
+		sdkBootState := NewSDKBootState()
+		sdk := sdkBootState.Get()
+		require.Nil(t, sdk)
+
+		sdkBootState.Ready(fake.SDKEvaluatorFinder{})
+		ch := sdkBootState.IsReadyChan()
+		require.True(t, <-ch)
+
+		ch1 := sdkBootState.IsReadyChan()
+		require.True(t, <-ch1)
 	})
 }
