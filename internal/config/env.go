@@ -20,8 +20,8 @@ import (
 	"net/http"
 	"strings"
 
+	envlib "github.com/caarlos0/env/v11"
 	"github.com/gorilla/mux"
-	"github.com/mia-platform/configlib"
 )
 
 const (
@@ -37,127 +37,27 @@ const (
 // EnvironmentVariables struct with the mapping of desired
 // environment variables.
 type EnvironmentVariables struct {
-	LogLevel                       string
-	HTTPPort                       string
-	ServiceVersion                 string
-	TargetServiceHost              string
-	TargetServiceOASPath           string
-	OPAModulesDirectory            string
-	APIPermissionsFilePath         string
-	UserPropertiesHeader           string
-	UserGroupsHeader               string
-	UserIdHeader                   string
-	ClientTypeHeader               string
-	BindingsCrudServiceURL         string
-	MongoDBUrl                     string
-	MongoDBConnectionMaxIdleTimeMs int
-	RolesCollectionName            string
-	BindingsCollectionName         string
-	PathPrefixStandalone           string
-	DelayShutdownSeconds           int
-	Standalone                     bool
-	AdditionalHeadersToProxy       string
-	ExposeMetrics                  bool
-}
-
-var EnvVariablesConfig = []configlib.EnvConfig{
-	{
-		Key:          "LOG_LEVEL",
-		Variable:     "LogLevel",
-		DefaultValue: "info",
-	},
-	{
-		Key:          "HTTP_PORT",
-		Variable:     "HTTPPort",
-		DefaultValue: "8080",
-	},
-	{
-		Key:          "SERVICE_VERSION",
-		Variable:     "ServiceVersion",
-		DefaultValue: "latest",
-	},
-	{
-		Key:      targetServiceHostEnvKey,
-		Variable: "TargetServiceHost",
-	},
-	{
-		Key:      targetServiceOASPathEnvKey,
-		Variable: "TargetServiceOASPath",
-	},
-	{
-		Key:      "OPA_MODULES_DIRECTORY",
-		Variable: "OPAModulesDirectory",
-		Required: true,
-	},
-	{
-		Key:      apiPermissionsFilePathEnvKey,
-		Variable: "APIPermissionsFilePath",
-	},
-	{
-		Key:          "USER_PROPERTIES_HEADER_KEY",
-		Variable:     "UserPropertiesHeader",
-		DefaultValue: "miauserproperties",
-	},
-	{
-		Key:          "USER_GROUPS_HEADER_KEY",
-		Variable:     "UserGroupsHeader",
-		DefaultValue: "miausergroups",
-	},
-	{
-		Key:          "USER_ID_HEADER_KEY",
-		Variable:     "UserIdHeader",
-		DefaultValue: "miauserid",
-	},
-	{
-		Key:          "CLIENT_TYPE_HEADER_KEY",
-		Variable:     "ClientTypeHeader",
-		DefaultValue: "Client-Type",
-	},
-	{
-		Key:          "DELAY_SHUTDOWN_SECONDS",
-		Variable:     "DelayShutdownSeconds",
-		DefaultValue: "10",
-	},
-	{
-		Key:      "MONGODB_URL",
-		Variable: "MongoDBUrl",
-	},
-	{
-		Key:          "MONGODB_CONNECTION_MAX_IDLE_TIME_MS",
-		Variable:     "MongoDBConnectionMaxIdleTimeMs",
-		DefaultValue: "1000",
-	},
-	{
-		Key:      "BINDINGS_COLLECTION_NAME",
-		Variable: "BindingsCollectionName",
-	},
-	{
-		Key:      "ROLES_COLLECTION_NAME",
-		Variable: "RolesCollectionName",
-	},
-	{
-		Key:      standaloneEnvKey,
-		Variable: "Standalone",
-	},
-	{
-		Key:          "PATH_PREFIX_STANDALONE",
-		Variable:     "PathPrefixStandalone",
-		DefaultValue: "/eval",
-	},
-	{
-		Key:      bindingsCrudServiceURL,
-		Variable: "BindingsCrudServiceURL",
-	},
-	{
-		Key:          "ADDITIONAL_HEADERS_TO_PROXY",
-		Variable:     "AdditionalHeadersToProxy",
-		DefaultValue: "miauserid",
-	},
-	{
-		Key:          "EXPOSE_METRICS",
-		Variable:     "ExposeMetrics",
-		DefaultValue: "true",
-	},
+	LogLevel                       string `env:"LOG_LEVEL" envDefault:"info"`
+	HTTPPort                       string `env:"HTTP_PORT" envDefault:"8080"`
+	ServiceVersion                 string `env:"SERVICE_VERSION" envDefault:"latest"`
+	TargetServiceHost              string `env:"TARGET_SERVICE_HOST"`
+	TargetServiceOASPath           string `env:"TARGET_SERVICE_OAS_PATH"`
+	OPAModulesDirectory            string `env:"OPA_MODULES_DIRECTORY,required"`
+	APIPermissionsFilePath         string `env:"API_PERMISSIONS_FILE_PATH"`
+	UserPropertiesHeader           string `env:"USER_PROPERTIES_HEADER_KEY" envDefault:"miauserproperties"`
+	UserGroupsHeader               string `env:"USER_GROUPS_HEADER_KEY" envDefault:"miausergroups"`
+	UserIdHeader                   string `env:"USER_ID_HEADER_KEY" envDefault:"miauserid"`
+	ClientTypeHeader               string `env:"CLIENT_TYPE_HEADER_KEY" envDefault:"Client-Type"`
+	BindingsCrudServiceURL         string `env:"BINDINGS_CRUD_SERVICE_URL"`
+	MongoDBUrl                     string `env:"MONGODB_URL"`
+	MongoDBConnectionMaxIdleTimeMs int    `env:"MONGODB_CONNECTION_MAX_IDLE_TIME_MS" envDefault:"1000"`
+	RolesCollectionName            string `env:"ROLES_COLLECTION_NAME"`
+	BindingsCollectionName         string `env:"BINDINGS_COLLECTION_NAME"`
+	PathPrefixStandalone           string `env:"PATH_PREFIX_STANDALONE" envDefault:"/eval"`
+	DelayShutdownSeconds           int    `env:"DELAY_SHUTDOWN_SECONDS" envDefault:"10"`
+	Standalone                     bool   `env:"STANDALONE"`
+	AdditionalHeadersToProxy       string `env:"ADDITIONAL_HEADERS_TO_PROXY" envDefault:"miauserid"`
+	ExposeMetrics                  bool   `env:"EXPOSE_METRICS" envDefault:"true"`
 }
 
 type EnvKey struct{}
@@ -184,8 +84,8 @@ func GetEnv(requestContext context.Context) (EnvironmentVariables, error) {
 }
 
 func GetEnvOrDie() EnvironmentVariables {
-	var env EnvironmentVariables
-	if err := configlib.GetEnvVariables(EnvVariablesConfig, &env); err != nil {
+	env, err := envlib.ParseAs[EnvironmentVariables]()
+	if err != nil {
 		panic(err.Error())
 	}
 

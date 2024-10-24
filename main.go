@@ -45,13 +45,13 @@ import (
 )
 
 func main() {
-	entrypoint(make(chan os.Signal, 1))
+	env := config.GetEnvOrDie()
+
+	entrypoint(make(chan os.Signal, 1), env)
 	os.Exit(0)
 }
 
-func entrypoint(shutdown chan os.Signal) {
-	env := config.GetEnvOrDie()
-
+func entrypoint(shutdown chan os.Signal, env config.EnvironmentVariables) {
 	// Init logger instance.
 	log, err := glogrus.InitHelper(glogrus.InitOptions{Level: env.LogLevel})
 	if err != nil {

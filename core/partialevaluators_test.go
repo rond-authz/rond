@@ -95,9 +95,9 @@ func TestPartialResultEvaluators(t *testing.T) {
 		t.Run("find and evaluate policy - request", func(t *testing.T) {
 			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
 			require.NoError(t, err)
-			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(ctx, "allow", input, nil)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(ctx, "allow", nil)
 			require.NoError(t, err)
-			res, err := evaluator.Evaluate(logger, nil)
+			res, err := evaluator.Evaluate(logger, input, nil)
 			require.NoError(t, err)
 			require.Nil(t, res)
 		})
@@ -105,9 +105,9 @@ func TestPartialResultEvaluators(t *testing.T) {
 		t.Run("find and evaluate policy - response fails", func(t *testing.T) {
 			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
 			require.NoError(t, err)
-			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(ctx, "column_policy", input, nil)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(ctx, "column_policy", nil)
 			require.NoError(t, err)
-			_, err = evaluator.Evaluate(logger, nil)
+			_, err = evaluator.Evaluate(logger, input, nil)
 			require.EqualError(t, err, ErrPolicyNotAllowed.Error())
 		})
 	})
@@ -153,9 +153,9 @@ func TestPartialResultEvaluators(t *testing.T) {
 		t.Run("find and evaluate policy", func(t *testing.T) {
 			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
 			require.NoError(t, err)
-			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "allow_with_find_one", input, &evalOpts)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "allow_with_find_one", &evalOpts)
 			require.NoError(t, err)
-			res, query, err := evaluator.PolicyEvaluation(logger, nil)
+			res, query, err := evaluator.PolicyEvaluation(logger, input, nil)
 			require.NoError(t, err)
 			require.Empty(t, query)
 			require.Empty(t, res)
@@ -192,9 +192,9 @@ func TestPartialResultEvaluators(t *testing.T) {
 		t.Run("find and evaluate policy", func(t *testing.T) {
 			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
 			require.NoError(t, err)
-			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "allow", input, &evalOpts)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "allow", &evalOpts)
 			require.NoError(t, err)
-			res, query, err := evaluator.PolicyEvaluation(logger, nil)
+			res, query, err := evaluator.PolicyEvaluation(logger, input, nil)
 			require.NoError(t, err)
 			require.Empty(t, query)
 			require.Empty(t, res)
@@ -256,14 +256,13 @@ func TestPartialResultEvaluators(t *testing.T) {
 		t.Run("find and evaluate policy", func(t *testing.T) {
 			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
 			require.NoError(t, err)
-			evaluator, err := opaModule.CreateQueryEvaluator(context.Background(), logger, "filter_projects", input, &evalOpts)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "filter_projects", &evalOpts)
 			require.NoError(t, err)
-			res, query, err := evaluator.PolicyEvaluation(logger, nil)
+			res, query, err := evaluator.PolicyEvaluation(logger, input, nil)
 			require.NoError(t, err)
 			require.Empty(t, res)
 
-			var actualQuery = []byte{}
-			actualQuery, err = json.Marshal(query)
+			actualQuery, err := json.Marshal(query)
 			require.NoError(t, err)
 			require.JSONEq(t, `{"$or":[{"$and":[{"filterField":{"$eq":"something"}}]}]}`, string(actualQuery))
 		})
@@ -324,17 +323,16 @@ func TestPartialResultEvaluators(t *testing.T) {
 		t.Run("find and evaluate policy", func(t *testing.T) {
 			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
 			require.NoError(t, err)
-			evaluator, err := opaModule.CreateQueryEvaluator(context.Background(), logger, "filter_projects", input, &evalOpts)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "filter_projects", &evalOpts)
 			require.NoError(t, err)
 			opts := PolicyEvaluationOptions{
 				Metrics: metrics.NoOpMetrics(),
 			}
-			res, query, err := evaluator.PolicyEvaluation(logger, &opts)
+			res, query, err := evaluator.PolicyEvaluation(logger, input, &opts)
 			require.NoError(t, err)
 			require.Empty(t, res)
 
-			var actualQuery = []byte{}
-			actualQuery, err = json.Marshal(query)
+			actualQuery, err := json.Marshal(query)
 			require.NoError(t, err)
 			require.JSONEq(t, `{"$or":[{"$and":[{"filterField":{"$eq":"something"}}]}]}`, string(actualQuery))
 		})
@@ -354,9 +352,9 @@ func TestPartialResultEvaluators(t *testing.T) {
 		t.Run("find and evaluate policy - request", func(t *testing.T) {
 			input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
 			require.NoError(t, err)
-			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "deny", input, nil)
+			evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "deny", nil)
 			require.NoError(t, err)
-			_, _, err = evaluator.PolicyEvaluation(logger, nil)
+			_, _, err = evaluator.PolicyEvaluation(logger, input, nil)
 			require.EqualError(t, err, ErrPolicyNotAllowed.Error())
 		})
 	})
@@ -393,9 +391,9 @@ func TestPartialResultEvaluators(t *testing.T) {
 
 		input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
 		require.NoError(t, err)
-		evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "check_metadata", input, &evalOpts)
+		evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "check_metadata", &evalOpts)
 		require.NoError(t, err)
-		res, query, err := evaluator.PolicyEvaluation(logger, nil)
+		res, query, err := evaluator.PolicyEvaluation(logger, input, nil)
 		require.NoError(t, err)
 		require.Empty(t, query)
 		require.Empty(t, res)

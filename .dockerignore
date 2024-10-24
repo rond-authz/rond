@@ -1,0 +1,17 @@
+.devcontainer
+.git
+.github
+.vscode
+cache
+mocks
+.dockerignore
+.gitignore
+CHANGELOG.md
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+coverage.out
+Dockerfile
+Makefile
+output.txt
+README.md
+SECURITY.md
