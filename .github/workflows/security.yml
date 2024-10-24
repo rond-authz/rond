@@ -1,4 +1,3 @@
-name: Security
 on:
   pull_request:
     types: [opened]
@@ -6,6 +5,7 @@ on:
 env:
   CONTAINER_TAR: "container.tar"
 
+name: Security 
 jobs:
   gosec:
     runs-on: ubuntu-latest
