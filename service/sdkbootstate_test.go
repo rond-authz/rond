@@ -16,7 +16,6 @@ package service
 
 import (
 	"testing"
-	"time"
 
 	"github.com/rond-authz/rond/internal/fake"
 	"github.com/stretchr/testify/require"
@@ -55,16 +54,21 @@ func TestSDKBootState(t *testing.T) {
 		require.Nil(t, sdk)
 
 		ch := sdkBootState.IsReadyChan()
+		ch1 := sdkBootState.IsReadyChan()
 
-		go func() {
-			time.Sleep(100 * time.Millisecond)
-			sdkBootState.Ready(fake.SDKEvaluatorFinder{})
-		}()
+		require.Equal(t, ch, ch1)
 
-		require.True(t, <-ch)
+		go sdkBootState.Ready(fake.SDKEvaluatorFinder{})
+
+		val, ok := <-ch
+		require.True(t, ok)
+		require.True(t, val)
+
+		_, ok2 := <-ch1
+		require.False(t, ok2)
 	})
 
-	t.Run("is ready with channel after the first ready sent", func(t *testing.T) {
+	t.Run("- is ready with channel after the first ready sent", func(t *testing.T) {
 		sdkBootState := NewSDKBootState()
 		sdk := sdkBootState.Get()
 		require.Nil(t, sdk)
@@ -72,5 +76,8 @@ func TestSDKBootState(t *testing.T) {
 		sdkBootState.Ready(fake.SDKEvaluatorFinder{})
 		ch := sdkBootState.IsReadyChan()
 		require.True(t, <-ch)
+
+		ch1 := sdkBootState.IsReadyChan()
+		require.True(t, <-ch1)
 	})
 }

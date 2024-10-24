@@ -59,9 +59,6 @@ func (s *SDKBootState) IsReady() bool {
 func (s *SDKBootState) IsReadyChan() chan bool {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	if s.ch != nil {
-		return s.ch
-	}
 	if s.isReady {
 		ch := make(chan bool)
 		go func() {
@@ -70,8 +67,10 @@ func (s *SDKBootState) IsReadyChan() chan bool {
 		}()
 		return ch
 	}
-	ch := make(chan bool)
-	s.ch = ch
+	if s.ch != nil {
+		return s.ch
+	}
+	s.ch = make(chan bool)
 
-	return ch
+	return s.ch
 }
