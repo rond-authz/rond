@@ -87,14 +87,14 @@ func entrypoint(shutdown chan os.Signal, env config.EnvironmentVariables) {
 	helpers.GracefulShutdown(srv, shutdown, log, env.DelayShutdownSeconds)
 }
 
-type App struct {
+type app struct {
 	router       *mux.Router
 	sdkBootState *service.SDKBootState
 
 	close []func()
 }
 
-func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*App, error) {
+func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, error) {
 	var closeFn []func()
 	if _, err := os.Stat(env.OPAModulesDirectory); err != nil {
 		log.WithFields(logrus.Fields{
@@ -204,7 +204,7 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*App, er
 	}
 	log.Trace("router setup initialization done")
 
-	return &App{
+	return &app{
 		router:       router,
 		sdkBootState: sdkBoot,
 		close:        closeFn,
