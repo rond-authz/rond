@@ -23,6 +23,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rond-authz/rond/core"
@@ -58,12 +59,49 @@ func entrypoint(shutdown chan os.Signal, env config.EnvironmentVariables) {
 		panic(err.Error())
 	}
 
+	app, err := setupService(env, log)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	for _, f := range app.close {
+		defer f()
+	}
+
+	srv := &http.Server{
+		Addr:              fmt.Sprintf("0.0.0.0:%s", env.HTTPPort),
+		Handler:           app.router,
+		ReadHeaderTimeout: time.Second,
+	}
+	go func() {
+		log.WithField("port", env.HTTPPort).Info("Starting server")
+		if err := srv.ListenAndServe(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	// sigterm signal sent from kubernetes
+	signal.Notify(shutdown, syscall.SIGTERM)
+	// We'll accept graceful shutdowns when quit via  and SIGTERM (Ctrl+/)
+	// SIGINT (Ctrl+C), SIGKILL or SIGQUIT will not be caught.
+	helpers.GracefulShutdown(srv, shutdown, log, env.DelayShutdownSeconds)
+}
+
+type App struct {
+	router       *mux.Router
+	sdkBootState *service.SDKBootState
+
+	close []func()
+}
+
+func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*App, error) {
+	var closeFn []func()
 	if _, err := os.Stat(env.OPAModulesDirectory); err != nil {
 		log.WithFields(logrus.Fields{
 			"error":        logrus.Fields{"message": err.Error()},
 			"opaDirectory": env.OPAModulesDirectory,
 		}).Errorf("load OPA modules failed")
-		return
+		return nil, err
 	}
 
 	opaModuleConfig, err := core.LoadRegoModule(env.OPAModulesDirectory)
@@ -72,7 +110,7 @@ func entrypoint(shutdown chan os.Signal, env config.EnvironmentVariables) {
 			"error":        logrus.Fields{"message": err.Error()},
 			"opaDirectory": env.OPAModulesDirectory,
 		}).Errorf("failed rego file read")
-		return
+		return nil, err
 	}
 	log.WithField("opaModuleFileName", opaModuleConfig.Name).Trace("rego module successfully loaded")
 
@@ -88,7 +126,7 @@ func entrypoint(shutdown chan os.Signal, env config.EnvironmentVariables) {
 			"oasFilePath": env.APIPermissionsFilePath,
 			"oasApiPath":  env.TargetServiceOASPath,
 		}).Errorf("failed to load oas")
-		return
+		return nil, err
 	}
 	log.WithFields(logrus.Fields{
 		"oasFilePath": env.APIPermissionsFilePath,
@@ -104,15 +142,15 @@ func entrypoint(shutdown chan os.Signal, env config.EnvironmentVariables) {
 			log.WithFields(logrus.Fields{
 				"error": logrus.Fields{"message": err.Error()},
 			}).Errorf("MongoDB setup failed")
-			return
+			return nil, err
 		}
-		defer func() {
+		closeFn = append(closeFn, func() {
 			if err := client.Disconnect(); err != nil {
 				log.WithFields(logrus.Fields{
 					"error": logrus.Fields{"message": err.Error()},
 				}).Errorf("MongoDB disconnection failed")
 			}
-		}()
+		})
 		mongoDriver = client
 	}
 
@@ -127,7 +165,7 @@ func entrypoint(shutdown chan os.Signal, env config.EnvironmentVariables) {
 			log.WithFields(logrus.Fields{
 				"error": logrus.Fields{"message": err.Error()},
 			}).Errorf("MongoDB setup failed")
-			return
+			return nil, err
 		}
 		mongoClientForUserBindings = client
 
@@ -136,7 +174,7 @@ func entrypoint(shutdown chan os.Signal, env config.EnvironmentVariables) {
 			log.WithFields(logrus.Fields{
 				"error": logrus.Fields{"message": err.Error()},
 			}).Errorf("MongoDB for builtin setup failed")
-			return
+			return nil, err
 		}
 		mongoClientForBuiltin = clientForBuiltin
 	}
@@ -160,26 +198,17 @@ func entrypoint(shutdown chan os.Signal, env config.EnvironmentVariables) {
 
 	// Routing
 	log.Trace("router setup initialization")
-	router, _ := service.SetupRouter(log, env, opaModuleConfig, oas, sdkBoot, mongoClientForUserBindings, registry)
+	router, err := service.SetupRouter(log, env, opaModuleConfig, oas, sdkBoot, mongoClientForUserBindings, registry)
+	if err != nil {
+		return nil, err
+	}
 	log.Trace("router setup initialization done")
 
-	srv := &http.Server{
-		Addr:              fmt.Sprintf("0.0.0.0:%s", env.HTTPPort),
-		Handler:           router,
-		ReadHeaderTimeout: time.Second,
-	}
-	go func() {
-		log.WithField("port", env.HTTPPort).Info("Starting server")
-		if err := srv.ListenAndServe(); err != nil {
-			log.Println(err)
-		}
-	}()
-
-	// sigterm signal sent from kubernetes
-	signal.Notify(shutdown, syscall.SIGTERM)
-	// We'll accept graceful shutdowns when quit via  and SIGTERM (Ctrl+/)
-	// SIGINT (Ctrl+C), SIGKILL or SIGQUIT will not be caught.
-	helpers.GracefulShutdown(srv, shutdown, log, env.DelayShutdownSeconds)
+	return &App{
+		router:       router,
+		sdkBootState: sdkBoot,
+		close:        closeFn,
+	}, nil
 }
 
 func prepSDKOrDie(

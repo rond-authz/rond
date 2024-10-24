@@ -16,15 +16,15 @@ package service
 
 import (
 	"testing"
+	"time"
 
 	"github.com/rond-authz/rond/internal/fake"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSDKBootState(t *testing.T) {
-	sdkBootState := NewSDKBootState()
-
 	t.Run("flow with routine", func(t *testing.T) {
+		sdkBootState := NewSDKBootState()
 		sdk := sdkBootState.Get()
 		require.Nil(t, sdk)
 
@@ -32,5 +32,45 @@ func TestSDKBootState(t *testing.T) {
 
 		sdk = sdkBootState.Get()
 		require.NotNil(t, sdk)
+	})
+
+	t.Run("is ready", func(t *testing.T) {
+		sdkBootState := NewSDKBootState()
+		sdk := sdkBootState.Get()
+		require.Nil(t, sdk)
+
+		require.False(t, sdkBootState.IsReady())
+
+		sdkBootState.Ready(fake.SDKEvaluatorFinder{})
+
+		require.True(t, sdkBootState.IsReady())
+
+		sdk = sdkBootState.Get()
+		require.NotNil(t, sdk)
+	})
+
+	t.Run("is ready with channel", func(t *testing.T) {
+		sdkBootState := NewSDKBootState()
+		sdk := sdkBootState.Get()
+		require.Nil(t, sdk)
+
+		ch := sdkBootState.IsReadyChan()
+
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			sdkBootState.Ready(fake.SDKEvaluatorFinder{})
+		}()
+
+		require.True(t, <-ch)
+	})
+
+	t.Run("is ready with channel after the first ready sent", func(t *testing.T) {
+		sdkBootState := NewSDKBootState()
+		sdk := sdkBootState.Get()
+		require.Nil(t, sdk)
+
+		sdkBootState.Ready(fake.SDKEvaluatorFinder{})
+		ch := sdkBootState.IsReadyChan()
+		require.True(t, <-ch)
 	})
 }
