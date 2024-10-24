@@ -720,17 +720,17 @@ func TestSetupApp(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, <-app.sdkBootState.IsReadyChan())
 
-		// t.Run("200 - even without headers", func(t *testing.T) {
-		// 	gock.Flush()
-		// 	gock.New("http://localhost:3002/users/").
-		// 		Get("/users/").
-		// 		Reply(200)
+		t.Run("200 - even without headers", func(t *testing.T) {
+			gock.Flush()
+			gock.New("http://localhost:3002/users/").
+				Get("/users/").
+				Reply(200)
 
-		// 	w := httptest.NewRecorder()
-		// 	req := httptest.NewRequest(http.MethodGet, "/users/", nil)
-		// 	app.router.ServeHTTP(w, req)
-		// 	require.Equal(t, http.StatusOK, w.Result().StatusCode)
-		// })
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/users/", nil)
+			app.router.ServeHTTP(w, req)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
 		t.Run("200 - integration passed", func(t *testing.T) {
 			gock.Flush()
 			gock.New("http://localhost:3002/users/").
@@ -749,84 +749,84 @@ func TestSetupApp(t *testing.T) {
 			require.Equal(t, "user1", w.Result().Header.Get("someuserheader"))
 			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
-		// t.Run("200 - integration passed without groups", func(t *testing.T) {
-		// 	gock.Flush()
-		// 	gock.New("http://localhost:3002/users/").
-		// 		Get("/users/").
-		// 		Reply(200).
-		// 		SetHeader("headerProxiedTest", "user1")
-		// 	w := httptest.NewRecorder()
-		// 	req := httptest.NewRequest(http.MethodGet, "http://localhost:3003/users/", nil)
-		// 	app.router.ServeHTTP(w, req)
+		t.Run("200 - integration passed without groups", func(t *testing.T) {
+			gock.Flush()
+			gock.New("http://localhost:3002/users/").
+				Get("/users/").
+				Reply(200).
+				SetHeader("headerProxiedTest", "user1")
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "http://localhost:3003/users/", nil)
+			app.router.ServeHTTP(w, req)
 
-		// 	require.Equal(t, "user1", w.Result().Header.Get("headerProxiedTest"))
-		// 	require.Equal(t, http.StatusOK, w.Result().StatusCode)
-		// })
+			require.Equal(t, "user1", w.Result().Header.Get("headerProxiedTest"))
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
 
-		// t.Run("200 - integration find_one builtin", func(t *testing.T) {
-		// 	doc := struct {
-		// 		TenantID  string `bson:"tenantId"`
-		// 		ProjectID string `bson:"projectId"`
-		// 	}{
-		// 		TenantID:  "some-tenant",
-		// 		ProjectID: "some-project",
-		// 	}
+		t.Run("200 - integration find_one builtin", func(t *testing.T) {
+			doc := struct {
+				TenantID  string `bson:"tenantId"`
+				ProjectID string `bson:"projectId"`
+			}{
+				TenantID:  "some-tenant",
+				ProjectID: "some-project",
+			}
 
-		// 	_, err = client.Database(mongoDBName).Collection("projects").InsertOne(ctx, doc)
-		// 	defer client.Database(mongoDBName).Collection("projects").Drop(context.Background())
-		// 	require.Equal(t, nil, err)
+			_, err = client.Database(mongoDBName).Collection("projects").InsertOne(ctx, doc)
+			defer client.Database(mongoDBName).Collection("projects").Drop(context.Background())
+			require.Equal(t, nil, err)
 
-		// 	gock.Flush()
-		// 	gock.New("http://localhost:3002/").
-		// 		Get("/with-mongo-find-one").
-		// 		Reply(200).
-		// 		SetHeader("someuserheader", "user1").
-		// 		JSON(map[string]string{"foo": "bar"})
+			gock.Flush()
+			gock.New("http://localhost:3002/").
+				Get("/with-mongo-find-one").
+				Reply(200).
+				SetHeader("someuserheader", "user1").
+				JSON(map[string]string{"foo": "bar"})
 
-		// 	w := httptest.NewRecorder()
-		// 	req := httptest.NewRequest(http.MethodGet, "http://localhost:3003/with-mongo-find-one/some-project", nil)
-		// 	req.Header.Set("miauserid", "user1")
-		// 	req.Header.Set("miausergroups", "user1,user2")
-		// 	req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "http://localhost:3003/with-mongo-find-one/some-project", nil)
+			req.Header.Set("miauserid", "user1")
+			req.Header.Set("miausergroups", "user1,user2")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
 
-		// 	app.router.ServeHTTP(w, req)
-		// 	require.Equal(t, http.StatusOK, w.Result().StatusCode)
-		// })
+			app.router.ServeHTTP(w, req)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
 
-		// t.Run("200 - integration find_many builtin", func(t *testing.T) {
-		// 	type MockData struct {
-		// 		TenantID  string `bson:"tenantId"`
-		// 		ProjectID string `bson:"projectId"`
-		// 	}
-		// 	_, err = client.Database(mongoDBName).Collection("projects").InsertOne(ctx, MockData{
-		// 		TenantID:  "some-tenant",
-		// 		ProjectID: "some-project",
-		// 	})
-		// 	_, err = client.Database(mongoDBName).Collection("projects").InsertOne(ctx, MockData{
-		// 		TenantID:  "some-tenant2",
-		// 		ProjectID: "some-project2",
-		// 	})
+		t.Run("200 - integration find_many builtin", func(t *testing.T) {
+			type MockData struct {
+				TenantID  string `bson:"tenantId"`
+				ProjectID string `bson:"projectId"`
+			}
+			_, err = client.Database(mongoDBName).Collection("projects").InsertOne(ctx, MockData{
+				TenantID:  "some-tenant",
+				ProjectID: "some-project",
+			})
+			_, err = client.Database(mongoDBName).Collection("projects").InsertOne(ctx, MockData{
+				TenantID:  "some-tenant2",
+				ProjectID: "some-project2",
+			})
 
-		// 	defer client.Database(mongoDBName).Collection("projects").Drop(context.Background())
-		// 	require.Equal(t, nil, err)
+			defer client.Database(mongoDBName).Collection("projects").Drop(context.Background())
+			require.Equal(t, nil, err)
 
-		// 	gock.Flush()
-		// 	gock.New("http://localhost:3002/").
-		// 		Get("/with-mongo-find-many").
-		// 		Reply(200).
-		// 		SetHeader("someuserheader", "user1").
-		// 		JSON(map[string]string{"foo": "bar"})
+			gock.Flush()
+			gock.New("http://localhost:3002/").
+				Get("/with-mongo-find-many").
+				Reply(200).
+				SetHeader("someuserheader", "user1").
+				JSON(map[string]string{"foo": "bar"})
 
-		// 	w := httptest.NewRecorder()
-		// 	req := httptest.NewRequest(http.MethodGet, "/with-mongo-find-many/some-project", nil)
-		// 	req.Header.Set("miauserid", "user1")
-		// 	req.Header.Set("miausergroups", "user1,user2")
-		// 	req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/with-mongo-find-many/some-project", nil)
+			req.Header.Set("miauserid", "user1")
+			req.Header.Set("miausergroups", "user1,user2")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
 
-		// 	app.router.ServeHTTP(w, req)
+			app.router.ServeHTTP(w, req)
 
-		// 	require.Equal(t, http.StatusOK, w.Result().StatusCode)
-		// })
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
 	})
 
 	t.Run("200 - integration passed with query generation", func(t *testing.T) {
