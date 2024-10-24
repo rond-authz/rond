@@ -82,6 +82,10 @@ func (opaEval *OPAEvaluator) partiallyEvaluate(logger logging.Logger, input Eval
 	}
 	opaEvaluationTimeStart := time.Now()
 
+	if opaEval.evaluator.preparedPartialQuery == nil {
+		return nil, fmt.Errorf("%w: %s", ErrPartialPolicyEvalFailed, "preparedPartialQuery is nil")
+	}
+
 	partialResults, err := opaEval.evaluator.preparedPartialQuery.Partial(
 		opaEval.getContext(),
 		rego.EvalParsedInput(input.Value),
@@ -124,6 +128,9 @@ func (opaEval *OPAEvaluator) partiallyEvaluate(logger logging.Logger, input Eval
 func (opaEval *OPAEvaluator) Evaluate(logger logging.Logger, input EvalInput, options *PolicyEvaluationOptions) (interface{}, error) {
 	if options == nil {
 		options = &PolicyEvaluationOptions{}
+	}
+	if opaEval.evaluator.preparedEvalQuery == nil {
+		return nil, fmt.Errorf("%w: %s", ErrPolicyEvalFailed, "preparedEvalQuery is nil")
 	}
 
 	opaEvaluationTimeStart := time.Now()

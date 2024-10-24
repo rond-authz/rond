@@ -82,6 +82,30 @@ func TestOPAEvaluator(t *testing.T) {
 			require.Equal(t, log, actualLog)
 		})
 	})
+
+	t.Run("PolicyEvaluation", func(t *testing.T) {
+		t.Run("with empty evaluator - generate query", func(t *testing.T) {
+			opaEval := OPAEvaluator{
+				generateQuery: true,
+			}
+			logger := logging.NewNoOpLogger()
+			result, query, err := opaEval.PolicyEvaluation(logger, nil, nil)
+
+			require.EqualError(t, err, "partial policy evaluation failed: preparedPartialQuery is nil")
+			require.Nil(t, result)
+			require.Empty(t, query)
+		})
+
+		t.Run("with empty evaluator - eval query", func(t *testing.T) {
+			opaEval := OPAEvaluator{}
+			logger := logging.NewNoOpLogger()
+			result, query, err := opaEval.PolicyEvaluation(logger, nil, nil)
+
+			require.EqualError(t, err, "policy evaluation failed: preparedEvalQuery is nil")
+			require.Nil(t, result)
+			require.Empty(t, query)
+		})
+	})
 }
 
 func TestBuildRolesMap(t *testing.T) {
