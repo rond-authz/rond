@@ -49,6 +49,8 @@ func (s *SDKBootState) Get() sdk.OASEvaluatorFinder {
 }
 
 func (s *SDKBootState) IsReady() bool {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
 	return s.rond != nil
 }
 
@@ -58,7 +60,7 @@ func (s *SDKBootState) IsReadyChan() chan bool {
 	if s.ch != nil {
 		return s.ch
 	}
-	if s.IsReady() {
+	if s.rond != nil {
 		ch := make(chan bool)
 		go func() {
 			ch <- true
