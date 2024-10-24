@@ -63,10 +63,7 @@ func entrypoint(shutdown chan os.Signal, env config.EnvironmentVariables) {
 	if err != nil {
 		panic(err.Error())
 	}
-
-	for _, f := range app.close {
-		defer f()
-	}
+	defer app.close()
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf("0.0.0.0:%s", env.HTTPPort),
@@ -91,7 +88,13 @@ type app struct {
 	router       *mux.Router
 	sdkBootState *service.SDKBootState
 
-	close []func()
+	closeFn []func()
+}
+
+func (a *app) close() {
+	for _, fn := range a.closeFn {
+		fn()
+	}
 }
 
 func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, error) {
@@ -207,7 +210,7 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 	return &app{
 		router:       router,
 		sdkBootState: sdkBoot,
-		close:        closeFn,
+		closeFn:      closeFn,
 	}, nil
 }
 
