@@ -5,7 +5,7 @@ on:
 env:
   CONTAINER_TAR: "container.tar"
 
-name: Security 
+name: Security
 jobs:
   gosec:
     runs-on: ubuntu-latest
