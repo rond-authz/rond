@@ -30,8 +30,10 @@ import (
 func TestPartialResultEvaluators(t *testing.T) {
 	logger := logging.NewNoOpLogger()
 
-	opaModule := &OPAModuleConfig{
-		Content: `package policies
+	opaModule := MustNewOPAModuleConfig([]Module{
+		{
+			Name: "example.rego",
+			Content: `package policies
 		allow {
 			true
 		}
@@ -42,8 +44,8 @@ func TestPartialResultEvaluators(t *testing.T) {
 			false
 		}
 		`,
-		Name: "policies",
-	}
+		},
+	})
 	rondInput := Input{
 		Request:    InputRequest{},
 		Response:   InputResponse{},
@@ -210,9 +212,10 @@ func TestPartialResultEvaluators(t *testing.T) {
 			},
 		}
 
-		opaModule := &OPAModuleConfig{
-			Name: "example.rego",
-			Content: `
+		opaModule := MustNewOPAModuleConfig([]Module{
+			{
+				Name: "example.rego",
+				Content: `
 			package policies
 			filter_projects {
 				field := input.user.properties.field
@@ -224,7 +227,8 @@ func TestPartialResultEvaluators(t *testing.T) {
 				query.filterField == myCollDoc.filterField
 			}
 			`,
-		}
+			},
+		})
 
 		evalOpts := OPAEvaluatorOptions{
 			MongoClient: mocks.MongoClientMock{
@@ -277,9 +281,10 @@ func TestPartialResultEvaluators(t *testing.T) {
 			},
 		}
 
-		opaModule := &OPAModuleConfig{
-			Name: "example.rego",
-			Content: `
+		opaModule := MustNewOPAModuleConfig([]Module{
+			{
+				Name: "example.rego",
+				Content: `
 			package policies
 			filter_projects {
 				field := input.user.properties.field
@@ -291,7 +296,8 @@ func TestPartialResultEvaluators(t *testing.T) {
 				query.filterField == myCollDoc.filterField
 			}
 			`,
-		}
+			},
+		})
 
 		evalOpts := OPAEvaluatorOptions{
 			MongoClient: mocks.MongoClientMock{
@@ -371,13 +377,15 @@ func TestPartialResultEvaluators(t *testing.T) {
 			Logger: logger,
 		}
 
-		opaModule := &OPAModuleConfig{
-			Content: `package policies
+		opaModule := MustNewOPAModuleConfig([]Module{
+			{
+				Name: "example.rego",
+				Content: `package policies
 			check_metadata {
 				input.metadata.field == "ok"
 			}`,
-			Name: "policies",
-		}
+			},
+		})
 
 		err := partialEvaluators.AddFromConfig(context.Background(), logger, opaModule, rondConfig, &evalOpts)
 		require.NoError(t, err)

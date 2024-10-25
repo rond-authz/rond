@@ -1598,9 +1598,10 @@ func TestSetupRouterStandaloneMode(t *testing.T) {
 		BindingsCrudServiceURL:   "http://crud:3030",
 		AdditionalHeadersToProxy: "miauserid",
 	}
-	opa := &core.OPAModuleConfig{
-		Name: "policies",
-		Content: `package policies
+	opa := core.MustNewOPAModuleConfig([]core.Module{
+		{
+			Name: "policies",
+			Content: `package policies
 test_policy { true }
 
 filter_policy {
@@ -1608,7 +1609,8 @@ filter_policy {
 	query.answer = 42
 }
 `,
-	}
+		},
+	})
 	oas := &openapi.OpenAPISpec{
 		Paths: openapi.OpenAPIPaths{
 			"/evalapi": openapi.PathVerbs{
@@ -1757,9 +1759,10 @@ func TestSetupRouterMetrics(t *testing.T) {
 		AdditionalHeadersToProxy: "miauserid",
 		ExposeMetrics:            true,
 	}
-	opa := &core.OPAModuleConfig{
-		Name: "policies",
-		Content: `package policies
+	opa := core.MustNewOPAModuleConfig([]core.Module{
+		{
+			Name: "policies",
+			Content: `package policies
 test_policy { true }
 
 filter_policy {
@@ -1767,7 +1770,8 @@ filter_policy {
 	query.answer = 42
 }
 `,
-	}
+		},
+	})
 	oas := &openapi.OpenAPISpec{
 		Paths: openapi.OpenAPIPaths{
 			"/evalapi": openapi.PathVerbs{

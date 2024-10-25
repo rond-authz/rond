@@ -115,7 +115,7 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 		}).Errorf("failed rego file read")
 		return nil, err
 	}
-	log.WithField("opaModuleFileName", opaModuleConfig.Name).Trace("rego module successfully loaded")
+	log.WithField("opaModuleFileName", opaModuleConfig.Modules[0].Name).Trace("rego module successfully loaded")
 
 	rondLogger := rondlogrus.NewLogger(log)
 	oas, err := openapi.LoadOASFromFileOrNetwork(rondLogger, openapi.LoadOptions{

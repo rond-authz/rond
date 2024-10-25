@@ -190,11 +190,13 @@ func TestDirectProxyHandler(t *testing.T) {
 	t.Run("sends request with body after serialization in rego input", func(t *testing.T) {
 		invoked := false
 		mockBodySting := `{"hello":"world"}`
-		OPAModuleConfig := &core.OPAModuleConfig{
-			Name: "example.rego",
-			Content: `package policies
-				todo { input.request.body.hello == "world" }`,
-		}
+		opaModule := core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name: "example.rego",
+				Content: `package policies
+		todo { input.request.body.hello == "world" }`,
+			},
+		})
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			invoked = true
@@ -211,7 +213,7 @@ func TestDirectProxyHandler(t *testing.T) {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		evaluator := getEvaluator(t, OPAModuleConfig, nil, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 
 		ctx := createContext(t,
 			context.Background(),
@@ -278,10 +280,15 @@ allow {
 
 		body := strings.NewReader(mockBodySting)
 
-		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
+		opaModule := core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name:    "mypolicy.rego",
+				Content: policy,
+			},
+		})
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -333,10 +340,15 @@ allow {
 
 		body := strings.NewReader(mockBodySting)
 
-		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
+		opaModule := core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name:    "mypolicy.rego",
+				Content: policy,
+			},
+		})
 
 		serverURL, _ := url.Parse(server.URL)
-		evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -401,9 +413,14 @@ allow {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
+		opaModule := core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name:    "mypolicy.rego",
+				Content: policy,
+			},
+		})
 
-		evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -458,9 +475,14 @@ allow {
 
 			body := strings.NewReader(mockBodySting)
 
-			OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
+			opaModule := core.MustNewOPAModuleConfig([]core.Module{
+				{
+					Name:    "mypolicy.rego",
+					Content: policy,
+				},
+			})
 
-			evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", nil)
 			serverURL, _ := url.Parse(server.URL)
 			ctx := createContext(t,
 				context.Background(),
@@ -515,9 +537,14 @@ allow {
 
 			body := strings.NewReader(mockBodySting)
 
-			OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
+			opaModule := core.MustNewOPAModuleConfig([]core.Module{
+				{
+					Name:    "mypolicy.rego",
+					Content: policy,
+				},
+			})
 
-			evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+			evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", nil)
 
 			serverURL, _ := url.Parse(server.URL)
 			ctx := createContext(t,
@@ -563,9 +590,14 @@ allow {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
+		opaModule := core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name:    "mypolicy.rego",
+				Content: policy,
+			},
+		})
 
-		evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -606,9 +638,14 @@ allow {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
+		opaModule := core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name:    "mypolicy.rego",
+				Content: policy,
+			},
+		})
 
-		evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -662,9 +699,14 @@ allow {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
+		opaModule := core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name:    "mypolicy.rego",
+				Content: policy,
+			},
+		})
 
-		evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -766,16 +808,18 @@ allow {
 
 			serverURL, _ := url.Parse(server.URL)
 
-			OPAModuleConfig := &core.OPAModuleConfig{
-				Name: "mypolicy.rego",
-				Content: `package policies
+			opaModule := core.MustNewOPAModuleConfig([]core.Module{
+				{
+					Name: "mypolicy.rego",
+					Content: `package policies
 allow {
 	input.request.method == "GET"
 	input.request.path == "/api"
 	employee := data.resources[_]
 	employee.salary < 0
 }`,
-			}
+				},
+			})
 
 			log, hook := test.NewNullLogger()
 			log.Level = logrus.TraceLevel
@@ -785,7 +829,7 @@ allow {
 
 			registry := prometheus.NewRegistry()
 
-			evaluator := getEvaluator(t, OPAModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", &evaluatorParams{
+			evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", &evaluatorParams{
 				logger:   logger,
 				registry: registry,
 			})
@@ -870,9 +914,14 @@ todo {
 
 		serverURL, _ := url.Parse(server.URL)
 
-		OPAModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
+		opaModule := core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name:    "mypolicy.rego",
+				Content: policy,
+			},
+		})
 
-		evaluator := getEvaluator(t, OPAModuleConfig, nil, oas, http.MethodGet, "/api", nil)
+		evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			config.EnvironmentVariables{TargetServiceHost: serverURL.Host},
@@ -978,8 +1027,13 @@ allow {
 
 		body := strings.NewReader(mockBodySting)
 
-		opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-		evaluator := getEvaluator(t, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		opaModule := core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name:    "mypolicy.rego",
+				Content: policy,
+			},
+		})
+		evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			env,
@@ -1028,8 +1082,13 @@ allow {
 
 			body := strings.NewReader(mockBodySting)
 
-			opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-			evaluator := getEvaluator(t, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+			opaModule := core.MustNewOPAModuleConfig([]core.Module{
+				{
+					Name:    "mypolicy.rego",
+					Content: policy,
+				},
+			})
+			evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				env,
@@ -1078,8 +1137,13 @@ allow {
 
 			body := strings.NewReader(mockBodySting)
 
-			opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-			evaluator := getEvaluator(t, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+			opaModule := core.MustNewOPAModuleConfig([]core.Module{
+				{
+					Name:    "mypolicy.rego",
+					Content: policy,
+				},
+			})
+			evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
 				context.Background(),
 				env,
@@ -1128,8 +1192,13 @@ allow {
 
 		body := strings.NewReader(mockBodySting)
 
-		opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-		evaluator := getEvaluator(t, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		opaModule := core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name:    "mypolicy.rego",
+				Content: policy,
+			},
+		})
+		evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			env,
@@ -1180,8 +1249,13 @@ allow {
 		mockBodySting := "I am a body"
 		body := strings.NewReader(mockBodySting)
 
-		opaModuleConfig := &core.OPAModuleConfig{Name: "mypolicy.rego", Content: policy}
-		evaluator := getEvaluator(t, opaModuleConfig, nil, oasWithFilter, http.MethodGet, "/api", nil)
+		opaModule := core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name:    "mypolicy.rego",
+				Content: policy,
+			},
+		})
+		evaluator := getEvaluator(t, opaModule, nil, oasWithFilter, http.MethodGet, "/api", nil)
 		ctx := createContext(t,
 			context.Background(),
 			env,
@@ -1222,16 +1296,18 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 	userIdHeaderKey := "miauserid"
 	require.NoError(t, err)
 
-	opaModule := &core.OPAModuleConfig{
-		Name: "example.rego",
-		Content: fmt.Sprintf(`
-		package policies
-		todo {
-			input.user.properties.my == "%s"
-			count(input.user.groups) == 2
-			input.clientType == "%s"
-		}`, mockedUserProperties["my"], mockedClientType),
-	}
+	opaModule := core.MustNewOPAModuleConfig([]core.Module{
+		{
+			Name: "example.rego",
+			Content: fmt.Sprintf(`
+				package policies
+				todo {
+					input.user.properties.my == "%s"
+					count(input.user.groups) == 2
+					input.clientType == "%s"
+				}`, mockedUserProperties["my"], mockedClientType),
+		},
+	})
 
 	oas := &openapi.OpenAPISpec{
 		Paths: openapi.OpenAPIPaths{
@@ -1265,11 +1341,13 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			serverURL, _ := url.Parse(server.URL)
 
 			t.Run("without get_header built-in function", func(t *testing.T) {
-				opaModule := &core.OPAModuleConfig{
-					Name: "example.rego",
-					Content: fmt.Sprintf(`package policies
-					todo { count(input.request.headers["%s"]) != 0 }`, mockHeader),
-				}
+				opaModule := core.MustNewOPAModuleConfig([]core.Module{
+					{
+						Name: "example.rego",
+						Content: fmt.Sprintf(`package policies
+						todo { count(input.request.headers["%s"]) != 0 }`, mockHeader),
+					},
+				})
 
 				evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 				ctx := createContext(t,
@@ -1306,11 +1384,13 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			t.Run("using get_header built-in function to access in case-insensitive mode", func(t *testing.T) {
 				invoked = false
-				opaModule := &core.OPAModuleConfig{
-					Name: "example.rego",
-					Content: `package policies
-					todo { get_header("x-backdoor", input.request.headers) == "mocked value" }`,
-				}
+				opaModule := core.MustNewOPAModuleConfig([]core.Module{
+					{
+						Name: "example.rego",
+						Content: `package policies
+todo { get_header("x-backdoor", input.request.headers) == "mocked value" }`,
+					},
+				})
 
 				evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 				ctx := createContext(t,
@@ -1360,16 +1440,18 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			serverURL, _ := url.Parse(server.URL)
 
-			opaModule := &core.OPAModuleConfig{
-				Name: "example.rego",
-				Content: fmt.Sprintf(`
-				package policies
-				todo {
-					input.user.properties.my == "%s"
-					count(input.user.groups) == 2
-					input.clientType == "%s"
-				}`, mockedUserProperties["my"], mockedClientType),
-			}
+			opaModule := core.MustNewOPAModuleConfig([]core.Module{
+				{
+					Name: "example.rego",
+					Content: fmt.Sprintf(`
+						package policies
+						todo {
+							input.user.properties.my == "%s"
+							count(input.user.groups) == 2
+							input.clientType == "%s"
+						}`, mockedUserProperties["my"], mockedClientType),
+				},
+			})
 
 			evaluator := getEvaluator(t, opaModule, nil, oas, http.MethodGet, "/api", nil)
 			ctx := createContext(t,
@@ -1425,20 +1507,22 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 
 			serverURL, _ := url.Parse(server.URL)
 
-			opaModule := &core.OPAModuleConfig{
-				Name: "example.rego",
-				Content: fmt.Sprintf(`package policies
-				todo[msg]{
-					count(input.request.headers["%s"]) != 0
-					msg := {"ciao":"boh"}
-					test
-				}
-				test[x]{
-					true
-					x:= ["x"]
-				}
-				`, mockHeader),
-			}
+			opaModule := core.MustNewOPAModuleConfig([]core.Module{
+				{
+					Name: "example.rego",
+					Content: fmt.Sprintf(`package policies
+						todo[msg]{
+							count(input.request.headers["%s"]) != 0
+							msg := {"ciao":"boh"}
+							test
+						}
+						test[x]{
+							true
+							x:= ["x"]
+						}
+						`, mockHeader),
+				},
+			})
 
 			oas := &openapi.OpenAPISpec{
 				Paths: openapi.OpenAPIPaths{
@@ -1737,18 +1821,20 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 		})
 
 		t.Run("return 200 with policy on bindings and roles", func(t *testing.T) {
-			opaModule := &core.OPAModuleConfig{
-				Name: "example.rego",
-				Content: fmt.Sprintf(`
-				package policies
-				todo {
-					input.user.properties.my == "%s"
-					count(input.user.groups) == 2
-					count(input.user.roles) == 2
-					count(input.user.bindings)== 3
-					input.clientType == "%s"
-				}`, mockedUserProperties["my"], mockedClientType),
-			}
+			opaModule := core.MustNewOPAModuleConfig([]core.Module{
+				{
+					Name: "example.rego",
+					Content: fmt.Sprintf(`
+						package policies
+						todo {
+							input.user.properties.my == "%s"
+							count(input.user.groups) == 2
+							count(input.user.roles) == 2
+							count(input.user.bindings)== 3
+							input.clientType == "%s"
+						}`, mockedUserProperties["my"], mockedClientType),
+				},
+			})
 
 			invoked := false
 
@@ -1837,15 +1923,17 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 		})
 
 		t.Run("return 200 without user header", func(t *testing.T) {
-			opaModule := &core.OPAModuleConfig{
-				Name: "example.rego",
-				Content: fmt.Sprintf(`
-				package policies
-				todo {
-					input.user.properties.my == "%s"
-					input.clientType == "%s"
-				}`, mockedUserProperties["my"], mockedClientType),
-			}
+			opaModule := core.MustNewOPAModuleConfig([]core.Module{
+				{
+					Name: "example.rego",
+					Content: fmt.Sprintf(`
+						package policies
+						todo {
+							input.user.properties.my == "%s"
+							input.clientType == "%s"
+						}`, mockedUserProperties["my"], mockedClientType),
+				},
+			})
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
@@ -1887,15 +1975,17 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 		t.Run("return 200 with policy on pathParams", func(t *testing.T) {
 			customerId, productId := "1234", "5678"
 
-			opaModule := &core.OPAModuleConfig{
-				Name: "example.rego",
-				Content: fmt.Sprintf(`
-				package policies
-				todo {
-					input.request.pathParams.customerId == "%s"
-					input.request.pathParams.productId == "%s"
-				}`, customerId, productId),
-			}
+			opaModule := core.MustNewOPAModuleConfig([]core.Module{
+				{
+					Name: "example.rego",
+					Content: fmt.Sprintf(`
+						package policies
+						todo {
+							input.request.pathParams.customerId == "%s"
+							input.request.pathParams.productId == "%s"
+						}`, customerId, productId),
+				},
+			})
 
 			invoked := false
 
@@ -1993,9 +2083,10 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 			serverURL, _ := url.Parse(server.URL)
 			inputUserClientMock := &fake.InputUserClient{UserBindings: userBindings, UserRoles: userRoles}
 
-			opaModule := &core.OPAModuleConfig{
-				Name: "example.rego",
-				Content: `package policies
+			opaModule := core.MustNewOPAModuleConfig([]core.Module{
+				{
+					Name: "example.rego",
+					Content: `package policies
 				todo { true }
 
 				proj_res[msg] {
@@ -2006,7 +2097,8 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 					msg := input.response.body
 				}
 				`,
-			}
+				},
+			})
 
 			oas := &openapi.OpenAPISpec{
 				Paths: openapi.OpenAPIPaths{
@@ -2059,15 +2151,17 @@ func TestPolicyEvaluationAndUserPolicyRequirements(t *testing.T) {
 }
 
 func TestPolicyWithMongoBuiltinIntegration(t *testing.T) {
-	var mockOPAModule = &core.OPAModuleConfig{
-		Name: "example.rego",
-		Content: `
+	mockOPAModule := core.MustNewOPAModuleConfig([]core.Module{
+		{
+			Name: "example.rego",
+			Content: `
 package policies
 todo {
 project := find_one("projects", {"projectId": "1234"})
 project.tenantId == "1234"
 }`,
-	}
+		},
+	})
 	oas := &openapi.OpenAPISpec{
 		Paths: openapi.OpenAPIPaths{
 			"/api": openapi.PathVerbs{

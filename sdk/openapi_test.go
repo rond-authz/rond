@@ -32,11 +32,13 @@ func TestOasSDK(t *testing.T) {
 
 	openAPISpec, err := openapi.LoadOASFile("../mocks/simplifiedMock.json")
 	require.Nil(t, err)
-	opaModule := &core.OPAModuleConfig{
-		Name: "example.rego",
-		Content: `package policies
+	opaModule := core.MustNewOPAModuleConfig([]core.Module{
+		{
+			Name: "example.rego",
+			Content: `package policies
 		very_very_composed_permission { true }`,
-	}
+		},
+	})
 	sdk, err := NewFromOAS(context.Background(), opaModule, openAPISpec, &Options{
 		Metrics: metrics.NoOpMetrics(),
 		Logger:  logger,
