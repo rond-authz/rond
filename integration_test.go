@@ -21,7 +21,7 @@ import (
 func BenchmarkStartup(b *testing.B) {
 	b.StopTimer()
 
-	tmpdir, err := os.MkdirTemp("", "console-")
+	tmpdir, err := os.MkdirTemp("", "rond-bench-")
 	require.NoError(b, err)
 	oasFileName, policiesFileName := generateAndSaveConfig(b, tmpdir, 100)
 	b.Logf("Files generated in %s", tmpdir)
