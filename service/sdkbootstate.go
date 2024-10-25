@@ -23,6 +23,9 @@ import (
 type SDKBootState struct {
 	mtx  *sync.Mutex
 	rond sdk.OASEvaluatorFinder
+
+	ch      chan bool
+	isReady bool
 }
 
 func NewSDKBootState() *SDKBootState {
@@ -33,10 +36,41 @@ func (s *SDKBootState) Ready(rond sdk.OASEvaluatorFinder) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	s.rond = rond
+	s.isReady = true
+	if s.ch != nil {
+		s.ch <- true
+		close(s.ch)
+		s.ch = nil
+	}
 }
 
 func (s *SDKBootState) Get() sdk.OASEvaluatorFinder {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	return s.rond
+}
+
+func (s *SDKBootState) IsReady() bool {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	return s.isReady
+}
+
+func (s *SDKBootState) IsReadyChan() chan bool {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	if s.isReady {
+		ch := make(chan bool)
+		go func() {
+			ch <- true
+			close(ch)
+		}()
+		return ch
+	}
+	if s.ch != nil {
+		return s.ch
+	}
+	s.ch = make(chan bool)
+
+	return s.ch
 }
