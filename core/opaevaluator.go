@@ -220,32 +220,42 @@ func buildRolesMap(roles []types.Role) map[string][]string {
 }
 
 type OPAModuleConfig struct {
-	Name     string
-	Content  string
+	Modules []Module
+
 	compiler *ast.Compiler
 }
 
-func NewOPAModuleConfig(name string, content string) (*OPAModuleConfig, error) {
+type Module struct {
+	Name    string
+	Content string
+}
+
+func NewOPAModuleConfig(modules []Module) (*OPAModuleConfig, error) {
 	compiler := ast.NewCompiler().WithBuiltins(map[string]*ast.Builtin{
 		custom_builtins.GetHeaderDecl.Name:     custom_builtins.GetHeaderDecl,
 		custom_builtins.MongoFindOneDecl.Name:  custom_builtins.MongoFindOneDecl,
 		custom_builtins.MongoFindManyDecl.Name: custom_builtins.MongoFindManyDecl,
 	})
-	compiler.Compile(map[string]*ast.Module{name: ast.MustParseModule(content)})
+
+	modulesToCompile := map[string]*ast.Module{}
+	for _, m := range modules {
+		parsedModule := ast.MustParseModule(m.Content)
+		modulesToCompile[m.Name] = parsedModule
+	}
+	compiler.Compile(modulesToCompile)
 
 	if compiler.Failed() {
 		return nil, fmt.Errorf("fails to compile the module: %s", compiler.Errors)
 	}
 
 	return &OPAModuleConfig{
-		Name:     name,
-		Content:  content,
+		Modules:  modules,
 		compiler: compiler,
 	}, nil
 }
 
-func MustNewOPAModuleConfig(name string, content string) *OPAModuleConfig {
-	opaModule, err := NewOPAModuleConfig(name, content)
+func MustNewOPAModuleConfig(modules []Module) *OPAModuleConfig {
+	opaModule, err := NewOPAModuleConfig(modules)
 	if err != nil {
 		panic(err)
 	}
@@ -285,7 +295,12 @@ func LoadRegoModule(rootDirectory string) (*OPAModuleConfig, error) {
 		return nil, fmt.Errorf("%w: %s", ErrRegoModuleReadFailed, err.Error())
 	}
 
-	return NewOPAModuleConfig(filepath.Base(regoModulePath), string(fileContent))
+	return NewOPAModuleConfig([]Module{
+		{
+			Name:    filepath.Base(regoModulePath),
+			Content: string(fileContent),
+		},
+	})
 }
 
 func processResults(results rego.ResultSet) (allowed bool, responseBodyOverwriter any) {

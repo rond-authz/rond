@@ -25,7 +25,12 @@ import (
 
 func TestNewOPAEvaluator(t *testing.T) {
 	t.Run("policy sanitization", func(t *testing.T) {
-		opaModule := MustNewOPAModuleConfig("", "package policies very_composed_policy {true}")
+		opaModule := MustNewOPAModuleConfig([]Module{
+			{
+				Name:    "",
+				Content: "package policies very_composed_policy {true}",
+			},
+		})
 		evaluator, err := newRegoInstanceBuilder("very.composed.policy", opaModule, nil)
 		require.NoError(t, err)
 
@@ -43,8 +48,13 @@ func TestGetHeaderFunction(t *testing.T) {
 	headerKeyMocked := "exampleKey"
 	headerValueMocked := "value"
 
-	opaModule := MustNewOPAModuleConfig("", `package policies
-		todo { get_header("ExAmPlEkEy", input.headers) == "value" }`)
+	opaModule := MustNewOPAModuleConfig([]Module{
+		{
+			Name: "",
+			Content: `package policies
+		todo { get_header("ExAmPlEkEy", input.headers) == "value" }`,
+		},
+	})
 	queryString := "todo"
 
 	t.Run("if header key exists", func(t *testing.T) {

@@ -402,7 +402,12 @@ func getSdk(t require.TestingT, options *sdkOptions) sdk.OASEvaluatorFinder {
 	if options.opaModuleContent != "" {
 		opaModuleContent = options.opaModuleContent
 	}
-	opaModule := core.MustNewOPAModuleConfig("example.rego", opaModuleContent)
+	opaModule := core.MustNewOPAModuleConfig([]core.Module{
+		{
+			Name:    "example.rego",
+			Content: opaModuleContent,
+		},
+	})
 
 	sdk, err := sdk.NewFromOAS(context.Background(), opaModule, openAPISpec, &sdk.Options{
 		EvaluatorOptions: &sdk.EvaluatorOptions{

@@ -189,9 +189,14 @@ func TestStatusRoutesIntegration(t *testing.T) {
 	})
 }
 
-var opa = core.MustNewOPAModuleConfig("policies", `package policies
+var opa = core.MustNewOPAModuleConfig([]core.Module{
+	{
+		Name: "policies",
+		Content: `package policies
 test_policy { true }
-`)
+`,
+	},
+})
 
 var oas = &openapi.OpenAPISpec{
 	Paths: openapi.OpenAPIPaths{

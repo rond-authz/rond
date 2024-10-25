@@ -294,8 +294,14 @@ func createContext(
 	return partialContext
 }
 
-var mockOPAModule = core.MustNewOPAModuleConfig("example.rego", `package policies
-todo { true }`)
+var mockOPAModule = core.MustNewOPAModuleConfig([]core.Module{
+	{
+		Name: "example.rego",
+		Content: `package policies
+todo { true }
+`,
+	},
+})
 var mockXPermission = core.RondConfig{RequestFlow: core.RequestFlow{PolicyName: "todo"}}
 
 type evaluatorParams struct {
@@ -436,8 +442,14 @@ func TestSetupRoutesIntegration(t *testing.T) {
 	})
 
 	t.Run("blocks request on not allowed policy evaluation", func(t *testing.T) {
-		var mockOPAModule = core.MustNewOPAModuleConfig("example.rego", `package policies
-		todo { false }`)
+		var mockOPAModule = core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name: "example.rego",
+				Content: `package policies
+		todo { false }
+		`,
+			},
+		})
 		router := mux.NewRouter()
 		setupEvalRoutes(router, oas, envs)
 
@@ -495,8 +507,13 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 	t.Run("invokes the API not explicitly set in the oas file", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
-		var mockOPAModule = core.MustNewOPAModuleConfig("example.rego", `package policies
-		foo { true }`)
+		var mockOPAModule = core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name: "example.rego",
+				Content: `package policies
+foo { true }
+`},
+		})
 
 		var invoked bool
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -535,8 +552,14 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 	t.Run("invokes a specific API within a nested path", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
-		mockOPAModule := core.MustNewOPAModuleConfig("example.rego", `package policies
-		foo_bar_nested { true }`)
+		mockOPAModule := core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name: "example.rego",
+				Content: `package policies
+		foo_bar_nested { true }
+		`,
+			},
+		})
 
 		var invoked bool
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -575,12 +598,17 @@ func TestSetupRoutesIntegration(t *testing.T) {
 
 	t.Run("invokes a specific API with trailing slash", func(t *testing.T) {
 		oas := prepareOASFromFile(t, "../mocks/nestedPathsConfig.json")
-		mockOPAModule := core.MustNewOPAModuleConfig("example.rego", `package policies
+		mockOPAModule := core.MustNewOPAModuleConfig([]core.Module{
+			{
+				Name: "example.rego",
+				Content: `package policies
 allow_params_trailing_slash {
 	id := object.get(input,["request","pathParams", "id"], false)
 	id == "my-id"
 }
-`)
+`,
+			},
+		})
 
 		var invokedTimes int
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
