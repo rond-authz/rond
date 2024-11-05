@@ -41,3 +41,5 @@ version:
 	git add "Dockerfile"
 	git commit -m "v${VERSION}"
 	git tag v${VERSION}
+
+#	cat coverage-prev.out | grep -v -i "internal/fake|internal/testutils|custom_builtins/mocks|metrics/prometheus/test" > coverage.out
