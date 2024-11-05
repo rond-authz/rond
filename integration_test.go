@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/fredmaggiowski/gowq"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/testutils"
@@ -80,8 +83,176 @@ func BenchmarkStartup(b *testing.B) {
 	}
 }
 
+func TestStartupAndLoadWithConcurrentRequests(t *testing.T) {
+	log, _ := test.NewNullLogger()
+
+	tmpdir, err := os.MkdirTemp("", "rond-startup-test-")
+	require.NoError(t, err)
+
+	policies := []string{`package policies`}
+	policies = append(policies, `allow_get {
+	verb := input.request.method
+	verb == "GET"
+}`)
+	policies = append(policies, `allow_post {
+	verb := input.request.method
+	verb == "POST"
+}`)
+	policies = append(policies, generateFilterPolicy("something")) // filter_something
+	policies = append(policies, generateProjectionPolicy("data"))  // proj_data
+
+	oas := &openapi.OpenAPISpec{
+		Paths: map[string]openapi.PathVerbs{
+			"/allow-get": {
+				http.MethodGet: {
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "allow_get"},
+					},
+				},
+				http.MethodPost: {
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "allow_get"},
+					},
+				},
+			},
+			"/filter-something": {
+				http.MethodGet: {
+					PermissionV2: &core.RondConfig{
+						RequestFlow: core.RequestFlow{PolicyName: "filter_something", GenerateQuery: true},
+					},
+				},
+			},
+			"/project-data": {
+				http.MethodPost: {
+					PermissionV2: &core.RondConfig{
+						RequestFlow:  core.RequestFlow{PolicyName: "allow_post"},
+						ResponseFlow: core.ResponseFlow{PolicyName: "proj_data"},
+					},
+				},
+			},
+		},
+	}
+	oasFileName := writeOAS(t, tmpdir, oas)
+	policiesFileName := writePolicies(t, tmpdir, policies)
+
+	defer gock.Off()
+	defer gock.DisableNetworkingFilters()
+	defer gock.DisableNetworking()
+
+	gock.EnableNetworking()
+	gock.NetworkingFilter(func(r *http.Request) bool {
+		if r.URL.Host == "localhost:3050" {
+			return false
+		}
+		if r.URL.Path == "/documentation/json" && r.URL.Host == "localhost:3050" {
+			return false
+		}
+		return true
+	})
+
+	gock.New("http://localhost:3050").
+		Persist().
+		Get("/documentation/json").
+		Reply(200).
+		File(oasFileName)
+
+	gock.New("http://localhost:3050/").
+		Persist().
+		Get("/allow-get").
+		Reply(200)
+	gock.New("http://localhost:3050/").
+		Persist().
+		Get("/filter-something").
+		Reply(200)
+	gock.New("http://localhost:3050/").
+		Persist().
+		Post("/project-data").
+		Reply(200).
+		JSON([]string{})
+
+	mongoHost := os.Getenv("MONGO_HOST_CI")
+	if mongoHost == "" {
+		mongoHost = testutils.LocalhostMongoDB
+		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
+	}
+	randomizedDBNamePart := testutils.GetRandomName(10)
+	mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
+	envs, err := env.ParseAsWithOptions[config.EnvironmentVariables](env.Options{
+		Environment: map[string]string{
+			"TARGET_SERVICE_HOST":      "localhost:3050",
+			"TARGET_SERVICE_OAS_PATH":  "/documentation/json",
+			"OPA_MODULES_DIRECTORY":    policiesFileName,
+			"LOG_LEVEL":                "fatal",
+			"MONGODB_URL":              fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName),
+			"BINDINGS_COLLECTION_NAME": "bindings",
+			"ROLES_COLLECTION_NAME":    "roles",
+		},
+	})
+	require.NoError(t, err)
+
+	app, err := setupService(envs, log)
+	require.NoError(t, err)
+	require.True(t, <-app.sdkBootState.IsReadyChan())
+	defer app.close()
+
+	// everything is up and running, now start bombarding the webserver
+	type RequestConf struct {
+		Verb           string
+		Path           string
+		ExpectedStatus int
+	}
+	dictinoary := []RequestConf{
+		{Verb: http.MethodGet, Path: "/allow-get", ExpectedStatus: http.StatusOK},
+		{Verb: http.MethodPost, Path: "/allow-get", ExpectedStatus: http.StatusForbidden},
+		{Verb: http.MethodGet, Path: "/filter-something", ExpectedStatus: http.StatusOK},
+		{Verb: http.MethodPost, Path: "/filter-something", ExpectedStatus: http.StatusNotFound},
+		{Verb: http.MethodPost, Path: "/project-data", ExpectedStatus: http.StatusOK},
+		{Verb: http.MethodGet, Path: "/project-data", ExpectedStatus: http.StatusNotFound},
+	}
+
+	queue := gowq.New[RequestConf](100)
+
+	fireQuest := func(requestConf RequestConf) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(requestConf.Verb, requestConf.Path, nil)
+		app.router.ServeHTTP(w, req)
+		require.Equal(t, requestConf.ExpectedStatus, w.Result().StatusCode)
+	}
+
+	i := 0
+	for i < 100_000 {
+		d := dictinoary[i%len(dictinoary)]
+		i++
+		queue.Push(func(ctx context.Context) (RequestConf, error) {
+			fireQuest(d)
+			return d, nil
+		})
+	}
+
+	_, errors := queue.RunAll(context.TODO())
+	require.Len(t, errors, 0)
+}
+
+func writeOAS(t require.TestingT, tmpdir string, oas *openapi.OpenAPISpec) string {
+	oasContent, err := json.Marshal(oas)
+	require.NoError(t, err)
+
+	oasFileName := fmt.Sprintf("%s/oas.json", tmpdir)
+	err = os.WriteFile(oasFileName, oasContent, 0644)
+	require.NoError(t, err)
+	return oasFileName
+}
+
+func writePolicies(t require.TestingT, tmpdir string, policies []string) string {
+	policyFileName := fmt.Sprintf("%s/policies.rego", tmpdir)
+	policiesContent := []byte(strings.Join(policies, "\n"))
+	err := os.WriteFile(policyFileName, policiesContent, 0644)
+	require.NoError(t, err)
+	return policyFileName
+}
+
 func generateAndSaveConfig(t require.TestingT, tmpdir string, numberOfPaths int) (string, string) {
-	oas := openapi.OpenAPISpec{
+	oas := &openapi.OpenAPISpec{
 		Paths: make(map[string]openapi.PathVerbs),
 	}
 	policies := []string{"package policies"}
@@ -135,17 +306,8 @@ func generateAndSaveConfig(t require.TestingT, tmpdir string, numberOfPaths int)
 		}
 	}
 
-	oasContent, err := json.Marshal(oas)
-	require.NoError(t, err)
-
-	oasFileName := fmt.Sprintf("%s/oas.json", tmpdir)
-	err = os.WriteFile(oasFileName, oasContent, 0644)
-	require.NoError(t, err)
-
-	policyFileName := fmt.Sprintf("%s/policies.rego", tmpdir)
-	policiesContent := []byte(strings.Join(policies, "\n"))
-	err = os.WriteFile(policyFileName, policiesContent, 0644)
-	require.NoError(t, err)
+	oasFileName := writeOAS(t, tmpdir, oas)
+	policyFileName := writePolicies(t, tmpdir, policies)
 
 	return oasFileName, policyFileName
 }

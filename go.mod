@@ -1,6 +1,8 @@
 module github.com/rond-authz/rond
 
-go 1.21
+go 1.22
+
+toolchain go1.23.2
 
 require (
 	github.com/davidebianchi/gswagger v0.10.0
@@ -30,6 +32,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/davidebianchi/go-jsonclient v1.5.0 // indirect
+	github.com/fredmaggiowski/gowq v0.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
