@@ -36,11 +36,7 @@ func BenchmarkStartup(b *testing.B) {
 	}()
 
 	log, _ := test.NewNullLogger()
-	mongoHost := os.Getenv("MONGO_HOST_CI")
-	if mongoHost == "" {
-		mongoHost = testutils.LocalhostMongoDB
-		b.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-	}
+	mongoHost := testutils.GetMongoHost(b)
 	randomizedDBNamePart := testutils.GetRandomName(10)
 	mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
@@ -178,11 +174,8 @@ func TestStartupAndLoadWithConcurrentRequests(t *testing.T) {
 			{"k2"},
 		})
 
-	mongoHost := os.Getenv("MONGO_HOST_CI")
-	if mongoHost == "" {
-		mongoHost = testutils.LocalhostMongoDB
-		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-	}
+	mongoHost := testutils.GetMongoHost(t)
+
 	randomizedDBNamePart := testutils.GetRandomName(10)
 	mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 	envs, err := env.ParseAsWithOptions[config.EnvironmentVariables](env.Options{

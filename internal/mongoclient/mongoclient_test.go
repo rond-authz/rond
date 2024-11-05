@@ -16,7 +16,6 @@ package mongoclient
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/rond-authz/rond/internal/testutils"
@@ -45,11 +44,7 @@ func TestSetupMongoCollection(t *testing.T) {
 	})
 
 	t.Run("correctly returns mongodb client", func(t *testing.T) {
-		mongoHost := os.Getenv("MONGO_HOST_CI")
-		if mongoHost == "" {
-			mongoHost = testutils.LocalhostMongoDB
-			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-		}
+		mongoHost := testutils.GetMongoHost(t)
 
 		log := logging.NewNoOpLogger()
 		mongoClient, err := NewMongoClient(log, fmt.Sprintf("mongodb://%s/%s", mongoHost, testutils.GetRandomName(10)), connOptions)
@@ -60,13 +55,8 @@ func TestSetupMongoCollection(t *testing.T) {
 	})
 
 	t.Run("correctly returns mongodb collection", func(t *testing.T) {
-		mongoHost := os.Getenv("MONGO_HOST_CI")
-		if mongoHost == "" {
-			mongoHost = testutils.LocalhostMongoDB
-			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-		}
-
 		log := logging.NewNoOpLogger()
+		mongoHost := testutils.GetMongoHost(t)
 		mongoClient, err := NewMongoClient(log, fmt.Sprintf("mongodb://%s/%s", mongoHost, testutils.GetRandomName(10)), ConnectionOpts{
 			MaxIdleTimeMs: 2000,
 		})
