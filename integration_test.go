@@ -10,12 +10,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/caarlos0/env/v11"
-	"github.com/fredmaggiowski/gowq"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/openapi"
+
+	"github.com/caarlos0/env/v11"
+	"github.com/fredmaggiowski/gowq"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
@@ -201,7 +202,7 @@ func TestStartupAndLoadWithConcurrentRequests(t *testing.T) {
 		Path           string
 		ExpectedStatus int
 	}
-	dictinoary := []RequestConf{
+	dictionary := []RequestConf{
 		{Verb: http.MethodGet, Path: "/allow-get", ExpectedStatus: http.StatusOK},
 		{Verb: http.MethodPost, Path: "/allow-get", ExpectedStatus: http.StatusForbidden},
 		{Verb: http.MethodGet, Path: "/filter-something", ExpectedStatus: http.StatusOK},
@@ -212,19 +213,17 @@ func TestStartupAndLoadWithConcurrentRequests(t *testing.T) {
 
 	queue := gowq.New[RequestConf](100)
 
-	fireQuest := func(requestConf RequestConf) {
-		w := httptest.NewRecorder()
-		req := httptest.NewRequest(requestConf.Verb, requestConf.Path, nil)
-		app.router.ServeHTTP(w, req)
-		require.Equal(t, requestConf.ExpectedStatus, w.Result().StatusCode)
-	}
-
 	i := 0
 	for i < 100_000 {
-		d := dictinoary[i%len(dictinoary)]
+		d := dictionary[i%len(dictionary)]
 		i++
 		queue.Push(func(ctx context.Context) (RequestConf, error) {
-			fireQuest(d)
+			w := httptest.NewRecorder()
+
+			req := httptest.NewRequest(d.Verb, d.Path, nil)
+			app.router.ServeHTTP(w, req)
+			require.Equal(t, d.ExpectedStatus, w.Result().StatusCode)
+
 			return d, nil
 		})
 	}
