@@ -17,7 +17,6 @@ package mongoclient
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"testing"
 
@@ -221,11 +220,7 @@ func TestMongoCollections(t *testing.T) {
 	})
 
 	t.Run("retrieve all roles by id from mongo", func(t *testing.T) {
-		mongoHost := os.Getenv("MONGO_HOST_CI")
-		if mongoHost == "" {
-			mongoHost = testutils.LocalhostMongoDB
-			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-		}
+		mongoHost := testutils.GetMongoHost(t)
 
 		_, dbName, rolesCollection, bindingsCollection := testutils.GetAndDisposeTestClientsAndCollections(t)
 		mongoDBURL := fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName)
@@ -281,13 +276,12 @@ func TestMongoClientNil(t *testing.T) {
 }
 
 func getMongoDBURL(t *testing.T) (
-	mongoDBURL string, dbName string, rolesCollection *mongo.Collection, bindingsCollection *mongo.Collection) {
-	mongoHost := os.Getenv("MONGO_HOST_CI")
-	if mongoHost == "" {
-		mongoHost = testutils.LocalhostMongoDB
-		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-	}
-
+	mongoDBURL string,
+	dbName string,
+	rolesCollection *mongo.Collection,
+	bindingsCollection *mongo.Collection,
+) {
+	mongoHost := testutils.GetMongoHost(t)
 	_, dbName, rolesCollection, bindingsCollection = testutils.GetAndDisposeTestClientsAndCollections(t)
 	mongoDBURL = fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName)
 	return
