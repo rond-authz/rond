@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -164,12 +165,18 @@ func TestStartupAndLoadWithConcurrentRequests(t *testing.T) {
 	gock.New("http://localhost:3050/").
 		Persist().
 		Get("/filter-something").
+		MatchHeader("acl_rows", `{"$or":[{"$and":[{"key":{"$eq":42}}]}]}`).
 		Reply(200)
 	gock.New("http://localhost:3050/").
 		Persist().
 		Post("/project-data").
 		Reply(200).
-		JSON([]string{})
+		JSON([]struct {
+			Key string `json:"key"`
+		}{
+			{"k1"},
+			{"k2"},
+		})
 
 	mongoHost := os.Getenv("MONGO_HOST_CI")
 	if mongoHost == "" {
@@ -201,13 +208,14 @@ func TestStartupAndLoadWithConcurrentRequests(t *testing.T) {
 		Verb           string
 		Path           string
 		ExpectedStatus int
+		ExpectedBody   string
 	}
 	dictionary := []RequestConf{
 		{Verb: http.MethodGet, Path: "/allow-get", ExpectedStatus: http.StatusOK},
 		{Verb: http.MethodPost, Path: "/allow-get", ExpectedStatus: http.StatusForbidden},
 		{Verb: http.MethodGet, Path: "/filter-something", ExpectedStatus: http.StatusOK},
 		{Verb: http.MethodPost, Path: "/filter-something", ExpectedStatus: http.StatusNotFound},
-		{Verb: http.MethodPost, Path: "/project-data", ExpectedStatus: http.StatusOK},
+		{Verb: http.MethodPost, Path: "/project-data", ExpectedBody: `["k1","k2"]`, ExpectedStatus: http.StatusOK},
 		{Verb: http.MethodGet, Path: "/project-data", ExpectedStatus: http.StatusNotFound},
 	}
 
@@ -223,6 +231,12 @@ func TestStartupAndLoadWithConcurrentRequests(t *testing.T) {
 			req := httptest.NewRequest(d.Verb, d.Path, nil)
 			app.router.ServeHTTP(w, req)
 			require.Equal(t, d.ExpectedStatus, w.Result().StatusCode)
+
+			if d.ExpectedBody != "" {
+				data, err := io.ReadAll(w.Body)
+				require.NoError(t, err)
+				require.Equal(t, d.ExpectedBody, string(data))
+			}
 
 			return d, nil
 		})
@@ -320,11 +334,11 @@ func generateFilterPolicy(name string) string {
 
 func generateProjectionPolicy(name string) string {
 	return fmt.Sprintf(`proj_%s [projects] {
-    projects := [projects_with_envs_filtered |
+    projects := [kept |
         project := input.response.body[_]
-        projects_with_envs_filtered := project
+		kept := project.key
     ]
-	}`, name)
+}`, name)
 }
 
 func generateAllowPolicy(name string) string {
