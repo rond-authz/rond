@@ -47,6 +47,17 @@ func GetRandomName(n int) string {
 	return strings.Join(samples, "")
 }
 
+func GetMongoHost(t testing.TB) string {
+	t.Helper()
+
+	mongoHost := os.Getenv("MONGO_HOST_CI")
+	if mongoHost == "" {
+		mongoHost = LocalhostMongoDB
+		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
+	}
+	return mongoHost
+}
+
 // GetAndDisposeTestCollection returns a collection from a random database.
 // The function performs test clean up by dropping the database and closing MongoDB client connection.
 func GetAndDisposeTestClientsAndCollections(t *testing.T) (*mongo.Client, string, *mongo.Collection, *mongo.Collection) {
@@ -75,11 +86,7 @@ func GetAndDisposeTestClientsAndCollections(t *testing.T) (*mongo.Client, string
 func GetMongoClient(t *testing.T) *mongo.Client {
 	t.Helper()
 	// Getting MongoHost in CI from standard environment variable.
-	mongoHost := os.Getenv("MONGO_HOST_CI")
-	if mongoHost == "" {
-		mongoHost = LocalhostMongoDB
-		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-	}
+	mongoHost := GetMongoHost(t)
 	clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
 	client, err := mongo.Connect(context.Background(), clientOpts)
 	require.NoError(t, err, "failed mongo db connection")

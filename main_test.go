@@ -677,11 +677,7 @@ func TestSetupApp(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMockWithFindBuiltins.json")
 
-		mongoHost := os.Getenv("MONGO_HOST_CI")
-		if mongoHost == "" {
-			mongoHost = testutils.LocalhostMongoDB
-			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-		}
+		mongoHost := testutils.GetMongoHost(t)
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
@@ -849,11 +845,7 @@ func TestSetupApp(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMockWithRowFiltering.json")
 
-		mongoHost := os.Getenv("MONGO_HOST_CI")
-		if mongoHost == "" {
-			mongoHost = testutils.LocalhostMongoDB
-			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-		}
+		mongoHost := testutils.GetMongoHost(t)
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
@@ -1010,11 +1002,7 @@ func TestSetupApp(t *testing.T) {
 			Reply(200).
 			File("./mocks/simplifiedMockWithRowFiltering.json")
 
-		mongoHost := os.Getenv("MONGO_HOST_CI")
-		if mongoHost == "" {
-			mongoHost = testutils.LocalhostMongoDB
-			t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-		}
+		mongoHost := testutils.GetMongoHost(t)
 		randomizedDBNamePart := testutils.GetRandomName(10)
 		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
@@ -1403,11 +1391,7 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 		Reply(200).
 		File("./mocks/mockForResponseFilteringOnResponse.json")
 
-	mongoHost := os.Getenv("MONGO_HOST_CI")
-	if mongoHost == "" {
-		mongoHost = testutils.LocalhostMongoDB
-		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-	}
+	mongoHost := testutils.GetMongoHost(t)
 	randomizedDBNamePart := testutils.GetRandomName(10)
 	mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
@@ -1522,11 +1506,7 @@ func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 		Reply(200).
 		File("./mocks/routesWithSamePath.json")
 
-	mongoHost := os.Getenv("MONGO_HOST_CI")
-	if mongoHost == "" {
-		mongoHost = testutils.LocalhostMongoDB
-		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-	}
+	mongoHost := testutils.GetMongoHost(t)
 	randomizedDBNamePart := testutils.GetRandomName(10)
 	mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
 
