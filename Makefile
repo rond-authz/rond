@@ -21,7 +21,9 @@ test: clean mongo-start
 
 .PHONY: coverage
 coverage: clean mongo-start
-	go test ./... -coverprofile coverage.out -count=1 -race=1
+	go test ./... -coverprofile coverage.out.tmp -count=1 -race=1
+	cat coverage.out.tmp | grep -v "internal/fake" | grep -v "internal/testutils" | grep -v "custom_builtins/mocks" | grep -v "metrics/prometheus/test" > coverage.out
+	rm coverage.out.tmp
 	$(MAKE) clean
 
 .PHONY: bench
