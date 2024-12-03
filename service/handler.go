@@ -130,7 +130,6 @@ func EvaluateRequest(
 	result, err := evaluatorSdk.EvaluateRequestPolicy(req.Context(), rondInput, &sdk.EvaluateOptions{
 		Logger: rondlogrus.NewEntry(logger),
 		Audit: sdk.AuditOptions{
-			Enabled:       env.EnableAuditTrail,
 			AggregationID: req.Header.Get(env.AuditAggregationIDHeaderName),
 		},
 	})

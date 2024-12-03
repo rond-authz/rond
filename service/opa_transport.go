@@ -126,7 +126,6 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, input, &sdk.EvaluateOptions{
 		Logger: rondlogrus.NewEntry(t.logger),
 		Audit: sdk.AuditOptions{
-			Enabled:       t.env.EnableAuditTrail,
 			AggregationID: req.Header.Get(t.env.AuditAggregationIDHeaderName),
 		},
 	})

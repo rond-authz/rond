@@ -58,7 +58,6 @@ func (e evaluator) Config() core.RondConfig {
 }
 
 type AuditOptions struct {
-	Enabled       bool
 	AggregationID string
 }
 
