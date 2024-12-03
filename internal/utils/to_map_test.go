@@ -21,6 +21,8 @@ import (
 )
 
 func TestToMap(t *testing.T) {
+	require.Nil(t, ToMap("audit", []string{}))
+
 	type SubStruct struct {
 		F float64 `audit:"f"`
 	}
@@ -31,6 +33,9 @@ func TestToMap(t *testing.T) {
 		Sl []string  `audit:"sl"`
 		So string    `audit:"so,omitempty"`
 		Si string    `audit:"si,omitempty"`
+
+		u string `audit:"unexported_field_will_be_ignored"`
+		N string
 	}
 
 	c := ToConvert{
@@ -39,6 +44,8 @@ func TestToMap(t *testing.T) {
 		St: SubStruct{F: 4.2},
 		Sl: []string{"g1", "g2"},
 		Si: "not-omitted",
+		u:  "shrug",
+		N:  "uses the field name",
 	}
 
 	result := ToMap("audit", c)
@@ -51,6 +58,7 @@ func TestToMap(t *testing.T) {
 			},
 			"sl": []string{"g1", "g2"},
 			"si": "not-omitted",
+			"N":  "uses the field name",
 		},
 		result,
 	)
