@@ -237,7 +237,9 @@ type Module struct {
 	Content string
 }
 
-func NewOPAModuleConfigWithBuiltins(modules []Module, builtinsDeclarations map[string]*ast.Builtin) (*OPAModuleConfig, error) {
+type BuiltinDeclarations map[string]*ast.Builtin
+
+func NewOPAModuleConfigWithBuiltins(modules []Module, builtinsDeclarations BuiltinDeclarations) (*OPAModuleConfig, error) {
 	builtins := map[string]*ast.Builtin{
 		custom_builtins.GetHeaderDecl.Name:     custom_builtins.GetHeaderDecl,
 		custom_builtins.MongoFindOneDecl.Name:  custom_builtins.MongoFindOneDecl,
@@ -272,8 +274,18 @@ func NewOPAModuleConfig(modules []Module) (*OPAModuleConfig, error) {
 	return NewOPAModuleConfigWithBuiltins(modules, nil)
 }
 
+// MustNewOPAModuleConfig is an helper function for tests purposes only!!
 func MustNewOPAModuleConfig(modules []Module) *OPAModuleConfig {
 	opaModule, err := NewOPAModuleConfig(modules)
+	if err != nil {
+		panic(err)
+	}
+	return opaModule
+}
+
+// MustNewOPAModuleConfigWithBuiltins is an helper function for tests purposes only!!
+func MustNewOPAModuleConfigWithBuiltins(modules []Module, builtins BuiltinDeclarations) *OPAModuleConfig {
+	opaModule, err := NewOPAModuleConfigWithBuiltins(modules, builtins)
 	if err != nil {
 		panic(err)
 	}

@@ -24,6 +24,9 @@ import (
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/metrics"
 
+	"github.com/open-policy-agent/opa/ast"
+	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -405,5 +408,62 @@ func TestPartialResultEvaluators(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, query)
 		require.Empty(t, res)
+	})
+
+	t.Run("evaluates policy with custom builtins", func(t *testing.T) {
+		partialEvaluators := PartialResultsEvaluators{}
+		rondConfig := &RondConfig{
+			RequestFlow: RequestFlow{
+				PolicyName: "check_metadata",
+			},
+		}
+
+		builtinDecl := &ast.Builtin{
+			Name: "some_builtin",
+			Decl: types.NewFunction(types.Args(types.A), types.A),
+		}
+
+		opaModule := MustNewOPAModuleConfigWithBuiltins([]Module{
+			{
+				Name: "example.rego",
+				Content: `package policies
+			check_metadata {
+				some_builtin("test")
+			}`,
+			},
+		}, BuiltinDeclarations{
+			"some_builtin": builtinDecl,
+		})
+
+		someBuiltinInvoked := false
+		builtins := []func(*rego.Rego){
+			rego.Function1(
+				&rego.Function{
+					Name: "some_builtin",
+					Decl: types.NewFunction(types.Args(types.A), types.A),
+				},
+				func(bctx rego.BuiltinContext, dataToStore *ast.Term) (*ast.Term, error) {
+					someBuiltinInvoked = true
+					return ast.BooleanTerm(true), nil
+				},
+			),
+		}
+		evalOpts := OPAEvaluatorOptions{
+			Logger:   logger,
+			Builtins: builtins,
+		}
+
+		err := partialEvaluators.AddFromConfig(context.Background(), logger, opaModule, rondConfig, &evalOpts)
+		require.NoError(t, err)
+
+		input, err := CreateRegoQueryInput(logger, rondInput, RegoInputOptions{})
+		require.NoError(t, err)
+		evaluator, err := partialEvaluators.GetEvaluatorFromPolicy(context.Background(), "check_metadata", &evalOpts)
+		require.NoError(t, err)
+		res, query, err := evaluator.PolicyEvaluation(logger, input, nil)
+		require.NoError(t, err)
+		require.Empty(t, query)
+		require.Empty(t, res)
+		require.True(t, someBuiltinInvoked)
 	})
 }
