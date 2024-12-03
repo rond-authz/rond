@@ -24,6 +24,7 @@ import (
 	"strconv"
 
 	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/sdk"
@@ -46,6 +47,7 @@ type OPATransport struct {
 	logger  *logrus.Entry
 	config  *core.RondConfig
 	request *http.Request
+	env     config.EnvironmentVariables
 
 	clientHeaderKey string
 	user            core.InputUser
@@ -56,6 +58,7 @@ func NewOPATransport(
 	transport http.RoundTripper,
 	context context.Context,
 	config *core.RondConfig,
+	env config.EnvironmentVariables,
 	logger *logrus.Entry,
 	req *http.Request,
 	clientHeaderKey string,
@@ -68,6 +71,7 @@ func NewOPATransport(
 		logger:       logger,
 		config:       config,
 		request:      req,
+		env:          env,
 
 		user:            user,
 		clientHeaderKey: clientHeaderKey,
@@ -121,6 +125,10 @@ func (t *OPATransport) RoundTrip(req *http.Request) (resp *http.Response, err er
 
 	responseBody, err := t.evaluatorSDK.EvaluateResponsePolicy(t.context, input, &sdk.EvaluateOptions{
 		Logger: rondlogrus.NewEntry(t.logger),
+		Audit: sdk.AuditOptions{
+			Enabled:       t.env.EnableAuditTrail,
+			AggregationID: req.Header.Get(t.env.AuditAggregationIDHeaderName),
+		},
 	})
 	if err != nil {
 		t.responseWithError(resp, err, http.StatusForbidden)

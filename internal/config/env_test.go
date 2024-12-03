@@ -83,6 +83,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		AdditionalHeadersToProxy:       "miauserid",
 		ExposeMetrics:                  true,
 		MongoDBConnectionMaxIdleTimeMs: 1000,
+		AuditAggregationIDHeaderName:   "x-request-id",
 	}
 
 	t.Run(`returns correctly - with TargetServiceHost`, func(t *testing.T) {

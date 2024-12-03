@@ -57,9 +57,14 @@ func (e evaluator) Config() core.RondConfig {
 	return e.rondConfig
 }
 
+type AuditOptions struct {
+	Enabled       bool
+	AggregationID string
+}
+
 type EvaluateOptions struct {
-	Logger             logging.Logger
-	AuditAggregationID string
+	Logger logging.Logger
+	Audit  AuditOptions
 }
 
 func (e EvaluateOptions) GetLogger() logging.Logger {
@@ -115,17 +120,19 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 		}
 	}
 
-	e.auditAgent.Trace(ctx, audit.Audit{
-		AggregationID: options.AuditAggregationID,
-		Authorization: audit.AuthzInfo{
-			Allowed:    true,
-			PolicyName: rondConfig.RequestFlow.PolicyName,
-		},
-		Subject: audit.SubjectInfo{
-			ID:     rondInput.User.ID,
-			Groups: rondInput.User.Groups,
-		},
-	})
+	if options.Audit.Enabled {
+		e.auditAgent.Trace(ctx, audit.Audit{
+			AggregationID: options.Audit.AggregationID,
+			Authorization: audit.AuthzInfo{
+				Allowed:    true,
+				PolicyName: rondConfig.RequestFlow.PolicyName,
+			},
+			Subject: audit.SubjectInfo{
+				ID:     rondInput.User.ID,
+				Groups: rondInput.User.Groups,
+			},
+		})
+	}
 
 	return PolicyResult{
 		Allowed:      true,
@@ -159,17 +166,19 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 		return nil, err
 	}
 
-	e.auditAgent.Trace(ctx, audit.Audit{
-		AggregationID: options.AuditAggregationID,
-		Authorization: audit.AuthzInfo{
-			Allowed:    true,
-			PolicyName: rondConfig.ResponseFlow.PolicyName,
-		},
-		Subject: audit.SubjectInfo{
-			ID:     rondInput.User.ID,
-			Groups: rondInput.User.Groups,
-		},
-	})
+	if options.Audit.Enabled {
+		e.auditAgent.Trace(ctx, audit.Audit{
+			AggregationID: options.Audit.AggregationID,
+			Authorization: audit.AuthzInfo{
+				Allowed:    true,
+				PolicyName: rondConfig.ResponseFlow.PolicyName,
+			},
+			Subject: audit.SubjectInfo{
+				ID:     rondInput.User.ID,
+				Groups: rondInput.User.Groups,
+			},
+		})
+	}
 
 	marshalledBody, err := json.Marshal(bodyToProxy)
 	if err != nil {
