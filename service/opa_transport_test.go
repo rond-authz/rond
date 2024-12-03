@@ -289,7 +289,6 @@ func TestOPATransportRoundTrip(t *testing.T) {
 			config.EnvironmentVariables{},
 			logrus.NewEntry(logger),
 			req,
-			// config.EnvironmentVariables{},
 			"",
 			core.InputUser{},
 			evaluatorSDK,
