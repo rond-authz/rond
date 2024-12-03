@@ -20,6 +20,7 @@ import (
 
 	"github.com/rond-authz/rond/audit"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
+
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
