@@ -15,7 +15,7 @@
 package sdk
 
 import (
-	"github.com/rond-authz/rond/audit"
+	"github.com/rond-authz/rond/internal/audit"
 	"github.com/rond-authz/rond/logging"
 )
 

@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/rond-authz/rond/audit"
+	"github.com/rond-authz/rond/internal/audit"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 
 	"github.com/sirupsen/logrus"

@@ -19,8 +19,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/rond-authz/rond/audit"
 	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/internal/audit"
 	"github.com/rond-authz/rond/logging"
 )
 

@@ -21,8 +21,8 @@ import (
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
-	"github.com/rond-authz/rond/audit"
 	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/internal/audit"
 )
 
 func newRegoInstanceBuilder(policy string, opaModuleConfig *OPAModuleConfig, evaluatorOptions *OPAEvaluatorOptions) (*rego.Rego, error) {

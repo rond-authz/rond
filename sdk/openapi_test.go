@@ -19,8 +19,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/rond-authz/rond/audit"
 	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/internal/audit"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"

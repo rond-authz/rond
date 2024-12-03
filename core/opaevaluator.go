@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/rond-authz/rond/audit"
 	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/internal/audit"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/logging"
