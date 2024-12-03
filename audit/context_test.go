@@ -32,4 +32,10 @@ func TestContext(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, retrievedAgent)
 	})
+
+	t.Run("get cache failure", func(t *testing.T) {
+		_, err := GetAuditCache(context.Background())
+		require.Error(t, err, "failed to extract audit cache from context")
+
+	})
 }
