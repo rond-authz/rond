@@ -58,7 +58,6 @@ type EnvironmentVariables struct {
 	Standalone                     bool   `env:"STANDALONE"`
 	AdditionalHeadersToProxy       string `env:"ADDITIONAL_HEADERS_TO_PROXY" envDefault:"miauserid"`
 	ExposeMetrics                  bool   `env:"EXPOSE_METRICS" envDefault:"true"`
-	EnableAuditTrail               bool   `env:"ENABLE_AUDIT_TRAIL"`
 	AuditAggregationIDHeaderName   string `env:"AUDIT_AGGREGATION_ID_HEADER_NAME" envDefault:"x-request-id"`
 }
 
