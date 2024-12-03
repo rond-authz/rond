@@ -19,9 +19,9 @@ import (
 	"testing"
 
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
-	"github.com/stretchr/testify/require"
 
 	"github.com/sirupsen/logrus/hooks/test"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLogAgent(t *testing.T) {
