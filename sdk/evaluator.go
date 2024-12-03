@@ -156,6 +156,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 
 	opaEvaluatorOptions := e.evaluatorOptions.opaEvaluatorOptions(logger)
 
+	ctx = audit.WithAuditCache(ctx, e.auditAgent)
 	evaluator, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, e.rondConfig.ResponseFlow.PolicyName, opaEvaluatorOptions)
 	if err != nil {
 		return nil, err

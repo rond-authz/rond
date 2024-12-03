@@ -15,6 +15,8 @@
 package audit
 
 import (
+	"fmt"
+
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/types"
@@ -38,8 +40,7 @@ var SetLabels = rego.Function1(
 	func(bctx rego.BuiltinContext, dataToStore *ast.Term) (*ast.Term, error) {
 		auditCache, err := GetAuditCache(bctx.Context)
 		if err != nil {
-			// TODO we should at least log a warning, consider failing the execution?
-			return nil, nil
+			return nil, fmt.Errorf("missing audit cache in context")
 		}
 
 		data := make(map[string]interface{})

@@ -43,6 +43,7 @@ import (
 
 	"github.com/caarlos0/env/v11"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -1486,7 +1487,8 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 }
 
 func TestIntegrationWithAuditTrail(t *testing.T) {
-	log, _ := test.NewNullLogger()
+	log := logrus.New()
+	// log, _ := test.NewNullLogger()
 
 	gockHost := setupGockServer(t, 3099, GockOptions{
 		OASTestFilePath: "./mocks/mockForResponseFilteringOnResponse.json",
@@ -1498,40 +1500,13 @@ func TestIntegrationWithAuditTrail(t *testing.T) {
 		},
 	})
 
-	mongoHost := testutils.GetMongoHost(t)
-	randomizedDBNamePart := testutils.GetRandomName(10)
-	mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
-
 	envs := getEnvs(t, map[string]string{
-		"HTTP_PORT":                "3041",
-		"TARGET_SERVICE_HOST":      gockHost,
-		"TARGET_SERVICE_OAS_PATH":  "/documentation/json",
-		"OPA_MODULES_DIRECTORY":    "./mocks/rego-policies",
-		"LOG_LEVEL":                "trace",
-		"MONGODB_URL":              fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName),
-		"BINDINGS_COLLECTION_NAME": "bindings",
-		"ROLES_COLLECTION_NAME":    "roles",
+		"HTTP_PORT":               "3041",
+		"TARGET_SERVICE_HOST":     gockHost,
+		"TARGET_SERVICE_OAS_PATH": "/documentation/json",
+		"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies",
+		"LOG_LEVEL":               "trace",
 	})
-
-	clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
-	client, err := mongo.Connect(context.Background(), clientOpts)
-	if err != nil {
-		fmt.Printf("error connecting to MongoDB: %s", err.Error())
-	}
-
-	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancelFn()
-	if err = client.Ping(ctx, readpref.Primary()); err != nil {
-		fmt.Printf("error verifying MongoDB connection: %s", err.Error())
-	}
-	defer client.Disconnect(ctx)
-
-	testutils.PopulateDBForTesting(
-		t,
-		ctx,
-		client.Database(mongoDBName).Collection("roles"),
-		client.Database(mongoDBName).Collection("bindings"),
-	)
 
 	app, err := setupService(envs, log)
 	require.NoError(t, err)
