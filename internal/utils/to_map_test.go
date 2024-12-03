@@ -29,6 +29,8 @@ func TestToMap(t *testing.T) {
 		I  int       `audit:"i"`
 		St SubStruct `audit:"st"`
 		Sl []string  `audit:"sl"`
+		So string    `audit:"so,omitempty"`
+		Si string    `audit:"si,omitempty"`
 	}
 
 	c := ToConvert{
@@ -36,6 +38,7 @@ func TestToMap(t *testing.T) {
 		I:  42,
 		St: SubStruct{F: 4.2},
 		Sl: []string{"g1", "g2"},
+		Si: "not-omitted",
 	}
 
 	result := ToMap("audit", c)
@@ -47,6 +50,7 @@ func TestToMap(t *testing.T) {
 				"f": 4.2,
 			},
 			"sl": []string{"g1", "g2"},
+			"si": "not-omitted",
 		},
 		result,
 	)
