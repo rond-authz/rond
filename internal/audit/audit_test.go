@@ -22,21 +22,21 @@ import (
 
 func TestApplyDataFromPolicy(t *testing.T) {
 	t.Run("sets reserved + custom label", func(t *testing.T) {
-		a := Audit{}
+		a := auditToPrint{}
 		a.applyDataFromPolicy(map[string]any{
 			"authorization.permission": "my-permission",
 			"authorization.binding":    "my-binding",
 			"authorization.role":       "my-role",
 			"some-custom-label":        "value",
 		})
-		require.Equal(t, "my-permission", a.Authorization.GrantingPermission)
-		require.Equal(t, "my-binding", a.Authorization.GrantingBindingID)
-		require.Equal(t, "my-role", a.Authorization.GrantingRoleID)
+		require.Equal(t, "my-permission", a.Authorization.Permission)
+		require.Equal(t, "my-binding", a.Authorization.BindingID)
+		require.Equal(t, "my-role", a.Authorization.RoleID)
 		require.Equal(t, "value", a.Labels["some-custom-label"])
 	})
 
 	t.Run("reserved keys are not set as label", func(t *testing.T) {
-		a := Audit{}
+		a := auditToPrint{}
 		a.applyDataFromPolicy(map[string]any{
 			"authorization.permission": "my-permission",
 			"authorization.binding":    "my-binding",
@@ -48,31 +48,31 @@ func TestApplyDataFromPolicy(t *testing.T) {
 	})
 
 	t.Run("ignores invalid permission", func(t *testing.T) {
-		a := Audit{}
+		a := auditToPrint{}
 		a.applyDataFromPolicy(map[string]any{
 			"authorization.permission": []string{"my-permission"},
 		})
-		require.Equal(t, "", a.Authorization.GrantingPermission)
+		require.Equal(t, "", a.Authorization.Permission)
 	})
 
 	t.Run("ignores invalid binding", func(t *testing.T) {
-		a := Audit{}
+		a := auditToPrint{}
 		a.applyDataFromPolicy(map[string]any{
 			"authorization.binding": []string{"my-binding"},
 		})
-		require.Equal(t, "", a.Authorization.GrantingBindingID)
+		require.Equal(t, "", a.Authorization.BindingID)
 	})
 
 	t.Run("ignores invalid roleId", func(t *testing.T) {
-		a := Audit{}
+		a := auditToPrint{}
 		a.applyDataFromPolicy(map[string]any{
 			"authorization.role": []string{"my-role"},
 		})
-		require.Equal(t, "", a.Authorization.GrantingRoleID)
+		require.Equal(t, "", a.Authorization.RoleID)
 	})
 
 	t.Run("overrides previously set label", func(t *testing.T) {
-		a := Audit{
+		a := auditToPrint{
 			Labels: map[string]any{
 				"a": "boring",
 			},

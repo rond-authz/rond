@@ -32,15 +32,17 @@ func NewLogAgent(l logging.Logger) Agent {
 	}
 }
 
-func (a *logAgent) Trace(ctx context.Context, auditData Audit) {
+func (a *logAgent) Trace(_ context.Context, auditInput Audit) {
 	data := a.cache.Load()
 
-	auditData.generateID()
+	auditData := auditInput.toPrint()
 	if data != nil {
 		auditData.applyDataFromPolicy(data)
 	}
 
-	a.l.WithField("trail", toMap(auditData)).Info("audit trail")
+	a.l.
+		WithField("trail", toMap(auditData)).
+		Info("audit trail")
 }
 
 func (a *logAgent) Cache() AuditCache {

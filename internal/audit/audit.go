@@ -33,29 +33,17 @@ var reservedLabelKeys = []string{
 	AuditAdditionalDataGrantedRoleKey,
 }
 
-type auditReservedFields struct {
-	ID string `audit:"id"`
-}
-
 type Audit struct {
-	auditReservedFields
-	AggregationID string         `audit:"aggregationId"`
-	Authorization AuthzInfo      `audit:"authorization"`
-	Subject       SubjectInfo    `audit:"subject"`
-	RequestBody   interface{}    `audit:"requestBody"`
-	Labels        map[string]any `audit:"labels"`
-}
-
-type authzinfoReservedFields struct {
-	GrantingPermission string `audit:"permission"`
-	GrantingBindingID  string `audit:"binding"`
-	GrantingRoleID     string `audit:"roleId"`
+	AggregationID string
+	Authorization AuthzInfo
+	Subject       SubjectInfo
+	RequestBody   interface{}
+	Labels        map[string]any
 }
 
 type AuthzInfo struct {
-	Allowed    bool   `audit:"allowed"`
-	PolicyName string `audit:"policyName"`
-	authzinfoReservedFields
+	Allowed    bool
+	PolicyName string
 }
 
 type SubjectInfo struct {
@@ -63,16 +51,45 @@ type SubjectInfo struct {
 	Groups []string `audit:"groups"`
 }
 
-func (a *Audit) generateID() {
-	a.auditReservedFields.ID = uuid.NewString()
+// authzInfoToPrint defines the internal structure for an audit record and must be used by remapping
+// public Audit interface.
+type authzInfoToPrint struct {
+	Allowed    bool   `audit:"allowed"`
+	PolicyName string `audit:"policyName"`
+	Permission string `audit:"permission"`
+	BindingID  string `audit:"binding"`
+	RoleID     string `audit:"roleId"`
 }
 
-func (a *Audit) applyDataFromPolicy(data map[string]any) {
+type auditToPrint struct {
+	ID            string           `audit:"id"`
+	AggregationID string           `audit:"aggregationId"`
+	Authorization authzInfoToPrint `audit:"authorization"`
+	Subject       SubjectInfo      `audit:"subject"`
+	RequestBody   interface{}      `audit:"requestBody"`
+	Labels        map[string]any   `audit:"labels"`
+}
+
+func (a *Audit) toPrint() auditToPrint {
+	return auditToPrint{
+		ID:            generateID(),
+		AggregationID: a.AggregationID,
+		Authorization: authzInfoToPrint{
+			Allowed:    a.Authorization.Allowed,
+			PolicyName: a.Authorization.PolicyName,
+		},
+		Subject:     a.Subject,
+		RequestBody: a.RequestBody,
+		Labels:      a.Labels,
+	}
+}
+
+func (a *auditToPrint) applyDataFromPolicy(data map[string]any) {
 	grantedBinding, ok := data[AuditAdditionalDataGrantedBindingKey]
 	if ok && grantedBinding != nil {
 		str, ok := grantedBinding.(string)
 		if ok {
-			a.Authorization.authzinfoReservedFields.GrantingBindingID = str
+			a.Authorization.BindingID = str
 		}
 	}
 
@@ -80,7 +97,7 @@ func (a *Audit) applyDataFromPolicy(data map[string]any) {
 	if ok && grantedPermission != nil {
 		str, ok := grantedPermission.(string)
 		if ok {
-			a.Authorization.authzinfoReservedFields.GrantingPermission = str
+			a.Authorization.Permission = str
 		}
 	}
 
@@ -88,7 +105,7 @@ func (a *Audit) applyDataFromPolicy(data map[string]any) {
 	if ok && grantedRoleId != nil {
 		str, ok := grantedRoleId.(string)
 		if ok {
-			a.Authorization.authzinfoReservedFields.GrantingRoleID = str
+			a.Authorization.RoleID = str
 		}
 	}
 
@@ -103,6 +120,10 @@ func (a *Audit) applyDataFromPolicy(data map[string]any) {
 
 		a.Labels[k] = v
 	}
+}
+
+func generateID() string {
+	return uuid.NewString()
 }
 
 func toMap(val interface{}) map[string]any {
