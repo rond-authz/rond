@@ -106,6 +106,19 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 			"policyName": rondConfig.RequestFlow.PolicyName,
 			"message":    err.Error(),
 		}).Error("RBAC policy evaluation failed")
+
+		e.auditAgent.Trace(ctx, audit.Audit{
+			AggregationID: options.Audit.AggregationID,
+			Authorization: audit.AuthzInfo{
+				Allowed:    false,
+				PolicyName: rondConfig.RequestFlow.PolicyName,
+			},
+			Subject: audit.SubjectInfo{
+				ID:     rondInput.User.ID,
+				Groups: rondInput.User.Groups,
+			},
+		})
+
 		if errors.Is(err, core.ErrPolicyNotAllowed) {
 			return PolicyResult{}, nil
 		}
@@ -120,19 +133,17 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 		}
 	}
 
-	if options.Audit.Enabled {
-		e.auditAgent.Trace(ctx, audit.Audit{
-			AggregationID: options.Audit.AggregationID,
-			Authorization: audit.AuthzInfo{
-				Allowed:    true,
-				PolicyName: rondConfig.RequestFlow.PolicyName,
-			},
-			Subject: audit.SubjectInfo{
-				ID:     rondInput.User.ID,
-				Groups: rondInput.User.Groups,
-			},
-		})
-	}
+	e.auditAgent.Trace(ctx, audit.Audit{
+		AggregationID: options.Audit.AggregationID,
+		Authorization: audit.AuthzInfo{
+			Allowed:    true,
+			PolicyName: rondConfig.RequestFlow.PolicyName,
+		},
+		Subject: audit.SubjectInfo{
+			ID:     rondInput.User.ID,
+			Groups: rondInput.User.Groups,
+		},
+	})
 
 	return PolicyResult{
 		Allowed:      true,
@@ -164,22 +175,32 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 
 	bodyToProxy, err := evaluator.Evaluate(logger, evalInput, e.policyEvaluationOptions)
 	if err != nil {
-		return nil, err
-	}
-
-	if options.Audit.Enabled {
 		e.auditAgent.Trace(ctx, audit.Audit{
 			AggregationID: options.Audit.AggregationID,
 			Authorization: audit.AuthzInfo{
-				Allowed:    true,
-				PolicyName: rondConfig.ResponseFlow.PolicyName,
+				Allowed:    false,
+				PolicyName: rondConfig.RequestFlow.PolicyName,
 			},
 			Subject: audit.SubjectInfo{
 				ID:     rondInput.User.ID,
 				Groups: rondInput.User.Groups,
 			},
 		})
+
+		return nil, err
 	}
+
+	e.auditAgent.Trace(ctx, audit.Audit{
+		AggregationID: options.Audit.AggregationID,
+		Authorization: audit.AuthzInfo{
+			Allowed:    true,
+			PolicyName: rondConfig.ResponseFlow.PolicyName,
+		},
+		Subject: audit.SubjectInfo{
+			ID:     rondInput.User.ID,
+			Groups: rondInput.User.Groups,
+		},
+	})
 
 	marshalledBody, err := json.Marshal(bodyToProxy)
 	if err != nil {
