@@ -47,8 +47,9 @@ func newRegoInstanceBuilder(policy string, opaModuleConfig *OPAModuleConfig, eva
 		custom_builtins.GetHeaderFunction,
 		audit.SetLabels,
 	}
-	for _, builtin := range evaluatorOptions.Builtins {
-		options = append(options, builtin)
+
+	if len(evaluatorOptions.Builtins) > 0 {
+		options = append(options, evaluatorOptions.Builtins...)
 	}
 
 	if evaluatorOptions.MongoClient != nil {
