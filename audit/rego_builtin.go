@@ -43,7 +43,7 @@ var SetLabels = rego.Function1(
 			return nil, fmt.Errorf("missing audit cache in context")
 		}
 
-		data := make(map[string]interface{})
+		data := make(map[string]any)
 		if err := ast.As(dataToStore.Value, &data); err != nil {
 			return nil, err
 		}

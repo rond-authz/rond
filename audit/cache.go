@@ -14,7 +14,7 @@
 
 package audit
 
-type Data map[string]interface{}
+type Data map[string]any
 
 type AuditCache interface {
 	Store(d Data)

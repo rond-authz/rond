@@ -23,7 +23,7 @@ import (
 func TestApplyDataFromPolicy(t *testing.T) {
 	t.Run("sets reserved + custom label", func(t *testing.T) {
 		a := Audit{}
-		a.applyDataFromPolicy(map[string]interface{}{
+		a.applyDataFromPolicy(map[string]any{
 			"authorization.permission": "my-permission",
 			"authorization.binding":    "my-binding",
 			"authorization.role":       "my-role",
@@ -37,7 +37,7 @@ func TestApplyDataFromPolicy(t *testing.T) {
 
 	t.Run("reserved keys are not set as label", func(t *testing.T) {
 		a := Audit{}
-		a.applyDataFromPolicy(map[string]interface{}{
+		a.applyDataFromPolicy(map[string]any{
 			"authorization.permission": "my-permission",
 			"authorization.binding":    "my-binding",
 			"authorization.role":       "my-role",
@@ -49,7 +49,7 @@ func TestApplyDataFromPolicy(t *testing.T) {
 
 	t.Run("ignores invalid permission", func(t *testing.T) {
 		a := Audit{}
-		a.applyDataFromPolicy(map[string]interface{}{
+		a.applyDataFromPolicy(map[string]any{
 			"authorization.permission": []string{"my-permission"},
 		})
 		require.Equal(t, "", a.Authorization.GrantingPermission)
@@ -57,7 +57,7 @@ func TestApplyDataFromPolicy(t *testing.T) {
 
 	t.Run("ignores invalid binding", func(t *testing.T) {
 		a := Audit{}
-		a.applyDataFromPolicy(map[string]interface{}{
+		a.applyDataFromPolicy(map[string]any{
 			"authorization.binding": []string{"my-binding"},
 		})
 		require.Equal(t, "", a.Authorization.GrantingBindingID)
@@ -65,7 +65,7 @@ func TestApplyDataFromPolicy(t *testing.T) {
 
 	t.Run("ignores invalid roleId", func(t *testing.T) {
 		a := Audit{}
-		a.applyDataFromPolicy(map[string]interface{}{
+		a.applyDataFromPolicy(map[string]any{
 			"authorization.role": []string{"my-role"},
 		})
 		require.Equal(t, "", a.Authorization.GrantingRoleID)
@@ -73,11 +73,11 @@ func TestApplyDataFromPolicy(t *testing.T) {
 
 	t.Run("overrides previously set label", func(t *testing.T) {
 		a := Audit{
-			Labels: map[string]interface{}{
+			Labels: map[string]any{
 				"a": "boring",
 			},
 		}
-		a.applyDataFromPolicy(map[string]interface{}{
+		a.applyDataFromPolicy(map[string]any{
 			"a": "funny",
 		})
 		require.Equal(t, "funny", a.Labels["a"])
@@ -104,10 +104,10 @@ func TestToMap(t *testing.T) {
 
 	result := toMap(c)
 	require.Equal(t,
-		map[string]interface{}{
+		map[string]any{
 			"s": "val",
 			"i": 42,
-			"st": map[string]interface{}{
+			"st": map[string]any{
 				"f": 4.2,
 			},
 			"sl": []string{"g1", "g2"},

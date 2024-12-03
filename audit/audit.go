@@ -39,11 +39,11 @@ type auditReservedFields struct {
 
 type Audit struct {
 	auditReservedFields
-	AggregationID string                 `audit:"aggregationId"`
-	Authorization AuthzInfo              `audit:"authorization"`
-	Subject       SubjectInfo            `audit:"subject"`
-	RequestBody   interface{}            `audit:"requestBody"`
-	Labels        map[string]interface{} `audit:"labels"`
+	AggregationID string         `audit:"aggregationId"`
+	Authorization AuthzInfo      `audit:"authorization"`
+	Subject       SubjectInfo    `audit:"subject"`
+	RequestBody   interface{}    `audit:"requestBody"`
+	Labels        map[string]any `audit:"labels"`
 }
 
 type authzinfoReservedFields struct {
@@ -67,7 +67,7 @@ func (a *Audit) generateID() {
 	a.auditReservedFields.ID = uuid.NewString()
 }
 
-func (a *Audit) applyDataFromPolicy(data map[string]interface{}) {
+func (a *Audit) applyDataFromPolicy(data map[string]any) {
 	grantedBinding, ok := data[AuditAdditionalDataGrantedBindingKey]
 	if ok && grantedBinding != nil {
 		str, ok := grantedBinding.(string)
@@ -93,7 +93,7 @@ func (a *Audit) applyDataFromPolicy(data map[string]interface{}) {
 	}
 
 	if a.Labels == nil {
-		a.Labels = make(map[string]interface{})
+		a.Labels = make(map[string]any)
 	}
 
 	for k, v := range data {
@@ -105,10 +105,10 @@ func (a *Audit) applyDataFromPolicy(data map[string]interface{}) {
 	}
 }
 
-func toMap(val interface{}) map[string]interface{} {
+func toMap(val interface{}) map[string]any {
 	const tagTitle = "audit"
 
-	var data map[string]interface{} = make(map[string]interface{})
+	var data map[string]any = make(map[string]any)
 	varType := reflect.TypeOf(val)
 	if varType.Kind() != reflect.Struct {
 		return nil
