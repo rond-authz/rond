@@ -24,7 +24,7 @@ func buildAuditAgent(options *Options, logger logging.Logger) audit.Agent {
 		return audit.NewNoopAgent()
 	}
 
-	if options.EvaluatorOptions.EnableAuditTracing {
+	if !options.EvaluatorOptions.EnableAuditTracing {
 		return audit.NewNoopAgent()
 	}
 	return audit.NewLogAgent(logger)
