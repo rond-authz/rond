@@ -14,11 +14,18 @@
 
 package audit
 
-import "context"
+import (
+	"context"
+	"testing"
 
-type noopAgent struct{}
+	"github.com/stretchr/testify/require"
+)
 
-func NewNoopAgent() Agent { return &noopAgent{} }
+func TestNoopAgentDoesnotBreakStuff(t *testing.T) {
+	a := NewNoopAgent()
+	require.NotNil(t, a)
 
-func (a *noopAgent) Trace(context.Context, Audit) {}
-func (a *noopAgent) Cache() AuditCache            { return &SingleRecordCache{} }
+	a.Trace(context.Background(), Audit{})
+
+	require.NotNil(t, a.Cache())
+}

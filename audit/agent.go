@@ -20,3 +20,10 @@ type Agent interface {
 	Trace(context.Context, Audit)
 	Cache() AuditCache
 }
+
+type noopAgent struct{}
+
+func NewNoopAgent() Agent { return &noopAgent{} }
+
+func (a *noopAgent) Trace(context.Context, Audit) {}
+func (a *noopAgent) Cache() AuditCache            { return &SingleRecordCache{} }
