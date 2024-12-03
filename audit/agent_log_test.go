@@ -24,7 +24,7 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 )
 
-func TestLogAgtent(t *testing.T) {
+func TestLogAgent(t *testing.T) {
 	l, hook := test.NewNullLogger()
 	agent := NewLogAgent(rondlogrus.NewLogger(l))
 
