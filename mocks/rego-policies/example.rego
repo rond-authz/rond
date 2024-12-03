@@ -93,7 +93,7 @@ assert_user {
 allow_policy_with_audit_data {
     print("HERE WE ARE")
     z := {"a": 42}
-    set_audit_labels("z", z)
+    set_audit_labels(z)
     true
 }
 projection_policy_with_audit_data[res] {

@@ -28,7 +28,7 @@ func WithAuditCache(ctx context.Context, agent Agent) context.Context {
 func GetAuditCache(ctx context.Context) (AuditCache, error) {
 	auditCache, ok := ctx.Value(cacheKey{}).(AuditCache)
 	if !ok {
-		return nil, fmt.Errorf("todo")
+		return nil, fmt.Errorf("failed to extract audit cache from context")
 	}
 	return auditCache, nil
 }

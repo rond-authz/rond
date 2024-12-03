@@ -14,21 +14,20 @@
 
 package audit
 
-type Data map[string]interface{}
+import (
+	"testing"
 
-type AuditCache interface {
-	Store(d Data)
-	Load() Data
-}
+	"github.com/stretchr/testify/require"
+)
 
-type SingleRecordCache struct {
-	data Data
-}
+func TestSingleRecordCache(t *testing.T) {
+	t.Run("store + load", func(t *testing.T) {
+		c := SingleRecordCache{}
+		storedData := Data{"key": "val"}
 
-func (c *SingleRecordCache) Store(d Data) {
-	c.data = d
-}
+		c.Store(storedData)
+		loadData := c.Load()
 
-func (c *SingleRecordCache) Load() Data {
-	return c.data
+		require.Equal(t, storedData, loadData)
+	})
 }

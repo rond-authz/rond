@@ -14,21 +14,22 @@
 
 package audit
 
-type Data map[string]interface{}
+import (
+	"context"
+	"testing"
 
-type AuditCache interface {
-	Store(d Data)
-	Load() Data
-}
+	"github.com/stretchr/testify/require"
+)
 
-type SingleRecordCache struct {
-	data Data
-}
+func TestContext(t *testing.T) {
+	t.Run("add to context and get", func(t *testing.T) {
+		ctx := context.Background()
 
-func (c *SingleRecordCache) Store(d Data) {
-	c.data = d
-}
+		agent := &noopAgent{}
 
-func (c *SingleRecordCache) Load() Data {
-	return c.data
+		retrievedAgent, err := GetAuditCache(WithAuditCache(ctx, agent))
+
+		require.NoError(t, err)
+		require.NotNil(t, retrievedAgent)
+	})
 }

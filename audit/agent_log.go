@@ -33,7 +33,8 @@ func NewLogAgent(l logging.Logger) Agent {
 }
 
 func (a *logAgent) Trace(ctx context.Context, auditData Audit) {
-	data := a.cache.Load("")
+	data := a.cache.Load()
+
 	auditData.generateID()
 	if data != nil {
 		auditData.applyDataFromPolicy(data)

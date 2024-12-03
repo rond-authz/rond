@@ -15,8 +15,6 @@
 package audit
 
 import (
-	"fmt"
-
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/types"
@@ -26,34 +24,30 @@ var SetLabelsDecl = &ast.Builtin{
 	Name: "set_audit_labels",
 	Decl: types.NewFunction(
 		types.Args(
-			types.S, // id
 			types.A, // payload
 		),
 		types.A,
 	),
 }
 
-var SetLabels = rego.Function2(
+var SetLabels = rego.Function1(
 	&rego.Function{
 		Name: SetLabelsDecl.Name,
 		Decl: SetLabelsDecl.Decl,
 	},
-	func(bctx rego.BuiltinContext, op1, op2 *ast.Term) (*ast.Term, error) {
-		fmt.Println("set_audit_labels_invoked")
-
+	func(bctx rego.BuiltinContext, dataToStore *ast.Term) (*ast.Term, error) {
 		auditCache, err := GetAuditCache(bctx.Context)
 		if err != nil {
 			// TODO we should at least log a warning, consider failing the execution?
 			return nil, nil
 		}
+
 		data := make(map[string]interface{})
-		if err := ast.As(op2.Value, &data); err != nil {
+		if err := ast.As(dataToStore.Value, &data); err != nil {
 			return nil, err
 		}
-		fmt.Printf("ASDUTI CACHE %+v %+v\n", auditCache, data)
-		auditCache.Store("", data)
-		fmt.Printf("STORED\n")
 
+		auditCache.Store(data)
 		return ast.BooleanTerm(true), nil
 	},
 )
