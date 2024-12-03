@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/testutils"
@@ -43,6 +44,7 @@ import (
 
 	"github.com/caarlos0/env/v11"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -1486,7 +1488,7 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 }
 
 func TestIntegrationWithAuditTrail(t *testing.T) {
-	log, _ := test.NewNullLogger()
+	log := getLogger(t)
 
 	gockHost := setupGockServer(t, 3099, GockOptions{
 		OASTestFilePath: "./mocks/mockForResponseFilteringOnResponse.json",
@@ -1504,6 +1506,7 @@ func TestIntegrationWithAuditTrail(t *testing.T) {
 		"TARGET_SERVICE_OAS_PATH": "/documentation/json",
 		"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies",
 		"LOG_LEVEL":               "trace",
+		"ENABLE_AUDIT_TRAIL":      "true",
 	})
 
 	app, err := setupService(envs, log)
@@ -1937,4 +1940,18 @@ func getResponseBody(t *testing.T, w *httptest.ResponseRecorder) []byte {
 	require.NoError(t, err)
 
 	return responseBody
+}
+
+func getLogger(t *testing.T) *logrus.Logger {
+	t.Helper()
+
+	if testing.Verbose() {
+		log, _ := glogrus.InitHelper(glogrus.InitOptions{
+			Level: "trace",
+		})
+		return log
+	}
+
+	log, _ := test.NewNullLogger()
+	return log
 }
