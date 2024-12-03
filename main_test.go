@@ -43,7 +43,6 @@ import (
 
 	"github.com/caarlos0/env/v11"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -1487,8 +1486,7 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 }
 
 func TestIntegrationWithAuditTrail(t *testing.T) {
-	log := logrus.New()
-	// log, _ := test.NewNullLogger()
+	log, _ := test.NewNullLogger()
 
 	gockHost := setupGockServer(t, 3099, GockOptions{
 		OASTestFilePath: "./mocks/mockForResponseFilteringOnResponse.json",
