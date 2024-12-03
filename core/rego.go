@@ -21,6 +21,7 @@ import (
 
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/rond-authz/rond/audit"
 	"github.com/rond-authz/rond/custom_builtins"
 )
 
@@ -44,7 +45,12 @@ func newRegoInstanceBuilder(policy string, opaModuleConfig *OPAModuleConfig, eva
 		rego.PrintHook(NewPrintHook(os.Stdout, policy)),
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
 		custom_builtins.GetHeaderFunction,
+		audit.SetLabels,
 	}
+	for _, builtin := range evaluatorOptions.Builtins {
+		options = append(options, builtin)
+	}
+
 	if evaluatorOptions.MongoClient != nil {
 		options = append(options, custom_builtins.MongoFindOne, custom_builtins.MongoFindMany)
 	}

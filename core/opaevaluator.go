@@ -16,11 +16,13 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/rond-authz/rond/audit"
 	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/opatranslator"
 	"github.com/rond-authz/rond/internal/utils"
@@ -31,6 +33,10 @@ import (
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
+var (
+	ErrModuleCompilationFailed = errors.New("failed module compilation")
 )
 
 type RondConfig struct {
@@ -75,6 +81,7 @@ type OPAEvaluatorOptions struct {
 	EnablePrintStatements bool
 	MongoClient           custom_builtins.IMongoClient
 	Logger                logging.Logger
+	Builtins              []func(*rego.Rego)
 }
 
 func (opaEval *OPAEvaluator) partiallyEvaluate(logger logging.Logger, input EvalInput, options *PolicyEvaluationOptions) (primitive.M, error) {
@@ -230,12 +237,19 @@ type Module struct {
 	Content string
 }
 
-func NewOPAModuleConfig(modules []Module) (*OPAModuleConfig, error) {
-	compiler := ast.NewCompiler().WithBuiltins(map[string]*ast.Builtin{
+func NewOPAModuleConfigWithBuiltins(modules []Module, builtinsDeclarations map[string]*ast.Builtin) (*OPAModuleConfig, error) {
+	builtins := map[string]*ast.Builtin{
 		custom_builtins.GetHeaderDecl.Name:     custom_builtins.GetHeaderDecl,
 		custom_builtins.MongoFindOneDecl.Name:  custom_builtins.MongoFindOneDecl,
 		custom_builtins.MongoFindManyDecl.Name: custom_builtins.MongoFindManyDecl,
-	})
+		audit.SetLabelsDecl.Name:               audit.SetLabelsDecl,
+	}
+
+	for name, decl := range builtinsDeclarations {
+		builtins[name] = decl
+	}
+
+	compiler := ast.NewCompiler().WithBuiltins(builtins)
 
 	modulesToCompile := map[string]*ast.Module{}
 	for _, m := range modules {
@@ -245,13 +259,17 @@ func NewOPAModuleConfig(modules []Module) (*OPAModuleConfig, error) {
 	compiler.Compile(modulesToCompile)
 
 	if compiler.Failed() {
-		return nil, fmt.Errorf("fails to compile the module: %s", compiler.Errors)
+		return nil, fmt.Errorf("%w: %s", ErrModuleCompilationFailed, compiler.Errors)
 	}
 
 	return &OPAModuleConfig{
 		Modules:  modules,
 		compiler: compiler,
 	}, nil
+}
+
+func NewOPAModuleConfig(modules []Module) (*OPAModuleConfig, error) {
+	return NewOPAModuleConfigWithBuiltins(modules, nil)
 }
 
 func MustNewOPAModuleConfig(modules []Module) *OPAModuleConfig {

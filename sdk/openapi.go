@@ -15,6 +15,7 @@
 package sdk
 
 import (
+	"github.com/rond-authz/rond/audit"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
@@ -30,6 +31,7 @@ type oasImpl struct {
 	partialResultEvaluators core.PartialResultsEvaluators
 	evaluatorOptions        *EvaluatorOptions
 	metrics                 *metrics.Metrics
+	auditAgent              audit.Agent
 }
 
 func (r oasImpl) FindEvaluator(method, path string) (Evaluator, error) {
@@ -43,6 +45,7 @@ func (r oasImpl) FindEvaluator(method, path string) (Evaluator, error) {
 		partialResultEvaluators: r.partialResultEvaluators,
 
 		evaluatorOptions: r.evaluatorOptions,
+		auditAgent:       r.auditAgent,
 		policyEvaluationOptions: &core.PolicyEvaluationOptions{
 			Metrics: r.metrics,
 			AdditionalLogFields: map[string]string{

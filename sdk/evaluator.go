@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/rond-authz/rond/audit"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/logging"
 )
@@ -49,6 +50,7 @@ type evaluator struct {
 
 	evaluatorOptions        *EvaluatorOptions
 	policyEvaluationOptions *core.PolicyEvaluationOptions
+	auditAgent              audit.Agent
 }
 
 func (e evaluator) Config() core.RondConfig {
@@ -56,7 +58,8 @@ func (e evaluator) Config() core.RondConfig {
 }
 
 type EvaluateOptions struct {
-	Logger logging.Logger
+	Logger             logging.Logger
+	AuditAggregationID string
 }
 
 func (e EvaluateOptions) GetLogger() logging.Logger {
@@ -82,6 +85,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 
 	opaEvaluatorOptions := e.evaluatorOptions.opaEvaluatorOptions(logger)
 
+	ctx = audit.WithAuditCache(ctx, e.auditAgent)
 	evaluatorAllowPolicy, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, opaEvaluatorOptions)
 	if err != nil {
 		return PolicyResult{}, err
@@ -110,6 +114,18 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 			return PolicyResult{}, err
 		}
 	}
+
+	e.auditAgent.Trace(ctx, audit.Audit{
+		AggregationID: options.AuditAggregationID,
+		Authorization: audit.AuthzInfo{
+			Allowed:    true,
+			PolicyName: rondConfig.RequestFlow.PolicyName,
+		},
+		Subject: audit.SubjectInfo{
+			ID:     rondInput.User.ID,
+			Groups: rondInput.User.Groups,
+		},
+	})
 
 	return PolicyResult{
 		Allowed:      true,
@@ -142,6 +158,18 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 	if err != nil {
 		return nil, err
 	}
+
+	e.auditAgent.Trace(ctx, audit.Audit{
+		AggregationID: options.AuditAggregationID,
+		Authorization: audit.AuthzInfo{
+			Allowed:    true,
+			PolicyName: rondConfig.ResponseFlow.PolicyName,
+		},
+		Subject: audit.SubjectInfo{
+			ID:     rondInput.User.ID,
+			Groups: rondInput.User.Groups,
+		},
+	})
 
 	marshalledBody, err := json.Marshal(bodyToProxy)
 	if err != nil {

@@ -126,8 +126,10 @@ func EvaluateRequest(
 		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed to create rond input", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return err
 	}
+
 	result, err := evaluatorSdk.EvaluateRequestPolicy(req.Context(), rondInput, &sdk.EvaluateOptions{
-		Logger: rondlogrus.NewEntry(logger),
+		Logger:             rondlogrus.NewEntry(logger),
+		AuditAggregationID: req.Header.Get("x-request-id"),
 	})
 	if err != nil {
 		// opatranslator.ErrEmptyQuery throws when evaluator should return a query. In case

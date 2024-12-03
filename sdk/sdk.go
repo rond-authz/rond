@@ -28,6 +28,7 @@ import (
 type EvaluatorOptions struct {
 	MongoClient           custom_builtins.IMongoClient
 	EnablePrintStatements bool
+	EnableAuditTracing    bool
 }
 
 func (e EvaluatorOptions) opaEvaluatorOptions(logger logging.Logger) *core.OPAEvaluatorOptions {
@@ -75,6 +76,7 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 		return nil, fmt.Errorf("invalid OAS configuration: %s", err)
 	}
 
+	auditAgent := buildAuditAgent(options, logger)
 	return oasImpl{
 		oas:       oas,
 		oasRouter: oasRouter,
@@ -83,6 +85,7 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 		partialResultEvaluators: evaluator,
 		evaluatorOptions:        evaluatorOptions,
 		metrics:                 options.Metrics,
+		auditAgent:              auditAgent,
 	}, nil
 }
 
@@ -105,6 +108,7 @@ func NewWithConfig(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, r
 		return nil, err
 	}
 
+	auditAgent := buildAuditAgent(options, logger)
 	return evaluator{
 		rondConfig:              rondConfig,
 		opaModuleConfig:         opaModuleConfig,
@@ -114,5 +118,6 @@ func NewWithConfig(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, r
 		policyEvaluationOptions: &core.PolicyEvaluationOptions{
 			Metrics: options.Metrics,
 		},
+		auditAgent: auditAgent,
 	}, nil
 }

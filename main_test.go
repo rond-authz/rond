@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"slices"
 	"syscall"
 	"testing"
 	"time"
@@ -42,6 +43,7 @@ import (
 
 	"github.com/caarlos0/env/v11"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -1484,6 +1486,71 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 	})
 }
 
+func TestIntegrationWithAuditTrail(t *testing.T) {
+	// log, _ := test.NewNullLogger()
+	log := logrus.New()
+
+	gockHost := setupGockServer(t, 3099, GockOptions{
+		OASTestFilePath: "./mocks/mockForResponseFilteringOnResponse.json",
+		APIs: map[string]GockReply{
+			"/filters-with-audit-data/": {
+				StatusCode: 200,
+				Response:   map[string]interface{}{"D": true},
+			},
+		},
+	})
+
+	mongoHost := testutils.GetMongoHost(t)
+	randomizedDBNamePart := testutils.GetRandomName(10)
+	mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
+
+	envs := getEnvs(t, map[string]string{
+		"HTTP_PORT":                "3041",
+		"TARGET_SERVICE_HOST":      gockHost,
+		"TARGET_SERVICE_OAS_PATH":  "/documentation/json",
+		"OPA_MODULES_DIRECTORY":    "./mocks/rego-policies",
+		"LOG_LEVEL":                "trace",
+		"MONGODB_URL":              fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName),
+		"BINDINGS_COLLECTION_NAME": "bindings",
+		"ROLES_COLLECTION_NAME":    "roles",
+	})
+
+	clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
+	client, err := mongo.Connect(context.Background(), clientOpts)
+	if err != nil {
+		fmt.Printf("error connecting to MongoDB: %s", err.Error())
+	}
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	if err = client.Ping(ctx, readpref.Primary()); err != nil {
+		fmt.Printf("error verifying MongoDB connection: %s", err.Error())
+	}
+	defer client.Disconnect(ctx)
+
+	testutils.PopulateDBForTesting(
+		t,
+		ctx,
+		client.Database(mongoDBName).Collection("roles"),
+		client.Database(mongoDBName).Collection("bindings"),
+	)
+
+	app, err := setupService(envs, log)
+	require.NoError(t, err)
+	require.True(t, <-app.sdkBootState.IsReadyChan())
+
+	t.Run("200 - with both request and response policy flow", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:3041/filters-with-audit-data/", nil)
+
+		app.router.ServeHTTP(w, req)
+
+		respBody, _ := io.ReadAll(w.Result().Body)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		require.Equal(t, `{"D":true}`, string(respBody))
+	})
+}
+
 func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 	log, _ := test.NewNullLogger()
 
@@ -1724,10 +1791,6 @@ filter_policy {
 }
 
 func TestSetupRouterMetrics(t *testing.T) {
-	defer gock.Off()
-	defer gock.DisableNetworkingFilters()
-	defer gock.Flush()
-
 	log, _ := test.NewNullLogger()
 
 	env := config.EnvironmentVariables{
@@ -1804,36 +1867,19 @@ filter_policy {
 	})
 }
 
-func getResponseBody(t *testing.T, w *httptest.ResponseRecorder) []byte {
-	t.Helper()
-
-	responseBody, err := io.ReadAll(w.Result().Body)
-	require.NoError(t, err)
-
-	return responseBody
-}
-
 func TestEntrypoint(t *testing.T) {
 	t.Run("start server on port 3000 and close with graceful shutdown", func(t *testing.T) {
-		defer gock.Off()
-		defer gock.DisableNetworkingFilters()
-		defer gock.DisableNetworking()
-		gock.EnableNetworking()
-		gock.NetworkingFilter(func(r *http.Request) bool {
-			return r.URL.Path != "/documentation/json"
+		targetHost := setupGockServer(t, 3001, GockOptions{
+			OASTestFilePath: "./mocks/simplifiedMock.json",
 		})
-		gock.New("http://localhost:3001").
-			Get("/documentation/json").
-			Reply(200).
-			File("./mocks/simplifiedMock.json")
 
 		envs := getEnvs(t, map[string]string{
 			"HTTP_PORT":               "3000",
-			"TARGET_SERVICE_HOST":     "localhost:3001",
+			"TARGET_SERVICE_HOST":     targetHost,
 			"TARGET_SERVICE_OAS_PATH": "/documentation/json",
 			"DELAY_SHUTDOWN_SECONDS":  "3",
 			"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies",
-			"LOG_LEVEL":               "fatal",
+			"LOG_LEVEL":               "trace",
 		})
 		shutdown := make(chan os.Signal, 1)
 		done := make(chan bool, 1)
@@ -1858,4 +1904,66 @@ func TestEntrypoint(t *testing.T) {
 		flag := <-done
 		require.Equal(t, true, flag)
 	})
+}
+
+type GockReply struct {
+	StatusCode int
+	Response   any
+}
+type GockOptions struct {
+	OASTestFilePath string
+	APIs            map[string]GockReply
+}
+
+func setupGockServer(t *testing.T, targetServicePort int, opts GockOptions) (gockHost string) {
+	t.Helper()
+	gock.Flush()
+
+	t.Cleanup(func() {
+		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
+	})
+
+	gockHost = fmt.Sprintf("localhost:%d", targetServicePort)
+	gockURL := fmt.Sprintf("http://%s", gockHost)
+
+	apiPathsForFilter := []string{}
+	for k := range opts.APIs {
+		apiPathsForFilter = append(apiPathsForFilter, k)
+	}
+
+	gock.EnableNetworking()
+	gock.NetworkingFilter(func(r *http.Request) bool {
+		if r.URL.Path == "/documentation/json" {
+			return false
+		}
+
+		if slices.Contains(apiPathsForFilter, r.URL.Path) && r.URL.Host == gockHost {
+			return false
+		}
+		return true
+	})
+
+	gock.New(gockURL).
+		Get("/documentation/json").
+		Reply(200).
+		File(opts.OASTestFilePath)
+
+	for path, conf := range opts.APIs {
+		gock.New(gockURL).
+			Get(path).
+			Reply(conf.StatusCode).
+			JSON(conf.Response)
+	}
+	return
+}
+
+func getResponseBody(t *testing.T, w *httptest.ResponseRecorder) []byte {
+	t.Helper()
+
+	responseBody, err := io.ReadAll(w.Result().Body)
+	require.NoError(t, err)
+
+	return responseBody
 }
