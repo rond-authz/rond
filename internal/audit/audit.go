@@ -15,7 +15,6 @@
 package audit
 
 import (
-	"reflect"
 	"slices"
 
 	"github.com/google/uuid"
@@ -37,13 +36,19 @@ type Audit struct {
 	AggregationID string
 	Authorization AuthzInfo
 	Subject       SubjectInfo
-	RequestBody   interface{}
+	Request       RequestInfo
 	Labels        map[string]any
 }
 
 type AuthzInfo struct {
 	Allowed    bool
 	PolicyName string
+}
+
+type RequestInfo struct {
+	Body interface{} `audit:"body,omitempty"`
+	Path string      `audit:"path,omitempty"`
+	Verb string      `audit:"verb,omitempty"`
 }
 
 type SubjectInfo struct {
@@ -66,7 +71,7 @@ type auditToPrint struct {
 	AggregationID string           `audit:"aggregationId"`
 	Authorization authzInfoToPrint `audit:"authorization"`
 	Subject       SubjectInfo      `audit:"subject"`
-	RequestBody   interface{}      `audit:"requestBody"`
+	Request       RequestInfo      `audit:"request"`
 	Labels        map[string]any   `audit:"labels"`
 }
 
@@ -78,9 +83,9 @@ func (a *Audit) toPrint() auditToPrint {
 			Allowed:    a.Authorization.Allowed,
 			PolicyName: a.Authorization.PolicyName,
 		},
-		Subject:     a.Subject,
-		RequestBody: a.RequestBody,
-		Labels:      a.Labels,
+		Subject: a.Subject,
+		Request: a.Request,
+		Labels:  a.Labels,
 	}
 }
 
@@ -124,36 +129,4 @@ func (a *auditToPrint) applyDataFromPolicy(data map[string]any) {
 
 func generateID() string {
 	return uuid.NewString()
-}
-
-func toMap(val interface{}) map[string]any {
-	const tagTitle = "audit"
-
-	var data map[string]any = make(map[string]any)
-	varType := reflect.TypeOf(val)
-	if varType.Kind() != reflect.Struct {
-		return nil
-	}
-
-	value := reflect.ValueOf(val)
-	for i := 0; i < varType.NumField(); i++ {
-		if !value.Field(i).CanInterface() {
-			// Skip unexported fields
-			continue
-		}
-		tag, ok := varType.Field(i).Tag.Lookup(tagTitle)
-		var fieldName string
-		if ok && len(tag) > 0 {
-			fieldName = tag
-		} else {
-			fieldName = varType.Field(i).Name
-		}
-		if varType.Field(i).Type.Kind() != reflect.Struct {
-			data[fieldName] = value.Field(i).Interface()
-		} else {
-			data[fieldName] = toMap(value.Field(i).Interface())
-		}
-	}
-
-	return data
 }

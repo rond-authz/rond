@@ -12,40 +12,42 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package audit
+package utils
 
 import (
-	"context"
+	"testing"
 
-	"github.com/rond-authz/rond/internal/utils"
-	"github.com/rond-authz/rond/logging"
+	"github.com/stretchr/testify/require"
 )
 
-type logAgent struct {
-	l     logging.Logger
-	cache AuditCache
-}
-
-func NewLogAgent(l logging.Logger) Agent {
-	return &logAgent{
-		l:     l,
-		cache: &SingleRecordCache{},
+func TestToMap(t *testing.T) {
+	type SubStruct struct {
+		F float64 `audit:"f"`
 	}
-}
-
-func (a *logAgent) Trace(_ context.Context, auditInput Audit) {
-	data := a.cache.Load()
-
-	auditData := auditInput.toPrint()
-	if data != nil {
-		auditData.applyDataFromPolicy(data)
+	type ToConvert struct {
+		S  string    `audit:"s"`
+		I  int       `audit:"i"`
+		St SubStruct `audit:"st"`
+		Sl []string  `audit:"sl"`
 	}
 
-	a.l.
-		WithField("trail", utils.ToMap("audit", auditData)).
-		Info("audit trail")
-}
+	c := ToConvert{
+		S:  "val",
+		I:  42,
+		St: SubStruct{F: 4.2},
+		Sl: []string{"g1", "g2"},
+	}
 
-func (a *logAgent) Cache() AuditCache {
-	return a.cache
+	result := ToMap("audit", c)
+	require.Equal(t,
+		map[string]any{
+			"s": "val",
+			"i": 42,
+			"st": map[string]any{
+				"f": 4.2,
+			},
+			"sl": []string{"g1", "g2"},
+		},
+		result,
+	)
 }

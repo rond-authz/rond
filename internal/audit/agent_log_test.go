@@ -44,7 +44,7 @@ func TestLogAgent(t *testing.T) {
 			ID:     "some user",
 			Groups: []string{"g1", "g2"},
 		},
-		RequestBody: []byte("some body"),
+		Request: RequestInfo{Body: []byte("some body")},
 	})
 
 	entries := hook.AllEntries()
@@ -71,7 +71,9 @@ func TestLogAgent(t *testing.T) {
 		"labels": map[string]any{
 			"my-label-key": "my-label-value",
 		},
-		"requestBody": []byte("some body"),
+		"request": map[string]any{
+			"body": []byte("some body"),
+		},
 		"subject": map[string]any{
 			"groups": []string{"g1", "g2"},
 			"id":     "some user",

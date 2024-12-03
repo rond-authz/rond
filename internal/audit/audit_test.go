@@ -83,35 +83,3 @@ func TestApplyDataFromPolicy(t *testing.T) {
 		require.Equal(t, "funny", a.Labels["a"])
 	})
 }
-
-func TestToMap(t *testing.T) {
-	type SubStruct struct {
-		F float64 `audit:"f"`
-	}
-	type ToConvert struct {
-		S  string    `audit:"s"`
-		I  int       `audit:"i"`
-		St SubStruct `audit:"st"`
-		Sl []string  `audit:"sl"`
-	}
-
-	c := ToConvert{
-		S:  "val",
-		I:  42,
-		St: SubStruct{F: 4.2},
-		Sl: []string{"g1", "g2"},
-	}
-
-	result := toMap(c)
-	require.Equal(t,
-		map[string]any{
-			"s": "val",
-			"i": 42,
-			"st": map[string]any{
-				"f": 4.2,
-			},
-			"sl": []string{"g1", "g2"},
-		},
-		result,
-	)
-}
