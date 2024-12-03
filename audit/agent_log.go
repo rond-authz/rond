@@ -16,7 +16,6 @@ package audit
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/rond-authz/rond/logging"
 )
@@ -40,7 +39,6 @@ func (a *logAgent) Trace(ctx context.Context, auditData Audit) {
 		auditData.applyDataFromPolicy(data)
 	}
 
-	fmt.Printf("ADDITIONAL DATA IN TRACE %+v\n", data)
 	a.l.WithField("trail", toMap(auditData)).Info("audit trail")
 }
 

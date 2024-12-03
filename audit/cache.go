@@ -21,24 +21,6 @@ type AuditCache interface {
 	Load(id string) Data
 }
 
-// func New() AuditCache {
-// 	return &cache{m: sync.Map{}}
-// }
-
-// type cache struct {
-// 	m sync.Map
-// }
-
-// func (c *cache) Store(id string, d Data) {
-// 	c.m.Store(id, d)
-// }
-
-// func (c *cache) Load(id string) Data {
-// 	d, _ := c.m.LoadAndDelete(id)
-// 	data, _ := d.(Data)
-// 	return data
-// }
-
 type SingleRecordCache struct {
 	data Data
 }

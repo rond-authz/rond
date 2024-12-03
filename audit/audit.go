@@ -22,13 +22,15 @@ import (
 )
 
 const (
-	AuditAdditionalDataGrantedPermissionKey = "authorization.permissions"
+	AuditAdditionalDataGrantedPermissionKey = "authorization.permission"
 	AuditAdditionalDataGrantedBindingKey    = "authorization.binding"
+	AuditAdditionalDataGrantedRoleKey       = "authorization.role"
 )
 
 var reservedLabelKeys = []string{
 	AuditAdditionalDataGrantedPermissionKey,
 	AuditAdditionalDataGrantedBindingKey,
+	AuditAdditionalDataGrantedRoleKey,
 }
 
 type auditReservedFields struct {
@@ -47,6 +49,7 @@ type Audit struct {
 type authzinfoReservedFields struct {
 	GrantingPermission string `audit:"permission"`
 	GrantingBindingID  string `audit:"binding"`
+	GrantingRoleID     string `audit:"roleId"`
 }
 
 type AuthzInfo struct {
@@ -77,13 +80,22 @@ func (a *Audit) applyDataFromPolicy(data map[string]interface{}) {
 	if ok && grantedPermission != nil {
 		str, ok := grantedPermission.(string)
 		if ok {
-			a.Authorization.authzinfoReservedFields.GrantingBindingID = str
+			a.Authorization.authzinfoReservedFields.GrantingPermission = str
+		}
+	}
+
+	grantedRoleId, ok := data[AuditAdditionalDataGrantedRoleKey]
+	if ok && grantedRoleId != nil {
+		str, ok := grantedRoleId.(string)
+		if ok {
+			a.Authorization.authzinfoReservedFields.GrantingRoleID = str
 		}
 	}
 
 	if a.Labels == nil {
 		a.Labels = make(map[string]interface{})
 	}
+
 	for k, v := range data {
 		if slices.Contains(reservedLabelKeys, k) {
 			continue

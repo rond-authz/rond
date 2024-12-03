@@ -20,6 +20,70 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestApplyDataFromPolicy(t *testing.T) {
+	t.Run("sets reserved + custom label", func(t *testing.T) {
+		a := Audit{}
+		a.applyDataFromPolicy(map[string]interface{}{
+			"authorization.permission": "my-permission",
+			"authorization.binding":    "my-binding",
+			"authorization.role":       "my-role",
+			"some-custom-label":        "value",
+		})
+		require.Equal(t, "my-permission", a.Authorization.GrantingPermission)
+		require.Equal(t, "my-binding", a.Authorization.GrantingBindingID)
+		require.Equal(t, "my-role", a.Authorization.GrantingRoleID)
+		require.Equal(t, "value", a.Labels["some-custom-label"])
+	})
+
+	t.Run("reserved keys are not set as label", func(t *testing.T) {
+		a := Audit{}
+		a.applyDataFromPolicy(map[string]interface{}{
+			"authorization.permission": "my-permission",
+			"authorization.binding":    "my-binding",
+			"authorization.role":       "my-role",
+			"some-custom-label":        "value",
+		})
+		require.Len(t, a.Labels, 1)
+		require.Equal(t, "value", a.Labels["some-custom-label"])
+	})
+
+	t.Run("ignores invalid permission", func(t *testing.T) {
+		a := Audit{}
+		a.applyDataFromPolicy(map[string]interface{}{
+			"authorization.permission": []string{"my-permission"},
+		})
+		require.Equal(t, "", a.Authorization.GrantingPermission)
+	})
+
+	t.Run("ignores invalid binding", func(t *testing.T) {
+		a := Audit{}
+		a.applyDataFromPolicy(map[string]interface{}{
+			"authorization.binding": []string{"my-binding"},
+		})
+		require.Equal(t, "", a.Authorization.GrantingBindingID)
+	})
+
+	t.Run("ignores invalid roleId", func(t *testing.T) {
+		a := Audit{}
+		a.applyDataFromPolicy(map[string]interface{}{
+			"authorization.role": []string{"my-role"},
+		})
+		require.Equal(t, "", a.Authorization.GrantingRoleID)
+	})
+
+	t.Run("overrides previously set label", func(t *testing.T) {
+		a := Audit{
+			Labels: map[string]interface{}{
+				"a": "boring",
+			},
+		}
+		a.applyDataFromPolicy(map[string]interface{}{
+			"a": "funny",
+		})
+		require.Equal(t, "funny", a.Labels["a"])
+	})
+}
+
 func TestToMap(t *testing.T) {
 	type SubStruct struct {
 		F float64 `audit:"f"`
