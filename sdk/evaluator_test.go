@@ -47,6 +47,11 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 
 		expectedPolicy PolicyResult
 		expectedErr    error
+
+		expectedAuditLabels     map[string]any
+		expectedAuditBindingID  string
+		expectedAuditPermission string
+		expectedAuditRoleID     string
 	}
 
 	t.Run("evaluate request", func(t *testing.T) {
@@ -298,25 +303,51 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				},
 			},
 			"audit integration with successful policy": {
+				method:         http.MethodGet,
+				path:           "/users/",
+				user:           core.InputUser{ID: "my-user"},
+				expectedPolicy: PolicyResult{Allowed: true},
+				enableAudit:    true,
+			},
+			"audit integration with custom labels": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: core.InputUser{
-					ID: "my-user",
-				},
-				expectedPolicy: PolicyResult{
-					Allowed: true,
-				},
-				enableAudit: true,
+				user:   core.InputUser{ID: "my-user"},
+				opaModuleContent: `package policies todo {
+					set_audit_labels({
+						"labelKey":"labelVal",
+						"authorization.permission": "the-permission",
+						"authorization.binding": "the-binding",
+						"authorization.role": "the-roleid"
+					})
+					true
+				}`,
+				expectedPolicy:          PolicyResult{Allowed: true},
+				enableAudit:             true,
+				expectedAuditLabels:     map[string]any{"labelKey": "labelVal"},
+				expectedAuditBindingID:  "the-binding",
+				expectedAuditPermission: "the-permission",
+				expectedAuditRoleID:     "the-roleid",
 			},
 			"audit integration with failed policy": {
 				method: http.MethodGet,
 				path:   "/users/",
-				user: core.InputUser{
-					ID: "my-user",
-				},
-				opaModuleContent: `package policies todo { false }`,
-				expectedPolicy:   PolicyResult{},
-				enableAudit:      true,
+				user:   core.InputUser{ID: "my-user"},
+				opaModuleContent: `package policies todo {
+					set_audit_labels({
+						"labelKey":"labelVal",
+						"authorization.permission": "the-permission",
+						"authorization.binding": "the-binding",
+						"authorization.role": "the-roleid"
+					})
+					false
+				}`,
+				expectedPolicy:          PolicyResult{},
+				enableAudit:             true,
+				expectedAuditLabels:     map[string]any{"labelKey": "labelVal"},
+				expectedAuditBindingID:  "the-binding",
+				expectedAuditPermission: "the-permission",
+				expectedAuditRoleID:     "the-roleid",
 			},
 		}
 
@@ -426,20 +457,20 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 
 					if testCase.enableAudit {
 						foundRecord := trailRecords[0].Fields["trail"].(map[string]any)
+						require.NotEmpty(t, foundRecord["id"])
 						delete(foundRecord, "id")
 
-						var labels map[string]any
 						var groups []string
 						require.Equal(t, map[string]any{
 							"aggregationId": "",
 							"authorization": map[string]any{
 								"allowed":    testCase.expectedPolicy.Allowed,
-								"binding":    "",
-								"permission": "",
 								"policyName": "todo",
-								"roleId":     "",
+								"binding":    testCase.expectedAuditBindingID,
+								"permission": testCase.expectedAuditPermission,
+								"roleId":     testCase.expectedAuditRoleID,
 							},
-							"labels": labels,
+							"labels": testCase.expectedAuditLabels,
 							"request": map[string]any{
 								"path": testCase.path,
 								"verb": testCase.method,
@@ -702,6 +733,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 
 					if testCase.enableAudit {
 						foundRecord := trailRecords[0].Fields["trail"].(map[string]any)
+						require.NotEmpty(t, foundRecord["id"])
 						delete(foundRecord, "id")
 
 						var labels map[string]any
