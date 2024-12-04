@@ -118,7 +118,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 			},
 			Request: audit.RequestInfo{
 				Verb: rondInput.Request.Method,
-				Path: rondInput.Request.Method,
+				Path: rondInput.Request.Path,
 			},
 		})
 
@@ -148,7 +148,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 		},
 		Request: audit.RequestInfo{
 			Verb: rondInput.Request.Method,
-			Path: rondInput.Request.Method,
+			Path: rondInput.Request.Path,
 		},
 	})
 
@@ -194,7 +194,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 			},
 			Request: audit.RequestInfo{
 				Verb: rondInput.Request.Method,
-				Path: rondInput.Request.Method,
+				Path: rondInput.Request.Path,
 			},
 		})
 
@@ -213,7 +213,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 		},
 		Request: audit.RequestInfo{
 			Verb: rondInput.Request.Method,
-			Path: rondInput.Request.Method,
+			Path: rondInput.Request.Path,
 		},
 	})
 

@@ -362,6 +362,8 @@ type sdkOptions struct {
 
 	mongoClient custom_builtins.IMongoClient
 	metrics     *metrics.Metrics
+	enableAudit bool
+	logger      logging.Logger
 }
 
 type tHelper interface {
