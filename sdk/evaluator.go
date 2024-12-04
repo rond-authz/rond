@@ -186,7 +186,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 			AggregationID: options.Audit.AggregationID,
 			Authorization: audit.AuthzInfo{
 				Allowed:    false,
-				PolicyName: rondConfig.RequestFlow.PolicyName,
+				PolicyName: rondConfig.ResponseFlow.PolicyName,
 			},
 			Subject: audit.SubjectInfo{
 				ID:     rondInput.User.ID,

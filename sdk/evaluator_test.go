@@ -17,7 +17,6 @@ package sdk
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -426,8 +425,6 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					require.Len(t, trailRecords, expectedRecords)
 
 					if testCase.enableAudit {
-						fmt.Printf("asdasd %+v", trailRecords[0])
-
 						foundRecord := trailRecords[0].Fields["trail"].(map[string]any)
 						delete(foundRecord, "id")
 
@@ -575,6 +572,21 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 
 				expectedBody: "{}",
 			},
+			"audit integration with failed policy": {
+				method:      http.MethodGet,
+				path:        "/users/",
+				decodedBody: map[string]interface{}{},
+				opaModuleContent: `
+				package policies
+				responsepolicy [body] {
+					false
+					body := input.response.body
+				}`,
+				expectedBody: "",
+				expectedErr:  core.ErrPolicyNotAllowed,
+				notAllowed:   true,
+				enableAudit:  true,
+			},
 		}
 
 		for name, testCase := range testCases {
@@ -685,6 +697,34 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					expectedRecords := 0
 					if testCase.enableAudit {
 						expectedRecords = 1
+					}
+					require.Len(t, trailRecords, expectedRecords)
+
+					if testCase.enableAudit {
+						foundRecord := trailRecords[0].Fields["trail"].(map[string]any)
+						delete(foundRecord, "id")
+
+						var labels map[string]any
+						var groups []string
+						require.Equal(t, map[string]any{
+							"aggregationId": "",
+							"authorization": map[string]any{
+								"allowed":    !testCase.notAllowed,
+								"binding":    "",
+								"permission": "",
+								"policyName": "responsepolicy",
+								"roleId":     "",
+							},
+							"labels": labels,
+							"request": map[string]any{
+								"path": testCase.path,
+								"verb": testCase.method,
+							},
+							"subject": map[string]any{
+								"groups": groups,
+								"id":     "",
+							},
+						}, trailRecords[0].Fields["trail"])
 					}
 				})
 			})
