@@ -116,6 +116,10 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 				ID:     rondInput.User.ID,
 				Groups: rondInput.User.Groups,
 			},
+			Request: audit.RequestInfo{
+				Verb: rondInput.Request.Method,
+				Path: rondInput.Request.Method,
+			},
 		})
 
 		if errors.Is(err, core.ErrPolicyNotAllowed) {
@@ -141,6 +145,10 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 		Subject: audit.SubjectInfo{
 			ID:     rondInput.User.ID,
 			Groups: rondInput.User.Groups,
+		},
+		Request: audit.RequestInfo{
+			Verb: rondInput.Request.Method,
+			Path: rondInput.Request.Method,
 		},
 	})
 
@@ -184,6 +192,10 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 				ID:     rondInput.User.ID,
 				Groups: rondInput.User.Groups,
 			},
+			Request: audit.RequestInfo{
+				Verb: rondInput.Request.Method,
+				Path: rondInput.Request.Method,
+			},
 		})
 
 		return nil, err
@@ -198,6 +210,10 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 		Subject: audit.SubjectInfo{
 			ID:     rondInput.User.ID,
 			Groups: rondInput.User.Groups,
+		},
+		Request: audit.RequestInfo{
+			Verb: rondInput.Request.Method,
+			Path: rondInput.Request.Method,
 		},
 	})
 
