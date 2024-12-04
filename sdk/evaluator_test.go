@@ -487,6 +487,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 		user             core.InputUser
 		reqHeaders       map[string]string
 		mongoClient      custom_builtins.IMongoClient
+		enableAudit      bool
 
 		decodedBody any
 
@@ -566,6 +567,14 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 
 				expectedBody: `{"f1":"censored","foo":"bar","some":"1234"}`,
 			},
+			"audit integration with allowed policy": {
+				method:      http.MethodGet,
+				path:        "/users/",
+				decodedBody: map[string]interface{}{},
+				enableAudit: true,
+
+				expectedBody: "{}",
+			},
 		}
 
 		for name, testCase := range testCases {
@@ -587,6 +596,8 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					oasFilePath:      "../mocks/rondOasConfig.json",
 					mongoClient:      testCase.mongoClient,
 					metrics:          testMetrics,
+					enableAudit:      testCase.enableAudit,
+					logger:           logger,
 				})
 
 				evaluate, err := sdk.FindEvaluator(testCase.method, testCase.path)
@@ -658,6 +669,23 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 						},
 						Value: hook.Entries[0].Value,
 					}, hook.Entries[0])
+				})
+
+				t.Run("audit", func(t *testing.T) {
+					records, err := test.GetRecords(logger)
+					require.NoError(t, err)
+
+					trailRecords := []test.Record{}
+					for _, record := range records {
+						if record.Message == "audit trail" {
+							trailRecords = append(trailRecords, record)
+						}
+					}
+
+					expectedRecords := 0
+					if testCase.enableAudit {
+						expectedRecords = 1
+					}
 				})
 			})
 		}
