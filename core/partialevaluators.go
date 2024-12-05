@@ -48,7 +48,7 @@ func (policyEvaluators PartialResultsEvaluators) AddFromConfig(ctx context.Conte
 	}
 
 	if _, ok := policyEvaluators[allowPolicy]; !ok {
-		evaluator, err := createPartialEvaluator(ctx, logger, allowPolicy, opaModuleConfig, options, isFilterQuery)
+		evaluator, err := createEvaluator(ctx, logger, allowPolicy, opaModuleConfig, options, isFilterQuery)
 		if err != nil {
 			return fmt.Errorf("%w: %s", ErrEvaluatorCreationFailed, err.Error())
 		}
@@ -57,7 +57,7 @@ func (policyEvaluators PartialResultsEvaluators) AddFromConfig(ctx context.Conte
 
 	if responsePolicy != "" {
 		if _, ok := policyEvaluators[responsePolicy]; !ok {
-			evaluator, err := createPartialEvaluator(ctx, logger, responsePolicy, opaModuleConfig, options, false)
+			evaluator, err := createEvaluator(ctx, logger, responsePolicy, opaModuleConfig, options, false)
 			if err != nil {
 				return fmt.Errorf("%w: %s", ErrEvaluatorCreationFailed, err.Error())
 			}
@@ -87,7 +87,7 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 	return nil, fmt.Errorf("%w: %s", ErrEvaluatorNotFound, policy)
 }
 
-func createPartialEvaluator(ctx context.Context, logger logging.Logger, policy string, opaModuleConfig *OPAModuleConfig, options *OPAEvaluatorOptions, isPartial bool) (*PartialEvaluator, error) {
+func createEvaluator(ctx context.Context, logger logging.Logger, policy string, opaModuleConfig *OPAModuleConfig, options *OPAEvaluatorOptions, isPartial bool) (*PartialEvaluator, error) {
 	logger.WithField("policyName", policy).Info("precomputing rego policy")
 
 	preparedPartialEvaluator := &PartialEvaluator{}

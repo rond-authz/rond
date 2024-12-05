@@ -20,8 +20,11 @@ import (
 	"errors"
 
 	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/internal/audit"
 	"github.com/rond-authz/rond/logging"
 )
+
+const userAgentHeaderKey = "user-agent"
 
 type PolicyResult struct {
 	QueryToProxy []byte
@@ -49,14 +52,20 @@ type evaluator struct {
 
 	evaluatorOptions        *EvaluatorOptions
 	policyEvaluationOptions *core.PolicyEvaluationOptions
+	auditAgent              audit.Agent
 }
 
 func (e evaluator) Config() core.RondConfig {
 	return e.rondConfig
 }
 
+type AuditOptions struct {
+	AggregationID string
+}
+
 type EvaluateOptions struct {
 	Logger logging.Logger
+	Audit  AuditOptions
 }
 
 func (e EvaluateOptions) GetLogger() logging.Logger {
@@ -82,6 +91,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 
 	opaEvaluatorOptions := e.evaluatorOptions.opaEvaluatorOptions(logger)
 
+	ctx = audit.WithAuditCache(ctx, e.auditAgent)
 	evaluatorAllowPolicy, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, rondConfig.RequestFlow.PolicyName, opaEvaluatorOptions)
 	if err != nil {
 		return PolicyResult{}, err
@@ -97,6 +107,24 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 			"policyName": rondConfig.RequestFlow.PolicyName,
 			"message":    err.Error(),
 		}).Error("RBAC policy evaluation failed")
+
+		e.auditAgent.Trace(ctx, audit.Audit{
+			AggregationID: options.Audit.AggregationID,
+			Authorization: audit.AuthzInfo{
+				Allowed:    false,
+				PolicyName: rondConfig.RequestFlow.PolicyName,
+			},
+			Subject: audit.SubjectInfo{
+				ID:     rondInput.User.ID,
+				Groups: rondInput.User.Groups,
+			},
+			Request: audit.RequestInfo{
+				Verb:      rondInput.Request.Method,
+				Path:      rondInput.Request.Path,
+				UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
+			},
+		})
+
 		if errors.Is(err, core.ErrPolicyNotAllowed) {
 			return PolicyResult{}, nil
 		}
@@ -110,6 +138,23 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 			return PolicyResult{}, err
 		}
 	}
+
+	e.auditAgent.Trace(ctx, audit.Audit{
+		AggregationID: options.Audit.AggregationID,
+		Authorization: audit.AuthzInfo{
+			Allowed:    true,
+			PolicyName: rondConfig.RequestFlow.PolicyName,
+		},
+		Subject: audit.SubjectInfo{
+			ID:     rondInput.User.ID,
+			Groups: rondInput.User.Groups,
+		},
+		Request: audit.RequestInfo{
+			Verb:      rondInput.Request.Method,
+			Path:      rondInput.Request.Path,
+			UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
+		},
+	})
 
 	return PolicyResult{
 		Allowed:      true,
@@ -133,6 +178,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 
 	opaEvaluatorOptions := e.evaluatorOptions.opaEvaluatorOptions(logger)
 
+	ctx = audit.WithAuditCache(ctx, e.auditAgent)
 	evaluator, err := e.partialResultEvaluators.GetEvaluatorFromPolicy(ctx, e.rondConfig.ResponseFlow.PolicyName, opaEvaluatorOptions)
 	if err != nil {
 		return nil, err
@@ -140,8 +186,41 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 
 	bodyToProxy, err := evaluator.Evaluate(logger, evalInput, e.policyEvaluationOptions)
 	if err != nil {
+		e.auditAgent.Trace(ctx, audit.Audit{
+			AggregationID: options.Audit.AggregationID,
+			Authorization: audit.AuthzInfo{
+				Allowed:    false,
+				PolicyName: rondConfig.ResponseFlow.PolicyName,
+			},
+			Subject: audit.SubjectInfo{
+				ID:     rondInput.User.ID,
+				Groups: rondInput.User.Groups,
+			},
+			Request: audit.RequestInfo{
+				Verb:      rondInput.Request.Method,
+				Path:      rondInput.Request.Path,
+				UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
+			},
+		})
 		return nil, err
 	}
+
+	e.auditAgent.Trace(ctx, audit.Audit{
+		AggregationID: options.Audit.AggregationID,
+		Authorization: audit.AuthzInfo{
+			Allowed:    true,
+			PolicyName: rondConfig.ResponseFlow.PolicyName,
+		},
+		Subject: audit.SubjectInfo{
+			ID:     rondInput.User.ID,
+			Groups: rondInput.User.Groups,
+		},
+		Request: audit.RequestInfo{
+			Verb:      rondInput.Request.Method,
+			Path:      rondInput.Request.Path,
+			UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
+		},
+	})
 
 	marshalledBody, err := json.Marshal(bodyToProxy)
 	if err != nil {

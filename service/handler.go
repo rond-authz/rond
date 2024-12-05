@@ -126,8 +126,12 @@ func EvaluateRequest(
 		utils.FailResponseWithCode(w, http.StatusInternalServerError, "failed to create rond input", utils.GENERIC_BUSINESS_ERROR_MESSAGE)
 		return err
 	}
+
 	result, err := evaluatorSdk.EvaluateRequestPolicy(req.Context(), rondInput, &sdk.EvaluateOptions{
 		Logger: rondlogrus.NewEntry(logger),
+		Audit: sdk.AuditOptions{
+			AggregationID: req.Header.Get(env.AuditAggregationIDHeaderName),
+		},
 	})
 	if err != nil {
 		// opatranslator.ErrEmptyQuery throws when evaluator should return a query. In case
@@ -204,6 +208,7 @@ func ReverseProxy(
 		http.DefaultTransport,
 		req.Context(),
 		permission,
+		env,
 		logger,
 		req,
 

@@ -20,14 +20,18 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/internal/audit"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
 )
 
+type AuditLabels = audit.Labels
+
 type EvaluatorOptions struct {
 	MongoClient           custom_builtins.IMongoClient
 	EnablePrintStatements bool
+	EnableAuditTracing    bool
 }
 
 func (e EvaluatorOptions) opaEvaluatorOptions(logger logging.Logger) *core.OPAEvaluatorOptions {
@@ -42,6 +46,7 @@ type Options struct {
 	EvaluatorOptions *EvaluatorOptions
 	Metrics          *metrics.Metrics
 	Logger           logging.Logger
+	AuditLabels      AuditLabels
 }
 
 func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas *openapi.OpenAPISpec, options *Options) (OASEvaluatorFinder, error) {
@@ -75,6 +80,10 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 		return nil, fmt.Errorf("invalid OAS configuration: %s", err)
 	}
 
+	auditAgent := buildAuditAgent(options, logger)
+	if len(options.AuditLabels) > 0 {
+		auditAgent.SetGlobalLabels(options.AuditLabels)
+	}
 	return oasImpl{
 		oas:       oas,
 		oasRouter: oasRouter,
@@ -83,6 +92,7 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 		partialResultEvaluators: evaluator,
 		evaluatorOptions:        evaluatorOptions,
 		metrics:                 options.Metrics,
+		auditAgent:              auditAgent,
 	}, nil
 }
 
@@ -105,6 +115,11 @@ func NewWithConfig(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, r
 		return nil, err
 	}
 
+	auditAgent := buildAuditAgent(options, logger)
+	if len(options.AuditLabels) > 0 {
+		auditAgent.SetGlobalLabels(options.AuditLabels)
+	}
+
 	return evaluator{
 		rondConfig:              rondConfig,
 		opaModuleConfig:         opaModuleConfig,
@@ -114,5 +129,6 @@ func NewWithConfig(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, r
 		policyEvaluationOptions: &core.PolicyEvaluationOptions{
 			Metrics: options.Metrics,
 		},
+		auditAgent: auditAgent,
 	}, nil
 }

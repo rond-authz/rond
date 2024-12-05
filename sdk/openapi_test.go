@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/core"
+	"github.com/rond-authz/rond/internal/audit"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
@@ -76,6 +77,7 @@ func TestOasSDK(t *testing.T) {
 				partialResultEvaluators: oas.partialResultEvaluators,
 				policyEvaluationOptions: evaluatorOptions,
 				evaluatorOptions:        &EvaluatorOptions{},
+				auditAgent:              audit.NewNoopAgent(),
 			}, actual)
 
 			t.Run("get permissions", func(t *testing.T) {

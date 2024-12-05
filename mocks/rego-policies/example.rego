@@ -89,3 +89,14 @@ allow_view {
 assert_user {
 	input.user.id == "the-user-id"
 }
+
+allow_policy_with_audit_data {
+    z := {"a": 42}
+    set_audit_labels(z)
+    true
+}
+projection_policy_with_audit_data[res] {
+    z := {"b": 42}
+    set_audit_labels(z)
+    res := input.response.body
+}

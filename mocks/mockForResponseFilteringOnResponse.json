@@ -33,6 +33,14 @@
                     }
                 }
             }
+        },
+        "/filters-with-audit-data/": {
+            "get": {
+                "x-rond": {
+                    "requestFlow": { "policyName": "allow_policy_with_audit_data" },
+                    "responseFlow": { "policyName": "projection_policy_with_audit_data" }
+                }
+            }
         }
     }
 }

@@ -43,9 +43,15 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 		user             core.InputUser
 		reqHeaders       map[string]string
 		mongoClient      custom_builtins.IMongoClient
+		enableAudit      bool
 
 		expectedPolicy PolicyResult
 		expectedErr    error
+
+		expectedAuditLabels     map[string]any
+		expectedAuditBindingID  string
+		expectedAuditPermission string
+		expectedAuditRoleID     string
 	}
 
 	t.Run("evaluate request", func(t *testing.T) {
@@ -53,7 +59,6 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 			"with empty user with policy true": {
 				method: http.MethodGet,
 				path:   "/users/",
-
 				expectedPolicy: PolicyResult{
 					Allowed: true,
 				},
@@ -64,7 +69,6 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				user: core.InputUser{
 					ID: "my-user",
 				},
-
 				expectedPolicy: PolicyResult{
 					Allowed: true,
 				},
@@ -75,7 +79,6 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				user: core.InputUser{
 					ID: "my-user",
 				},
-
 				expectedPolicy: PolicyResult{},
 			},
 			"not allowed policy result": {
@@ -85,8 +88,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					ID: "my-user",
 				},
 				opaModuleContent: `package policies todo { false }`,
-
-				expectedPolicy: PolicyResult{},
+				expectedPolicy:   PolicyResult{},
 			},
 			"with empty filter query": {
 				method:      http.MethodGet,
@@ -300,16 +302,67 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					QueryToProxy: []byte(`{"$or":[{"$and":[{"filterField":{"$eq":"1234"}}]}]}`),
 				},
 			},
+			"audit integration with successful policy": {
+				method:         http.MethodGet,
+				path:           "/users/",
+				user:           core.InputUser{ID: "my-user"},
+				expectedPolicy: PolicyResult{Allowed: true},
+				enableAudit:    true,
+			},
+			"audit integration with custom labels": {
+				method: http.MethodGet,
+				path:   "/users/",
+				user:   core.InputUser{ID: "my-user"},
+				opaModuleContent: `package policies todo {
+					set_audit_labels({
+						"labelKey":"labelVal",
+						"authorization.permission": "the-permission",
+						"authorization.binding": "the-binding",
+						"authorization.role": "the-roleid"
+					})
+					true
+				}`,
+				expectedPolicy:          PolicyResult{Allowed: true},
+				enableAudit:             true,
+				expectedAuditLabels:     map[string]any{"labelKey": "labelVal"},
+				expectedAuditBindingID:  "the-binding",
+				expectedAuditPermission: "the-permission",
+				expectedAuditRoleID:     "the-roleid",
+			},
+			"audit integration with failed policy": {
+				method: http.MethodGet,
+				path:   "/users/",
+				user:   core.InputUser{ID: "my-user"},
+				opaModuleContent: `package policies todo {
+					set_audit_labels({
+						"labelKey":"labelVal",
+						"authorization.permission": "the-permission",
+						"authorization.binding": "the-binding",
+						"authorization.role": "the-roleid"
+					})
+					false
+				}`,
+				expectedPolicy:          PolicyResult{},
+				enableAudit:             true,
+				expectedAuditLabels:     map[string]any{"labelKey": "labelVal"},
+				expectedAuditBindingID:  "the-binding",
+				expectedAuditPermission: "the-permission",
+				expectedAuditRoleID:     "the-roleid",
+			},
 		}
 
 		for name, testCase := range testCases {
 			t.Run(name, func(t *testing.T) {
 				testMetrics, hook := metricstest.New()
+
+				testLogger := test.GetLogger()
 				sdk := getOASSdk(t, &sdkOptions{
 					opaModuleContent: testCase.opaModuleContent,
 					oasFilePath:      testCase.oasFilePath,
 					mongoClient:      testCase.mongoClient,
 					metrics:          testMetrics,
+					enableAudit:      testCase.enableAudit,
+					logger:           testLogger,
 				})
 
 				evaluate, err := sdk.FindEvaluator(testCase.method, testCase.path)
@@ -383,6 +436,52 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 						Value: hook.Entries[0].Value,
 					}, hook.Entries[0])
 				})
+
+				t.Run("audit", func(t *testing.T) {
+					records, err := test.GetRecords(testLogger)
+					require.NoError(t, err)
+
+					trailRecords := []test.Record{}
+					for _, record := range records {
+						if record.Message == "audit trail" {
+							trailRecords = append(trailRecords, record)
+						}
+					}
+
+					expectedRecords := 0
+					if testCase.enableAudit {
+						expectedRecords = 1
+					}
+
+					require.Len(t, trailRecords, expectedRecords)
+
+					if testCase.enableAudit {
+						foundRecord := trailRecords[0].Fields["trail"].(map[string]any)
+						require.NotEmpty(t, foundRecord["id"])
+						delete(foundRecord, "id")
+
+						var groups []string
+						require.Equal(t, map[string]any{
+							"aggregationId": "",
+							"authorization": map[string]any{
+								"allowed":    testCase.expectedPolicy.Allowed,
+								"policyName": "todo",
+								"binding":    testCase.expectedAuditBindingID,
+								"permission": testCase.expectedAuditPermission,
+								"roleId":     testCase.expectedAuditRoleID,
+							},
+							"labels": testCase.expectedAuditLabels,
+							"request": map[string]any{
+								"path": testCase.path,
+								"verb": testCase.method,
+							},
+							"subject": map[string]any{
+								"groups": groups,
+								"id":     "my-user",
+							},
+						}, trailRecords[0].Fields["trail"])
+					}
+				})
 			})
 		}
 	})
@@ -416,6 +515,7 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 		user             core.InputUser
 		reqHeaders       map[string]string
 		mongoClient      custom_builtins.IMongoClient
+		enableAudit      bool
 
 		decodedBody any
 
@@ -495,6 +595,29 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 
 				expectedBody: `{"f1":"censored","foo":"bar","some":"1234"}`,
 			},
+			"audit integration with allowed policy": {
+				method:      http.MethodGet,
+				path:        "/users/",
+				decodedBody: map[string]interface{}{},
+				enableAudit: true,
+
+				expectedBody: "{}",
+			},
+			"audit integration with failed policy": {
+				method:      http.MethodGet,
+				path:        "/users/",
+				decodedBody: map[string]interface{}{},
+				opaModuleContent: `
+				package policies
+				responsepolicy [body] {
+					false
+					body := input.response.body
+				}`,
+				expectedBody: "",
+				expectedErr:  core.ErrPolicyNotAllowed,
+				notAllowed:   true,
+				enableAudit:  true,
+			},
 		}
 
 		for name, testCase := range testCases {
@@ -516,6 +639,8 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 					oasFilePath:      "../mocks/rondOasConfig.json",
 					mongoClient:      testCase.mongoClient,
 					metrics:          testMetrics,
+					enableAudit:      testCase.enableAudit,
+					logger:           logger,
 				})
 
 				evaluate, err := sdk.FindEvaluator(testCase.method, testCase.path)
@@ -587,6 +712,52 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 						},
 						Value: hook.Entries[0].Value,
 					}, hook.Entries[0])
+				})
+
+				t.Run("audit", func(t *testing.T) {
+					records, err := test.GetRecords(logger)
+					require.NoError(t, err)
+
+					trailRecords := []test.Record{}
+					for _, record := range records {
+						if record.Message == "audit trail" {
+							trailRecords = append(trailRecords, record)
+						}
+					}
+
+					expectedRecords := 0
+					if testCase.enableAudit {
+						expectedRecords = 1
+					}
+					require.Len(t, trailRecords, expectedRecords)
+
+					if testCase.enableAudit {
+						foundRecord := trailRecords[0].Fields["trail"].(map[string]any)
+						require.NotEmpty(t, foundRecord["id"])
+						delete(foundRecord, "id")
+
+						var labels map[string]any
+						var groups []string
+						require.Equal(t, map[string]any{
+							"aggregationId": "",
+							"authorization": map[string]any{
+								"allowed":    !testCase.notAllowed,
+								"binding":    "",
+								"permission": "",
+								"policyName": "responsepolicy",
+								"roleId":     "",
+							},
+							"labels": labels,
+							"request": map[string]any{
+								"path": testCase.path,
+								"verb": testCase.method,
+							},
+							"subject": map[string]any{
+								"groups": groups,
+								"id":     "",
+							},
+						}, trailRecords[0].Fields["trail"])
+					}
 				})
 			})
 		}
@@ -978,6 +1149,10 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 	}
 
 	logger := logging.NewNoOpLogger()
+	if options.logger != nil {
+		logger = options.logger
+	}
+
 	if options == nil {
 		options = &sdkOptions{}
 	}
@@ -1003,6 +1178,7 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 		EvaluatorOptions: &EvaluatorOptions{
 			EnablePrintStatements: true,
 			MongoClient:           options.mongoClient,
+			EnableAuditTracing:    options.enableAudit,
 		},
 		Logger: logger,
 	})

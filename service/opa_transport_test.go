@@ -27,6 +27,7 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/openapi"
@@ -40,7 +41,7 @@ import (
 )
 
 func TestRoundTripErrors(t *testing.T) {
-	config := &core.RondConfig{}
+	rondConfig := &core.RondConfig{}
 	logger, _ := test.NewNullLogger()
 
 	defer gock.Off()
@@ -59,7 +60,8 @@ func TestRoundTripErrors(t *testing.T) {
 		transport := NewOPATransport(
 			http.DefaultTransport,
 			req.Context(),
-			config,
+			rondConfig,
+			config.EnvironmentVariables{},
 			logrus.NewEntry(logger),
 			req,
 			"",
@@ -91,14 +93,15 @@ func TestIs2xx(t *testing.T) {
 
 func TestOPATransportResponseWithError(t *testing.T) {
 	logger, _ := test.NewNullLogger()
-	config := &core.RondConfig{}
+	rondConfig := &core.RondConfig{}
 
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/some-api", nil)
 
 	transport := NewOPATransport(
 		http.DefaultTransport,
 		req.Context(),
-		config,
+		rondConfig,
+		config.EnvironmentVariables{},
 		logrus.NewEntry(logger),
 		req,
 		"",
@@ -152,7 +155,7 @@ func TestOPATransportResponseWithError(t *testing.T) {
 }
 
 func TestOPATransportRoundTrip(t *testing.T) {
-	config := &core.RondConfig{}
+	rondConfig := &core.RondConfig{}
 	logger, _ := test.NewNullLogger()
 	req := httptest.NewRequest(http.MethodGet, "/users", nil)
 
@@ -160,7 +163,8 @@ func TestOPATransportRoundTrip(t *testing.T) {
 		transport := NewOPATransport(
 			&MockRoundTrip{Error: fmt.Errorf("some error")},
 			req.Context(),
-			config,
+			rondConfig,
+			config.EnvironmentVariables{},
 			logrus.NewEntry(logger),
 			req,
 			"",
@@ -281,7 +285,8 @@ func TestOPATransportRoundTrip(t *testing.T) {
 		transport := NewOPATransport(
 			&MockRoundTrip{Response: resp},
 			req.Context(),
-			config,
+			rondConfig,
+			config.EnvironmentVariables{},
 			logrus.NewEntry(logger),
 			req,
 			"",
