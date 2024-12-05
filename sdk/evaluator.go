@@ -24,6 +24,8 @@ import (
 	"github.com/rond-authz/rond/logging"
 )
 
+const userAgentHeaderKey = "user-agent"
+
 type PolicyResult struct {
 	QueryToProxy []byte
 	Allowed      bool
@@ -119,7 +121,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 			Request: audit.RequestInfo{
 				Verb:      rondInput.Request.Method,
 				Path:      rondInput.Request.Path,
-				UserAgent: rondInput.Request.Headers.Get("user-agent"),
+				UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 			},
 		})
 
@@ -150,7 +152,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 		Request: audit.RequestInfo{
 			Verb:      rondInput.Request.Method,
 			Path:      rondInput.Request.Path,
-			UserAgent: rondInput.Request.Headers.Get("user-agent"),
+			UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 		},
 	})
 
@@ -197,7 +199,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 			Request: audit.RequestInfo{
 				Verb:      rondInput.Request.Method,
 				Path:      rondInput.Request.Path,
-				UserAgent: rondInput.Request.Headers.Get("user-agent"),
+				UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 			},
 		})
 
@@ -217,7 +219,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 		Request: audit.RequestInfo{
 			Verb:      rondInput.Request.Method,
 			Path:      rondInput.Request.Path,
-			UserAgent: rondInput.Request.Headers.Get("user-agent"),
+			UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 		},
 	})
 
