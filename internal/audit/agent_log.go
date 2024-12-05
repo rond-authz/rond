@@ -42,7 +42,7 @@ func (a *logAgent) Trace(_ context.Context, auditInput Audit) {
 	}
 
 	a.l.
-		WithField("trail", utils.ToMap("audit", auditData)).
+		WithField("trail", utils.ToMap(auditSerializerTagAnnotation, auditData)).
 		Info("audit trail")
 }
 

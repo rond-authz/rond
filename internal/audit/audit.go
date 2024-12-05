@@ -20,6 +20,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const auditSerializerTagAnnotation = "audit"
+
 const (
 	AuditAdditionalDataGrantedPermissionKey = "authorization.permission"
 	AuditAdditionalDataGrantedBindingKey    = "authorization.binding"
