@@ -202,7 +202,6 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 				UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 			},
 		})
-
 		return nil, err
 	}
 
