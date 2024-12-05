@@ -84,7 +84,7 @@ func TestLogAgent(t *testing.T) {
 func TestLogAgentSetGlobalLabels(t *testing.T) {
 	l, hook := test.NewNullLogger()
 	agent := NewLogAgent(rondlogrus.NewLogger(l))
-	agent.SetGlobalLabels(map[string]any{
+	agent.SetGlobalLabels(Labels{
 		AuditAdditionalDataRequestTargetServiceKey: "some-service",
 		"some-label": "label_val",
 	})

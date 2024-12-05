@@ -33,7 +33,7 @@ func NewLogAgent(l logging.Logger) Agent {
 		cache: &SingleRecordCache{},
 	}
 }
-func (a *logAgent) SetGlobalLabels(labels map[string]any) {
+func (a *logAgent) SetGlobalLabels(labels Labels) {
 	a.globals = labels
 }
 

@@ -41,7 +41,7 @@ type Audit struct {
 	Authorization AuthzInfo
 	Subject       SubjectInfo
 	Request       RequestInfo
-	Labels        map[string]any
+	Labels        Labels
 }
 
 type AuthzInfo struct {
@@ -79,7 +79,7 @@ type auditToPrint struct {
 	Authorization authzInfoToPrint `audit:"authorization"`
 	Subject       SubjectInfo      `audit:"subject"`
 	Request       RequestInfo      `audit:"request"`
-	Labels        map[string]any   `audit:"labels"`
+	Labels        Labels           `audit:"labels"`
 }
 
 func (a *Audit) toPrint() auditToPrint {

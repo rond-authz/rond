@@ -20,16 +20,18 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/internal/audit"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
 )
 
+type AuditLabels = audit.Labels
+
 type EvaluatorOptions struct {
 	MongoClient           custom_builtins.IMongoClient
 	EnablePrintStatements bool
 	EnableAuditTracing    bool
-	AuditLabels           map[string]any
 }
 
 func (e EvaluatorOptions) opaEvaluatorOptions(logger logging.Logger) *core.OPAEvaluatorOptions {
@@ -44,7 +46,7 @@ type Options struct {
 	EvaluatorOptions *EvaluatorOptions
 	Metrics          *metrics.Metrics
 	Logger           logging.Logger
-	AuditLabels      map[string]any
+	AuditLabels      AuditLabels
 }
 
 func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas *openapi.OpenAPISpec, options *Options) (OASEvaluatorFinder, error) {

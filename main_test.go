@@ -1510,6 +1510,7 @@ func TestIntegrationWithAuditTrail(t *testing.T) {
 			"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies",
 			"LOG_LEVEL":               "trace",
 			"ENABLE_AUDIT_TRAIL":      strconv.FormatBool(enabledTrace),
+			"TARGET_SERVICE_NAME":     "some-protected-service",
 		})
 
 		app, err := setupService(envs, log)
@@ -1540,7 +1541,11 @@ func TestIntegrationWithAuditTrail(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		require.Equal(t, `{"D":true}`, string(respBody))
 
-		require.Len(t, extractTrails(loggerHook), 2)
+		trails := extractTrails(loggerHook)
+		require.Len(t, trails, 2)
+
+		requestTrail := trails[0].Data["trail"].(map[string]any)["request"].(map[string]any)
+		require.Equal(t, "some-protected-service", requestTrail["targetServiceName"])
 	})
 
 	t.Run("disabled audit does not produce anything", func(t *testing.T) {

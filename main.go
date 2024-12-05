@@ -224,7 +224,7 @@ func prepSDKOrDie(
 	rondLogger logging.Logger,
 	m *metrics.Metrics,
 ) sdk.OASEvaluatorFinder {
-	auditLabels := make(map[string]any)
+	auditLabels := make(sdk.AuditLabels)
 	if env.AuditTargetServiceName != "" {
 		auditLabels[audit.AuditAdditionalDataRequestTargetServiceKey] = env.AuditTargetServiceName
 	}
@@ -235,9 +235,9 @@ func prepSDKOrDie(
 			EnablePrintStatements: env.IsTraceLogLevel(),
 			MongoClient:           mongoClientForBuiltin,
 			EnableAuditTracing:    env.EnableAuditTrail,
-			AuditLabels:           auditLabels,
 		},
-		Logger: rondLogger,
+		Logger:      rondLogger,
+		AuditLabels: auditLabels,
 	})
 	if err != nil {
 		log.WithFields(logrus.Fields{
