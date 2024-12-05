@@ -25,11 +25,11 @@ import (
 	"net/url"
 	"os"
 	"slices"
+	"strconv"
 	"syscall"
 	"testing"
 	"time"
 
-	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/testutils"
@@ -1488,32 +1488,49 @@ func TestEntrypointWithResponseFiltering(t *testing.T) {
 }
 
 func TestIntegrationWithAuditTrail(t *testing.T) {
-	log := getLogger(t)
+	setupApp := func(t *testing.T, enabledTrace bool) (*app, *test.Hook) {
+		t.Helper()
 
-	gockHost := setupGockServer(t, 3099, GockOptions{
-		OASTestFilePath: "./mocks/mockForResponseFilteringOnResponse.json",
-		APIs: map[string]GockReply{
-			"/filters-with-audit-data/": {
-				StatusCode: 200,
-				Response:   map[string]interface{}{"D": true},
+		log, loggerHook := test.NewNullLogger()
+
+		gockHost := setupGockServer(t, 3099, GockOptions{
+			OASTestFilePath: "./mocks/mockForResponseFilteringOnResponse.json",
+			APIs: map[string]GockReply{
+				"/filters-with-audit-data/": {
+					StatusCode: 200,
+					Response:   map[string]interface{}{"D": true},
+				},
 			},
-		},
-	})
+		})
 
-	envs := getEnvs(t, map[string]string{
-		"HTTP_PORT":               "3041",
-		"TARGET_SERVICE_HOST":     gockHost,
-		"TARGET_SERVICE_OAS_PATH": "/documentation/json",
-		"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies",
-		"LOG_LEVEL":               "trace",
-		"ENABLE_AUDIT_TRAIL":      "true",
-	})
+		envs := getEnvs(t, map[string]string{
+			"HTTP_PORT":               "3041",
+			"TARGET_SERVICE_HOST":     gockHost,
+			"TARGET_SERVICE_OAS_PATH": "/documentation/json",
+			"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies",
+			"LOG_LEVEL":               "trace",
+			"ENABLE_AUDIT_TRAIL":      strconv.FormatBool(enabledTrace),
+		})
 
-	app, err := setupService(envs, log)
-	require.NoError(t, err)
-	require.True(t, <-app.sdkBootState.IsReadyChan())
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
 
-	t.Run("200 - with both request and response policy flow", func(t *testing.T) {
+		return app, loggerHook
+	}
+
+	extractTrails := func(hook *test.Hook) []*logrus.Entry {
+		trailRecords := []*logrus.Entry{}
+		for _, entry := range hook.AllEntries() {
+			if entry.Message == "audit trail" {
+				trailRecords = append(trailRecords, entry)
+			}
+		}
+		return trailRecords
+	}
+
+	t.Run("200 - with both request and response policy flow audited", func(t *testing.T) {
+		app, loggerHook := setupApp(t, true)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "http://localhost:3041/filters-with-audit-data/", nil)
 
@@ -1522,6 +1539,23 @@ func TestIntegrationWithAuditTrail(t *testing.T) {
 		respBody, _ := io.ReadAll(w.Result().Body)
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		require.Equal(t, `{"D":true}`, string(respBody))
+
+		require.Len(t, extractTrails(loggerHook), 2)
+	})
+
+	t.Run("disabled audit does not produce anything", func(t *testing.T) {
+		app, loggerHook := setupApp(t, false)
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:3041/filters-with-audit-data/", nil)
+
+		app.router.ServeHTTP(w, req)
+
+		respBody, _ := io.ReadAll(w.Result().Body)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		require.Equal(t, `{"D":true}`, string(respBody))
+
+		require.Len(t, extractTrails(loggerHook), 0)
 	})
 }
 
@@ -1940,18 +1974,4 @@ func getResponseBody(t *testing.T, w *httptest.ResponseRecorder) []byte {
 	require.NoError(t, err)
 
 	return responseBody
-}
-
-func getLogger(t *testing.T) *logrus.Logger {
-	t.Helper()
-
-	if testing.Verbose() {
-		log, _ := glogrus.InitHelper(glogrus.InitOptions{
-			Level: "trace",
-		})
-		return log
-	}
-
-	log, _ := test.NewNullLogger()
-	return log
 }

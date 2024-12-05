@@ -228,6 +228,7 @@ func prepSDKOrDie(
 		EvaluatorOptions: &sdk.EvaluatorOptions{
 			EnablePrintStatements: env.IsTraceLogLevel(),
 			MongoClient:           mongoClientForBuiltin,
+			EnableAuditTracing:    env.EnableAuditTrail,
 		},
 		Logger: rondLogger,
 	})
