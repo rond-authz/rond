@@ -28,6 +28,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/internal/audit"
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/helpers"
 	"github.com/rond-authz/rond/internal/mongoclient"
@@ -223,12 +224,18 @@ func prepSDKOrDie(
 	rondLogger logging.Logger,
 	m *metrics.Metrics,
 ) sdk.OASEvaluatorFinder {
+	auditLabels := make(map[string]any)
+	if env.AuditTargetServiceName != "" {
+		auditLabels[audit.AuditAdditionalDataRequestTargetServiceKey] = env.AuditTargetServiceName
+	}
+
 	sdk, err := sdk.NewFromOAS(context.Background(), opaModuleConfig, oas, &sdk.Options{
 		Metrics: m,
 		EvaluatorOptions: &sdk.EvaluatorOptions{
 			EnablePrintStatements: env.IsTraceLogLevel(),
 			MongoClient:           mongoClientForBuiltin,
 			EnableAuditTracing:    env.EnableAuditTrail,
+			AuditLabels:           auditLabels,
 		},
 		Logger: rondLogger,
 	})

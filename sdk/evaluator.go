@@ -117,8 +117,9 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 				Groups: rondInput.User.Groups,
 			},
 			Request: audit.RequestInfo{
-				Verb: rondInput.Request.Method,
-				Path: rondInput.Request.Path,
+				Verb:      rondInput.Request.Method,
+				Path:      rondInput.Request.Path,
+				UserAgent: rondInput.Request.Headers.Get("user-agent"),
 			},
 		})
 
@@ -147,8 +148,9 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 			Groups: rondInput.User.Groups,
 		},
 		Request: audit.RequestInfo{
-			Verb: rondInput.Request.Method,
-			Path: rondInput.Request.Path,
+			Verb:      rondInput.Request.Method,
+			Path:      rondInput.Request.Path,
+			UserAgent: rondInput.Request.Headers.Get("user-agent"),
 		},
 	})
 
@@ -193,8 +195,9 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 				Groups: rondInput.User.Groups,
 			},
 			Request: audit.RequestInfo{
-				Verb: rondInput.Request.Method,
-				Path: rondInput.Request.Path,
+				Verb:      rondInput.Request.Method,
+				Path:      rondInput.Request.Path,
+				UserAgent: rondInput.Request.Headers.Get("user-agent"),
 			},
 		})
 
@@ -212,8 +215,9 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 			Groups: rondInput.User.Groups,
 		},
 		Request: audit.RequestInfo{
-			Verb: rondInput.Request.Method,
-			Path: rondInput.Request.Path,
+			Verb:      rondInput.Request.Method,
+			Path:      rondInput.Request.Path,
+			UserAgent: rondInput.Request.Headers.Get("user-agent"),
 		},
 	})
 

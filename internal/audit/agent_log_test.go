@@ -80,3 +80,65 @@ func TestLogAgent(t *testing.T) {
 		},
 	}, trailData)
 }
+
+func TestLogAgentSetGlobalLabels(t *testing.T) {
+	l, hook := test.NewNullLogger()
+	agent := NewLogAgent(rondlogrus.NewLogger(l))
+	agent.SetGlobalLabels(map[string]any{
+		AuditAdditionalDataRequestTargetServiceKey: "some-service",
+		"some-label": "label_val",
+	})
+	agent.Cache().Store(Data{
+		"authorization.permission": "my-permission",
+		"authorization.binding":    "my-binding",
+		"authorization.role":       "my-role",
+		"my-label-key":             "my-label-value",
+	})
+	agent.Trace(context.Background(), Audit{
+		AggregationID: "the-aggregation-id",
+		Authorization: AuthzInfo{
+			Allowed:    true,
+			PolicyName: "some_policy",
+		},
+		Subject: SubjectInfo{
+			ID:     "some user",
+			Groups: []string{"g1", "g2"},
+		},
+		Request: RequestInfo{Body: []byte("some body")},
+	})
+
+	entries := hook.AllEntries()
+	require.Len(t, entries, 1)
+
+	entry := entries[0]
+	require.Equal(t, "audit trail", entry.Message)
+
+	trailData := entry.Data["trail"]
+	trailDataMap := trailData.(map[string]any)
+
+	require.NotEmpty(t, trailDataMap["id"])
+	delete(trailDataMap, "id")
+
+	require.Equal(t, map[string]any{
+		"aggregationId": "the-aggregation-id",
+		"authorization": map[string]any{
+			"allowed":    true,
+			"policyName": "some_policy",
+			"permission": "my-permission",
+			"binding":    "my-binding",
+			"roleId":     "my-role",
+		},
+		"labels": map[string]any{
+			"some-label":   "label_val",
+			"my-label-key": "my-label-value",
+		},
+		"request": map[string]any{
+			"body":              []byte("some body"),
+			"targetServiceName": "some-service",
+		},
+		"subject": map[string]any{
+			"groups": []string{"g1", "g2"},
+			"id":     "some user",
+		},
+	}, trailData)
+}

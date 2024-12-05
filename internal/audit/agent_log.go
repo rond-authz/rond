@@ -22,8 +22,9 @@ import (
 )
 
 type logAgent struct {
-	l     logging.Logger
-	cache AuditCache
+	l       logging.Logger
+	cache   AuditCache
+	globals map[string]any
 }
 
 func NewLogAgent(l logging.Logger) Agent {
@@ -32,11 +33,18 @@ func NewLogAgent(l logging.Logger) Agent {
 		cache: &SingleRecordCache{},
 	}
 }
+func (a *logAgent) SetGlobalLabels(labels map[string]any) {
+	a.globals = labels
+}
 
 func (a *logAgent) Trace(_ context.Context, auditInput Audit) {
 	data := a.cache.Load()
 
 	auditData := auditInput.toPrint()
+	if a.globals != nil {
+		auditData.applyDataFromPolicy(a.globals)
+	}
+
 	if data != nil {
 		auditData.applyDataFromPolicy(data)
 	}

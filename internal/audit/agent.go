@@ -19,11 +19,14 @@ import "context"
 type Agent interface {
 	Trace(context.Context, Audit)
 	Cache() AuditCache
+	SetGlobalLabels(labels map[string]any)
 }
 
+// noopAgent is a lazy agent that does nothing :(
 type noopAgent struct{}
 
 func NewNoopAgent() Agent { return &noopAgent{} }
 
-func (a *noopAgent) Trace(context.Context, Audit) {}
-func (a *noopAgent) Cache() AuditCache            { return &SingleRecordCache{} }
+func (a *noopAgent) Trace(context.Context, Audit)          {}
+func (a *noopAgent) Cache() AuditCache                     { return &SingleRecordCache{} }
+func (a *noopAgent) SetGlobalLabels(labels map[string]any) {}

@@ -60,6 +60,7 @@ type EnvironmentVariables struct {
 	ExposeMetrics                  bool   `env:"EXPOSE_METRICS" envDefault:"true"`
 	EnableAuditTrail               bool   `env:"ENABLE_AUDIT_TRAIL"`
 	AuditAggregationIDHeaderName   string `env:"AUDIT_AGGREGATION_ID_HEADER_NAME" envDefault:"x-request-id"`
+	AuditTargetServiceName         string `env:"TARGET_SERVICE_NAME"`
 }
 
 type EnvKey struct{}

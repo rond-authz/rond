@@ -23,15 +23,17 @@ import (
 const auditSerializerTagAnnotation = "audit"
 
 const (
-	AuditAdditionalDataGrantedPermissionKey = "authorization.permission"
-	AuditAdditionalDataGrantedBindingKey    = "authorization.binding"
-	AuditAdditionalDataGrantedRoleKey       = "authorization.role"
+	AuditAdditionalDataGrantedPermissionKey    = "authorization.permission"
+	AuditAdditionalDataGrantedBindingKey       = "authorization.binding"
+	AuditAdditionalDataGrantedRoleKey          = "authorization.role"
+	AuditAdditionalDataRequestTargetServiceKey = "request.targetServiceName"
 )
 
 var reservedLabelKeys = []string{
 	AuditAdditionalDataGrantedPermissionKey,
 	AuditAdditionalDataGrantedBindingKey,
 	AuditAdditionalDataGrantedRoleKey,
+	AuditAdditionalDataRequestTargetServiceKey,
 }
 
 type Audit struct {
@@ -51,6 +53,9 @@ type RequestInfo struct {
 	Body interface{} `audit:"body,omitempty"`
 	Path string      `audit:"path,omitempty"`
 	Verb string      `audit:"verb,omitempty"`
+
+	TargetServiceName string `audit:"targetServiceName,omitempty"`
+	UserAgent         string `audit:"userAgent,omitempty"`
 }
 
 type SubjectInfo struct {
@@ -113,6 +118,14 @@ func (a *auditToPrint) applyDataFromPolicy(data map[string]any) {
 		str, ok := grantedRoleId.(string)
 		if ok {
 			a.Authorization.RoleID = str
+		}
+	}
+
+	targetServiceName, ok := data[AuditAdditionalDataRequestTargetServiceKey]
+	if ok && targetServiceName != nil {
+		str, ok := targetServiceName.(string)
+		if ok {
+			a.Request.TargetServiceName = str
 		}
 	}
 

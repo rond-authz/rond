@@ -29,6 +29,7 @@ type EvaluatorOptions struct {
 	MongoClient           custom_builtins.IMongoClient
 	EnablePrintStatements bool
 	EnableAuditTracing    bool
+	AuditLabels           map[string]any
 }
 
 func (e EvaluatorOptions) opaEvaluatorOptions(logger logging.Logger) *core.OPAEvaluatorOptions {
@@ -43,6 +44,7 @@ type Options struct {
 	EvaluatorOptions *EvaluatorOptions
 	Metrics          *metrics.Metrics
 	Logger           logging.Logger
+	AuditLabels      map[string]any
 }
 
 func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas *openapi.OpenAPISpec, options *Options) (OASEvaluatorFinder, error) {
@@ -77,6 +79,9 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 	}
 
 	auditAgent := buildAuditAgent(options, logger)
+	if len(options.AuditLabels) > 0 {
+		auditAgent.SetGlobalLabels(options.AuditLabels)
+	}
 	return oasImpl{
 		oas:       oas,
 		oasRouter: oasRouter,
@@ -109,6 +114,10 @@ func NewWithConfig(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, r
 	}
 
 	auditAgent := buildAuditAgent(options, logger)
+	if len(options.AuditLabels) > 0 {
+		auditAgent.SetGlobalLabels(options.AuditLabels)
+	}
+
 	return evaluator{
 		rondConfig:              rondConfig,
 		opaModuleConfig:         opaModuleConfig,
