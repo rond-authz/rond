@@ -59,8 +59,8 @@ type RequestInfo struct {
 }
 
 type SubjectInfo struct {
-	ID     string   `audit:"id"`
-	Groups []string `audit:"groups"`
+	ID     string   `audit:"id,omitempty"`
+	Groups []string `audit:"groups,omitempty"`
 }
 
 // authzInfoToPrint defines the internal structure for an audit record and must be used by remapping
@@ -68,14 +68,14 @@ type SubjectInfo struct {
 type authzInfoToPrint struct {
 	Allowed    bool   `audit:"allowed"`
 	PolicyName string `audit:"policyName"`
-	Permission string `audit:"permission"`
-	BindingID  string `audit:"binding"`
-	RoleID     string `audit:"roleId"`
+	Permission string `audit:"permission,omitempty"`
+	BindingID  string `audit:"binding,omitempty"`
+	RoleID     string `audit:"roleId,omitempty"`
 }
 
 type auditToPrint struct {
 	ID            string           `audit:"id"`
-	AggregationID string           `audit:"aggregationId"`
+	AggregationID string           `audit:"aggregationId,omitempty"`
 	Authorization authzInfoToPrint `audit:"authorization"`
 	Subject       SubjectInfo      `audit:"subject"`
 	Request       RequestInfo      `audit:"request"`

@@ -460,24 +460,29 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 						require.NotEmpty(t, foundRecord["id"])
 						delete(foundRecord, "id")
 
-						var groups []string
+						authz := map[string]any{
+							"allowed":    testCase.expectedPolicy.Allowed,
+							"policyName": "todo",
+						}
+						if testCase.expectedAuditBindingID != "" {
+							authz["binding"] = testCase.expectedAuditBindingID
+						}
+						if testCase.expectedAuditPermission != "" {
+							authz["permission"] = testCase.expectedAuditPermission
+						}
+						if testCase.expectedAuditRoleID != "" {
+							authz["roleId"] = testCase.expectedAuditRoleID
+						}
+
 						require.Equal(t, map[string]any{
-							"aggregationId": "",
-							"authorization": map[string]any{
-								"allowed":    testCase.expectedPolicy.Allowed,
-								"policyName": "todo",
-								"binding":    testCase.expectedAuditBindingID,
-								"permission": testCase.expectedAuditPermission,
-								"roleId":     testCase.expectedAuditRoleID,
-							},
-							"labels": testCase.expectedAuditLabels,
+							"authorization": authz,
+							"labels":        testCase.expectedAuditLabels,
 							"request": map[string]any{
 								"path": testCase.path,
 								"verb": testCase.method,
 							},
 							"subject": map[string]any{
-								"groups": groups,
-								"id":     "my-user",
+								"id": "my-user",
 							},
 						}, trailRecords[0].Fields["trail"])
 					}
@@ -737,25 +742,17 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 						delete(foundRecord, "id")
 
 						var labels map[string]any
-						var groups []string
 						require.Equal(t, map[string]any{
-							"aggregationId": "",
 							"authorization": map[string]any{
 								"allowed":    !testCase.notAllowed,
-								"binding":    "",
-								"permission": "",
 								"policyName": "responsepolicy",
-								"roleId":     "",
 							},
 							"labels": labels,
 							"request": map[string]any{
 								"path": testCase.path,
 								"verb": testCase.method,
 							},
-							"subject": map[string]any{
-								"groups": groups,
-								"id":     "",
-							},
+							"subject": map[string]any{},
 						}, trailRecords[0].Fields["trail"])
 					}
 				})
