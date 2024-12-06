@@ -29,5 +29,12 @@ func TestSingleRecordCache(t *testing.T) {
 		loadData := c.Load()
 
 		require.Equal(t, storedData, loadData)
+
+		c.Store(Data{"key2": "val2"})
+		loadData2 := c.Load()
+		require.Equal(t, Data{
+			"key":  "val",
+			"key2": "val2",
+		}, loadData2)
 	})
 }

@@ -26,7 +26,13 @@ type SingleRecordCache struct {
 }
 
 func (c *SingleRecordCache) Store(d Data) {
-	c.data = d
+	if c.data == nil {
+		c.data = make(Data)
+	}
+
+	for k, v := range d {
+		c.data[k] = v
+	}
 }
 
 func (c *SingleRecordCache) Load() Data {
