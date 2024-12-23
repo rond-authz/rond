@@ -92,7 +92,7 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 		partialResultEvaluators: evaluator,
 		evaluatorOptions:        evaluatorOptions,
 		metrics:                 options.Metrics,
-		auditAgent:              auditAgent,
+		auditAgentPool:          auditAgent,
 	}, nil
 }
 
@@ -129,6 +129,6 @@ func NewWithConfig(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, r
 		policyEvaluationOptions: &core.PolicyEvaluationOptions{
 			Metrics: options.Metrics,
 		},
-		auditAgent: auditAgent,
+		auditAgentPool: auditAgent,
 	}, nil
 }
