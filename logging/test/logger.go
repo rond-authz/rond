@@ -42,8 +42,8 @@ type testLogger struct {
 }
 
 func (l *testLogger) setRecord(level string, msg any) {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
+	l.mu.Lock()
+	defer l.mu.Unlock()
 
 	l.entry.records = append(l.entry.records, Record{
 		Fields:  l.Fields,
@@ -52,8 +52,8 @@ func (l *testLogger) setRecord(level string, msg any) {
 	})
 
 	if originalLogger := l.entry.originalLogger; originalLogger != nil {
-		originalLogger.mu.RLock()
-		defer originalLogger.mu.RUnlock()
+		originalLogger.mu.Lock()
+		defer originalLogger.mu.Unlock()
 
 		originalLogger.entry.records = append(originalLogger.entry.records, Record{
 			Fields:  l.Fields,
@@ -84,8 +84,8 @@ func (l *testLogger) Trace(msg any) {
 }
 
 func (l *testLogger) WithFields(fields map[string]any) logging.Logger {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
+	l.mu.Lock()
+	defer l.mu.Unlock()
 
 	clonedFields := map[string]any{}
 	for k, v := range l.Fields {
@@ -115,8 +115,8 @@ func (l *testLogger) WithFields(fields map[string]any) logging.Logger {
 }
 
 func (l *testLogger) WithField(key string, value any) logging.Logger {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
+	l.mu.Lock()
+	defer l.mu.Unlock()
 
 	clonedFields := map[string]any{}
 	for k, v := range l.Fields {
@@ -144,14 +144,14 @@ func (l *testLogger) WithField(key string, value any) logging.Logger {
 }
 
 func (e *entry) AllRecords() []Record {
-	e.mu.Lock()
-	defer e.mu.Unlock()
+	e.mu.RLock()
+	defer e.mu.RUnlock()
 	return e.records
 }
 
 func (l *testLogger) OriginalLogger() *entry {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	return l.entry
 }
 

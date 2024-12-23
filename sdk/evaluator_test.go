@@ -493,7 +493,6 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 		}
 
 		t.Run("concurrent map writes with audit log (issue #418)", func(t *testing.T) {
-			testLogger := test.GetLogger()
 			expectedAuditBindingID := "the-binding"
 			expectedAuditPermission := "the-permission"
 			expectedAuditRoleID := "the-roleid"
@@ -528,54 +527,10 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				require.NoError(t, err)
 				expectedPolicy := PolicyResult{Allowed: true}
 				require.Equal(t, expectedPolicy, actual)
-
-				t.Run("audit", func(t *testing.T) {
-					records, err := test.GetRecords(testLogger)
-					require.NoError(t, err)
-
-					trailRecords := []test.Record{}
-					for _, record := range records {
-						if record.Message == "audit trail" {
-							trailRecords = append(trailRecords, record)
-						}
-					}
-
-					require.Len(t, trailRecords, 1)
-
-					foundRecord := trailRecords[0].Fields["trail"].(map[string]any)
-					require.NotEmpty(t, foundRecord["id"])
-					delete(foundRecord, "id")
-
-					authz := map[string]any{
-						"allowed":    expectedPolicy.Allowed,
-						"policyName": "todo",
-						"binding":    expectedAuditBindingID,
-						"permission": expectedAuditPermission,
-						"roleId":     expectedAuditRoleID,
-					}
-
-					labels := map[string]any{
-						"labelKey": "labelVal",
-					}
-					for k, v := range headers {
-						labels[k] = v[0]
-					}
-
-					require.Equal(t, map[string]any{
-						"authorization": authz,
-						"labels":        labels,
-						"request": map[string]any{
-							"path": path,
-							"verb": method,
-						},
-						"subject": map[string]any{
-							"id": "my-user",
-						},
-					}, trailRecords[0].Fields["trail"])
-				})
 			}
 
 			t.Run("with NewFromOas", func(t *testing.T) {
+				testLogger := test.GetLogger()
 				sdk := getOASSdk(t, &sdkOptions{
 					opaModuleContent: opaModuleContent,
 					enableAudit:      true,
@@ -607,10 +562,65 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				}()
 
 				wg.Wait()
-				t.Log("ok")
+
+				t.Run("audit", func(t *testing.T) {
+					records, err := test.GetRecords(testLogger)
+					require.NoError(t, err)
+
+					trailRecords := []test.Record{}
+					for _, record := range records {
+						if record.Message == "audit trail" {
+							trailRecords = append(trailRecords, record)
+						}
+					}
+
+					require.Len(t, trailRecords, 2)
+					expectedHeaderValues := map[string]bool{
+						"c1": false,
+						"c2": false,
+					}
+
+					for _, record := range trailRecords {
+						trailRecord := record.Fields["trail"].(map[string]any)
+						require.NotEmpty(t, trailRecord["id"])
+						delete(trailRecord, "id")
+
+						authz := map[string]any{
+							"allowed":    true,
+							"policyName": "todo",
+							"binding":    expectedAuditBindingID,
+							"permission": expectedAuditPermission,
+							"roleId":     expectedAuditRoleID,
+						}
+
+						headerValue := trailRecord["labels"].(map[string]any)["My-Header-Key"].(string)
+						if expectedHeaderValues[headerValue] {
+							t.Errorf("header value %s already seen", headerValue)
+						}
+						expectedHeaderValues[headerValue] = true
+
+						labels := map[string]any{
+							"labelKey":      "labelVal",
+							"My-Header-Key": headerValue,
+						}
+
+						require.Equal(t, map[string]any{
+							"authorization": authz,
+							"labels":        labels,
+							"request": map[string]any{
+								"path": path,
+								"verb": method,
+							},
+							"subject": map[string]any{
+								"id": "my-user",
+							},
+						}, trailRecord)
+					}
+				})
 			})
 
 			t.Run("with NewWithConfig", func(t *testing.T) {
+				testLogger := test.GetLogger()
 				config := core.RondConfig{
 					RequestFlow: core.RequestFlow{
 						PolicyName: "todo",
@@ -630,12 +640,6 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				getOASSdk(t, &sdkOptions{
-					opaModuleContent: opaModuleContent,
-					enableAudit:      true,
-					logger:           testLogger,
-				})
-
 				wg := sync.WaitGroup{}
 
 				wg.Add(1)
@@ -648,14 +652,68 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 
 				wg.Add(1)
 				go func() {
-					h := http.Header{}
-					h.Set("My-Header-Key", "c2")
-					testCase(t, evaluate, h)
+					h1 := http.Header{}
+					h1.Set("My-Header-Key", "c2")
+					testCase(t, evaluate, h1)
 					wg.Done()
 				}()
 
 				wg.Wait()
-				t.Log("ok")
+
+				t.Run("audit", func(t *testing.T) {
+					records, err := test.GetRecords(testLogger)
+					require.NoError(t, err)
+
+					trailRecords := []test.Record{}
+					for _, record := range records {
+						if record.Message == "audit trail" {
+							trailRecords = append(trailRecords, record)
+						}
+					}
+
+					require.Len(t, trailRecords, 2)
+					expectedHeaderValues := map[string]bool{
+						"c1": false,
+						"c2": false,
+					}
+
+					for _, record := range trailRecords {
+						trailRecord := record.Fields["trail"].(map[string]any)
+						require.NotEmpty(t, trailRecord["id"])
+						delete(trailRecord, "id")
+
+						authz := map[string]any{
+							"allowed":    true,
+							"policyName": "todo",
+							"binding":    expectedAuditBindingID,
+							"permission": expectedAuditPermission,
+							"roleId":     expectedAuditRoleID,
+						}
+
+						headerValue := trailRecord["labels"].(map[string]any)["My-Header-Key"].(string)
+						if expectedHeaderValues[headerValue] {
+							t.Errorf("header value %s already seen", headerValue)
+						}
+						expectedHeaderValues[headerValue] = true
+
+						labels := map[string]any{
+							"labelKey":      "labelVal",
+							"My-Header-Key": headerValue,
+						}
+
+						require.Equal(t, map[string]any{
+							"authorization": authz,
+							"labels":        labels,
+							"request": map[string]any{
+								"path": path,
+								"verb": method,
+							},
+							"subject": map[string]any{
+								"id": "my-user",
+							},
+						}, trailRecord)
+					}
+				})
 			})
 		})
 	})
