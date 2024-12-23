@@ -652,9 +652,9 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 
 				wg.Add(1)
 				go func() {
-					h1 := http.Header{}
-					h1.Set("My-Header-Key", "c2")
-					testCase(t, evaluate, h1)
+					h := http.Header{}
+					h.Set("My-Header-Key", "c2")
+					testCase(t, evaluate, h)
 					wg.Done()
 				}()
 

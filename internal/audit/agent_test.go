@@ -22,10 +22,11 @@ import (
 )
 
 func TestNoopAgentDoesnotBreakStuff(t *testing.T) {
-	a := NewNoopAgent()
-	require.NotNil(t, a)
+	p := NewNoopAgentPool()
+	require.NotNil(t, p)
 
-	a.SetGlobalLabels(map[string]any{"a": "b"})
+	a := p.New()
+
 	a.Trace(context.Background(), Audit{})
 
 	require.NotNil(t, a.Cache())

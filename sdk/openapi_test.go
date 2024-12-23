@@ -77,7 +77,7 @@ func TestOasSDK(t *testing.T) {
 				partialResultEvaluators: oas.partialResultEvaluators,
 				policyEvaluationOptions: evaluatorOptions,
 				evaluatorOptions:        &EvaluatorOptions{},
-				auditAgent:              audit.NewNoopAgent(),
+				auditAgentPool:          audit.NewNoopAgentPool(),
 			}, actual)
 
 			t.Run("get permissions", func(t *testing.T) {
