@@ -25,6 +25,7 @@ func TestNoopAgentDoesnotBreakStuff(t *testing.T) {
 	p := NewNoopAgentPool()
 	require.NotNil(t, p)
 
+	p.SetGlobalLabels(map[string]any{"a": "b"})
 	a := p.New()
 
 	a.Trace(context.Background(), Audit{})
