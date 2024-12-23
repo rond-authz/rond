@@ -17,8 +17,10 @@ package sdk
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/rond-authz/rond/core"
@@ -489,6 +491,173 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 				})
 			})
 		}
+
+		t.Run("concurrent map writes with audit log (issue #418)", func(t *testing.T) {
+			testLogger := test.GetLogger()
+			expectedAuditBindingID := "the-binding"
+			expectedAuditPermission := "the-permission"
+			expectedAuditRoleID := "the-roleid"
+
+			opaModuleContent := fmt.Sprintf(`package policies todo {
+				h1 := get_header("my-header-key", input.request.headers)
+				set_audit_labels({
+					"labelKey":"labelVal",
+					"authorization.permission": "%s",
+					"authorization.binding": "%s",
+					"authorization.role": "%s",
+					"My-Header-Key": h1
+				})
+				true
+			}`, expectedAuditPermission, expectedAuditBindingID, expectedAuditRoleID)
+			method := http.MethodGet
+			path := "/users/"
+
+			testCase := func(t *testing.T, evaluate Evaluator, headers http.Header) {
+				t.Helper()
+
+				rondInput := getFakeInput(t, core.InputRequest{
+					Headers: headers,
+					Path:    path,
+					Method:  method,
+				}, "", core.InputUser{ID: "my-user"}, nil)
+
+				logger := test.GetLogger()
+				actual, err := evaluate.EvaluateRequestPolicy(context.Background(), rondInput, &EvaluateOptions{
+					Logger: logger,
+				})
+				require.NoError(t, err)
+				expectedPolicy := PolicyResult{Allowed: true}
+				require.Equal(t, expectedPolicy, actual)
+
+				t.Run("audit", func(t *testing.T) {
+					records, err := test.GetRecords(testLogger)
+					require.NoError(t, err)
+
+					trailRecords := []test.Record{}
+					for _, record := range records {
+						if record.Message == "audit trail" {
+							trailRecords = append(trailRecords, record)
+						}
+					}
+
+					require.Len(t, trailRecords, 1)
+
+					foundRecord := trailRecords[0].Fields["trail"].(map[string]any)
+					require.NotEmpty(t, foundRecord["id"])
+					delete(foundRecord, "id")
+
+					authz := map[string]any{
+						"allowed":    expectedPolicy.Allowed,
+						"policyName": "todo",
+						"binding":    expectedAuditBindingID,
+						"permission": expectedAuditPermission,
+						"roleId":     expectedAuditRoleID,
+					}
+
+					labels := map[string]any{
+						"labelKey": "labelVal",
+					}
+					for k, v := range headers {
+						labels[k] = v[0]
+					}
+
+					require.Equal(t, map[string]any{
+						"authorization": authz,
+						"labels":        labels,
+						"request": map[string]any{
+							"path": path,
+							"verb": method,
+						},
+						"subject": map[string]any{
+							"id": "my-user",
+						},
+					}, trailRecords[0].Fields["trail"])
+				})
+			}
+
+			t.Run("with NewFromOas", func(t *testing.T) {
+				sdk := getOASSdk(t, &sdkOptions{
+					opaModuleContent: opaModuleContent,
+					enableAudit:      true,
+					logger:           testLogger,
+				})
+
+				wg := sync.WaitGroup{}
+
+				wg.Add(1)
+				go func() {
+					evaluate, err := sdk.FindEvaluator(method, path)
+					require.NoError(t, err)
+
+					h := http.Header{}
+					h.Set("My-Header-Key", "c1")
+					testCase(t, evaluate, h)
+					wg.Done()
+				}()
+
+				wg.Add(1)
+				go func() {
+					evaluate, err := sdk.FindEvaluator(method, path)
+					require.NoError(t, err)
+
+					h := http.Header{}
+					h.Set("My-Header-Key", "c2")
+					testCase(t, evaluate, h)
+					wg.Done()
+				}()
+
+				wg.Wait()
+				t.Log("ok")
+			})
+
+			t.Run("with NewWithConfig", func(t *testing.T) {
+				config := core.RondConfig{
+					RequestFlow: core.RequestFlow{
+						PolicyName: "todo",
+					},
+				}
+
+				opaModuleConfig := core.MustNewOPAModuleConfig([]core.Module{
+					{Content: opaModuleContent},
+				})
+
+				evaluate, err := NewWithConfig(context.Background(), opaModuleConfig, config, &Options{
+					EvaluatorOptions: &EvaluatorOptions{
+						EnableAuditTracing:    true,
+						EnablePrintStatements: true,
+					},
+					Logger: testLogger,
+				})
+				require.NoError(t, err)
+
+				getOASSdk(t, &sdkOptions{
+					opaModuleContent: opaModuleContent,
+					enableAudit:      true,
+					logger:           testLogger,
+				})
+
+				wg := sync.WaitGroup{}
+
+				wg.Add(1)
+				go func() {
+					h := http.Header{}
+					h.Set("My-Header-Key", "c1")
+					testCase(t, evaluate, h)
+					wg.Done()
+				}()
+
+				wg.Add(1)
+				go func() {
+					h := http.Header{}
+					h.Set("My-Header-Key", "c2")
+					testCase(t, evaluate, h)
+					wg.Done()
+				}()
+
+				wg.Wait()
+				t.Log("ok")
+			})
+		})
 	})
 
 	t.Run("with nil options", func(t *testing.T) {
