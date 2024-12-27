@@ -31,7 +31,7 @@ type oasImpl struct {
 	partialResultEvaluators core.PartialResultsEvaluators
 	evaluatorOptions        *EvaluatorOptions
 	metrics                 *metrics.Metrics
-	auditAgent              audit.Agent
+	auditAgentPool          audit.AgentPool
 }
 
 func (r oasImpl) FindEvaluator(method, path string) (Evaluator, error) {
@@ -45,7 +45,7 @@ func (r oasImpl) FindEvaluator(method, path string) (Evaluator, error) {
 		partialResultEvaluators: r.partialResultEvaluators,
 
 		evaluatorOptions: r.evaluatorOptions,
-		auditAgent:       r.auditAgent,
+		auditAgentPool:   r.auditAgentPool,
 		policyEvaluationOptions: &core.PolicyEvaluationOptions{
 			Metrics: r.metrics,
 			AdditionalLogFields: map[string]string{

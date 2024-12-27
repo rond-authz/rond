@@ -21,30 +21,40 @@ import (
 	"github.com/rond-authz/rond/logging"
 )
 
-type logAgent struct {
-	l       logging.Logger
-	cache   AuditCache
-	globals map[string]any
+type agentPool struct {
+	l      logging.Logger
+	labels Labels
 }
 
-func NewLogAgent(l logging.Logger) Agent {
-	return &logAgent{
-		l:     l,
+func (p *agentPool) New() Agent {
+	agent := &logAgent{
+		l:     p.l,
 		cache: &SingleRecordCache{},
 	}
+
+	if p.labels != nil {
+		agent.cache.Store(p.labels)
+	}
+
+	return agent
 }
-func (a *logAgent) SetGlobalLabels(labels Labels) {
-	a.globals = labels
+
+func NewLogAgentPool(l logging.Logger, labels Labels) AgentPool {
+	return &agentPool{
+		l:      l,
+		labels: labels,
+	}
+}
+
+type logAgent struct {
+	l     logging.Logger
+	cache AuditCache
 }
 
 func (a *logAgent) Trace(_ context.Context, auditInput Audit) {
 	data := a.cache.Load()
 
 	auditData := auditInput.toPrint()
-	if a.globals != nil {
-		auditData.applyDataFromPolicy(a.globals)
-	}
-
 	if data != nil {
 		auditData.applyDataFromPolicy(data)
 	}
