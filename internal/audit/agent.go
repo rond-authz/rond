@@ -25,14 +25,12 @@ type Agent interface {
 
 type AgentPool interface {
 	New() Agent
-	SetGlobalLabels(Labels)
 }
 
 // noopAgent is a lazy agent that does nothing :(
 type noopAgentPool struct{}
 
-func (p *noopAgentPool) New() Agent             { return &noopAgent{} }
-func (p *noopAgentPool) SetGlobalLabels(Labels) {}
+func (p *noopAgentPool) New() Agent { return &noopAgent{} }
 
 func NewNoopAgentPool() AgentPool { return &noopAgentPool{} }
 

@@ -22,42 +22,39 @@ import (
 )
 
 type agentPool struct {
-	l       logging.Logger
-	globals map[string]any
+	l      logging.Logger
+	labels map[string]any
 }
 
 func (p *agentPool) New() Agent {
-	return &logAgent{
-		l:       p.l,
-		cache:   &SingleRecordCache{},
-		globals: p.globals,
+	agent := &logAgent{
+		l:     p.l,
+		cache: &SingleRecordCache{},
 	}
+
+	if p.labels != nil {
+		agent.cache.Store(p.labels)
+	}
+
+	return agent
 }
 
-func (a *agentPool) SetGlobalLabels(labels Labels) {
-	a.globals = labels
-}
-
-func NewLogAgentPool(l logging.Logger) AgentPool {
+func NewLogAgentPool(l logging.Logger, labels Labels) AgentPool {
 	return &agentPool{
-		l: l,
+		l:      l,
+		labels: labels,
 	}
 }
 
 type logAgent struct {
-	l       logging.Logger
-	cache   AuditCache
-	globals map[string]any
+	l     logging.Logger
+	cache AuditCache
 }
 
 func (a *logAgent) Trace(_ context.Context, auditInput Audit) {
 	data := a.cache.Load()
 
 	auditData := auditInput.toPrint()
-	if a.globals != nil {
-		auditData.applyDataFromPolicy(a.globals)
-	}
-
 	if data != nil {
 		auditData.applyDataFromPolicy(data)
 	}

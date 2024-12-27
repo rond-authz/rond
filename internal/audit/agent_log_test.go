@@ -26,7 +26,7 @@ import (
 
 func TestLogAgentPool(t *testing.T) {
 	l, hook := test.NewNullLogger()
-	pool := NewLogAgentPool(rondlogrus.NewLogger(l))
+	pool := NewLogAgentPool(rondlogrus.NewLogger(l), nil)
 
 	agent := pool.New()
 
@@ -85,8 +85,7 @@ func TestLogAgentPool(t *testing.T) {
 
 func TestLogAgentSetGlobalLabels(t *testing.T) {
 	l, hook := test.NewNullLogger()
-	pool := NewLogAgentPool(rondlogrus.NewLogger(l))
-	pool.SetGlobalLabels(Labels{
+	pool := NewLogAgentPool(rondlogrus.NewLogger(l), Labels{
 		AuditAdditionalDataRequestTargetServiceKey: "some-service",
 		"some-label": "label_val",
 	})
