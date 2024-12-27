@@ -23,7 +23,7 @@ import (
 
 type agentPool struct {
 	l      logging.Logger
-	labels map[string]any
+	labels Labels
 }
 
 func (p *agentPool) New() Agent {
