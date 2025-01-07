@@ -23,10 +23,12 @@ import (
 const auditSerializerTagAnnotation = "audit"
 
 const (
-	AuditAdditionalDataGrantedPermissionKey    = "authorization.permission"
-	AuditAdditionalDataGrantedBindingKey       = "authorization.binding"
-	AuditAdditionalDataGrantedRoleKey          = "authorization.role"
-	AuditAdditionalDataRequestTargetServiceKey = "request.targetServiceName"
+	AuditAdditionalDataGrantedPermissionKey     = "authorization.permission"
+	AuditAdditionalDataGrantedBindingKey        = "authorization.binding"
+	AuditAdditionalDataGrantedBindingResTypeKey = "authorization.binding.resourceType"
+	AuditAdditionalDataGrantedBindingResIDKey   = "authorization.binding.resourceId"
+	AuditAdditionalDataGrantedRoleKey           = "authorization.role"
+	AuditAdditionalDataRequestTargetServiceKey  = "request.targetServiceName"
 )
 
 var reservedLabelKeys = []string{
@@ -66,11 +68,13 @@ type SubjectInfo struct {
 // authzInfoToPrint defines the internal structure for an audit record and must be used by remapping
 // public Audit interface.
 type authzInfoToPrint struct {
-	Allowed    bool   `audit:"allowed"`
-	PolicyName string `audit:"policyName"`
-	Permission string `audit:"permission,omitempty"`
-	BindingID  string `audit:"binding,omitempty"`
-	RoleID     string `audit:"roleId,omitempty"`
+	Allowed             bool   `audit:"allowed"`
+	PolicyName          string `audit:"policyName"`
+	Permission          string `audit:"permission,omitempty"`
+	BindingID           string `audit:"binding,omitempty"`
+	BindingResourceType string `audit:"bindingResourceType,omitempty"`
+	BindingResourceID   string `audit:"bindingResourceId,omitempty"`
+	RoleID              string `audit:"roleId,omitempty"`
 }
 
 type auditToPrint struct {
@@ -102,6 +106,20 @@ func (a *auditToPrint) applyDataFromPolicy(data map[string]any) {
 		str, ok := grantedBinding.(string)
 		if ok {
 			a.Authorization.BindingID = str
+		}
+	}
+	grantedBindingResourceType, ok := data[AuditAdditionalDataGrantedBindingResTypeKey]
+	if ok && grantedBinding != nil {
+		str, ok := grantedBindingResourceType.(string)
+		if ok {
+			a.Authorization.BindingResourceType = str
+		}
+	}
+	grantedBindingResourceID, ok := data[AuditAdditionalDataGrantedBindingResIDKey]
+	if ok && grantedBindingResourceID != nil {
+		str, ok := grantedBindingResourceID.(string)
+		if ok {
+			a.Authorization.BindingResourceID = str
 		}
 	}
 
