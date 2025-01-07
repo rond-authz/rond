@@ -15,7 +15,7 @@ require (
 	github.com/mia-platform/go-crud-service-client v0.14.0
 	github.com/open-policy-agent/opa v0.69.0
 	github.com/prometheus/client_golang v1.20.5
-	github.com/samber/lo v1.42.0
+	github.com/samber/lo v1.47.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	github.com/uptrace/bunrouter v1.0.21
@@ -71,7 +71,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.28.0 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
