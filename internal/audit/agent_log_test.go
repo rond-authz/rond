@@ -24,9 +24,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLogAgent(t *testing.T) {
+func TestLogAgentPool(t *testing.T) {
 	l, hook := test.NewNullLogger()
-	agent := NewLogAgent(rondlogrus.NewLogger(l))
+	pool := NewLogAgentPool(rondlogrus.NewLogger(l), nil)
+
+	agent := pool.New()
 
 	agent.Cache().Store(Data{
 		"authorization.permission": "my-permission",
@@ -83,11 +85,13 @@ func TestLogAgent(t *testing.T) {
 
 func TestLogAgentSetGlobalLabels(t *testing.T) {
 	l, hook := test.NewNullLogger()
-	agent := NewLogAgent(rondlogrus.NewLogger(l))
-	agent.SetGlobalLabels(Labels{
+	pool := NewLogAgentPool(rondlogrus.NewLogger(l), Labels{
 		AuditAdditionalDataRequestTargetServiceKey: "some-service",
 		"some-label": "label_val",
 	})
+
+	agent := pool.New()
+
 	agent.Cache().Store(Data{
 		"authorization.permission": "my-permission",
 		"authorization.binding":    "my-binding",

@@ -21,11 +21,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNoopAgentDoesnotBreakStuff(t *testing.T) {
-	a := NewNoopAgent()
-	require.NotNil(t, a)
+func TestNoopAgentDoesNotBreakStuff(t *testing.T) {
+	p := NewNoopAgentPool()
+	require.NotNil(t, p)
 
-	a.SetGlobalLabels(map[string]any{"a": "b"})
+	a := p.New()
+
 	a.Trace(context.Background(), Audit{})
 
 	require.NotNil(t, a.Cache())

@@ -14,6 +14,8 @@
 
 package audit
 
+import "sync"
+
 type Data map[string]any
 
 type AuditCache interface {
@@ -22,10 +24,15 @@ type AuditCache interface {
 }
 
 type SingleRecordCache struct {
+	sync.RWMutex
+
 	data Data
 }
 
 func (c *SingleRecordCache) Store(d Data) {
+	c.Lock()
+	defer c.Unlock()
+
 	if c.data == nil {
 		c.data = make(Data)
 	}
@@ -36,5 +43,8 @@ func (c *SingleRecordCache) Store(d Data) {
 }
 
 func (c *SingleRecordCache) Load() Data {
+	c.RLock()
+	defer c.RUnlock()
+
 	return c.data
 }

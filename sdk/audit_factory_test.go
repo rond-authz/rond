@@ -27,32 +27,42 @@ import (
 )
 
 func TestBuildAuditAgent(t *testing.T) {
-	res := buildAuditAgent(nil, nil)
-	require.NotNil(t, res)
-
-	res = buildAuditAgent(&Options{
-		EvaluatorOptions: nil,
-	}, nil)
-	require.NotNil(t, res)
-
-	res = buildAuditAgent(&Options{
-		EvaluatorOptions: &EvaluatorOptions{
-			EnableAuditTracing: false,
-		},
-	}, nil)
-	require.NotNil(t, res)
-
-	log, hook := test.NewNullLogger()
-	res = buildAuditAgent(&Options{
-		EvaluatorOptions: &EvaluatorOptions{
-			EnableAuditTracing: true,
-		},
-	}, rondlogrus.NewEntry(logrus.NewEntry(log)))
-	require.NotNil(t, res)
-
-	res.Cache().Store(audit.Data{"test": "123"})
-	res.Trace(context.Background(), audit.Audit{
-		AggregationID: "a-id",
+	t.Run("nil options", func(t *testing.T) {
+		res := buildAuditAgent(nil, nil)
+		require.NotNil(t, res)
 	})
-	require.Len(t, hook.Entries, 1)
+
+	t.Run("nil evaluator options", func(t *testing.T) {
+		res := buildAuditAgent(&Options{
+			EvaluatorOptions: nil,
+		}, nil)
+		require.NotNil(t, res)
+	})
+
+	t.Run("nil logger", func(t *testing.T) {
+		res := buildAuditAgent(&Options{
+			EvaluatorOptions: &EvaluatorOptions{
+				EnableAuditTracing: false,
+			},
+		}, nil)
+		require.NotNil(t, res)
+	})
+
+	t.Run("with setup trace", func(t *testing.T) {
+		log, hook := test.NewNullLogger()
+		res := buildAuditAgent(&Options{
+			EvaluatorOptions: &EvaluatorOptions{
+				EnableAuditTracing: true,
+			},
+		}, rondlogrus.NewEntry(logrus.NewEntry(log)))
+		require.NotNil(t, res)
+
+		agent := res.New()
+
+		agent.Cache().Store(audit.Data{"test": "123"})
+		agent.Trace(context.Background(), audit.Audit{
+			AggregationID: "a-id",
+		})
+		require.Len(t, hook.Entries, 1)
+	})
 }

@@ -21,14 +21,20 @@ type Labels = map[string]any
 type Agent interface {
 	Trace(context.Context, Audit)
 	Cache() AuditCache
-	SetGlobalLabels(labels Labels)
+}
+
+type AgentPool interface {
+	New() Agent
 }
 
 // noopAgent is a lazy agent that does nothing :(
+type noopAgentPool struct{}
+
+func (p *noopAgentPool) New() Agent { return &noopAgent{} }
+
+func NewNoopAgentPool() AgentPool { return &noopAgentPool{} }
+
 type noopAgent struct{}
 
-func NewNoopAgent() Agent { return &noopAgent{} }
-
-func (a *noopAgent) Trace(context.Context, Audit)  {}
-func (a *noopAgent) Cache() AuditCache             { return &SingleRecordCache{} }
-func (a *noopAgent) SetGlobalLabels(labels Labels) {}
+func (a *noopAgent) Trace(context.Context, Audit) {}
+func (a *noopAgent) Cache() AuditCache            { return &SingleRecordCache{} }

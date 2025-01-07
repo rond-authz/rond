@@ -81,9 +81,7 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 	}
 
 	auditAgent := buildAuditAgent(options, logger)
-	if len(options.AuditLabels) > 0 {
-		auditAgent.SetGlobalLabels(options.AuditLabels)
-	}
+
 	return oasImpl{
 		oas:       oas,
 		oasRouter: oasRouter,
@@ -92,7 +90,7 @@ func NewFromOAS(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, oas 
 		partialResultEvaluators: evaluator,
 		evaluatorOptions:        evaluatorOptions,
 		metrics:                 options.Metrics,
-		auditAgent:              auditAgent,
+		auditAgentPool:          auditAgent,
 	}, nil
 }
 
@@ -116,9 +114,6 @@ func NewWithConfig(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, r
 	}
 
 	auditAgent := buildAuditAgent(options, logger)
-	if len(options.AuditLabels) > 0 {
-		auditAgent.SetGlobalLabels(options.AuditLabels)
-	}
 
 	return evaluator{
 		rondConfig:              rondConfig,
@@ -129,6 +124,6 @@ func NewWithConfig(ctx context.Context, opaModuleConfig *core.OPAModuleConfig, r
 		policyEvaluationOptions: &core.PolicyEvaluationOptions{
 			Metrics: options.Metrics,
 		},
-		auditAgent: auditAgent,
+		auditAgentPool: auditAgent,
 	}, nil
 }

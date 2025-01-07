@@ -19,13 +19,13 @@ import (
 	"github.com/rond-authz/rond/logging"
 )
 
-func buildAuditAgent(options *Options, logger logging.Logger) audit.Agent {
+func buildAuditAgent(options *Options, logger logging.Logger) audit.AgentPool {
 	if options == nil || options.EvaluatorOptions == nil {
-		return audit.NewNoopAgent()
+		return audit.NewNoopAgentPool()
 	}
 
 	if !options.EvaluatorOptions.EnableAuditTracing {
-		return audit.NewNoopAgent()
+		return audit.NewNoopAgentPool()
 	}
-	return audit.NewLogAgent(logger)
+	return audit.NewLogAgentPool(logger, options.AuditLabels)
 }
