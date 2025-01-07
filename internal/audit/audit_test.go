@@ -24,13 +24,17 @@ func TestApplyDataFromPolicy(t *testing.T) {
 	t.Run("sets reserved + custom label", func(t *testing.T) {
 		a := auditToPrint{}
 		a.applyDataFromPolicy(map[string]any{
-			"authorization.permission": "my-permission",
-			"authorization.binding":    "my-binding",
-			"authorization.role":       "my-role",
-			"some-custom-label":        "value",
+			"authorization.permission":           "my-permission",
+			"authorization.binding":              "my-binding",
+			"authorization.binding.resourceType": "my-binding-res-type",
+			"authorization.binding.resourceId":   "my-binding-res-id",
+			"authorization.role":                 "my-role",
+			"some-custom-label":                  "value",
 		})
 		require.Equal(t, "my-permission", a.Authorization.Permission)
 		require.Equal(t, "my-binding", a.Authorization.BindingID)
+		require.Equal(t, "my-binding-res-type", a.Authorization.BindingResourceType)
+		require.Equal(t, "my-binding-res-id", a.Authorization.BindingResourceID)
 		require.Equal(t, "my-role", a.Authorization.RoleID)
 		require.Equal(t, "value", a.Labels["some-custom-label"])
 	})
