@@ -25,6 +25,20 @@
           }
         }
       }
+    },
+    "/some-api/:id/another": {
+      "get": {
+        "x-permission": {
+          "allow": "filter_policy_with_conflicting_configuration"
+        }
+      }
+    },
+    "/some-api/:id/another/deeper": {
+      "get": {
+        "x-permission": {
+          "allow": "filter_policy_with_conflicting_configuration"
+        }
+      }
     }
   }
 }
