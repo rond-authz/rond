@@ -99,7 +99,7 @@ func OPAMiddleware(
 				if errors.Is(err, openapi.ErrNotFoundOASDefinition) {
 					statusCode = http.StatusNotFound
 				}
-				logger.WithFields(fields).Errorf(errorMessage)
+				logger.WithFields(fields).Error(errorMessage)
 				utils.FailResponseWithCode(w, statusCode, technicalError, errorMessage)
 				return
 			}
