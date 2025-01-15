@@ -61,6 +61,8 @@ type EnvironmentVariables struct {
 	EnableAuditTrail               bool   `env:"ENABLE_AUDIT_TRAIL"`
 	AuditAggregationIDHeaderName   string `env:"AUDIT_AGGREGATION_ID_HEADER_NAME" envDefault:"x-request-id"`
 	AuditTargetServiceName         string `env:"TARGET_SERVICE_NAME"`
+	AuditStorageMode               string `env:"AUDIT_STORAGE_MODE" envDefault:"log"`
+	AuditStorageMongoDBURL         string `env:"AUDIT_STORAGE_MONGODB_URL"`
 }
 
 type EnvKey struct{}
@@ -102,6 +104,15 @@ func GetEnvOrDie() EnvironmentVariables {
 
 	if env.APIPermissionsFilePath == "" && env.TargetServiceOASPath == "" {
 		panic(fmt.Errorf("missing environment variables, one of %s or %s is required", apiPermissionsFilePathEnvKey, targetServiceOASPathEnvKey))
+	}
+
+	if env.EnableAuditTrail {
+		if env.AuditStorageMode == "mongodb" && (env.AuditStorageMongoDBURL == "" && env.MongoDBUrl == "") {
+			panic(fmt.Errorf("missing environment variable AUDIT_STORAGE_MONGODB_URL or MONGODB_URL with ENABLE_AUDIT_TRAIL=true and AUDIT_STORAGE_MODE=mongodb"))
+		}
+		if env.AuditStorageMode == "mongodb" && env.AuditStorageMongoDBURL == "" {
+			env.AuditStorageMongoDBURL = env.MongoDBUrl
+		}
 	}
 
 	return env

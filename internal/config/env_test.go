@@ -97,6 +97,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		actualEnvs := GetEnvOrDie()
 		expectedEnvs := defaultAndRequiredEnvironmentVariables
 		expectedEnvs.TargetServiceHost = "http://localhost:3000"
+		expectedEnvs.AuditStorageMode = "log"
 
 		require.Equal(t, expectedEnvs, actualEnvs, "Unexpected envs variables.")
 	})
@@ -114,6 +115,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		expectedEnvs := defaultAndRequiredEnvironmentVariables
 		expectedEnvs.Standalone = true
 		expectedEnvs.BindingsCrudServiceURL = "http://crud-client"
+		expectedEnvs.AuditStorageMode = "log"
 
 		require.Equal(t, expectedEnvs, actualEnvs, "Unexpected envs variables.")
 	})
@@ -185,8 +187,75 @@ func TestGetEnvOrDie(t *testing.T) {
 		expectedEnvs.TargetServiceHost = "http://localhost:3000"
 		expectedEnvs.APIPermissionsFilePath = ""
 		expectedEnvs.TargetServiceOASPath = "/path"
+		expectedEnvs.AuditStorageMode = "log"
 
 		require.Equal(t, expectedEnvs, actualEnvs, "Unexpected envs variables.")
+	})
+
+	t.Run(`audit env validation`, func(t *testing.T) {
+		t.Run("default audit storage mode is log", func(t *testing.T) {
+			otherEnvs := []env{
+				{name: "TARGET_SERVICE_HOST", value: "http://localhost:3000"},
+				{name: "ENABLE_AUDIT_TRAIL", value: "true"},
+				{name: "TARGET_SERVICE_OAS_PATH", value: "/path"},
+			}
+			envs := append(requiredEnvs, otherEnvs...)
+			setEnvs(t, envs)
+
+			actualEnvs := GetEnvOrDie()
+
+			require.Equal(t, "log", actualEnvs.AuditStorageMode)
+		})
+
+		t.Run(`panics - missing AUDIT_STORAGE_MONGODB_URL with ENABLE_AUDIT_TRAIL=true and AUDIT_STORAGE_MODE=mongodb`, func(t *testing.T) {
+			otherEnvs := []env{
+				{name: "TARGET_SERVICE_HOST", value: "http://localhost:3000"},
+				{name: "ENABLE_AUDIT_TRAIL", value: "true"},
+				{name: "AUDIT_STORAGE_MODE", value: "mongodb"},
+				{name: "TARGET_SERVICE_OAS_PATH", value: "/path"},
+			}
+			envs := append(requiredEnvs, otherEnvs...)
+			setEnvs(t, envs)
+
+			require.PanicsWithError(t, "missing environment variable AUDIT_STORAGE_MONGODB_URL or MONGODB_URL with ENABLE_AUDIT_TRAIL=true and AUDIT_STORAGE_MODE=mongodb", func() {
+				GetEnvOrDie()
+			}, "Unexpected envs variables.")
+		})
+
+		t.Run(`properly configure audit storage mongodb connection`, func(t *testing.T) {
+			otherEnvs := []env{
+				{name: "TARGET_SERVICE_HOST", value: "http://localhost:3000"},
+				{name: "ENABLE_AUDIT_TRAIL", value: "true"},
+				{name: "AUDIT_STORAGE_MODE", value: "mongodb"},
+				{name: "MONGODB_URL", value: "mongodb://localhost:27017/data"},
+				{name: "AUDIT_STORAGE_MONGODB_URL", value: "mongodb://localhost:27017/audit"},
+				{name: "TARGET_SERVICE_OAS_PATH", value: "/path"},
+			}
+			envs := append(requiredEnvs, otherEnvs...)
+			setEnvs(t, envs)
+
+			actualEnvs := GetEnvOrDie()
+
+			require.Equal(t, "mongodb", actualEnvs.AuditStorageMode)
+			require.Equal(t, "mongodb://localhost:27017/audit", actualEnvs.AuditStorageMongoDBURL)
+		})
+
+		t.Run(`fallback to MONGODB_URL if AUDIT_STORAGE_MONGODB_URL is not set`, func(t *testing.T) {
+			otherEnvs := []env{
+				{name: "TARGET_SERVICE_HOST", value: "http://localhost:3000"},
+				{name: "ENABLE_AUDIT_TRAIL", value: "true"},
+				{name: "AUDIT_STORAGE_MODE", value: "mongodb"},
+				{name: "MONGODB_URL", value: "mongodb://localhost:27017/data"},
+				{name: "TARGET_SERVICE_OAS_PATH", value: "/path"},
+			}
+			envs := append(requiredEnvs, otherEnvs...)
+			setEnvs(t, envs)
+
+			actualEnvs := GetEnvOrDie()
+
+			require.Equal(t, "mongodb", actualEnvs.AuditStorageMode)
+			require.Equal(t, "mongodb://localhost:27017/data", actualEnvs.AuditStorageMongoDBURL)
+		})
 	})
 }
 
