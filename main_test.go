@@ -1564,6 +1564,84 @@ func TestIntegrationWithAuditTrail(t *testing.T) {
 	})
 }
 
+func TestIntegrationConflictingPolicyConfiguration(t *testing.T) {
+	setupApp := func(t *testing.T, enabledTrace bool) (*app, *test.Hook) {
+		t.Helper()
+
+		mongoHost := testutils.GetMongoHost(t)
+
+		clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
+		client, err := mongo.Connect(context.Background(), clientOpts)
+		if err != nil {
+			fmt.Printf("error connecting to MongoDB: %s", err.Error())
+		}
+
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+		if err = client.Ping(ctx, readpref.Primary()); err != nil {
+			fmt.Printf("error verifying MongoDB connection: %s", err.Error())
+		}
+
+		defer client.Disconnect(ctx)
+
+		randomizedDBNamePart := testutils.GetRandomName(10)
+		mongoDBName := fmt.Sprintf("test-%s", randomizedDBNamePart)
+
+		testutils.PopulateDBForTesting(
+			t,
+			ctx,
+			client.Database(mongoDBName).Collection("roles"),
+			client.Database(mongoDBName).Collection("bindings"),
+		)
+
+		log, loggerHook := test.NewNullLogger()
+
+		gockHost := setupGockServer(t, 3100, GockOptions{
+			OASTestFilePath: "./mocks/config-with-conflicting-policy.json",
+			APIs: map[string]GockReply{
+				"/some-api/": {
+					StatusCode: 200,
+					Response:   []map[string]interface{}{{"D": true}},
+				},
+			},
+		})
+
+		envs := getEnvs(t, map[string]string{
+			"HTTP_PORT":                "3101",
+			"TARGET_SERVICE_HOST":      gockHost,
+			"TARGET_SERVICE_OAS_PATH":  "/documentation/json",
+			"OPA_MODULES_DIRECTORY":    "./mocks/rego-policies",
+			"LOG_LEVEL":                "trace",
+			"ENABLE_AUDIT_TRAIL":       strconv.FormatBool(enabledTrace),
+			"TARGET_SERVICE_NAME":      "some-protected-service",
+			"MONGODB_URL":              fmt.Sprintf("mongodb://%s/%s", mongoHost, mongoDBName),
+			"BINDINGS_COLLECTION_NAME": "bindings",
+			"ROLES_COLLECTION_NAME":    "roles",
+		})
+
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
+
+		return app, loggerHook
+	}
+
+	t.Run("200 - works", func(t *testing.T) {
+		app, _ := setupApp(t, true)
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "http://localhost:3101/some-api/", nil)
+		req.Header.Set("miauserid", "user-wow")
+		req.Header.Set("miausergroups", "group1")
+
+		app.router.ServeHTTP(w, req)
+
+		respBody, _ := io.ReadAll(w.Result().Body)
+		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		require.Equal(t, `[{"D":true}]
+`, string(respBody))
+	})
+}
+
 func TestIntegrationWithOASParamsInBrackets(t *testing.T) {
 	log, _ := test.NewNullLogger()
 
