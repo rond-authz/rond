@@ -1,0 +1,30 @@
+{
+  "paths": {
+    "/some-api/": {
+      "get": {
+        "x-permission": {
+          "allow": "filter_policy_with_conflicting_configuration",
+          "resourceFilter": {
+            "rowFilter": {
+              "enabled": true,
+              "headerKey": ""
+            }
+          }
+        }
+      }
+    },
+    "/some-api/:id": {
+      "get": {
+        "x-permission": {
+          "allow": "filter_policy_with_conflicting_configuration",
+          "resourceFilter": {
+            "rowFilter": {
+              "enabled": false,
+              "headerKey": ""
+            }
+          }
+        }
+      }
+    }
+  }
+}

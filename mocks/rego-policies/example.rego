@@ -100,3 +100,23 @@ projection_policy_with_audit_data[res] {
     set_audit_labels(z)
     res := input.response.body
 }
+
+filter_policy_with_conflicting_configuration {
+	query := data.resources[_]
+	binding := input.user.bindings[_]
+	query.companyId = binding.resource.resourceId
+}
+
+filter_policy_with_conflicting_configuration {
+	query := data.resources[_]
+	binding := input.user.bindings[_]
+	query.projectId = binding.resource.resourceId
+}
+
+filter_policy_with_conflicting_configuration {
+	query := data.resources[_]
+	resource_type_qs := object.get(input, ["request", "query", "some-qs", 0], false)
+	resource_type_qs == "some_qs"
+
+	query.resourceType = "some_qs"
+}
