@@ -17,7 +17,6 @@ package audit
 import (
 	"context"
 
-	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/logging"
 )
 
@@ -52,15 +51,9 @@ type logAgent struct {
 }
 
 func (a *logAgent) Trace(_ context.Context, auditInput Audit) error {
-	data := a.cache.Load()
-
-	auditData := auditInput.toPrint()
-	if data != nil {
-		auditData.applyDataFromPolicy(data)
-	}
-
+	trail := auditInput.toPrint(a.cache.Load()).serialize()
 	a.l.
-		WithField("trail", utils.ToMap(auditSerializerTagAnnotation, auditData)).
+		WithField("trail", trail).
 		Info("audit trail")
 	return nil
 }

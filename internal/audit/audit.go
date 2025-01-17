@@ -18,6 +18,7 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
+	"github.com/rond-authz/rond/internal/utils"
 )
 
 const auditSerializerTagAnnotation = "audit"
@@ -86,8 +87,8 @@ type auditToPrint struct {
 	Labels        Labels           `audit:"labels"`
 }
 
-func (a *Audit) toPrint() auditToPrint {
-	return auditToPrint{
+func (a *Audit) toPrint(data map[string]any) auditToPrint {
+	print := auditToPrint{
 		ID:            generateID(),
 		AggregationID: a.AggregationID,
 		Authorization: authzInfoToPrint{
@@ -98,6 +99,14 @@ func (a *Audit) toPrint() auditToPrint {
 		Request: a.Request,
 		Labels:  a.Labels,
 	}
+	if data != nil {
+		print.applyDataFromPolicy(data)
+	}
+	return print
+}
+
+func (a auditToPrint) serialize() map[string]any {
+	return utils.ToMap(auditSerializerTagAnnotation, a)
 }
 
 func (a *auditToPrint) applyDataFromPolicy(data map[string]any) {
