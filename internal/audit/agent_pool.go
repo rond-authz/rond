@@ -36,16 +36,16 @@ type AgentPoolOptions struct {
 }
 
 func NewAgentPool(options AgentPoolOptions) AgentPool {
-	return &compoundAgentPool{
+	return &agentPool{
 		options: options,
 	}
 }
 
-type compoundAgentPool struct {
+type agentPool struct {
 	options AgentPoolOptions
 }
 
-func (c *compoundAgentPool) New() Agent {
+func (c *agentPool) New() Agent {
 	agents := make([]Agent, 0)
 
 	if len(c.options.Storages) == 0 {

@@ -28,13 +28,14 @@ type AgentPool interface {
 }
 
 // noopAgent is a lazy agent that does nothing :(
+type noopAgent struct{}
+
+func (a *noopAgent) Trace(context.Context, Audit) error { return nil }
+func (a *noopAgent) Cache() AuditCache                  { return &SingleRecordCache{} }
+
+// noopAgentPool is a lazy agent pool that returns noopAgent :D
 type noopAgentPool struct{}
 
 func (p *noopAgentPool) New() Agent { return &noopAgent{} }
 
 func NewNoopAgentPool() AgentPool { return &noopAgentPool{} }
-
-type noopAgent struct{}
-
-func (a *noopAgent) Trace(context.Context, Audit) error { return nil }
-func (a *noopAgent) Cache() AuditCache                  { return &SingleRecordCache{} }
