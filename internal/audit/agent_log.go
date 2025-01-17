@@ -51,7 +51,7 @@ type logAgent struct {
 	cache AuditCache
 }
 
-func (a *logAgent) Trace(_ context.Context, auditInput Audit) {
+func (a *logAgent) Trace(_ context.Context, auditInput Audit) error {
 	data := a.cache.Load()
 
 	auditData := auditInput.toPrint()
@@ -62,6 +62,7 @@ func (a *logAgent) Trace(_ context.Context, auditInput Audit) {
 	a.l.
 		WithField("trail", utils.ToMap(auditSerializerTagAnnotation, auditData)).
 		Info("audit trail")
+	return nil
 }
 
 func (a *logAgent) Cache() AuditCache {

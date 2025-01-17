@@ -41,6 +41,7 @@ import (
 	"github.com/rond-authz/rond/sdk/inputuser"
 	inputusermongoclient "github.com/rond-authz/rond/sdk/inputuser/mongo"
 	"github.com/rond-authz/rond/service"
+	"github.com/rond-authz/rond/types"
 
 	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
 	"github.com/sirupsen/logrus"
@@ -137,7 +138,7 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 		"oasApiPath":  env.TargetServiceOASPath,
 	}).Trace("OAS successfully loaded")
 
-	var mongoDriver *mongoclient.MongoClient
+	var mongoDriver types.MongoClient
 	if env.MongoDBUrl != "" {
 		client, err := mongoclient.NewMongoClient(rondLogger, env.MongoDBUrl, mongoclient.ConnectionOpts{
 			MaxIdleTimeMs: env.MongoDBConnectionMaxIdleTimeMs,

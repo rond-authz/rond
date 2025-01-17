@@ -19,7 +19,7 @@ import "context"
 type Labels = map[string]any
 
 type Agent interface {
-	Trace(context.Context, Audit)
+	Trace(context.Context, Audit) error
 	Cache() AuditCache
 }
 
@@ -36,5 +36,5 @@ func NewNoopAgentPool() AgentPool { return &noopAgentPool{} }
 
 type noopAgent struct{}
 
-func (a *noopAgent) Trace(context.Context, Audit) {}
-func (a *noopAgent) Cache() AuditCache            { return &SingleRecordCache{} }
+func (a *noopAgent) Trace(context.Context, Audit) error { return nil }
+func (a *noopAgent) Cache() AuditCache                  { return &SingleRecordCache{} }
