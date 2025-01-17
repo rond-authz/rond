@@ -18,9 +18,16 @@ import "sync"
 
 type Data map[string]any
 
-type AuditCache interface {
+type WritableCache interface {
 	Store(d Data)
+}
+
+type ReadableCache interface {
 	Load() Data
+}
+type AuditCache interface {
+	WritableCache
+	ReadableCache
 }
 
 type SingleRecordCache struct {

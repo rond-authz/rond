@@ -109,7 +109,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 			"message":    err.Error(),
 		}).Error("RBAC policy evaluation failed")
 
-		auditAgent.Trace(ctx, audit.Audit{
+		if err := auditAgent.Trace(ctx, audit.Audit{
 			AggregationID: options.Audit.AggregationID,
 			Authorization: audit.AuthzInfo{
 				Allowed:    false,
@@ -124,7 +124,12 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 				Path:      rondInput.Request.Path,
 				UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 			},
-		})
+		}); err != nil {
+			logger.WithField("error", map[string]any{
+				"aggregationId": options.Audit.AggregationID,
+				"error":         map[string]any{"message": err.Error()},
+			}).Error("audit trace failed")
+		}
 
 		if errors.Is(err, core.ErrPolicyNotAllowed) {
 			return PolicyResult{}, nil
@@ -140,7 +145,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 		}
 	}
 
-	auditAgent.Trace(ctx, audit.Audit{
+	if err := auditAgent.Trace(ctx, audit.Audit{
 		AggregationID: options.Audit.AggregationID,
 		Authorization: audit.AuthzInfo{
 			Allowed:    true,
@@ -155,7 +160,12 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 			Path:      rondInput.Request.Path,
 			UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 		},
-	})
+	}); err != nil {
+		logger.WithField("error", map[string]any{
+			"aggregationId": options.Audit.AggregationID,
+			"error":         map[string]any{"message": err.Error()},
+		}).Error("audit trace failed")
+	}
 
 	return PolicyResult{
 		Allowed:      true,
@@ -188,7 +198,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 
 	bodyToProxy, err := evaluator.Evaluate(logger, evalInput, e.policyEvaluationOptions)
 	if err != nil {
-		auditAgent.Trace(ctx, audit.Audit{
+		if err := auditAgent.Trace(ctx, audit.Audit{
 			AggregationID: options.Audit.AggregationID,
 			Authorization: audit.AuthzInfo{
 				Allowed:    false,
@@ -203,11 +213,16 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 				Path:      rondInput.Request.Path,
 				UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 			},
-		})
+		}); err != nil {
+			logger.WithField("error", map[string]any{
+				"aggregationId": options.Audit.AggregationID,
+				"error":         map[string]any{"message": err.Error()},
+			}).Error("audit trace failed")
+		}
 		return nil, err
 	}
 
-	auditAgent.Trace(ctx, audit.Audit{
+	if err := auditAgent.Trace(ctx, audit.Audit{
 		AggregationID: options.Audit.AggregationID,
 		Authorization: audit.AuthzInfo{
 			Allowed:    true,
@@ -222,7 +237,12 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 			Path:      rondInput.Request.Path,
 			UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 		},
-	})
+	}); err != nil {
+		logger.WithField("error", map[string]any{
+			"aggregationId": options.Audit.AggregationID,
+			"error":         map[string]any{"message": err.Error()},
+		}).Error("audit trace failed")
+	}
 
 	marshalledBody, err := json.Marshal(bodyToProxy)
 	if err != nil {

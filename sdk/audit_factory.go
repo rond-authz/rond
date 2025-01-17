@@ -23,9 +23,20 @@ func buildAuditAgent(options *Options, logger logging.Logger) audit.AgentPool {
 	if options == nil || options.EvaluatorOptions == nil {
 		return audit.NewNoopAgentPool()
 	}
-
 	if !options.EvaluatorOptions.EnableAuditTracing {
 		return audit.NewNoopAgentPool()
 	}
-	return audit.NewLogAgentPool(logger, options.AuditLabels)
+
+	auditOptions := options.EvaluatorOptions.AuditTracingOptions
+
+	poolOptions := audit.AgentPoolOptions{
+		Logger:   logger,
+		Labels:   options.AuditLabels,
+		Storages: auditOptions.StorageMode,
+		MongoDBStorage: audit.MongoAgentPoolOptions{
+			Client:         auditOptions.MongoDBClient,
+			CollectionName: auditOptions.AuditCollectionName,
+		},
+	}
+	return audit.NewAgentPool(poolOptions)
 }

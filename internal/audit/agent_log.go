@@ -17,33 +17,18 @@ package audit
 import (
 	"context"
 
-	"github.com/rond-authz/rond/internal/utils"
 	"github.com/rond-authz/rond/logging"
 )
 
-type agentPool struct {
-	l      logging.Logger
-	labels Labels
-}
-
-func (p *agentPool) New() Agent {
+func NewLogAgent(l logging.Logger, labels Labels) Agent {
 	agent := &logAgent{
-		l:     p.l,
+		l:     l,
 		cache: &SingleRecordCache{},
 	}
-
-	if p.labels != nil {
-		agent.cache.Store(p.labels)
+	if labels != nil {
+		agent.cache.Store(labels)
 	}
-
 	return agent
-}
-
-func NewLogAgentPool(l logging.Logger, labels Labels) AgentPool {
-	return &agentPool{
-		l:      l,
-		labels: labels,
-	}
 }
 
 type logAgent struct {
@@ -51,17 +36,12 @@ type logAgent struct {
 	cache AuditCache
 }
 
-func (a *logAgent) Trace(_ context.Context, auditInput Audit) {
-	data := a.cache.Load()
-
-	auditData := auditInput.toPrint()
-	if data != nil {
-		auditData.applyDataFromPolicy(data)
-	}
-
+func (a *logAgent) Trace(_ context.Context, auditInput Audit) error {
+	trail := auditInput.toPrint(a.cache.Load()).serialize()
 	a.l.
-		WithField("trail", utils.ToMap(auditSerializerTagAnnotation, auditData)).
+		WithField("trail", trail).
 		Info("audit trail")
+	return nil
 }
 
 func (a *logAgent) Cache() AuditCache {

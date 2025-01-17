@@ -635,6 +635,9 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					EvaluatorOptions: &EvaluatorOptions{
 						EnableAuditTracing:    true,
 						EnablePrintStatements: true,
+						AuditTracingOptions: AuditEvaluatorOptions{
+							StorageMode: []string{"log"},
+						},
 					},
 					Logger: testLogger,
 				})
@@ -1403,6 +1406,9 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 			EnablePrintStatements: true,
 			MongoClient:           options.mongoClient,
 			EnableAuditTracing:    options.enableAudit,
+			AuditTracingOptions: AuditEvaluatorOptions{
+				StorageMode: []string{"log"},
+			},
 		},
 		Logger: logger,
 	})
