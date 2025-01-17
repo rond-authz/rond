@@ -78,12 +78,13 @@ func TestGetEnvOrDie(t *testing.T) {
 		PathPrefixStandalone: "/eval",
 		ServiceVersion:       "latest",
 
-		OPAModulesDirectory:            "/modules",
-		APIPermissionsFilePath:         "/oas",
-		AdditionalHeadersToProxy:       "miauserid",
-		ExposeMetrics:                  true,
-		MongoDBConnectionMaxIdleTimeMs: 1000,
-		AuditAggregationIDHeaderName:   "x-request-id",
+		OPAModulesDirectory:               "/modules",
+		APIPermissionsFilePath:            "/oas",
+		AdditionalHeadersToProxy:          "miauserid",
+		ExposeMetrics:                     true,
+		MongoDBConnectionMaxIdleTimeMs:    1000,
+		AuditAggregationIDHeaderName:      "x-request-id",
+		AuditStorageMongoDBCollectionName: "audittrails",
 	}
 
 	t.Run(`returns correctly - with TargetServiceHost`, func(t *testing.T) {
@@ -97,7 +98,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		actualEnvs := GetEnvOrDie()
 		expectedEnvs := defaultAndRequiredEnvironmentVariables
 		expectedEnvs.TargetServiceHost = "http://localhost:3000"
-		expectedEnvs.AuditStorageMode = "log"
+		expectedEnvs.AuditStorageMode = []string{"log"}
 
 		require.Equal(t, expectedEnvs, actualEnvs, "Unexpected envs variables.")
 	})
@@ -115,7 +116,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		expectedEnvs := defaultAndRequiredEnvironmentVariables
 		expectedEnvs.Standalone = true
 		expectedEnvs.BindingsCrudServiceURL = "http://crud-client"
-		expectedEnvs.AuditStorageMode = "log"
+		expectedEnvs.AuditStorageMode = []string{"log"}
 
 		require.Equal(t, expectedEnvs, actualEnvs, "Unexpected envs variables.")
 	})
@@ -187,7 +188,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		expectedEnvs.TargetServiceHost = "http://localhost:3000"
 		expectedEnvs.APIPermissionsFilePath = ""
 		expectedEnvs.TargetServiceOASPath = "/path"
-		expectedEnvs.AuditStorageMode = "log"
+		expectedEnvs.AuditStorageMode = []string{"log"}
 
 		require.Equal(t, expectedEnvs, actualEnvs, "Unexpected envs variables.")
 	})
@@ -204,7 +205,7 @@ func TestGetEnvOrDie(t *testing.T) {
 
 			actualEnvs := GetEnvOrDie()
 
-			require.Equal(t, "log", actualEnvs.AuditStorageMode)
+			require.Equal(t, []string{"log"}, actualEnvs.AuditStorageMode)
 		})
 
 		t.Run(`panics - missing AUDIT_STORAGE_MONGODB_URL with ENABLE_AUDIT_TRAIL=true and AUDIT_STORAGE_MODE=mongodb`, func(t *testing.T) {
@@ -229,6 +230,7 @@ func TestGetEnvOrDie(t *testing.T) {
 				{name: "AUDIT_STORAGE_MODE", value: "mongodb"},
 				{name: "MONGODB_URL", value: "mongodb://localhost:27017/data"},
 				{name: "AUDIT_STORAGE_MONGODB_URL", value: "mongodb://localhost:27017/audit"},
+				{name: "AUDIT_STORAGE_MONGODB_COLLECTION_NAME", value: "audit"},
 				{name: "TARGET_SERVICE_OAS_PATH", value: "/path"},
 			}
 			envs := append(requiredEnvs, otherEnvs...)
@@ -236,8 +238,9 @@ func TestGetEnvOrDie(t *testing.T) {
 
 			actualEnvs := GetEnvOrDie()
 
-			require.Equal(t, "mongodb", actualEnvs.AuditStorageMode)
+			require.Equal(t, []string{"mongodb"}, actualEnvs.AuditStorageMode)
 			require.Equal(t, "mongodb://localhost:27017/audit", actualEnvs.AuditStorageMongoDBURL)
+			require.Equal(t, "audit", actualEnvs.AuditStorageMongoDBCollectionName)
 		})
 
 		t.Run(`fallback to MONGODB_URL if AUDIT_STORAGE_MONGODB_URL is not set`, func(t *testing.T) {
@@ -253,7 +256,7 @@ func TestGetEnvOrDie(t *testing.T) {
 
 			actualEnvs := GetEnvOrDie()
 
-			require.Equal(t, "mongodb", actualEnvs.AuditStorageMode)
+			require.Equal(t, []string{"mongodb"}, actualEnvs.AuditStorageMode)
 			require.Equal(t, "mongodb://localhost:27017/data", actualEnvs.AuditStorageMongoDBURL)
 		})
 	})

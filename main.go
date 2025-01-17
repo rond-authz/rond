@@ -159,6 +159,35 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 		mongoDriver = client
 	}
 
+	var mongoClientForAudits types.MongoClient
+	if env.AuditStorageMongoDBURL != "" {
+		// NOTE: if the audit connection string is the same as the main one, we reuse
+		// the same connection preventing the creation of a new driver connection pool.
+		if mongoDriver != nil {
+			mongoClientForAudits = mongoDriver
+		}
+
+		if env.AuditStorageMongoDBURL != env.MongoDBUrl {
+			client, err := mongoclient.NewMongoClient(rondLogger, env.AuditStorageMongoDBURL, mongoclient.ConnectionOpts{
+				MaxIdleTimeMs: env.MongoDBConnectionMaxIdleTimeMs,
+			})
+			if err != nil {
+				log.WithFields(logrus.Fields{
+					"error": logrus.Fields{"message": err.Error()},
+				}).Errorf("MongoDB setup failed")
+				return nil, err
+			}
+			closeFn = append(closeFn, func() {
+				if err := client.Disconnect(); err != nil {
+					log.WithFields(logrus.Fields{
+						"error": logrus.Fields{"message": err.Error()},
+					}).Errorf("MongoDB disconnection failed")
+				}
+			})
+			mongoClientForAudits = client
+		}
+	}
+
 	var mongoClientForUserBindings inputuser.Client
 	var mongoClientForBuiltin custom_builtins.IMongoClient
 	if mongoDriver != nil {
@@ -197,7 +226,16 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 
 	sdkBoot := service.NewSDKBootState()
 	go func(sdkBoot *service.SDKBootState) {
-		sdk := prepSDKOrDie(log, env, opaModuleConfig, oas, mongoClientForBuiltin, rondLogger, m)
+		sdk := prepSDKOrDie(
+			log,
+			env,
+			opaModuleConfig,
+			oas,
+			mongoClientForBuiltin,
+			mongoClientForAudits,
+			rondLogger,
+			m,
+		)
 		sdkBoot.Ready(sdk)
 	}(sdkBoot)
 
@@ -222,6 +260,7 @@ func prepSDKOrDie(
 	opaModuleConfig *core.OPAModuleConfig,
 	oas *openapi.OpenAPISpec,
 	mongoClientForBuiltin custom_builtins.IMongoClient,
+	mongoClientForAudits types.MongoClient,
 	rondLogger logging.Logger,
 	m *metrics.Metrics,
 ) sdk.OASEvaluatorFinder {
@@ -236,6 +275,11 @@ func prepSDKOrDie(
 			EnablePrintStatements: env.IsTraceLogLevel(),
 			MongoClient:           mongoClientForBuiltin,
 			EnableAuditTracing:    env.EnableAuditTrail,
+			AuditTracingOptions: sdk.AuditEvaluatorOptions{
+				MongoDBClient:       mongoClientForAudits,
+				AuditCollectionName: env.AuditStorageMongoDBCollectionName,
+				StorageMode:         env.AuditStorageMode,
+			},
 		},
 		Logger:      rondLogger,
 		AuditLabels: auditLabels,

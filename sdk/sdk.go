@@ -30,7 +30,9 @@ import (
 type AuditLabels = audit.Labels
 
 type AuditEvaluatorOptions struct {
-	MongoDBClient types.MongoClient
+	MongoDBClient       types.MongoClient
+	StorageMode         []string
+	AuditCollectionName string
 }
 
 type EvaluatorOptions struct {

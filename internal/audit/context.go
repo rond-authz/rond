@@ -25,8 +25,8 @@ func WithAuditCache(ctx context.Context, agent Agent) context.Context {
 	return context.WithValue(ctx, cacheKey{}, agent.Cache())
 }
 
-func GetAuditCache(ctx context.Context) (AuditCache, error) {
-	auditCache, ok := ctx.Value(cacheKey{}).(AuditCache)
+func GetAuditCache(ctx context.Context) (WritableCache, error) {
+	auditCache, ok := ctx.Value(cacheKey{}).(WritableCache)
 	if !ok {
 		return nil, fmt.Errorf("failed to extract audit cache from context")
 	}

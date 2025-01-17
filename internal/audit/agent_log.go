@@ -20,29 +20,15 @@ import (
 	"github.com/rond-authz/rond/logging"
 )
 
-type agentPool struct {
-	l      logging.Logger
-	labels Labels
-}
-
-func (p *agentPool) New() Agent {
+func NewLogAgent(l logging.Logger, labels Labels) Agent {
 	agent := &logAgent{
-		l:     p.l,
+		l:     l,
 		cache: &SingleRecordCache{},
 	}
-
-	if p.labels != nil {
-		agent.cache.Store(p.labels)
+	if labels != nil {
+		agent.cache.Store(labels)
 	}
-
 	return agent
-}
-
-func NewLogAgentPool(l logging.Logger, labels Labels) AgentPool {
-	return &agentPool{
-		l:      l,
-		labels: labels,
-	}
 }
 
 type logAgent struct {
