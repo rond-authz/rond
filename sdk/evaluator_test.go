@@ -26,6 +26,7 @@ import (
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/custom_builtins/mocks"
+	"github.com/rond-authz/rond/internal/audit"
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/logging/test"
 	"github.com/rond-authz/rond/metrics"
@@ -635,6 +636,9 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 					EvaluatorOptions: &EvaluatorOptions{
 						EnableAuditTracing:    true,
 						EnablePrintStatements: true,
+						AuditTracingOptions: AuditEvaluatorOptions{
+							StorageMode: []string{audit.AgentStorageLog},
+						},
 					},
 					Logger: testLogger,
 				})
@@ -1403,6 +1407,9 @@ func getOASSdk(t require.TestingT, options *sdkOptions) OASEvaluatorFinder {
 			EnablePrintStatements: true,
 			MongoClient:           options.mongoClient,
 			EnableAuditTracing:    options.enableAudit,
+			AuditTracingOptions: AuditEvaluatorOptions{
+				StorageMode: []string{audit.AgentStorageLog},
+			},
 		},
 		Logger: logger,
 	})

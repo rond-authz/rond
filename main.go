@@ -23,9 +23,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/audit"
@@ -41,8 +38,12 @@ import (
 	"github.com/rond-authz/rond/sdk/inputuser"
 	inputusermongoclient "github.com/rond-authz/rond/sdk/inputuser/mongo"
 	"github.com/rond-authz/rond/service"
+	"github.com/rond-authz/rond/types"
 
+	"github.com/gorilla/mux"
 	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -137,7 +138,7 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 		"oasApiPath":  env.TargetServiceOASPath,
 	}).Trace("OAS successfully loaded")
 
-	var mongoDriver *mongoclient.MongoClient
+	var mongoDriver types.MongoClient
 	if env.MongoDBUrl != "" {
 		client, err := mongoclient.NewMongoClient(rondLogger, env.MongoDBUrl, mongoclient.ConnectionOpts{
 			MaxIdleTimeMs: env.MongoDBConnectionMaxIdleTimeMs,
@@ -156,6 +157,35 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 			}
 		})
 		mongoDriver = client
+	}
+
+	var mongoClientForAudits types.MongoClient
+	if env.AuditStorageMongoDBURL != "" {
+		// NOTE: if the audit connection string is the same as the main one, we reuse
+		// the same connection preventing the creation of a new driver connection pool.
+		if mongoDriver != nil {
+			mongoClientForAudits = mongoDriver
+		}
+
+		if env.AuditStorageMongoDBURL != env.MongoDBUrl {
+			client, err := mongoclient.NewMongoClient(rondLogger, env.AuditStorageMongoDBURL, mongoclient.ConnectionOpts{
+				MaxIdleTimeMs: env.MongoDBConnectionMaxIdleTimeMs,
+			})
+			if err != nil {
+				log.WithFields(logrus.Fields{
+					"error": logrus.Fields{"message": err.Error()},
+				}).Errorf("MongoDB setup for audit traces failed")
+				return nil, err
+			}
+			closeFn = append(closeFn, func() {
+				if err := client.Disconnect(); err != nil {
+					log.WithFields(logrus.Fields{
+						"error": logrus.Fields{"message": err.Error()},
+					}).Errorf("MongoDB disconnection failed")
+				}
+			})
+			mongoClientForAudits = client
+		}
 	}
 
 	var mongoClientForUserBindings inputuser.Client
@@ -196,7 +226,16 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 
 	sdkBoot := service.NewSDKBootState()
 	go func(sdkBoot *service.SDKBootState) {
-		sdk := prepSDKOrDie(log, env, opaModuleConfig, oas, mongoClientForBuiltin, rondLogger, m)
+		sdk := prepSDKOrDie(
+			log,
+			env,
+			opaModuleConfig,
+			oas,
+			mongoClientForBuiltin,
+			mongoClientForAudits,
+			rondLogger,
+			m,
+		)
 		sdkBoot.Ready(sdk)
 	}(sdkBoot)
 
@@ -221,6 +260,7 @@ func prepSDKOrDie(
 	opaModuleConfig *core.OPAModuleConfig,
 	oas *openapi.OpenAPISpec,
 	mongoClientForBuiltin custom_builtins.IMongoClient,
+	mongoClientForAudits types.MongoClient,
 	rondLogger logging.Logger,
 	m *metrics.Metrics,
 ) sdk.OASEvaluatorFinder {
@@ -235,6 +275,11 @@ func prepSDKOrDie(
 			EnablePrintStatements: env.IsTraceLogLevel(),
 			MongoClient:           mongoClientForBuiltin,
 			EnableAuditTracing:    env.EnableAuditTrail,
+			AuditTracingOptions: sdk.AuditEvaluatorOptions{
+				MongoDBClient:       mongoClientForAudits,
+				AuditCollectionName: env.AuditStorageMongoDBCollectionName,
+				StorageMode:         env.AuditStorageMode,
+			},
 		},
 		Logger:      rondLogger,
 		AuditLabels: auditLabels,

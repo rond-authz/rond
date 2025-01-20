@@ -16,11 +16,8 @@ package testutils
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"math/rand"
-	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -39,7 +36,57 @@ const LocalhostMongoDB = "localhost:27017"
 const nameDictionary = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
+	if !testing.Testing() {
+		panic("You are using internal/testutils package in production code. Don't do that!")
+	}
+
+	source := time.Now().UnixNano()
+
+	// #nosec G404 -- Use of Cryptographically Weak Pseudo-Random Number Generator (PRNG)
+	// is acceptable here is this is a test utility file that must not be used in production code.
+	//
+	//  - CWE-338 https://cwe.mitre.org/data/definitions/338.html
+	rand.New(rand.NewSource(source))
+}
+
+func formatMongoDBURL(mongoHost, dbName string) string {
+	return fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName)
+}
+
+func GetMongoDBURL(t *testing.T) string {
+	return formatMongoDBURL(
+		GetMongoHost(t),
+		GetRandomName(10),
+	)
+}
+
+func GetAndDisposeMongoClient(t *testing.T) (*mongo.Client, string) {
+	t.Helper()
+
+	mongoHost := GetMongoHost(t)
+	dbName := GetRandomName(10)
+
+	clientOpts := options.Client().ApplyURI(formatMongoDBURL(mongoHost, dbName))
+
+	client, err := mongo.Connect(context.Background(), clientOpts)
+	require.NoError(t, err, "failed mongo db connection")
+
+	t.Cleanup(disposeFactory(t, client, dbName))
+	return client, dbName
+}
+
+// GetAndDisposeTestCollection returns a collection from a random database.
+// The function performs test clean up by dropping the database and closing MongoDB client connection.
+// The returned collections are meant to be used for roles and bindings, respectively.
+func GetAndDisposeTestClientsAndCollections(t *testing.T) (*mongo.Client, string, *mongo.Collection, *mongo.Collection) {
+	t.Helper()
+
+	client, dbName := GetAndDisposeMongoClient(t)
+
+	rolesCollection := client.Database(dbName).Collection("roles")
+	bindingsCollection := client.Database(dbName).Collection("bindings")
+
+	return client, dbName, rolesCollection, bindingsCollection
 }
 
 func GetRandomName(n int) string {
@@ -58,73 +105,19 @@ func GetMongoHost(t testing.TB) string {
 	return mongoHost
 }
 
-// GetAndDisposeTestCollection returns a collection from a random database.
-// The function performs test clean up by dropping the database and closing MongoDB client connection.
-func GetAndDisposeTestClientsAndCollections(t *testing.T) (*mongo.Client, string, *mongo.Collection, *mongo.Collection) {
+func disposeFactory(t *testing.T, client *mongo.Client, dbName string) func() {
 	t.Helper()
-
-	client := GetMongoClient(t)
-	db, rolesCollection, bindingsCollection := GetDBAndCollections(t, client)
-
-	//#nosec G104 -- Ignored errors
-	t.Cleanup(func() {
+	dispose := func() {
 		// This sleep has been added to avoid mongo race condition
 		time.Sleep(100 * time.Millisecond)
-		if err := db.Drop(context.Background()); err != nil {
+		if err := client.Database(dbName).Drop(context.Background()); err != nil {
 			t.Fatalf("drop collcetion failed %s", err.Error())
 		}
 		if err := client.Disconnect(context.Background()); err != nil {
 			t.Fatalf("db disconnect failed %s", err.Error())
 		}
-	})
-
-	return client, db.Name(), rolesCollection, bindingsCollection
-}
-
-// GetMongoClient returns a mongodb client. The function does not perform any cleanup, you have to
-// manually disconnect from the client.
-func GetMongoClient(t *testing.T) *mongo.Client {
-	t.Helper()
-	// Getting MongoHost in CI from standard environment variable.
-	mongoHost := GetMongoHost(t)
-	clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s", mongoHost))
-	client, err := mongo.Connect(context.Background(), clientOpts)
-	require.NoError(t, err, "failed mongo db connection")
-
-	return client
-}
-
-// GetDBAndCollections returns a random database and collection.
-// The function does not perform any cleanup, you have to
-// manually disconnect from the client.
-func GetDBAndCollections(t *testing.T, client *mongo.Client) (*mongo.Database, *mongo.Collection, *mongo.Collection) {
-	dbName := GetRandomName(10)
-	db := client.Database(dbName)
-	return db, db.Collection("roles"), db.Collection("bindings")
-}
-
-func AssertResponseError(t *testing.T, resp *httptest.ResponseRecorder, statusCode int, technicalErrMsg string) {
-	AssertResponseFullErrorMessages(t, resp, statusCode, technicalErrMsg, "")
-}
-
-func AssertResponseFullErrorMessages(t *testing.T, resp *httptest.ResponseRecorder, statusCode int, technicalErrMsg, businessErrMsg string) {
-	t.Helper()
-	respBodyBuff, err := io.ReadAll(resp.Body)
-	require.NoError(t, err, "Unexpected error in the response body")
-
-	var respBody types.RequestError
-	err = json.Unmarshal(respBodyBuff, &respBody)
-	require.NoError(t, err, "Unexpected error during unmarshalling of the response body")
-
-	require.Equal(t, statusCode, respBody.StatusCode, "Unexpected status code")
-
-	if technicalErrMsg != "" {
-		require.Equal(t, technicalErrMsg, respBody.Error, "Unexpected technical error message")
 	}
-
-	if businessErrMsg != "" {
-		require.Equal(t, businessErrMsg, respBody.Message, "Unexpected technical error message")
-	}
+	return dispose
 }
 
 // #nosec G104 -- Ignored errors

@@ -31,3 +31,22 @@ func TestNoopAgentDoesNotBreakStuff(t *testing.T) {
 
 	require.NotNil(t, a.Cache())
 }
+
+// testAgent implements Agent interface to provide a mock implementation for testing.
+type testAgent struct {
+	AssertTraceFunc func(ctx context.Context, a Audit)
+	TraceError      error
+
+	MockCache *SingleRecordCache
+}
+
+func (t *testAgent) Trace(ctx context.Context, a Audit) error {
+	if t.AssertTraceFunc != nil {
+		t.AssertTraceFunc(ctx, a)
+	}
+	return t.TraceError
+}
+
+func (t *testAgent) Cache() AuditCache {
+	return t.MockCache
+}

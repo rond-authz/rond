@@ -1,4 +1,4 @@
-// Copyright 2024 Mia srl
+// Copyright 2025 Mia srl
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package audit
+package testutils
 
 import (
 	"context"
-	"fmt"
+
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type cacheKey struct{}
-
-func WithAuditCache(ctx context.Context, agent Agent) context.Context {
-	return context.WithValue(ctx, cacheKey{}, agent.Cache())
+type MockMongoClient struct {
+	ActualClient *mongo.Client
+	DBName       string
 }
 
-func GetAuditCache(ctx context.Context) (WritableCache, error) {
-	auditCache, ok := ctx.Value(cacheKey{}).(WritableCache)
-	if !ok {
-		return nil, fmt.Errorf("failed to extract audit cache from context")
+func (m *MockMongoClient) Collection(collectionName string) *mongo.Collection {
+	if m.ActualClient == nil {
+		return nil
 	}
-	return auditCache, nil
+	return m.ActualClient.Database(m.DBName).Collection(collectionName)
+}
+
+func (m *MockMongoClient) Disconnect() error {
+	if m.ActualClient == nil {
+		return nil
+	}
+
+	return m.ActualClient.Disconnect(context.Background())
 }

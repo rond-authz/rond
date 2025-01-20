@@ -37,18 +37,20 @@ var SetLabels = rego.Function1(
 		Name: SetLabelsDecl.Name,
 		Decl: SetLabelsDecl.Decl,
 	},
-	func(bctx rego.BuiltinContext, dataToStore *ast.Term) (*ast.Term, error) {
-		auditCache, err := GetAuditCache(bctx.Context)
-		if err != nil {
-			return nil, fmt.Errorf("missing audit cache in context")
-		}
-
-		data := make(map[string]any)
-		if err := ast.As(dataToStore.Value, &data); err != nil {
-			return nil, err
-		}
-
-		auditCache.Store(data)
-		return ast.BooleanTerm(true), nil
-	},
+	setLabelsBuiltinDefinition,
 )
+
+func setLabelsBuiltinDefinition(bctx rego.BuiltinContext, dataToStore *ast.Term) (*ast.Term, error) {
+	auditCache, err := GetAuditCache(bctx.Context)
+	if err != nil {
+		return nil, fmt.Errorf("missing audit cache in context")
+	}
+
+	data := make(map[string]any)
+	if err := ast.As(dataToStore.Value, &data); err != nil {
+		return nil, err
+	}
+
+	auditCache.Store(data)
+	return ast.BooleanTerm(true), nil
+}

@@ -26,6 +26,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestNewMongoClient(t *testing.T) {
@@ -66,7 +67,7 @@ func TestGetMongoCollectionFromContext(t *testing.T) {
 
 func TestMongoFindOne(t *testing.T) {
 	log := logging.NewNoOpLogger()
-	mongoDBURL, dbName := getMongoDBURL(t)
+	mongoDBURL := testutils.GetMongoDBURL(t)
 	client, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
 	require.NoError(t, err)
 	defer client.Disconnect()
@@ -75,7 +76,7 @@ func TestMongoFindOne(t *testing.T) {
 	require.NoError(t, err)
 
 	collectionName := "my-collection"
-	populateCollection(t, dbName, collectionName)
+	populateCollection(t, client.Collection(collectionName))
 
 	t.Run("finds a document", func(t *testing.T) {
 		result, err := mongoClient.FindOne(context.Background(), collectionName, map[string]interface{}{
@@ -108,16 +109,14 @@ func TestMongoFindOne(t *testing.T) {
 
 func TestMongoFindMany(t *testing.T) {
 	log := logging.NewNoOpLogger()
-	mongoDBURL, dbName := getMongoDBURL(t)
-	client, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
-	require.NoError(t, err)
-	defer client.Disconnect()
+	client, dbName := testutils.GetAndDisposeMongoClient(t)
 
-	mongoClient, err := NewMongoClient(log, client)
+	clientWrapper := &testutils.MockMongoClient{ActualClient: client, DBName: dbName}
+	mongoClient, err := NewMongoClient(log, clientWrapper)
 	require.NoError(t, err)
 
 	collectionName := "my-collection"
-	populateCollection(t, dbName, collectionName)
+	populateCollection(t, client.Database(dbName).Collection(collectionName))
 
 	t.Run("finds multiple documents", func(t *testing.T) {
 		result, err := mongoClient.FindMany(context.Background(), collectionName, map[string]interface{}{
@@ -166,14 +165,10 @@ func TestMongoFindMany(t *testing.T) {
 	})
 }
 
-func populateCollection(t *testing.T, dbName string, collectionName string) {
+func populateCollection(t *testing.T, collection *mongo.Collection) {
 	t.Helper()
-
-	client := testutils.GetMongoClient(t)
 	ctx := context.Background()
 
-	db := client.Database(dbName)
-	collection := db.Collection(collectionName)
 	_, err := collection.DeleteMany(ctx, bson.D{})
 	require.NoError(t, err)
 	_, err = collection.InsertMany(ctx, []interface{}{
@@ -198,7 +193,6 @@ func populateCollection(t *testing.T, dbName string, collectionName string) {
 
 	t.Cleanup(func() {
 		collection.Drop(ctx)
-		db.Drop(ctx)
 	})
 }
 

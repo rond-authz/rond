@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	envlib "github.com/caarlos0/env/v11"
@@ -58,9 +59,13 @@ type EnvironmentVariables struct {
 	Standalone                     bool   `env:"STANDALONE"`
 	AdditionalHeadersToProxy       string `env:"ADDITIONAL_HEADERS_TO_PROXY" envDefault:"miauserid"`
 	ExposeMetrics                  bool   `env:"EXPOSE_METRICS" envDefault:"true"`
-	EnableAuditTrail               bool   `env:"ENABLE_AUDIT_TRAIL"`
-	AuditAggregationIDHeaderName   string `env:"AUDIT_AGGREGATION_ID_HEADER_NAME" envDefault:"x-request-id"`
-	AuditTargetServiceName         string `env:"TARGET_SERVICE_NAME"`
+
+	EnableAuditTrail                  bool     `env:"ENABLE_AUDIT_TRAIL"`
+	AuditAggregationIDHeaderName      string   `env:"AUDIT_AGGREGATION_ID_HEADER_NAME" envDefault:"x-request-id"`
+	AuditTargetServiceName            string   `env:"TARGET_SERVICE_NAME"`
+	AuditStorageMode                  []string `env:"AUDIT_STORAGE_MODE" envDefault:"log"`
+	AuditStorageMongoDBURL            string   `env:"AUDIT_STORAGE_MONGODB_URL"`
+	AuditStorageMongoDBCollectionName string   `env:"AUDIT_STORAGE_MONGODB_COLLECTION_NAME" envDefault:"audittrails"`
 }
 
 type EnvKey struct{}
@@ -86,10 +91,12 @@ func GetEnv(requestContext context.Context) (EnvironmentVariables, error) {
 	return env, nil
 }
 
+var ErrEnvParseFailed = fmt.Errorf("env parse failed")
+
 func GetEnvOrDie() EnvironmentVariables {
 	env, err := envlib.ParseAs[EnvironmentVariables]()
 	if err != nil {
-		panic(err.Error())
+		panic(fmt.Errorf("%w: %s", ErrEnvParseFailed, err.Error()))
 	}
 
 	if env.TargetServiceHost == "" && !env.Standalone {
@@ -102,6 +109,18 @@ func GetEnvOrDie() EnvironmentVariables {
 
 	if env.APIPermissionsFilePath == "" && env.TargetServiceOASPath == "" {
 		panic(fmt.Errorf("missing environment variables, one of %s or %s is required", apiPermissionsFilePathEnvKey, targetServiceOASPathEnvKey))
+	}
+
+	if env.EnableAuditTrail {
+		if includes(env.AuditStorageMode, "mongodb") && (env.AuditStorageMongoDBURL == "" && env.MongoDBUrl == "") {
+			panic(fmt.Errorf("missing environment variable AUDIT_STORAGE_MONGODB_URL or MONGODB_URL with ENABLE_AUDIT_TRAIL=true and AUDIT_STORAGE_MODE=mongodb"))
+		}
+		if includes(env.AuditStorageMode, "mongodb") && env.AuditStorageMongoDBCollectionName == "" {
+			panic(fmt.Errorf("missing environment variable AUDIT_STORAGE_MONGODB_COLLECTION_NAME with ENABLE_AUDIT_TRAIL=true and AUDIT_STORAGE_MODE=mongodb"))
+		}
+		if includes(env.AuditStorageMode, "mongodb") && env.AuditStorageMongoDBURL == "" {
+			env.AuditStorageMongoDBURL = env.MongoDBUrl
+		}
 	}
 
 	return env
@@ -131,4 +150,8 @@ func (env EnvironmentVariables) GetAdditionalHeadersToProxy() []string {
 
 func (env EnvironmentVariables) IsTraceLogLevel() bool {
 	return env.LogLevel == traceLogLevel
+}
+
+func includes(slice []string, value string) bool {
+	return slices.Contains(slice, value)
 }

@@ -12,7 +12,7 @@ all: test
 
 .PHONY: mongo-start
 mongo-start:
-	docker run --rm --name mongo -p 27017:27017 -d mongo
+	docker run --rm --name mongo -p 27017:27017 -d mongo:8
 
 .PHONY: test
 test: clean mongo-start
@@ -39,3 +39,7 @@ version:
 	git add "Dockerfile"
 	git commit -m "v${VERSION}"
 	git tag v${VERSION}
+
+.PHONY: runlocal
+runlocal:
+	@set -a && source ./default.env && go run .
