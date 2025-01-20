@@ -19,6 +19,8 @@ import (
 	"fmt"
 )
 
+var ErrNoAgents = fmt.Errorf("no audit agents provided")
+
 type compoundAgent struct {
 	agents []Agent
 }
@@ -28,6 +30,10 @@ func newCompoundAgent(agents ...Agent) Agent {
 }
 
 func (c *compoundAgent) Trace(ctx context.Context, a Audit) error {
+	if len(c.agents) == 0 {
+		return ErrNoAgents
+	}
+
 	var errors []error
 	for _, agent := range c.agents {
 		if err := agent.Trace(ctx, a); err != nil {

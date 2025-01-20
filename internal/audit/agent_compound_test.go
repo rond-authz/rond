@@ -92,6 +92,14 @@ func TestCompoundAgentTrace(t *testing.T) {
 			},
 			expectedError: fmt.Errorf("2/2 agents failed to trace: agent 1 error message; agent 2 error message"),
 		},
+		{
+			name:   "returns error if no agent is set",
+			agents: []Agent{},
+			audit: Audit{
+				AggregationID: "aggregation-id",
+			},
+			expectedError: ErrNoAgents,
+		},
 	}
 
 	for i, tc := range testCases {
