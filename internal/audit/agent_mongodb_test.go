@@ -45,7 +45,7 @@ func TestMongoDBAgent(t *testing.T) {
 		client, dbName := testutils.GetAndDisposeMongoClient(t)
 
 		// Force insert one error by creating a unique index on the aggregationId field
-		// This approach is onloy for test purposes, we don't expect this to be done in production.
+		// This approach is only for test purposes, we don't expect this to be done in production.
 		_, err := client.Database(dbName).Collection(auditCollectionName).Indexes().CreateOne(context.Background(), mongo.IndexModel{
 			Options: options.Index().SetUnique(true),
 			Keys:    map[string]interface{}{"aggregationId": 1},
