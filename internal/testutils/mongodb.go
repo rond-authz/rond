@@ -41,6 +41,11 @@ func init() {
 	}
 
 	source := time.Now().UnixNano()
+
+	// #nosec G404 -- Use of Cryptographically Weak Pseudo-Random Number Generator (PRNG)
+	// is acceptable here is this is a test utility file that must not be used in production code.
+	//
+	//  - CWE-338 https://cwe.mitre.org/data/definitions/338.html
 	rand.New(rand.NewSource(source))
 }
 
