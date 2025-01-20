@@ -91,10 +91,12 @@ func GetEnv(requestContext context.Context) (EnvironmentVariables, error) {
 	return env, nil
 }
 
+var ErrEnvParseFailed = fmt.Errorf("env parse failed")
+
 func GetEnvOrDie() EnvironmentVariables {
 	env, err := envlib.ParseAs[EnvironmentVariables]()
 	if err != nil {
-		panic(err.Error())
+		panic(fmt.Errorf("%w: %s", ErrEnvParseFailed, err.Error()))
 	}
 
 	if env.TargetServiceHost == "" && !env.Standalone {

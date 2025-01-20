@@ -260,6 +260,16 @@ func TestGetEnvOrDie(t *testing.T) {
 			require.Equal(t, "mongodb://localhost:27017/data", actualEnvs.AuditStorageMongoDBURL)
 		})
 	})
+
+	t.Run("panics on parse error", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			require.ErrorIs(t, r.(error), ErrEnvParseFailed)
+		}()
+
+		GetEnvOrDie()
+		t.Fail()
+	})
 }
 
 type env struct {
