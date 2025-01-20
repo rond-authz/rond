@@ -54,7 +54,7 @@ func TestBuildAuditAgent(t *testing.T) {
 			EvaluatorOptions: &EvaluatorOptions{
 				EnableAuditTracing: true,
 				AuditTracingOptions: AuditEvaluatorOptions{
-					StorageMode: []string{"log"},
+					StorageMode: []string{audit.AgentStorageLog},
 				},
 			},
 		}, rondlogrus.NewEntry(logrus.NewEntry(log)))
