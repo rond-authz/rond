@@ -22,6 +22,7 @@ import (
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/rond-authz/rond/custom_builtins"
+	"github.com/rond-authz/rond/internal/audit"
 )
 
 func newRegoInstanceBuilder(policy string, opaModuleConfig *OPAModuleConfig, evaluatorOptions *OPAEvaluatorOptions) (*rego.Rego, error) {
@@ -44,7 +45,13 @@ func newRegoInstanceBuilder(policy string, opaModuleConfig *OPAModuleConfig, eva
 		rego.PrintHook(NewPrintHook(os.Stdout, policy)),
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
 		custom_builtins.GetHeaderFunction,
+		audit.SetLabels,
 	}
+
+	if len(evaluatorOptions.Builtins) > 0 {
+		options = append(options, evaluatorOptions.Builtins...)
+	}
+
 	if evaluatorOptions.MongoClient != nil {
 		options = append(options, custom_builtins.MongoFindOne, custom_builtins.MongoFindMany)
 	}
