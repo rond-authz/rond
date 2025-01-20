@@ -174,7 +174,7 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 			if err != nil {
 				log.WithFields(logrus.Fields{
 					"error": logrus.Fields{"message": err.Error()},
-				}).Errorf("MongoDB setup failed")
+				}).Errorf("MongoDB setup for audit traces failed")
 				return nil, err
 			}
 			closeFn = append(closeFn, func() {
