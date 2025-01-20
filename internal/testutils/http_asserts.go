@@ -18,6 +18,8 @@ func AssertResponseError(t *testing.T, resp *httptest.ResponseRecorder, statusCo
 func AssertResponseFullErrorMessages(t *testing.T, resp *httptest.ResponseRecorder, statusCode int, technicalErrMsg, businessErrMsg string) {
 	t.Helper()
 	respBodyBuff, err := io.ReadAll(resp.Body)
+	defer resp.Result().Body.Close()
+
 	require.NoError(t, err, "Unexpected error in the response body")
 
 	var respBody types.RequestError

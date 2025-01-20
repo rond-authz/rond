@@ -50,16 +50,27 @@ func init() {
 	rand.New(rand.NewSource(source))
 }
 
-func GetMongoDBURL(t *testing.T) string {
-	mongoHost := GetMongoHost(t)
-	dbName := GetRandomName(10)
+func formatMongoDBURL(mongoHost, dbName string) string {
 	return fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName)
+}
+
+func GetMongoDBURL(t *testing.T) string {
+	return formatMongoDBURL(
+		GetMongoHost(t),
+		GetRandomName(10),
+	)
 }
 
 func GetAndDisposeMongoClient(t *testing.T) (*mongo.Client, string) {
 	t.Helper()
 
-	client, dbName := GetMongoClient(t)
+	mongoHost := GetMongoHost(t)
+	dbName := GetRandomName(10)
+
+	clientOpts := options.Client().ApplyURI(formatMongoDBURL(mongoHost, dbName))
+
+	client, err := mongo.Connect(context.Background(), clientOpts)
+	require.NoError(t, err, "failed mongo db connection")
 
 	t.Cleanup(disposeFactory(t, client, dbName))
 	return client, dbName
@@ -71,8 +82,7 @@ func GetAndDisposeMongoClient(t *testing.T) (*mongo.Client, string) {
 func GetAndDisposeTestClientsAndCollections(t *testing.T) (*mongo.Client, string, *mongo.Collection, *mongo.Collection) {
 	t.Helper()
 
-	client, dbName := GetMongoClient(t)
-	t.Cleanup(disposeFactory(t, client, dbName))
+	client, dbName := GetAndDisposeMongoClient(t)
 
 	rolesCollection := client.Database(dbName).Collection("roles")
 	bindingsCollection := client.Database(dbName).Collection("bindings")
@@ -95,31 +105,6 @@ func GetMongoHost(t testing.TB) string {
 	}
 	return mongoHost
 }
-
-// GetMongoClient returns a mongodb client. The function does not perform any cleanup, you have to
-// manually disconnect from the client.
-// Deprecated: this function should private, use GetAndDispose... instead.
-func GetMongoClient(t *testing.T) (*mongo.Client, string) {
-	t.Helper()
-
-	// Getting MongoHost in CI from standard environment variable.
-	mongoHost := GetMongoHost(t)
-	dbName := GetRandomName(10)
-
-	clientOpts := options.Client().ApplyURI(fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName))
-
-	client, err := mongo.Connect(context.Background(), clientOpts)
-	require.NoError(t, err, "failed mongo db connection")
-
-	return client, dbName
-}
-
-// func getDB(t *testing.T, client *mongo.Client) *mongo.Database {
-// 	t.Helper()
-// 	dbName := GetRandomName(10)
-// 	db := client.Database(dbName)
-// 	return db
-// }
 
 func disposeFactory(t *testing.T, client *mongo.Client, dbName string) func() {
 	t.Helper()

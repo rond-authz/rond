@@ -28,11 +28,6 @@ import (
 	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 )
 
-// type IMongoClient interface {
-// 	Collection(collectionName string) *mongo.Collection
-// 	Disconnect() error
-// }
-
 type MongoClient struct {
 	client       *mongo.Client
 	databaseName string
