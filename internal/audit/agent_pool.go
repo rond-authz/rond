@@ -49,12 +49,11 @@ type agentPool struct {
 }
 
 func (c *agentPool) New() Agent {
-	agents := make([]Agent, 0)
-
 	if len(c.options.Storages) == 0 {
 		return &noopAgent{}
 	}
 
+	agents := make([]Agent, 0)
 	if includes(c.options.Storages, AgentStorageLog) {
 		agents = append(
 			agents,
