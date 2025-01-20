@@ -21,9 +21,9 @@ test: clean mongo-start
 
 .PHONY: coverage
 coverage: clean mongo-start
-	go test ./... -coverprofile coverage.out.tmp -count=1 -race=1
-	cat coverage.out.tmp | grep -v "internal/fake" | grep -v "internal/testutils" | grep -v "custom_builtins/mocks" | grep -v "metrics/prometheus/test" > coverage.out
-	rm coverage.out.tmp
+	go test ./... -coverprofile coverage.full.out -count=1 -race=1
+	grep -v -E -f .covignore coverage.full.out > coverage.out
+	rm coverage.full.out
 	$(MAKE) clean
 
 .PHONY: bench
@@ -41,5 +41,3 @@ version:
 	git add "Dockerfile"
 	git commit -m "v${VERSION}"
 	git tag v${VERSION}
-
-#	cat coverage-prev.out | grep -v -i "internal/fake|internal/testutils|custom_builtins/mocks|metrics/prometheus/test" > coverage.out
