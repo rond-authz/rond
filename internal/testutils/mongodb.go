@@ -17,6 +17,7 @@ package testutils
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"testing"
@@ -25,7 +26,6 @@ import (
 	"github.com/rond-authz/rond/types"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/rand"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -40,13 +40,7 @@ func init() {
 		panic("You are using internal/testutils package in production code. Don't do that!")
 	}
 
-	// #nosec G115 -- Coverting a signed to unsigned integer may cause an integer overflow
-	// when dealing with negative numbers. This is not the case here, since the source is
-	// time.Now().UnixNano() which is always positive.
-	// Moreover, this is a test utility file so it won't affect production code.
-	//
-	//  - CWE-190 https://cwe.mitre.org/data/definitions/190.html
-	source := uint64(time.Now().UnixNano())
+	source := time.Now().UnixNano()
 	rand.New(rand.NewSource(source))
 }
 
