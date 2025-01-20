@@ -15,8 +15,6 @@
 package audit
 
 import (
-	"context"
-	"fmt"
 	"slices"
 
 	"github.com/rond-authz/rond/logging"
@@ -69,61 +67,11 @@ func (c *agentPool) New() Agent {
 		)
 	}
 
+	if len(agents) == 0 {
+		return &noopAgent{}
+	}
+
 	return newCompoundAgent(agents...)
-}
-
-type compoundAgent struct {
-	agents []Agent
-}
-
-func newCompoundAgent(agents ...Agent) Agent {
-	return &compoundAgent{agents: agents}
-}
-
-func (c *compoundAgent) Trace(ctx context.Context, a Audit) error {
-	var errors []error
-	for _, agent := range c.agents {
-		if err := agent.Trace(ctx, a); err != nil {
-			errors = append(errors, err)
-		}
-	}
-
-	if len(errors) > 0 {
-		errString := ""
-		for _, err := range errors {
-			errString += err.Error() + ";"
-		}
-		return fmt.Errorf("%d/%d agents failed to trace: %s", len(errors), len(c.agents), errString)
-	}
-	return nil
-}
-
-func (c *compoundAgent) Cache() AuditCache {
-	return &compoundAuditCache{
-		agents: c.agents,
-	}
-}
-
-type compoundAuditCache struct {
-	agents []Agent
-}
-
-func (c *compoundAuditCache) Store(d Data) {
-	for _, agent := range c.agents {
-		agent.Cache().Store(d)
-	}
-}
-
-func (c *compoundAuditCache) Load() Data {
-	dataToReturn := make(Data)
-	for _, agent := range c.agents {
-		if data := agent.Cache().Load(); data != nil {
-			for k, v := range data {
-				dataToReturn[k] = v
-			}
-		}
-	}
-	return dataToReturn
 }
 
 func includes(slice []string, value string) bool {
