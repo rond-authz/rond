@@ -31,6 +31,14 @@ func TestMongoDBAgent(t *testing.T) {
 		require.NotNil(t, agent)
 	})
 
+	t.Run("Trace returns an error if the client is nil", func(t *testing.T) {
+		agent := NewMongoDBAgent(nil, auditCollectionName)
+
+		err := agent.Trace(context.Background(), Audit{})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid mongo client")
+	})
+
 	t.Run("Trace saves the audit trail in the database", func(t *testing.T) {
 		client, dbName := testutils.GetAndDisposeMongoClient(t)
 		agent := NewMongoDBAgent(
@@ -55,7 +63,7 @@ func TestMongoDBAgent(t *testing.T) {
 		require.Equal(t, "some-request-id", results[0].AggregationID)
 	})
 
-	t.Run("trace is stored with proper serialization", func(t *testing.T) {
+	t.Run("Trace is stored with proper serialization", func(t *testing.T) {
 		client, dbName := testutils.GetAndDisposeMongoClient(t)
 		agent := NewMongoDBAgent(
 			&testutils.MockMongoClient{ActualClient: client, DBName: dbName},

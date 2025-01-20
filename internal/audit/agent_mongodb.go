@@ -41,6 +41,10 @@ func NewMongoDBAgent(client types.MongoClient, auditCollectionName string) Agent
 
 func (m *mongoDBAgent) Trace(ctx context.Context, auditInput Audit) error {
 	trail := auditInput.toPrint(m.cache.Load()).serialize()
+	if m.c == nil {
+		return fmt.Errorf("%w: invalid mongo client", ErrAuditNotInserted)
+	}
+
 	result, err := m.c.Collection(m.collectionName).InsertOne(ctx, trail)
 	if err != nil {
 		return err
