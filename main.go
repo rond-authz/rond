@@ -23,9 +23,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/custom_builtins"
 	"github.com/rond-authz/rond/internal/audit"
@@ -43,7 +40,10 @@ import (
 	"github.com/rond-authz/rond/service"
 	"github.com/rond-authz/rond/types"
 
+	"github.com/gorilla/mux"
 	glogrus "github.com/mia-platform/glogger/v4/loggers/logrus"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/sirupsen/logrus"
 )
 
