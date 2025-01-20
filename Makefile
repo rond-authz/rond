@@ -21,7 +21,9 @@ test: clean mongo-start
 
 .PHONY: coverage
 coverage: clean mongo-start
-	go test ./... -coverprofile coverage.out -count=1 -race=1
+	go test ./... -coverprofile coverage.full.out -count=1 -race=1
+	grep -v -E -f .covignore coverage.full.out > coverage.out
+	rm coverage.full.out
 	$(MAKE) clean
 
 .PHONY: bench
