@@ -21,6 +21,11 @@ import (
 	"github.com/rond-authz/rond/types"
 )
 
+const (
+	AgentStorageLog     = "log"
+	AgentStorageMongoDB = "mongodb"
+)
+
 type MongoAgentPoolOptions struct {
 	Client         types.MongoClient
 	CollectionName string
@@ -50,14 +55,14 @@ func (c *agentPool) New() Agent {
 		return &noopAgent{}
 	}
 
-	if includes(c.options.Storages, "log") {
+	if includes(c.options.Storages, AgentStorageLog) {
 		agents = append(
 			agents,
 			NewLogAgent(c.options.Logger, c.options.Labels),
 		)
 	}
 
-	if includes(c.options.Storages, "mongodb") && c.options.MongoDBStorage.Client != nil {
+	if includes(c.options.Storages, AgentStorageMongoDB) && c.options.MongoDBStorage.Client != nil {
 		agents = append(
 			agents,
 			NewMongoDBAgent(

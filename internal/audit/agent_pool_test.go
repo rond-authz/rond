@@ -35,7 +35,7 @@ func TestAgentPool(t *testing.T) {
 
 	t.Run("New returns a compoundAgent with a single logAgent if storage is provided only with log", func(t *testing.T) {
 		agentPool := NewAgentPool(AgentPoolOptions{
-			Storages: []string{"log"},
+			Storages: []string{AgentStorageLog},
 		})
 		agent := agentPool.New()
 		require.IsType(t, &compoundAgent{}, agent)
@@ -48,7 +48,7 @@ func TestAgentPool(t *testing.T) {
 
 	t.Run("New returns a compoundAgent with a single mongoDBAgent if storage is provided only with mongodb", func(t *testing.T) {
 		agentPool := NewAgentPool(AgentPoolOptions{
-			Storages: []string{"mongodb"},
+			Storages: []string{AgentStorageMongoDB},
 			MongoDBStorage: MongoAgentPoolOptions{
 				Client: &testutils.MockMongoClient{},
 			},
@@ -64,7 +64,7 @@ func TestAgentPool(t *testing.T) {
 
 	t.Run("New returns a noopAgent if mongodb is the only desired storage no MongoDB client is provided", func(t *testing.T) {
 		agentPool := NewAgentPool(AgentPoolOptions{
-			Storages: []string{"mongodb"},
+			Storages: []string{AgentStorageMongoDB},
 			MongoDBStorage: MongoAgentPoolOptions{
 				Client: nil,
 			},
@@ -75,7 +75,7 @@ func TestAgentPool(t *testing.T) {
 
 	t.Run("New returns a compoundAgent with both logAgent and mongoDBAgent if storage uses both", func(t *testing.T) {
 		agentPool := NewAgentPool(AgentPoolOptions{
-			Storages: []string{"log", "mongodb"},
+			Storages: []string{AgentStorageLog, AgentStorageMongoDB},
 			MongoDBStorage: MongoAgentPoolOptions{
 				Client: &testutils.MockMongoClient{},
 			},
