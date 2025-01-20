@@ -19,10 +19,10 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/internal/testutils"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var auditCollectionName = "audit-collection"
