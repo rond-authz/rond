@@ -74,6 +74,5 @@ func TestSetLabelsBuiltinDefinition(t *testing.T) {
 		require.Equal(t, ast.BooleanTerm(true), result)
 
 		require.Equal(t, "value", cache.data["key"])
-
 	})
 }
