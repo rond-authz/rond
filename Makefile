@@ -39,3 +39,7 @@ version:
 	git add "Dockerfile"
 	git commit -m "v${VERSION}"
 	git tag v${VERSION}
+
+.PHONY: runlocal
+runlocal:
+	@set -a && source ./default.env && go run .

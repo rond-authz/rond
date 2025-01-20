@@ -36,6 +36,16 @@ const LocalhostMongoDB = "localhost:27017"
 const nameDictionary = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func init() {
+	if !testing.Testing() {
+		panic("You are using internal/testutils package in production code. Don't do that!")
+	}
+
+	// #nosec G115 -- Coverting a signed to unsigned integer may cause an integer overflow
+	// when dealing with negative numbers. This is not the case here, since the source is
+	// time.Now().UnixNano() which is always positive.
+	// Moreover, this is a test utility file so it won't affect production code.
+	//
+	//  - CWE-190 https://cwe.mitre.org/data/definitions/190.html
 	source := uint64(time.Now().UnixNano())
 	rand.New(rand.NewSource(source))
 }
