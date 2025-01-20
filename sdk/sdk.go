@@ -24,14 +24,22 @@ import (
 	"github.com/rond-authz/rond/logging"
 	"github.com/rond-authz/rond/metrics"
 	"github.com/rond-authz/rond/openapi"
+	"github.com/rond-authz/rond/types"
 )
 
 type AuditLabels = audit.Labels
+
+type AuditEvaluatorOptions struct {
+	MongoDBClient       types.MongoClient
+	StorageMode         []string
+	AuditCollectionName string
+}
 
 type EvaluatorOptions struct {
 	MongoClient           custom_builtins.IMongoClient
 	EnablePrintStatements bool
 	EnableAuditTracing    bool
+	AuditTracingOptions   AuditEvaluatorOptions
 }
 
 func (e EvaluatorOptions) opaEvaluatorOptions(logger logging.Logger) *core.OPAEvaluatorOptions {

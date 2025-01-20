@@ -53,6 +53,9 @@ func TestBuildAuditAgent(t *testing.T) {
 		res := buildAuditAgent(&Options{
 			EvaluatorOptions: &EvaluatorOptions{
 				EnableAuditTracing: true,
+				AuditTracingOptions: AuditEvaluatorOptions{
+					StorageMode: []string{audit.AgentStorageLog},
+				},
 			},
 		}, rondlogrus.NewEntry(logrus.NewEntry(log)))
 		require.NotNil(t, res)

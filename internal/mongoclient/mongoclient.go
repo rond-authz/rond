@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/rond-authz/rond/logging"
+	"github.com/rond-authz/rond/types"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -41,7 +42,7 @@ type ConnectionOpts struct {
 
 // NewMongoClient tries to setup a new MongoClient instance.
 // The function returns a `nil` client if the environment variable `MongoDBUrl` is not specified.
-func NewMongoClient(logger logging.Logger, mongodbURL string, connectionOptions ConnectionOpts) (*MongoClient, error) {
+func NewMongoClient(logger logging.Logger, mongodbURL string, connectionOptions ConnectionOpts) (types.MongoClient, error) {
 	if mongodbURL == "" {
 		logger.Info("No MongoDB configuration provided, skipping setup")
 		return nil, nil
