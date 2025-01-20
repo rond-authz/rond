@@ -19,6 +19,8 @@ import (
 	"testing"
 
 	"github.com/rond-authz/rond/internal/testutils"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/stretchr/testify/require"
 )
@@ -37,6 +39,26 @@ func TestMongoDBAgent(t *testing.T) {
 		err := agent.Trace(context.Background(), Audit{})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid mongo client")
+	})
+
+	t.Run("Trace returns an error if the insertion fails", func(t *testing.T) {
+		client, dbName := testutils.GetAndDisposeMongoClient(t)
+
+		// Force insert one error by creating a unique index on the aggregationId field
+		// This approach is onloy for test purposes, we don't expect this to be done in production.
+		_, err := client.Database(dbName).Collection(auditCollectionName).Indexes().CreateOne(context.Background(), mongo.IndexModel{
+			Options: options.Index().SetUnique(true),
+			Keys:    map[string]interface{}{"aggregationId": 1},
+		})
+		require.NoError(t, err)
+
+		agent := NewMongoDBAgent(&testutils.MockMongoClient{ActualClient: client, DBName: dbName}, auditCollectionName)
+
+		err = agent.Trace(context.Background(), Audit{AggregationID: "some-request-id"})
+		require.NoError(t, err)
+
+		err = agent.Trace(context.Background(), Audit{AggregationID: "some-request-id"})
+		require.ErrorContains(t, err, "E11000 duplicate key error")
 	})
 
 	t.Run("Trace saves the audit trail in the database", func(t *testing.T) {

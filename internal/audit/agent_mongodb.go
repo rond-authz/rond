@@ -47,7 +47,7 @@ func (m *mongoDBAgent) Trace(ctx context.Context, auditInput Audit) error {
 
 	result, err := m.c.Collection(m.collectionName).InsertOne(ctx, trail)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %s", ErrAuditNotInserted, err)
 	}
 
 	if result.InsertedID == nil {
