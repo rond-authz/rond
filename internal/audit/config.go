@@ -30,6 +30,7 @@ type Config struct {
 }
 
 func LoadConfiguration(path string) (Config, error) {
+	//#nosec G304 -- This is an expected behaviour
 	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return Config{}, fmt.Errorf("%w: %s", ErrConfigLoadFailed, err)
