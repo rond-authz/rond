@@ -20,7 +20,7 @@ import (
 	"github.com/rond-authz/rond/logging"
 )
 
-func NewLogAgent(l logging.Logger, labels Labels) Agent {
+func newLogAgent(l logging.Logger, labels Labels) Agent {
 	agent := &logAgent{
 		l:     l,
 		cache: &SingleRecordCache{},

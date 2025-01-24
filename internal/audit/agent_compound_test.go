@@ -17,6 +17,7 @@ package audit
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -27,6 +28,7 @@ func TestCompoundAgentTrace(t *testing.T) {
 		name          string
 		agents        []Agent
 		audit         Audit
+		options       Config
 		expectedError error
 	}{
 		{
@@ -100,11 +102,52 @@ func TestCompoundAgentTrace(t *testing.T) {
 			},
 			expectedError: ErrNoAgents,
 		},
+		{
+			name: "does not invoke agent trace if filter is set",
+			agents: []Agent{
+				&testAgent{
+					AssertTraceFunc: func(_ctx context.Context, a Audit) {
+						// This fails the test!
+						t.Errorf("trace should not be invoked")
+					},
+				},
+			},
+			audit: Audit{
+				Request: RequestInfo{
+					Verb: http.MethodGet,
+				},
+			},
+			options: Config{
+				FilterOptions: FilterOptions{
+					ExcludeVerbs: []string{http.MethodGet},
+				},
+			},
+		},
+		{
+			name: "invokes agent trace if filter is set but does not match",
+			agents: []Agent{
+				&testAgent{
+					AssertTraceFunc: func(_ctx context.Context, a Audit) {
+						require.Equal(t, http.MethodPost, a.Request.Verb)
+					},
+				},
+			},
+			audit: Audit{
+				Request: RequestInfo{
+					Verb: http.MethodPost,
+				},
+			},
+			options: Config{
+				FilterOptions: FilterOptions{
+					ExcludeVerbs: []string{http.MethodGet},
+				},
+			},
+		},
 	}
 
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("case#%d: %s", i+1, tc.name), func(t *testing.T) {
-			compoundAgent := newCompoundAgent(tc.agents...)
+			compoundAgent := newCompoundAgent(tc.options, tc.agents...)
 
 			err := compoundAgent.Trace(context.Background(), tc.audit)
 			if tc.expectedError == nil {
@@ -118,8 +161,9 @@ func TestCompoundAgentTrace(t *testing.T) {
 
 func TestCompoundAgentCacheLoad(t *testing.T) {
 	testCases := []struct {
-		name   string
-		agents []Agent
+		name    string
+		agents  []Agent
+		options Config
 	}{
 		{
 			name: "single agent",
@@ -150,7 +194,7 @@ func TestCompoundAgentCacheLoad(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("case#%d: %s", i+1, tc.name), func(t *testing.T) {
-			compoundAgent := newCompoundAgent(tc.agents...)
+			compoundAgent := newCompoundAgent(tc.options, tc.agents...)
 
 			cache := compoundAgent.Cache()
 			require.NotNil(t, cache)
@@ -168,6 +212,7 @@ func TestCompoundAgentCacheStore(t *testing.T) {
 	testCases := []struct {
 		name        string
 		agents      []Agent
+		options     Config
 		dataToStore Data
 	}{
 		{
@@ -201,7 +246,7 @@ func TestCompoundAgentCacheStore(t *testing.T) {
 
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("case#%d: %s", i+1, tc.name), func(t *testing.T) {
-			compoundAgent := newCompoundAgent(tc.agents...)
+			compoundAgent := newCompoundAgent(tc.options, tc.agents...)
 
 			cache := compoundAgent.Cache()
 			cache.Store(tc.dataToStore)

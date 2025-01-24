@@ -85,6 +85,7 @@ func TestGetEnvOrDie(t *testing.T) {
 		MongoDBConnectionMaxIdleTimeMs:    1000,
 		AuditAggregationIDHeaderName:      "x-request-id",
 		AuditStorageMongoDBCollectionName: "audittrails",
+		AuditConfigPath:                   "/app/config/audit_config.json",
 	}
 
 	t.Run(`returns correctly - with TargetServiceHost`, func(t *testing.T) {

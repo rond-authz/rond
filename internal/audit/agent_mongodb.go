@@ -30,7 +30,7 @@ type mongoDBAgent struct {
 	cache AuditCache
 }
 
-func NewMongoDBAgent(client types.MongoClient, auditCollectionName string) Agent {
+func newMongoDBAgent(client types.MongoClient, auditCollectionName string) Agent {
 	return &mongoDBAgent{
 		c:              client,
 		collectionName: auditCollectionName,

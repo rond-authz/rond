@@ -224,11 +224,24 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 		m = rondprometheus.SetupMetrics(registry)
 	}
 
+	var auditConfig audit.Config
+	if env.EnableAuditTrail {
+		auditConfig, err = audit.LoadConfiguration(env.AuditConfigPath)
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"error":           logrus.Fields{"message": err.Error()},
+				"auditConfigPath": env.AuditConfigPath,
+			}).Errorf("failed to load oas")
+			return nil, err
+		}
+	}
+
 	sdkBoot := service.NewSDKBootState()
 	go func(sdkBoot *service.SDKBootState) {
 		sdk := prepSDKOrDie(
 			log,
 			env,
+			auditConfig,
 			opaModuleConfig,
 			oas,
 			mongoClientForBuiltin,
@@ -257,6 +270,7 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 func prepSDKOrDie(
 	log *logrus.Logger,
 	env config.EnvironmentVariables,
+	auditConfig audit.Config,
 	opaModuleConfig *core.OPAModuleConfig,
 	oas *openapi.OpenAPISpec,
 	mongoClientForBuiltin custom_builtins.IMongoClient,
@@ -279,6 +293,7 @@ func prepSDKOrDie(
 				MongoDBClient:       mongoClientForAudits,
 				AuditCollectionName: env.AuditStorageMongoDBCollectionName,
 				StorageMode:         env.AuditStorageMode,
+				AuditConfig:         auditConfig,
 			},
 		},
 		Logger:      rondLogger,

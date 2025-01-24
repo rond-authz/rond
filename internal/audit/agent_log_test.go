@@ -26,7 +26,7 @@ import (
 
 func TestLogAgent(t *testing.T) {
 	l, hook := test.NewNullLogger()
-	agent := NewLogAgent(rondlogrus.NewLogger(l), nil)
+	agent := newLogAgent(rondlogrus.NewLogger(l), nil)
 
 	agent.Cache().Store(Data{
 		"authorization.permission": "my-permission",
@@ -84,7 +84,7 @@ func TestLogAgent(t *testing.T) {
 func TestLogAgentWithGlobalLabels(t *testing.T) {
 	l, hook := test.NewNullLogger()
 
-	agent := NewLogAgent(rondlogrus.NewLogger(l), Labels{
+	agent := newLogAgent(rondlogrus.NewLogger(l), Labels{
 		AuditAdditionalDataRequestTargetServiceKey: "some-service",
 		"some-label": "label_val",
 	})

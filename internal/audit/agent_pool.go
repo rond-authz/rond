@@ -32,6 +32,8 @@ type MongoAgentPoolOptions struct {
 }
 
 type AgentPoolOptions struct {
+	Config Config
+
 	Logger         logging.Logger
 	Labels         Labels
 	Storages       []string
@@ -57,14 +59,14 @@ func (c *agentPool) New() Agent {
 	if includes(c.options.Storages, AgentStorageLog) {
 		agents = append(
 			agents,
-			NewLogAgent(c.options.Logger, c.options.Labels),
+			newLogAgent(c.options.Logger, c.options.Labels),
 		)
 	}
 
 	if includes(c.options.Storages, AgentStorageMongoDB) && c.options.MongoDBStorage.Client != nil {
 		agents = append(
 			agents,
-			NewMongoDBAgent(
+			newMongoDBAgent(
 				c.options.MongoDBStorage.Client,
 				c.options.MongoDBStorage.CollectionName,
 			),
@@ -75,7 +77,10 @@ func (c *agentPool) New() Agent {
 		return &noopAgent{}
 	}
 
-	return newCompoundAgent(agents...)
+	return newCompoundAgent(
+		c.options.Config,
+		agents...,
+	)
 }
 
 func includes(slice []string, value string) bool {

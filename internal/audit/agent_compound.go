@@ -21,17 +21,33 @@ import (
 
 var ErrNoAgents = fmt.Errorf("no audit agents provided")
 
+// compoundAgent is an Agent that combines multiple agents into one.
+// It will trace the audit data with all the agents and return an error if any of the agents fails.
+//
+// NOTE: never use specific agents by themselves, always use the compoundAgent as
+// it also provides additional features such as filtering.
 type compoundAgent struct {
-	agents []Agent
+	agents  []Agent
+	options Config
 }
 
-func newCompoundAgent(agents ...Agent) Agent {
-	return &compoundAgent{agents: agents}
+func newCompoundAgent(
+	options Config,
+	agents ...Agent,
+) Agent {
+	return &compoundAgent{
+		agents:  agents,
+		options: options,
+	}
 }
 
 func (c *compoundAgent) Trace(ctx context.Context, a Audit) error {
 	if len(c.agents) == 0 {
 		return ErrNoAgents
+	}
+
+	if NewFilter(c.options.FilterOptions).Skip(a) {
+		return nil
 	}
 
 	var errors []error
