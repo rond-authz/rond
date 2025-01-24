@@ -33,6 +33,7 @@ type AuditEvaluatorOptions struct {
 	MongoDBClient       types.MongoClient
 	StorageMode         []string
 	AuditCollectionName string
+	AuditConfig         audit.Config
 }
 
 type EvaluatorOptions struct {

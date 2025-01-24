@@ -30,6 +30,7 @@ func buildAuditAgent(options *Options, logger logging.Logger) audit.AgentPool {
 	auditOptions := options.EvaluatorOptions.AuditTracingOptions
 
 	poolOptions := audit.AgentPoolOptions{
+		Config:   auditOptions.AuditConfig,
 		Logger:   logger,
 		Labels:   options.AuditLabels,
 		Storages: auditOptions.StorageMode,

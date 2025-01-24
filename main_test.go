@@ -1510,6 +1510,7 @@ func TestIntegrationWithAuditTrail(t *testing.T) {
 			"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies",
 			"LOG_LEVEL":               "trace",
 			"ENABLE_AUDIT_TRAIL":      strconv.FormatBool(enabledTrace),
+			"AUDIT_CONFIG_FILE_PATH":  "./mocks/audit-configurations/config.json",
 			"TARGET_SERVICE_NAME":     "some-protected-service",
 		})
 

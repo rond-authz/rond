@@ -29,12 +29,12 @@ var auditCollectionName = "audit-collection"
 
 func TestMongoDBAgent(t *testing.T) {
 	t.Run("test NewMongoDBAgent", func(t *testing.T) {
-		agent := NewMongoDBAgent(&testutils.MockMongoClient{}, auditCollectionName)
+		agent := newMongoDBAgent(&testutils.MockMongoClient{}, auditCollectionName)
 		require.NotNil(t, agent)
 	})
 
 	t.Run("Trace returns an error if the client is nil", func(t *testing.T) {
-		agent := NewMongoDBAgent(nil, auditCollectionName)
+		agent := newMongoDBAgent(nil, auditCollectionName)
 
 		err := agent.Trace(context.Background(), Audit{})
 		require.Error(t, err)
@@ -52,7 +52,7 @@ func TestMongoDBAgent(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		agent := NewMongoDBAgent(&testutils.MockMongoClient{ActualClient: client, DBName: dbName}, auditCollectionName)
+		agent := newMongoDBAgent(&testutils.MockMongoClient{ActualClient: client, DBName: dbName}, auditCollectionName)
 
 		err = agent.Trace(context.Background(), Audit{AggregationID: "some-request-id"})
 		require.NoError(t, err)
@@ -63,7 +63,7 @@ func TestMongoDBAgent(t *testing.T) {
 
 	t.Run("Trace saves the audit trail in the database", func(t *testing.T) {
 		client, dbName := testutils.GetAndDisposeMongoClient(t)
-		agent := NewMongoDBAgent(
+		agent := newMongoDBAgent(
 			&testutils.MockMongoClient{ActualClient: client, DBName: dbName},
 			auditCollectionName,
 		)
@@ -87,7 +87,7 @@ func TestMongoDBAgent(t *testing.T) {
 
 	t.Run("Trace is stored with proper serialization", func(t *testing.T) {
 		client, dbName := testutils.GetAndDisposeMongoClient(t)
-		agent := NewMongoDBAgent(
+		agent := newMongoDBAgent(
 			&testutils.MockMongoClient{ActualClient: client, DBName: dbName},
 			auditCollectionName,
 		)

@@ -1,4 +1,4 @@
-// Copyright 2024 Mia srl
+// Copyright 2025 Mia srl
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,35 +15,29 @@
 package audit
 
 import (
-	"context"
-
-	"github.com/rond-authz/rond/logging"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
 )
 
-func newLogAgent(l logging.Logger, labels Labels) Agent {
-	agent := &logAgent{
-		l:     l,
-		cache: &SingleRecordCache{},
+var (
+	ErrConfigLoadFailed = errors.New("failed to read configuration file")
+)
+
+type Config struct {
+	FilterOptions FilterOptions `json:"filterOptions"`
+}
+
+func LoadConfiguration(path string) (Config, error) {
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		return Config{}, fmt.Errorf("%w: %s", ErrConfigLoadFailed, err)
 	}
-	if labels != nil {
-		agent.cache.Store(labels)
+	var config Config
+	if err := json.Unmarshal(bytes, &config); err != nil {
+		return Config{}, fmt.Errorf("%w: %s", ErrConfigLoadFailed, err)
+
 	}
-	return agent
-}
-
-type logAgent struct {
-	l     logging.Logger
-	cache AuditCache
-}
-
-func (a *logAgent) Trace(_ context.Context, auditInput Audit) error {
-	trail := auditInput.toPrint(a.cache.Load()).serialize()
-	a.l.
-		WithField("trail", trail).
-		Info("audit trail")
-	return nil
-}
-
-func (a *logAgent) Cache() AuditCache {
-	return a.cache
+	return config, nil
 }
