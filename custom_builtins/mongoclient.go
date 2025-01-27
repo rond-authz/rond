@@ -70,8 +70,7 @@ func (mongoClient *MongoClient) FindOne(ctx context.Context, collectionName stri
 	result := collection.FindOne(ctx, query)
 
 	var bsonDocument bson.D
-	err := result.Decode(&bsonDocument)
-	if err != nil {
+	if err := result.Decode(&bsonDocument); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			log.WithField("error", map[string]any{"message": err.Error()}).Warn("no document found")
 			return nil, nil

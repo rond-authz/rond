@@ -75,6 +75,19 @@ func GetAndDisposeMongoClient(t *testing.T) (*mongo.Client, string) {
 	return client, dbName
 }
 
+func GetMongoClientCallerMUSTDispose(t *testing.T) (*mongo.Client, string) {
+	t.Helper()
+
+	mongoHost := GetMongoHost(t)
+	dbName := GetRandomName(10)
+
+	clientOpts := options.Client().ApplyURI(formatMongoDBURL(mongoHost, dbName))
+
+	client, err := mongo.Connect(context.Background(), clientOpts)
+	require.NoError(t, err, "failed mongo db connection")
+	return client, dbName
+}
+
 // GetAndDisposeTestCollection returns a collection from a random database.
 // The function performs test clean up by dropping the database and closing MongoDB client connection.
 // The returned collections are meant to be used for roles and bindings, respectively.
@@ -111,7 +124,7 @@ func disposeFactory(t *testing.T, client *mongo.Client, dbName string) func() {
 		// This sleep has been added to avoid mongo race condition
 		time.Sleep(100 * time.Millisecond)
 		if err := client.Database(dbName).Drop(context.Background()); err != nil {
-			t.Fatalf("drop collcetion failed %s", err.Error())
+			t.Fatalf("drop collection failed %s", err.Error())
 		}
 		if err := client.Disconnect(context.Background()); err != nil {
 			t.Fatalf("db disconnect failed %s", err.Error())
