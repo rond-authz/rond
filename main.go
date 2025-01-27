@@ -225,7 +225,7 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 	}
 
 	var auditConfig audit.Config
-	if env.EnableAuditTrail {
+	if env.EnableAuditTrail && env.AuditConfigPath != "" {
 		auditConfig, err = audit.LoadConfiguration(env.AuditConfigPath)
 		if err != nil {
 			log.WithFields(logrus.Fields{
