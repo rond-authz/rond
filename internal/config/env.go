@@ -61,7 +61,7 @@ type EnvironmentVariables struct {
 	ExposeMetrics                  bool   `env:"EXPOSE_METRICS" envDefault:"true"`
 
 	EnableAuditTrail                  bool     `env:"ENABLE_AUDIT_TRAIL"`
-	AuditConfigPath                   string   `env:"AUDIT_CONFIG_FILE_PATH" envDefault:"/app/config/audit_config.json"`
+	AuditConfigPath                   string   `env:"AUDIT_CONFIG_FILE_PATH"`
 	AuditAggregationIDHeaderName      string   `env:"AUDIT_AGGREGATION_ID_HEADER_NAME" envDefault:"x-request-id"`
 	AuditTargetServiceName            string   `env:"TARGET_SERVICE_NAME"`
 	AuditStorageMode                  []string `env:"AUDIT_STORAGE_MODE" envDefault:"log"`
