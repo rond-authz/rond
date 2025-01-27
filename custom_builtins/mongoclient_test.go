@@ -16,11 +16,8 @@ package custom_builtins
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"testing"
 
-	"github.com/rond-authz/rond/internal/mongoclient"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/logging"
 
@@ -30,13 +27,10 @@ import (
 )
 
 func TestNewMongoClient(t *testing.T) {
-	log := logging.NewNoOpLogger()
+	actualClient, dbName := testutils.GetAndDisposeMongoClient(t)
+	mockClient := testutils.MockMongoClient{ActualClient: actualClient, DBName: dbName}
 
-	mongoDBURL, _ := getMongoDBURL(t)
-	mongoClient, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
-	require.NoError(t, err)
-
-	client, err := NewMongoClient(logging.NewNoOpLogger(), mongoClient)
+	client, err := NewMongoClient(logging.NewNoOpLogger(), mockClient)
 	require.NoError(t, err)
 	require.NotNil(t, client)
 }
@@ -67,16 +61,15 @@ func TestGetMongoCollectionFromContext(t *testing.T) {
 
 func TestMongoFindOne(t *testing.T) {
 	log := logging.NewNoOpLogger()
-	mongoDBURL := testutils.GetMongoDBURL(t)
-	client, err := mongoclient.NewMongoClient(log, mongoDBURL, mongoclient.ConnectionOpts{})
-	require.NoError(t, err)
-	defer client.Disconnect()
 
-	mongoClient, err := NewMongoClient(log, client)
+	client, dbName := testutils.GetAndDisposeMongoClient(t)
+	mockClient := testutils.MockMongoClient{ActualClient: client, DBName: dbName}
+
+	mongoClient, err := NewMongoClient(log, mockClient)
 	require.NoError(t, err)
 
 	collectionName := "my-collection"
-	populateCollection(t, client.Collection(collectionName))
+	populateCollection(t, mockClient.Collection(collectionName))
 
 	t.Run("finds a document", func(t *testing.T) {
 		result, err := mongoClient.FindOne(context.Background(), collectionName, map[string]interface{}{
@@ -104,6 +97,21 @@ func TestMongoFindOne(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.True(t, result == nil)
+	})
+
+	t.Run("fails to find one for closed connection", func(t *testing.T) {
+		client, dbName := testutils.GetMongoClientCallerMUSTDispose(t)
+		mockClient := testutils.MockMongoClient{ActualClient: client, DBName: dbName}
+		mongoClient, err := NewMongoClient(log, mockClient)
+		require.NoError(t, err)
+
+		client.Disconnect(context.Background())
+
+		result, err := mongoClient.FindOne(context.Background(), collectionName, map[string]interface{}{
+			"key": 42,
+		})
+		require.Error(t, err)
+		require.Nil(t, result)
 	})
 }
 
@@ -194,17 +202,4 @@ func populateCollection(t *testing.T, collection *mongo.Collection) {
 	t.Cleanup(func() {
 		collection.Drop(ctx)
 	})
-}
-
-func getMongoDBURL(t *testing.T) (connectionString string, dbName string) {
-	t.Helper()
-	mongoHost := os.Getenv("MONGO_HOST_CI")
-	if mongoHost == "" {
-		mongoHost = testutils.LocalhostMongoDB
-		t.Logf("Connection to localhost MongoDB, on CI env this is a problem!")
-	}
-
-	dbName = testutils.GetRandomName(10)
-	connectionString = fmt.Sprintf("mongodb://%s/%s", mongoHost, dbName)
-	return
 }

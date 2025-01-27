@@ -25,14 +25,14 @@ type MockMongoClient struct {
 	DBName       string
 }
 
-func (m *MockMongoClient) Collection(collectionName string) *mongo.Collection {
+func (m MockMongoClient) Collection(collectionName string) *mongo.Collection {
 	if m.ActualClient == nil {
 		return nil
 	}
 	return m.ActualClient.Database(m.DBName).Collection(collectionName)
 }
 
-func (m *MockMongoClient) Disconnect() error {
+func (m MockMongoClient) Disconnect() error {
 	if m.ActualClient == nil {
 		return nil
 	}
