@@ -46,18 +46,7 @@ func TestGetHeader(t *testing.T) {
 			})
 		}
 
-		return &ast.Term{Value: ast.NewObject(
-			terms...,
-		// [2]*ast.Term{
-		// 	ast.StringTerm("key"),
-		// 	// ast.StringTerm("value"),
-		// 	{
-		// 		Value: ast.NewArray(
-		// 			ast.StringTerm("value"),
-		// 		),
-		// 	},
-		// },
-		)}
+		return &ast.Term{Value: ast.NewObject(terms...)}
 	}
 
 	t.Run("GetHeader", func(t *testing.T) {
