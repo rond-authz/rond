@@ -40,15 +40,17 @@ var GetHeaderFunction = rego.Function2(
 		Name: GetHeaderDecl.Name,
 		Decl: GetHeaderDecl.Decl,
 	},
-	func(_ rego.BuiltinContext, a, b *ast.Term) (*ast.Term, error) {
-		var headerKey string
-		var headers http.Header
-		if err := ast.As(a.Value, &headerKey); err != nil {
-			return nil, err
-		}
-		if err := ast.As(b.Value, &headers); err != nil {
-			return nil, err
-		}
-		return ast.StringTerm(headers.Get(headerKey)), nil
-	},
+	getHeaderDefinition,
 )
+
+func getHeaderDefinition(_ rego.BuiltinContext, a, b *ast.Term) (*ast.Term, error) {
+	var headerKey string
+	var headers http.Header
+	if err := ast.As(a.Value, &headerKey); err != nil {
+		return nil, err
+	}
+	if err := ast.As(b.Value, &headers); err != nil {
+		return nil, err
+	}
+	return ast.StringTerm(headers.Get(headerKey)), nil
+}
