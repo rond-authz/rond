@@ -38,38 +38,40 @@ var MongoFindOne = rego.Function2(
 		Name: MongoFindOneDecl.Name,
 		Decl: MongoFindOneDecl.Decl,
 	},
-	func(ctx rego.BuiltinContext, collectionNameTerm, queryTerm *ast.Term) (*ast.Term, error) {
-		mongoClient, err := GetMongoClientFromContext(ctx.Context)
-		if err != nil {
-			return nil, err
-		}
-		if mongoClient == nil {
-			return nil, fmt.Errorf("mongo client not set")
-		}
-
-		var collectionName string
-		if err := ast.As(collectionNameTerm.Value, &collectionName); err != nil {
-			return nil, err
-		}
-
-		query := make(map[string]interface{})
-		if err := ast.As(queryTerm.Value, &query); err != nil {
-			return nil, err
-		}
-
-		result, err := mongoClient.FindOne(ctx.Context, collectionName, query)
-		if err != nil {
-			return nil, err
-		}
-
-		t, err := ast.InterfaceToValue(result)
-		if err != nil {
-			return nil, err
-		}
-
-		return ast.NewTerm(t), nil
-	},
+	mongoFindOneDef,
 )
+
+func mongoFindOneDef(ctx rego.BuiltinContext, collectionNameTerm, queryTerm *ast.Term) (*ast.Term, error) {
+	mongoClient, err := GetMongoClientFromContext(ctx.Context)
+	if err != nil {
+		return nil, err
+	}
+	if mongoClient == nil {
+		return nil, fmt.Errorf("mongo client not set")
+	}
+
+	var collectionName string
+	if err := ast.As(collectionNameTerm.Value, &collectionName); err != nil {
+		return nil, err
+	}
+
+	query := make(map[string]interface{})
+	if err := ast.As(queryTerm.Value, &query); err != nil {
+		return nil, err
+	}
+
+	result, err := mongoClient.FindOne(ctx.Context, collectionName, query)
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := ast.InterfaceToValue(result)
+	if err != nil {
+		return nil, err
+	}
+
+	return ast.NewTerm(t), nil
+}
 
 var MongoFindManyDecl = &ast.Builtin{
 	Name: "find_many",
