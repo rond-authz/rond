@@ -59,6 +59,9 @@ func TestLogAgent(t *testing.T) {
 	require.NotEmpty(t, trailDataMap["id"])
 	delete(trailDataMap, "id")
 
+	require.NotNil(t, trailData.(map[string]interface{})["timestamp"])
+	delete(trailData.(map[string]interface{}), "timestamp")
+
 	require.Equal(t, map[string]any{
 		"aggregationId": "the-aggregation-id",
 		"authorization": map[string]any{
@@ -119,6 +122,9 @@ func TestLogAgentWithGlobalLabels(t *testing.T) {
 
 	require.NotEmpty(t, trailDataMap["id"])
 	delete(trailDataMap, "id")
+
+	require.NotNil(t, trailData.(map[string]interface{})["timestamp"])
+	delete(trailData.(map[string]interface{}), "timestamp")
 
 	require.Equal(t, map[string]any{
 		"aggregationId": "the-aggregation-id",
