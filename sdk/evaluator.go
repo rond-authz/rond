@@ -125,7 +125,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 				Path:      rondInput.Request.Path,
 				UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 			},
-			Timestamp: time.Now().Unix(),
+			Timestamp: time.Now().UnixNano(),
 		}); err != nil {
 			logger.WithField("error", map[string]any{
 				"aggregationId": options.Audit.AggregationID,
@@ -162,7 +162,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 			Path:      rondInput.Request.Path,
 			UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 		},
-		Timestamp: time.Now().Unix(),
+		Timestamp: time.Now().UnixNano(),
 	}); err != nil {
 		logger.WithField("error", map[string]any{
 			"aggregationId": options.Audit.AggregationID,
@@ -216,7 +216,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 				Path:      rondInput.Request.Path,
 				UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 			},
-			Timestamp: time.Now().Unix(),
+			Timestamp: time.Now().UnixNano(),
 		}); err != nil {
 			logger.WithField("error", map[string]any{
 				"aggregationId": options.Audit.AggregationID,
@@ -241,7 +241,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 			Path:      rondInput.Request.Path,
 			UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 		},
-		Timestamp: time.Now().Unix(),
+		Timestamp: time.Now().UnixNano(),
 	}); err != nil {
 		logger.WithField("error", map[string]any{
 			"aggregationId": options.Audit.AggregationID,
