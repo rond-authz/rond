@@ -477,6 +477,10 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 							authz["roleId"] = testCase.expectedAuditRoleID
 						}
 
+						record := trailRecords[0].Fields["trail"]
+						require.NotNil(t, record.(map[string]any)["timestamp"])
+						delete(record.(map[string]any), "timestamp")
+
 						require.Equal(t, map[string]any{
 							"authorization": authz,
 							"labels":        testCase.expectedAuditLabels,
@@ -487,7 +491,7 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 							"subject": map[string]any{
 								"id": "my-user",
 							},
-						}, trailRecords[0].Fields["trail"])
+						}, record)
 					}
 				})
 			})
@@ -605,6 +609,9 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 							"My-Header-Key": headerValue,
 						}
 
+						require.NotNil(t, trailRecord["timestamp"])
+						delete(trailRecord, "timestamp")
+
 						require.Equal(t, map[string]any{
 							"authorization": authz,
 							"labels":        labels,
@@ -704,6 +711,9 @@ func TestEvaluateRequestPolicy(t *testing.T) {
 							"labelKey":      "labelVal",
 							"My-Header-Key": headerValue,
 						}
+
+						require.NotNil(t, trailRecord["timestamp"])
+						delete(trailRecord, "timestamp")
 
 						require.Equal(t, map[string]any{
 							"authorization": authz,
@@ -971,6 +981,8 @@ func TestEvaluateResponsePolicy(t *testing.T) {
 						foundRecord := trailRecords[0].Fields["trail"].(map[string]any)
 						require.NotEmpty(t, foundRecord["id"])
 						delete(foundRecord, "id")
+						require.NotEmpty(t, foundRecord["timestamp"])
+						delete(foundRecord, "timestamp")
 
 						var labels map[string]any
 						require.Equal(t, map[string]any{
