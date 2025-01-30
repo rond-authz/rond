@@ -16,7 +16,6 @@ package audit
 
 import (
 	"slices"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/rond-authz/rond/internal/utils"
@@ -46,6 +45,7 @@ type Audit struct {
 	Subject       SubjectInfo
 	Request       RequestInfo
 	Labels        Labels
+	Timestamp     int64
 }
 
 type AuthzInfo struct {
@@ -100,7 +100,7 @@ func (a *Audit) toPrint(data map[string]any) auditToPrint {
 		Subject:   a.Subject,
 		Request:   a.Request,
 		Labels:    a.Labels,
-		Timestamp: time.Now().Unix(),
+		Timestamp: a.Timestamp,
 	}
 	if data != nil {
 		print.applyDataFromPolicy(data)

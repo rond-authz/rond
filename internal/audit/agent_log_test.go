@@ -44,7 +44,8 @@ func TestLogAgent(t *testing.T) {
 			ID:     "some user",
 			Groups: []string{"g1", "g2"},
 		},
-		Request: RequestInfo{Body: []byte("some body")},
+		Request:   RequestInfo{Body: []byte("some body")},
+		Timestamp: 123123123,
 	})
 
 	entries := hook.AllEntries()
@@ -58,9 +59,6 @@ func TestLogAgent(t *testing.T) {
 
 	require.NotEmpty(t, trailDataMap["id"])
 	delete(trailDataMap, "id")
-
-	require.NotNil(t, trailData.(map[string]interface{})["timestamp"])
-	delete(trailData.(map[string]interface{}), "timestamp")
 
 	require.Equal(t, map[string]any{
 		"aggregationId": "the-aggregation-id",
@@ -81,6 +79,7 @@ func TestLogAgent(t *testing.T) {
 			"groups": []string{"g1", "g2"},
 			"id":     "some user",
 		},
+		"timestamp": int64(123123123),
 	}, trailData)
 }
 
@@ -108,7 +107,8 @@ func TestLogAgentWithGlobalLabels(t *testing.T) {
 			ID:     "some user",
 			Groups: []string{"g1", "g2"},
 		},
-		Request: RequestInfo{Body: []byte("some body")},
+		Request:   RequestInfo{Body: []byte("some body")},
+		Timestamp: 543543543,
 	})
 
 	entries := hook.AllEntries()
@@ -122,9 +122,6 @@ func TestLogAgentWithGlobalLabels(t *testing.T) {
 
 	require.NotEmpty(t, trailDataMap["id"])
 	delete(trailDataMap, "id")
-
-	require.NotNil(t, trailData.(map[string]interface{})["timestamp"])
-	delete(trailData.(map[string]interface{}), "timestamp")
 
 	require.Equal(t, map[string]any{
 		"aggregationId": "the-aggregation-id",
@@ -147,5 +144,6 @@ func TestLogAgentWithGlobalLabels(t *testing.T) {
 			"groups": []string{"g1", "g2"},
 			"id":     "some user",
 		},
+		"timestamp": int64(543543543),
 	}, trailData)
 }

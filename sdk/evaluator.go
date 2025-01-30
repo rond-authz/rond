@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/audit"
@@ -124,6 +125,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 				Path:      rondInput.Request.Path,
 				UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 			},
+			Timestamp: time.Now().Unix(),
 		}); err != nil {
 			logger.WithField("error", map[string]any{
 				"aggregationId": options.Audit.AggregationID,
@@ -160,6 +162,7 @@ func (e evaluator) EvaluateRequestPolicy(ctx context.Context, rondInput core.Inp
 			Path:      rondInput.Request.Path,
 			UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 		},
+		Timestamp: time.Now().Unix(),
 	}); err != nil {
 		logger.WithField("error", map[string]any{
 			"aggregationId": options.Audit.AggregationID,
@@ -213,6 +216,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 				Path:      rondInput.Request.Path,
 				UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 			},
+			Timestamp: time.Now().Unix(),
 		}); err != nil {
 			logger.WithField("error", map[string]any{
 				"aggregationId": options.Audit.AggregationID,
@@ -237,6 +241,7 @@ func (e evaluator) EvaluateResponsePolicy(ctx context.Context, rondInput core.In
 			Path:      rondInput.Request.Path,
 			UserAgent: rondInput.Request.Headers.Get(userAgentHeaderKey),
 		},
+		Timestamp: time.Now().Unix(),
 	}); err != nil {
 		logger.WithField("error", map[string]any{
 			"aggregationId": options.Audit.AggregationID,
