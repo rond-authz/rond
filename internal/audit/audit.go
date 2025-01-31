@@ -45,6 +45,7 @@ type Audit struct {
 	Subject       SubjectInfo
 	Request       RequestInfo
 	Labels        Labels
+	Timestamp     int64
 }
 
 type AuthzInfo struct {
@@ -85,6 +86,7 @@ type auditToPrint struct {
 	Subject       SubjectInfo      `audit:"subject"`
 	Request       RequestInfo      `audit:"request"`
 	Labels        Labels           `audit:"labels"`
+	Timestamp     int64            `audit:"timestamp"`
 }
 
 func (a *Audit) toPrint(data map[string]any) auditToPrint {
@@ -95,9 +97,10 @@ func (a *Audit) toPrint(data map[string]any) auditToPrint {
 			Allowed:    a.Authorization.Allowed,
 			PolicyName: a.Authorization.PolicyName,
 		},
-		Subject: a.Subject,
-		Request: a.Request,
-		Labels:  a.Labels,
+		Subject:   a.Subject,
+		Request:   a.Request,
+		Labels:    a.Labels,
+		Timestamp: a.Timestamp,
 	}
 	if data != nil {
 		print.applyDataFromPolicy(data)
