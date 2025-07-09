@@ -181,7 +181,7 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        annotations: ${{ steps.meta.output.annotations }}
+        annotations: ${{ steps.meta.outputs.annotations }}
         platforms: ${{ steps.buildx.outputs.platforms }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
@@ -191,7 +191,7 @@ jobs:
       with:
         artifact-name: rond-authz-sbom.spdx.json
         output-file: ./rond-authz-sbom.spdx.json
-        image: nexus.mia-platform.eu/rond-authz/rond:${{ steps.meta.output.version }}
+        image: nexus.mia-platform.eu/rond-authz/rond:${{ steps.meta.outputs.version }}
         upload-release-assets: true
     - name: GCP Auth
       uses: google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193 # v2.1.10
@@ -210,8 +210,8 @@ jobs:
         done
       env:
         TAGS: |
-          ghcr.io/rond-authz/rond:${{ steps.meta.output.version }}
-          docker.io/rondauthz/rond:${{ steps.meta.output.version }}
-          nexus.mia-platform.eu/rond-authz/rond:${{ steps.meta.output.version }}
+          ghcr.io/rond-authz/rond:${{ steps.meta.outputs.version }}
+          docker.io/rondauthz/rond:${{ steps.meta.outputs.version }}
+          nexus.mia-platform.eu/rond-authz/rond:${{ steps.meta.outputs.version }}
         DIGEST: ${{ steps.docker-build.outputs.digest }}
         COSIGN_PRIVATE_KEY: ${{ secrets.MIA_PLATFORM_COSIGN_KEY }}
