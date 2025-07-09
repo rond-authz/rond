@@ -191,7 +191,7 @@ jobs:
       with:
         artifact-name: rond-authz-sbom.spdx.json
         output-file: ./rond-authz-sbom.spdx.json
-        image: nexus.mia-platform.eu/rond-authz/rond:${{ steps.meta.output.version.main }}
+        image: nexus.mia-platform.eu/rond-authz/rond:${{ steps.meta.output.version }}
         upload-release-assets: true
     - name: GCP Auth
       uses: google-github-actions/auth@ba79af03959ebeac9769e648f473a284504d9193 # v2.1.10
@@ -206,12 +206,12 @@ jobs:
         for tag in ${TAGS}; do
           image="${tag}@${DIGEST}"
           cosign sign --recursive --yes --key "${COSIGN_PRIVATE_KEY}" "${image}"
-          cosign attest --recursive --yes --key "${COSIGN_PRIVATE_KEY}" --predicate "rond-authz-sbom.spdx.json" --type="spdxjson" "${image}"
+          cosign attest --yes --key "${COSIGN_PRIVATE_KEY}" --predicate "rond-authz-sbom.spdx.json" --type="spdxjson" "${image}"
         done
       env:
         TAGS: |
-          ghcr.io/rond-authz/rond:${{ steps.meta.output.version.main }}
-          docker.io/rondauthz/rond:${{ steps.meta.output.version.main }}
-          nexus.mia-platform.eu/rond-authz/rond:${{ steps.meta.output.version.main }}
+          ghcr.io/rond-authz/rond:${{ steps.meta.output.version }}
+          docker.io/rondauthz/rond:${{ steps.meta.output.version }}
+          nexus.mia-platform.eu/rond-authz/rond:${{ steps.meta.output.version }}
         DIGEST: ${{ steps.docker-build.outputs.digest }}
         COSIGN_PRIVATE_KEY: ${{ secrets.MIA_PLATFORM_COSIGN_KEY }}
