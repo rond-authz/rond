@@ -2,7 +2,7 @@ module github.com/rond-authz/rond
 
 go 1.25
 
-toolchain go1.25.1
+toolchain go1.24
 
 require (
 	github.com/caarlos0/env/v11 v11.2.2
