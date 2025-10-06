@@ -1,8 +1,10 @@
 {
   "name": "Go",
-  "image": "golang:1.23.2",
+  "image": "golang:1.25",
   "features": {
-    "ghcr.io/devcontainers/features/common-utils:2": {"username": "golang"},
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "golang"
+    },
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "runArgs": [
