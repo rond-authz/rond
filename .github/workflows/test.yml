@@ -185,7 +185,7 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
     - name: Generate SBOM
-      uses: anchore/sbom-action@f8bdd1d8ac5e901a77a92f111440fdb1b593736b # v0.20.6
+      uses: anchore/sbom-action@8e94d75ddd33f69f691467e42275782e4bfefe84 # v0.20.9
       if: github.ref_type == 'tag'
       with:
         artifact-name: rond-authz-sbom.spdx.json
