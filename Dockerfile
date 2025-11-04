@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM docker.io/library/golang:1.25.3@sha256:bce1e7ec780444d85d041889e7a0e542b0be7b272a7f46a5fb947f0f484b9736 AS builder
+FROM docker.io/library/golang:1.25.3@sha256:6bac879c5b77e0fc9c556a5ed8920e89dab1709bd510a854903509c828f67f96 AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
