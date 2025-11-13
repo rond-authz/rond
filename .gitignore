@@ -125,4 +125,10 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+#local file
+.env.local
+local
+local/*
+rond
+
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,linux,windows,macos,go
