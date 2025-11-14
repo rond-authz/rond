@@ -73,6 +73,7 @@ type OPAEvaluator struct {
 	evaluator     PartialEvaluator
 	context       context.Context
 	mongoClient   custom_builtins.IMongoClient
+	redisClient   interface{}
 	generateQuery bool
 	logger        logging.Logger
 }
@@ -80,6 +81,7 @@ type OPAEvaluator struct {
 type OPAEvaluatorOptions struct {
 	EnablePrintStatements bool
 	MongoClient           custom_builtins.IMongoClient
+	RedisClient           interface{}
 	Logger                logging.Logger
 	Builtins              []func(*rego.Rego)
 }
@@ -188,6 +190,12 @@ func (evaluator *OPAEvaluator) getContext() context.Context {
 	if evaluator.mongoClient != nil {
 		ctx = custom_builtins.WithMongoClient(ctx, evaluator.mongoClient)
 	}
+	if evaluator.redisClient != nil {
+		// Check if redisClient implements the IRedisClient interface
+		if redisIface, ok := evaluator.redisClient.(custom_builtins.IRedisClient); ok {
+			ctx = custom_builtins.WithRedisClient(ctx, redisIface)
+		}
+	}
 	if evaluator.logger != nil {
 		ctx = logging.WithContext(ctx, evaluator.logger)
 	}
@@ -241,10 +249,14 @@ type BuiltinDeclarations map[string]*ast.Builtin
 
 func NewOPAModuleConfigWithBuiltins(modules []Module, builtinsDeclarations BuiltinDeclarations) (*OPAModuleConfig, error) {
 	builtins := map[string]*ast.Builtin{
-		custom_builtins.GetHeaderDecl.Name:     custom_builtins.GetHeaderDecl,
-		custom_builtins.MongoFindOneDecl.Name:  custom_builtins.MongoFindOneDecl,
-		custom_builtins.MongoFindManyDecl.Name: custom_builtins.MongoFindManyDecl,
-		audit.SetLabelsDecl.Name:               audit.SetLabelsDecl,
+		custom_builtins.GetHeaderDecl.Name:              custom_builtins.GetHeaderDecl,
+		custom_builtins.MongoFindOneDecl.Name:           custom_builtins.MongoFindOneDecl,
+		custom_builtins.MongoFindManyDecl.Name:          custom_builtins.MongoFindManyDecl,
+		custom_builtins.RedisGetDecl.Name:               custom_builtins.RedisGetDecl,
+		custom_builtins.RedisSetDecl.Name:               custom_builtins.RedisSetDecl,
+		custom_builtins.RedisSetWithExpirationDecl.Name: custom_builtins.RedisSetWithExpirationDecl,
+		custom_builtins.RedisDelDecl.Name:               custom_builtins.RedisDelDecl,
+		audit.SetLabelsDecl.Name:                        audit.SetLabelsDecl,
 	}
 
 	for name, decl := range builtinsDeclarations {

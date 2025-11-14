@@ -81,6 +81,7 @@ func (partialEvaluators PartialResultsEvaluators) GetEvaluatorFromPolicy(ctx con
 			evaluator:     eval,
 			context:       ctx,
 			mongoClient:   options.MongoClient,
+			redisClient:   options.RedisClient,
 			generateQuery: eval.preparedPartialQuery != nil,
 		}, nil
 	}

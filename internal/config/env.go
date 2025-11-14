@@ -52,6 +52,7 @@ type EnvironmentVariables struct {
 	BindingsCrudServiceURL         string `env:"BINDINGS_CRUD_SERVICE_URL"`
 	MongoDBUrl                     string `env:"MONGODB_URL"`
 	MongoDBConnectionMaxIdleTimeMs int    `env:"MONGODB_CONNECTION_MAX_IDLE_TIME_MS" envDefault:"1000"`
+	RedisUrl                       string `env:"REDIS_URL"`
 	RolesCollectionName            string `env:"ROLES_COLLECTION_NAME"`
 	BindingsCollectionName         string `env:"BINDINGS_COLLECTION_NAME"`
 	PathPrefixStandalone           string `env:"PATH_PREFIX_STANDALONE" envDefault:"/eval"`

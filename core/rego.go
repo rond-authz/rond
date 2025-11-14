@@ -33,6 +33,7 @@ func newRegoInstanceBuilder(policy string, opaModuleConfig *OPAModuleConfig, eva
 	if evaluatorOptions == nil {
 		evaluatorOptions = &OPAEvaluatorOptions{}
 	}
+	evalOpts := evaluatorOptions
 
 	sanitizedPolicy := strings.Replace(policy, ".", "_", -1)
 	queryString := fmt.Sprintf("data.policies.%s", sanitizedPolicy)
@@ -41,19 +42,28 @@ func newRegoInstanceBuilder(policy string, opaModuleConfig *OPAModuleConfig, eva
 		rego.Query(queryString),
 		rego.Compiler(opaModuleConfig.compiler),
 		rego.Unknowns(Unknowns),
-		rego.EnablePrintStatements(evaluatorOptions.EnablePrintStatements),
+		rego.EnablePrintStatements(evalOpts.EnablePrintStatements),
 		rego.PrintHook(NewPrintHook(os.Stdout, policy)),
 		rego.Capabilities(ast.CapabilitiesForThisVersion()),
 		custom_builtins.GetHeaderFunction,
 		audit.SetLabels,
 	}
 
-	if len(evaluatorOptions.Builtins) > 0 {
-		options = append(options, evaluatorOptions.Builtins...)
+	if len(evalOpts.Builtins) > 0 {
+		options = append(options, evalOpts.Builtins...)
 	}
 
-	if evaluatorOptions.MongoClient != nil {
+	if evalOpts.MongoClient != nil {
 		options = append(options, custom_builtins.MongoFindOne, custom_builtins.MongoFindMany)
+	}
+
+	if evalOpts.RedisClient != nil {
+		options = append(options,
+			custom_builtins.RedisGet,
+			custom_builtins.RedisSet,
+			custom_builtins.RedisSetWithExpiration,
+			custom_builtins.RedisDel,
+		)
 	}
 	regoInstance := rego.New(options...)
 

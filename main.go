@@ -29,6 +29,8 @@ import (
 	"github.com/rond-authz/rond/internal/config"
 	"github.com/rond-authz/rond/internal/helpers"
 	"github.com/rond-authz/rond/internal/mongoclient"
+	"github.com/rond-authz/rond/internal/redisclient"
+
 	"github.com/rond-authz/rond/logging"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
 	"github.com/rond-authz/rond/metrics"
@@ -188,6 +190,35 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 		}
 	}
 
+	// Setup Redis client
+	var redisClientForBuiltin custom_builtins.IRedisClient
+	if env.RedisUrl != "" {
+		client, err := redisclient.NewRedisClient(rondLogger, env.RedisUrl, redisclient.ConnectionOpts{})
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"error": logrus.Fields{"message": err.Error()},
+			}).Errorf("Redis setup failed")
+			return nil, err
+		}
+		closeFn = append(closeFn, func() {
+			if err := client.Close(); err != nil {
+				log.WithFields(logrus.Fields{
+					"error": logrus.Fields{"message": err.Error()},
+				}).Errorf("Redis disconnection failed")
+			}
+		})
+
+		// Create Redis client for builtins
+		clientForBuiltin, err := custom_builtins.NewRedisClient(rondLogger, client)
+		if err != nil {
+			log.WithFields(logrus.Fields{
+				"error": logrus.Fields{"message": err.Error()},
+			}).Errorf("Redis for builtin setup failed")
+			return nil, err
+		}
+		redisClientForBuiltin = clientForBuiltin
+	}
+
 	var mongoClientForUserBindings inputuser.Client
 	var mongoClientForBuiltin custom_builtins.IMongoClient
 	if mongoDriver != nil {
@@ -245,6 +276,7 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 			opaModuleConfig,
 			oas,
 			mongoClientForBuiltin,
+			redisClientForBuiltin,
 			mongoClientForAudits,
 			rondLogger,
 			m,
@@ -274,6 +306,7 @@ func prepSDKOrDie(
 	opaModuleConfig *core.OPAModuleConfig,
 	oas *openapi.OpenAPISpec,
 	mongoClientForBuiltin custom_builtins.IMongoClient,
+	redisClientForBuiltin custom_builtins.IRedisClient,
 	mongoClientForAudits types.MongoClient,
 	rondLogger logging.Logger,
 	m *metrics.Metrics,
@@ -288,6 +321,7 @@ func prepSDKOrDie(
 		EvaluatorOptions: &sdk.EvaluatorOptions{
 			EnablePrintStatements: env.IsTraceLogLevel(),
 			MongoClient:           mongoClientForBuiltin,
+			RedisClient:           redisClientForBuiltin,
 			EnableAuditTracing:    env.EnableAuditTrail,
 			AuditTracingOptions: sdk.AuditEvaluatorOptions{
 				MongoDBClient:       mongoClientForAudits,
