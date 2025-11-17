@@ -125,7 +125,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-#local file
+# local files
 .env.local
 local
 local/*

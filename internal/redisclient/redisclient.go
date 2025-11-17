@@ -66,15 +66,18 @@ func NewRedisClient(logger logging.Logger, redisURL string, connectionOptions Co
 		}
 	}
 
-	// Extract password from URL
+	// Extract username and password from URL
+	username := ""
 	password := ""
 	if parsedURL.User != nil {
+		username = parsedURL.User.Username()
 		password, _ = parsedURL.User.Password()
 	}
 
 	// Build Redis options
 	opts := &redis.Options{
 		Addr:     parsedURL.Host,
+		Username: username,
 		Password: password,
 		DB:       database,
 	}
