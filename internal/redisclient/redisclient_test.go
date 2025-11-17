@@ -15,8 +15,11 @@
 package redisclient
 
 import (
+	"context"
 	"testing"
+	"time"
 
+	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/logging"
 	"github.com/stretchr/testify/require"
 )
@@ -42,15 +45,247 @@ func TestSetupRedisClient(t *testing.T) {
 	})
 
 	t.Run("throws if redis connection fails", func(t *testing.T) {
-		redisURL := "not-valid-redis-url"
+		// Use a host that won't be reachable to ensure connection failure
+		redisURL := "redis://invalid-host-that-does-not-exist:6379/0"
 
 		log := logging.NewNoOpLogger()
-		client, err := NewRedisClient(log, redisURL, connOptions)
+
+		// Set a short timeout to make the test fail faster
+		shortTimeoutOptions := ConnectionOpts{
+			DialTimeout: 1 * time.Second,
+		}
+
+		client, err := NewRedisClient(log, redisURL, shortTimeoutOptions)
 		require.Error(t, err, "setup redis should return error")
 		require.Contains(t, err.Error(), "error verifying Redis connection:")
 		require.Nil(t, client)
 	})
+}
 
-	// Note: For integration tests, we would need a real Redis instance
-	// These tests focus on configuration validation rather than actual connections
+func TestRedisClientIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	connOptions := ConnectionOpts{}
+
+	t.Run("successfully connects to Redis with valid URL", func(t *testing.T) {
+		redisURL := testutils.GetRedisURL(t)
+		log := logging.NewNoOpLogger()
+
+		client, err := NewRedisClient(log, redisURL, connOptions)
+		require.NoError(t, err)
+		require.NotNil(t, client)
+
+		// Test basic operations
+		ctx := context.Background()
+		err = client.Set(ctx, "test:integration", "hello", 10*time.Second).Err()
+		require.NoError(t, err)
+
+		val, err := client.Get(ctx, "test:integration").Result()
+		require.NoError(t, err)
+		require.Equal(t, "hello", val)
+
+		// Cleanup
+		err = client.Del(ctx, "test:integration").Err()
+		require.NoError(t, err)
+
+		err = client.Close()
+		require.NoError(t, err)
+	})
+
+	t.Run("successfully connects with custom connection options", func(t *testing.T) {
+		redisHost := testutils.GetRedisHost(t)
+		redisURL := testutils.FormatRedisURL(redisHost, 1)
+		log := logging.NewNoOpLogger()
+
+		customOptions := ConnectionOpts{
+			MaxRetries:   3,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 5 * time.Second,
+			DialTimeout:  5 * time.Second,
+			IdleTimeout:  10 * time.Second,
+			PoolSize:     10,
+			MinIdleConns: 2,
+		}
+
+		client, err := NewRedisClient(log, redisURL, customOptions)
+		require.NoError(t, err)
+		require.NotNil(t, client)
+
+		// Test connection works
+		ctx := context.Background()
+		err = client.Ping(ctx).Err()
+		require.NoError(t, err)
+
+		err = client.Close()
+		require.NoError(t, err)
+	})
+
+	t.Run("successfully connects with authentication in URL", func(t *testing.T) {
+		// Test with password authentication
+		// Redis auth instance runs on port 6380 with password "testpassword123"
+		redisURL := "redis://:testpassword123@localhost:6380/0"
+		log := logging.NewNoOpLogger()
+
+		client, err := NewRedisClient(log, redisURL, connOptions)
+		require.NoError(t, err)
+		require.NotNil(t, client)
+
+		ctx := context.Background()
+		err = client.Ping(ctx).Err()
+		require.NoError(t, err)
+
+		// Test that we can actually use the authenticated connection
+		err = client.Set(ctx, "test:auth", "authenticated", 10*time.Second).Err()
+		require.NoError(t, err)
+
+		val, err := client.Get(ctx, "test:auth").Result()
+		require.NoError(t, err)
+		require.Equal(t, "authenticated", val)
+
+		// Cleanup
+		err = client.Del(ctx, "test:auth").Err()
+		require.NoError(t, err)
+
+		err = client.Close()
+		require.NoError(t, err)
+	})
+
+	t.Run("fails to connect with wrong password", func(t *testing.T) {
+		// Test with incorrect password
+		redisURL := "redis://:wrongpassword@localhost:6380/0"
+		log := logging.NewNoOpLogger()
+
+		shortTimeoutOptions := ConnectionOpts{
+			DialTimeout: 2 * time.Second,
+		}
+
+		client, err := NewRedisClient(log, redisURL, shortTimeoutOptions)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "error verifying Redis connection:")
+		require.Nil(t, client)
+	})
+
+	t.Run("fails to connect without password when required", func(t *testing.T) {
+		// Test connecting to auth-required Redis without password
+		redisURL := "redis://localhost:6380/0"
+		log := logging.NewNoOpLogger()
+
+		shortTimeoutOptions := ConnectionOpts{
+			DialTimeout: 2 * time.Second,
+		}
+
+		client, err := NewRedisClient(log, redisURL, shortTimeoutOptions)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "error verifying Redis connection:")
+		require.Nil(t, client)
+	})
+
+	t.Run("successfully connects with username and password in URL", func(t *testing.T) {
+		// Redis 6+ supports ACL with username:password
+		// For testing purposes with Redis 7, we use default user with password
+		redisURL := "redis://default:testpassword123@localhost:6380/0"
+		log := logging.NewNoOpLogger()
+
+		client, err := NewRedisClient(log, redisURL, connOptions)
+		require.NoError(t, err)
+		require.NotNil(t, client)
+
+		ctx := context.Background()
+		err = client.Ping(ctx).Err()
+		require.NoError(t, err)
+
+		err = client.Close()
+		require.NoError(t, err)
+	})
+
+	t.Run("handles different database numbers", func(t *testing.T) {
+		redisHost := testutils.GetRedisHost(t)
+		log := logging.NewNoOpLogger()
+
+		// Test with database 0
+		redisURL0 := testutils.FormatRedisURL(redisHost, 0)
+		client0, err := NewRedisClient(log, redisURL0, connOptions)
+		require.NoError(t, err)
+		require.NotNil(t, client0)
+
+		// Test with database 1
+		redisURL1 := testutils.FormatRedisURL(redisHost, 1)
+		client1, err := NewRedisClient(log, redisURL1, connOptions)
+		require.NoError(t, err)
+		require.NotNil(t, client1)
+
+		// Set same key in different databases
+		ctx := context.Background()
+		err = client0.Set(ctx, "test:db", "db0", 10*time.Second).Err()
+		require.NoError(t, err)
+
+		err = client1.Set(ctx, "test:db", "db1", 10*time.Second).Err()
+		require.NoError(t, err)
+
+		// Verify they're different
+		val0, err := client0.Get(ctx, "test:db").Result()
+		require.NoError(t, err)
+		require.Equal(t, "db0", val0)
+
+		val1, err := client1.Get(ctx, "test:db").Result()
+		require.NoError(t, err)
+		require.Equal(t, "db1", val1)
+
+		// Cleanup
+		err = client0.Del(ctx, "test:db").Err()
+		require.NoError(t, err)
+		err = client1.Del(ctx, "test:db").Err()
+		require.NoError(t, err)
+
+		err = client0.Close()
+		require.NoError(t, err)
+		err = client1.Close()
+		require.NoError(t, err)
+	})
+
+	t.Run("handles Redis operations correctly", func(t *testing.T) {
+		redisURL := testutils.GetRedisURL(t)
+		log := logging.NewNoOpLogger()
+
+		client, err := NewRedisClient(log, redisURL, connOptions)
+		require.NoError(t, err)
+		require.NotNil(t, client)
+		defer client.Close()
+
+		ctx := context.Background()
+
+		// Test SET and GET
+		err = client.Set(ctx, "test:string", "hello world", 0).Err()
+		require.NoError(t, err)
+
+		val, err := client.Get(ctx, "test:string").Result()
+		require.NoError(t, err)
+		require.Equal(t, "hello world", val)
+
+		// Test DELETE
+		deleted, err := client.Del(ctx, "test:string").Result()
+		require.NoError(t, err)
+		require.Equal(t, int64(1), deleted)
+
+		// Test key doesn't exist after delete
+		_, err = client.Get(ctx, "test:string").Result()
+		require.Error(t, err)
+
+		// Test EXPIRE
+		err = client.Set(ctx, "test:expire", "temp", 1*time.Second).Err()
+		require.NoError(t, err)
+
+		exists, err := client.Exists(ctx, "test:expire").Result()
+		require.NoError(t, err)
+		require.Equal(t, int64(1), exists)
+
+		// Wait for expiration
+		time.Sleep(2 * time.Second)
+
+		exists, err = client.Exists(ctx, "test:expire").Result()
+		require.NoError(t, err)
+		require.Equal(t, int64(0), exists)
+	})
 }
