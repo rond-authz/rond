@@ -94,23 +94,13 @@ func (redisClient *RedisClient) Set(ctx context.Context, key string, value inter
 	}).Debug("performing Redis SET")
 
 	// Convert value to JSON string for storage
-	var valueToStore string
-	switch v := value.(type) {
-	case string:
-		valueToStore = v
-	default:
-		jsonBytes, err := json.Marshal(value)
-		if err != nil {
-			log.WithFields(map[string]any{
-				"error":    map[string]any{"message": err.Error()},
-				"redisKey": key,
-			}).Error("failed to marshal value for Redis SET")
-			return err
-		}
-		valueToStore = string(jsonBytes)
+	jsonBytes, err := json.Marshal(value)
+	if err != nil {
+		return err
 	}
+	valueToStore := string(jsonBytes)
 
-	err := redisClient.client.Set(ctx, key, valueToStore, expiration).Err()
+	err = redisClient.client.Set(ctx, key, valueToStore, expiration).Err()
 	if err != nil {
 		log.WithFields(map[string]any{
 			"error":    map[string]any{"message": err.Error()},
