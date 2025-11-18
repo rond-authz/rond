@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/rond-authz/rond/logging"
+	"github.com/rond-authz/rond/types"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -52,10 +53,10 @@ func GetRedisClientFromContext(ctx context.Context) (IRedisClient, error) {
 }
 
 type RedisClient struct {
-	client *redis.Client
+	client types.RedisClient
 }
 
-func NewRedisClient(logger logging.Logger, redisClient *redis.Client) (IRedisClient, error) {
+func NewRedisClient(logger logging.Logger, redisClient types.RedisClient) (IRedisClient, error) {
 	return &RedisClient{client: redisClient}, nil
 }
 
@@ -63,7 +64,7 @@ func (redisClient *RedisClient) Get(ctx context.Context, key string) (interface{
 	log := logging.FromContext(ctx)
 	log.WithField("redisKey", key).Debug("performing Redis GET")
 
-	result, err := redisClient.client.Get(ctx, key).Result()
+	result, err := redisClient.client.Get(ctx, key)
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			log.WithField("redisKey", key).Debug("Redis key not found")
@@ -100,7 +101,7 @@ func (redisClient *RedisClient) Set(ctx context.Context, key string, value inter
 	}
 	valueToStore := string(jsonBytes)
 
-	err = redisClient.client.Set(ctx, key, valueToStore, expiration).Err()
+	err = redisClient.client.Set(ctx, key, valueToStore, expiration)
 	if err != nil {
 		log.WithFields(map[string]any{
 			"error":    map[string]any{"message": err.Error()},
@@ -116,7 +117,7 @@ func (redisClient *RedisClient) Del(ctx context.Context, key string) error {
 	log := logging.FromContext(ctx)
 	log.WithField("redisKey", key).Debug("performing Redis DEL")
 
-	deletedCount, err := redisClient.client.Del(ctx, key).Result()
+	deletedCount, err := redisClient.client.Del(ctx, key)
 	if err != nil {
 		log.WithFields(map[string]any{
 			"error":    map[string]any{"message": err.Error()},

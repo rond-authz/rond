@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/rond-authz/rond/logging"
+	"github.com/rond-authz/rond/types"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -31,10 +32,9 @@ type RedisClient struct {
 	database int
 }
 
-
 // NewRedisClient tries to setup a new RedisClient instance.
 // The function returns a `nil` client if the environment variable `RedisURL` is not specified.
-func NewRedisClient(logger logging.Logger, redisURL string) (*redis.Client, error) {
+func NewRedisClient(logger logging.Logger, redisURL string) (types.RedisClient, error) {
 	if redisURL == "" {
 		logger.Info("No Redis configuration provided, skipping setup")
 		return nil, nil
@@ -82,6 +82,39 @@ func NewRedisClient(logger logging.Logger, redisURL string) (*redis.Client, erro
 		return nil, fmt.Errorf("error verifying Redis connection: %s", err.Error())
 	}
 
+	redisClient := &RedisClient{
+		client:   client,
+		database: database,
+	}
+
 	logger.Info("Redis client set up completed")
-	return client, nil
+	return redisClient, nil
+}
+
+// Get retrieves a value from Redis by key
+func (r *RedisClient) Get(ctx context.Context, key string) (string, error) {
+	return r.client.Get(ctx, key).Result()
+}
+
+// Set stores a value in Redis with an optional expiration
+func (r *RedisClient) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+	return r.client.Set(ctx, key, value, expiration).Err()
+}
+
+// Del deletes one or more keys from Redis
+func (r *RedisClient) Del(ctx context.Context, keys ...string) (int64, error) {
+	return r.client.Del(ctx, keys...).Result()
+}
+
+// Ping tests the connection to Redis
+func (r *RedisClient) Ping(ctx context.Context) error {
+	return r.client.Ping(ctx).Err()
+}
+
+// Close closes the connection to Redis
+func (r *RedisClient) Close() error {
+	if r.client != nil {
+		return r.client.Close()
+	}
+	return nil
 }

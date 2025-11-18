@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rond-authz/rond/internal/redisclient"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/logging"
 	"github.com/stretchr/testify/require"
@@ -63,9 +64,16 @@ func TestNewRedisClient(t *testing.T) {
 		}
 
 		log := logging.NewNoOpLogger()
-		redisClient := testutils.GetAndDisposeRedisClient(t)
+		redisURL := testutils.GetRedisURL(t)
 
-		client, err := NewRedisClient(log, redisClient)
+		// Create a types.RedisClient using internal/redisclient
+		typesRedisClient, err := redisclient.NewRedisClient(log, redisURL)
+		require.NoError(t, err)
+		require.NotNil(t, typesRedisClient)
+		defer typesRedisClient.Close()
+
+		// Now create the custom builtin client with the types.RedisClient
+		client, err := NewRedisClient(log, typesRedisClient)
 		require.NoError(t, err)
 		require.NotNil(t, client)
 	})
@@ -77,9 +85,16 @@ func TestRedisClient_Set_Get_Del(t *testing.T) {
 	}
 
 	log := logging.NewNoOpLogger()
-	redisClient := testutils.GetAndDisposeRedisClient(t)
+	redisURL := testutils.GetRedisURL(t)
 
-	client, err := NewRedisClient(log, redisClient)
+	// Create a types.RedisClient using internal/redisclient
+	typesRedisClient, err := redisclient.NewRedisClient(log, redisURL)
+	require.NoError(t, err)
+	require.NotNil(t, typesRedisClient)
+	defer typesRedisClient.Close()
+
+	// Now create the custom builtin client with the types.RedisClient
+	client, err := NewRedisClient(log, typesRedisClient)
 	require.NoError(t, err)
 	require.NotNil(t, client)
 

@@ -71,15 +71,15 @@ func TestRedisClientIntegration(t *testing.T) {
 
 		// Test basic operations
 		ctx := context.Background()
-		err = client.Set(ctx, "test:integration", "hello", 10*time.Second).Err()
+		err = client.Set(ctx, "test:integration", "hello", 10*time.Second)
 		require.NoError(t, err)
 
-		val, err := client.Get(ctx, "test:integration").Result()
+		val, err := client.Get(ctx, "test:integration")
 		require.NoError(t, err)
 		require.Equal(t, "hello", val)
 
 		// Cleanup
-		err = client.Del(ctx, "test:integration").Err()
+		_, err = client.Del(ctx, "test:integration")
 		require.NoError(t, err)
 
 		err = client.Close()
@@ -97,7 +97,7 @@ func TestRedisClientIntegration(t *testing.T) {
 
 		// Test connection works
 		ctx := context.Background()
-		err = client.Ping(ctx).Err()
+		err = client.Ping(ctx)
 		require.NoError(t, err)
 
 		err = client.Close()
@@ -115,19 +115,19 @@ func TestRedisClientIntegration(t *testing.T) {
 		require.NotNil(t, client)
 
 		ctx := context.Background()
-		err = client.Ping(ctx).Err()
+		err = client.Ping(ctx)
 		require.NoError(t, err)
 
 		// Test that we can actually use the authenticated connection
-		err = client.Set(ctx, "test:auth", "authenticated", 10*time.Second).Err()
+		err = client.Set(ctx, "test:auth", "authenticated", 10*time.Second)
 		require.NoError(t, err)
 
-		val, err := client.Get(ctx, "test:auth").Result()
+		val, err := client.Get(ctx, "test:auth")
 		require.NoError(t, err)
 		require.Equal(t, "authenticated", val)
 
 		// Cleanup
-		err = client.Del(ctx, "test:auth").Err()
+		_, err = client.Del(ctx, "test:auth")
 		require.NoError(t, err)
 
 		err = client.Close()
@@ -167,7 +167,7 @@ func TestRedisClientIntegration(t *testing.T) {
 		require.NotNil(t, client)
 
 		ctx := context.Background()
-		err = client.Ping(ctx).Err()
+		err = client.Ping(ctx)
 		require.NoError(t, err)
 
 		err = client.Close()
@@ -192,25 +192,25 @@ func TestRedisClientIntegration(t *testing.T) {
 
 		// Set same key in different databases
 		ctx := context.Background()
-		err = client0.Set(ctx, "test:db", "db0", 10*time.Second).Err()
+		err = client0.Set(ctx, "test:db", "db0", 10*time.Second)
 		require.NoError(t, err)
 
-		err = client1.Set(ctx, "test:db", "db1", 10*time.Second).Err()
+		err = client1.Set(ctx, "test:db", "db1", 10*time.Second)
 		require.NoError(t, err)
 
 		// Verify they're different
-		val0, err := client0.Get(ctx, "test:db").Result()
+		val0, err := client0.Get(ctx, "test:db")
 		require.NoError(t, err)
 		require.Equal(t, "db0", val0)
 
-		val1, err := client1.Get(ctx, "test:db").Result()
+		val1, err := client1.Get(ctx, "test:db")
 		require.NoError(t, err)
 		require.Equal(t, "db1", val1)
 
 		// Cleanup
-		err = client0.Del(ctx, "test:db").Err()
+		_, err = client0.Del(ctx, "test:db")
 		require.NoError(t, err)
-		err = client1.Del(ctx, "test:db").Err()
+		_, err = client1.Del(ctx, "test:db")
 		require.NoError(t, err)
 
 		err = client0.Close()
@@ -231,35 +231,36 @@ func TestRedisClientIntegration(t *testing.T) {
 		ctx := context.Background()
 
 		// Test SET and GET
-		err = client.Set(ctx, "test:string", "hello world", 0).Err()
+		err = client.Set(ctx, "test:string", "hello world", 0)
 		require.NoError(t, err)
 
-		val, err := client.Get(ctx, "test:string").Result()
+		val, err := client.Get(ctx, "test:string")
 		require.NoError(t, err)
 		require.Equal(t, "hello world", val)
 
 		// Test DELETE
-		deleted, err := client.Del(ctx, "test:string").Result()
+		deleted, err := client.Del(ctx, "test:string")
 		require.NoError(t, err)
 		require.Equal(t, int64(1), deleted)
 
 		// Test key doesn't exist after delete
-		_, err = client.Get(ctx, "test:string").Result()
+		_, err = client.Get(ctx, "test:string")
 		require.Error(t, err)
 
-		// Test EXPIRE
-		err = client.Set(ctx, "test:expire", "temp", 1*time.Second).Err()
+		// Test EXPIRE - set a key with expiration
+		err = client.Set(ctx, "test:expire", "temp", 1*time.Second)
 		require.NoError(t, err)
 
-		exists, err := client.Exists(ctx, "test:expire").Result()
+		// Verify key exists
+		val, err = client.Get(ctx, "test:expire")
 		require.NoError(t, err)
-		require.Equal(t, int64(1), exists)
+		require.Equal(t, "temp", val)
 
 		// Wait for expiration
 		time.Sleep(2 * time.Second)
 
-		exists, err = client.Exists(ctx, "test:expire").Result()
-		require.NoError(t, err)
-		require.Equal(t, int64(0), exists)
+		// Verify key is gone
+		_, err = client.Get(ctx, "test:expire")
+		require.Error(t, err)
 	})
 }
