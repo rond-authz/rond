@@ -31,19 +31,10 @@ type RedisClient struct {
 	database int
 }
 
-type ConnectionOpts struct {
-	MaxRetries   int
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	DialTimeout  time.Duration
-	IdleTimeout  time.Duration
-	PoolSize     int
-	MinIdleConns int
-}
 
 // NewRedisClient tries to setup a new RedisClient instance.
 // The function returns a `nil` client if the environment variable `RedisURL` is not specified.
-func NewRedisClient(logger logging.Logger, redisURL string, connectionOptions ConnectionOpts) (*redis.Client, error) {
+func NewRedisClient(logger logging.Logger, redisURL string) (*redis.Client, error) {
 	if redisURL == "" {
 		logger.Info("No Redis configuration provided, skipping setup")
 		return nil, nil
@@ -80,29 +71,6 @@ func NewRedisClient(logger logging.Logger, redisURL string, connectionOptions Co
 		Username: username,
 		Password: password,
 		DB:       database,
-	}
-
-	// Set connection options if provided
-	if connectionOptions.MaxRetries > 0 {
-		opts.MaxRetries = connectionOptions.MaxRetries
-	}
-	if connectionOptions.ReadTimeout > 0 {
-		opts.ReadTimeout = connectionOptions.ReadTimeout
-	}
-	if connectionOptions.WriteTimeout > 0 {
-		opts.WriteTimeout = connectionOptions.WriteTimeout
-	}
-	if connectionOptions.DialTimeout > 0 {
-		opts.DialTimeout = connectionOptions.DialTimeout
-	}
-	if connectionOptions.IdleTimeout > 0 {
-		opts.ConnMaxIdleTime = connectionOptions.IdleTimeout
-	}
-	if connectionOptions.PoolSize > 0 {
-		opts.PoolSize = connectionOptions.PoolSize
-	}
-	if connectionOptions.MinIdleConns > 0 {
-		opts.MinIdleConns = connectionOptions.MinIdleConns
 	}
 
 	client := redis.NewClient(opts)

@@ -25,11 +25,10 @@ import (
 )
 
 func TestSetupRedisClient(t *testing.T) {
-	connOptions := ConnectionOpts{}
 
 	t.Run("if RedisURL empty, returns nil", func(t *testing.T) {
 		log := logging.NewNoOpLogger()
-		client, err := NewRedisClient(log, "", connOptions)
+		client, err := NewRedisClient(log, "")
 		require.NoError(t, err)
 		require.True(t, client == nil, "RedisURL is nil")
 	})
@@ -38,7 +37,7 @@ func TestSetupRedisClient(t *testing.T) {
 		redisURL := "://invalid-url-with-no-scheme"
 
 		log := logging.NewNoOpLogger()
-		client, err := NewRedisClient(log, redisURL, connOptions)
+		client, err := NewRedisClient(log, redisURL)
 		require.True(t, err != nil, "setup redis not returns error")
 		require.Contains(t, err.Error(), "failed Redis URL validation:")
 		require.True(t, client == nil)
@@ -50,12 +49,7 @@ func TestSetupRedisClient(t *testing.T) {
 
 		log := logging.NewNoOpLogger()
 
-		// Set a short timeout to make the test fail faster
-		shortTimeoutOptions := ConnectionOpts{
-			DialTimeout: 1 * time.Second,
-		}
-
-		client, err := NewRedisClient(log, redisURL, shortTimeoutOptions)
+		client, err := NewRedisClient(log, redisURL)
 		require.Error(t, err, "setup redis should return error")
 		require.Contains(t, err.Error(), "error verifying Redis connection:")
 		require.Nil(t, client)
@@ -67,13 +61,11 @@ func TestRedisClientIntegration(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	connOptions := ConnectionOpts{}
-
 	t.Run("successfully connects to Redis with valid URL", func(t *testing.T) {
 		redisURL := testutils.GetRedisURL(t)
 		log := logging.NewNoOpLogger()
 
-		client, err := NewRedisClient(log, redisURL, connOptions)
+		client, err := NewRedisClient(log, redisURL)
 		require.NoError(t, err)
 		require.NotNil(t, client)
 
@@ -99,17 +91,7 @@ func TestRedisClientIntegration(t *testing.T) {
 		redisURL := testutils.FormatRedisURL(redisHost, 1)
 		log := logging.NewNoOpLogger()
 
-		customOptions := ConnectionOpts{
-			MaxRetries:   3,
-			ReadTimeout:  5 * time.Second,
-			WriteTimeout: 5 * time.Second,
-			DialTimeout:  5 * time.Second,
-			IdleTimeout:  10 * time.Second,
-			PoolSize:     10,
-			MinIdleConns: 2,
-		}
-
-		client, err := NewRedisClient(log, redisURL, customOptions)
+		client, err := NewRedisClient(log, redisURL)
 		require.NoError(t, err)
 		require.NotNil(t, client)
 
@@ -128,7 +110,7 @@ func TestRedisClientIntegration(t *testing.T) {
 		redisURL := "redis://:testpassword123@localhost:6380/0"
 		log := logging.NewNoOpLogger()
 
-		client, err := NewRedisClient(log, redisURL, connOptions)
+		client, err := NewRedisClient(log, redisURL)
 		require.NoError(t, err)
 		require.NotNil(t, client)
 
@@ -157,11 +139,7 @@ func TestRedisClientIntegration(t *testing.T) {
 		redisURL := "redis://:wrongpassword@localhost:6380/0"
 		log := logging.NewNoOpLogger()
 
-		shortTimeoutOptions := ConnectionOpts{
-			DialTimeout: 2 * time.Second,
-		}
-
-		client, err := NewRedisClient(log, redisURL, shortTimeoutOptions)
+		client, err := NewRedisClient(log, redisURL)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "error verifying Redis connection:")
 		require.Nil(t, client)
@@ -172,11 +150,7 @@ func TestRedisClientIntegration(t *testing.T) {
 		redisURL := "redis://localhost:6380/0"
 		log := logging.NewNoOpLogger()
 
-		shortTimeoutOptions := ConnectionOpts{
-			DialTimeout: 2 * time.Second,
-		}
-
-		client, err := NewRedisClient(log, redisURL, shortTimeoutOptions)
+		client, err := NewRedisClient(log, redisURL)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "error verifying Redis connection:")
 		require.Nil(t, client)
@@ -188,7 +162,7 @@ func TestRedisClientIntegration(t *testing.T) {
 		redisURL := "redis://default:testpassword123@localhost:6380/0"
 		log := logging.NewNoOpLogger()
 
-		client, err := NewRedisClient(log, redisURL, connOptions)
+		client, err := NewRedisClient(log, redisURL)
 		require.NoError(t, err)
 		require.NotNil(t, client)
 
@@ -206,13 +180,13 @@ func TestRedisClientIntegration(t *testing.T) {
 
 		// Test with database 0
 		redisURL0 := testutils.FormatRedisURL(redisHost, 0)
-		client0, err := NewRedisClient(log, redisURL0, connOptions)
+		client0, err := NewRedisClient(log, redisURL0)
 		require.NoError(t, err)
 		require.NotNil(t, client0)
 
 		// Test with database 1
 		redisURL1 := testutils.FormatRedisURL(redisHost, 1)
-		client1, err := NewRedisClient(log, redisURL1, connOptions)
+		client1, err := NewRedisClient(log, redisURL1)
 		require.NoError(t, err)
 		require.NotNil(t, client1)
 
@@ -249,7 +223,7 @@ func TestRedisClientIntegration(t *testing.T) {
 		redisURL := testutils.GetRedisURL(t)
 		log := logging.NewNoOpLogger()
 
-		client, err := NewRedisClient(log, redisURL, connOptions)
+		client, err := NewRedisClient(log, redisURL)
 		require.NoError(t, err)
 		require.NotNil(t, client)
 		defer client.Close()

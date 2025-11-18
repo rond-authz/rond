@@ -193,7 +193,7 @@ func setupService(env config.EnvironmentVariables, log *logrus.Logger) (*app, er
 	// Setup Redis client
 	var redisClientForBuiltin custom_builtins.IRedisClient
 	if env.RedisUrl != "" {
-		client, err := redisclient.NewRedisClient(rondLogger, env.RedisUrl, redisclient.ConnectionOpts{})
+		client, err := redisclient.NewRedisClient(rondLogger, env.RedisUrl)
 		if err != nil {
 			log.WithFields(logrus.Fields{
 				"error": logrus.Fields{"message": err.Error()},
