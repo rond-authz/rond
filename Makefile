@@ -37,9 +37,9 @@ bench: clean mongo-start redis-start
 
 .PHONY: clean
 clean:
-	-docker rm mongo --force 2>/dev/null || true
-	-docker rm redis --force 2>/dev/null || true
-	-docker rm redis-auth --force 2>/dev/null || true
+	docker rm mongo --force 2>/dev/null || true
+	docker rm redis --force 2>/dev/null || true
+	docker rm redis-auth --force 2>/dev/null || true
 
 .PHONY: version
 version:
