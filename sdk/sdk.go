@@ -38,6 +38,7 @@ type AuditEvaluatorOptions struct {
 
 type EvaluatorOptions struct {
 	MongoClient           custom_builtins.IMongoClient
+	RedisClient           custom_builtins.IRedisClient
 	EnablePrintStatements bool
 	EnableAuditTracing    bool
 	AuditTracingOptions   AuditEvaluatorOptions
@@ -47,6 +48,7 @@ func (e EvaluatorOptions) opaEvaluatorOptions(logger logging.Logger) *core.OPAEv
 	return &core.OPAEvaluatorOptions{
 		Logger:                logger,
 		MongoClient:           e.MongoClient,
+		RedisClient:           e.RedisClient,
 		EnablePrintStatements: e.EnablePrintStatements,
 	}
 }

@@ -33,7 +33,6 @@ func newRegoInstanceBuilder(policy string, opaModuleConfig *OPAModuleConfig, eva
 	if evaluatorOptions == nil {
 		evaluatorOptions = &OPAEvaluatorOptions{}
 	}
-
 	sanitizedPolicy := strings.Replace(policy, ".", "_", -1)
 	queryString := fmt.Sprintf("data.policies.%s", sanitizedPolicy)
 
@@ -54,6 +53,15 @@ func newRegoInstanceBuilder(policy string, opaModuleConfig *OPAModuleConfig, eva
 
 	if evaluatorOptions.MongoClient != nil {
 		options = append(options, custom_builtins.MongoFindOne, custom_builtins.MongoFindMany)
+	}
+
+	if evaluatorOptions.RedisClient != nil {
+		options = append(options,
+			custom_builtins.RedisGet,
+			custom_builtins.RedisSet,
+			custom_builtins.RedisSetWithExpiration,
+			custom_builtins.RedisDel,
+		)
 	}
 	regoInstance := rego.New(options...)
 
