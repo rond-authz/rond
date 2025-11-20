@@ -15,7 +15,12 @@
 // TODO: check if types should be removed from here, and set in correct packages
 package types
 
-import "go.mongodb.org/mongo-driver/mongo"
+import (
+	"context"
+	"time"
+
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 type Resource struct {
 	ResourceType string `bson:"resourceType" json:"resourceType,omitempty"`
@@ -63,4 +68,12 @@ type User struct {
 type MongoClient interface {
 	Collection(collectionName string) *mongo.Collection
 	Disconnect() error
+}
+
+type RedisClient interface {
+	Get(ctx context.Context, key string) (string, error)
+	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error
+	Del(ctx context.Context, keys ...string) (int64, error)
+	Ping(ctx context.Context) error
+	Close() error
 }

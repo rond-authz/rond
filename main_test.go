@@ -32,6 +32,7 @@ import (
 
 	"github.com/rond-authz/rond/core"
 	"github.com/rond-authz/rond/internal/config"
+	"github.com/rond-authz/rond/internal/redisclient"
 	"github.com/rond-authz/rond/internal/testutils"
 	"github.com/rond-authz/rond/internal/utils"
 	rondlogrus "github.com/rond-authz/rond/logging/logrus"
@@ -824,6 +825,183 @@ func TestSetupApp(t *testing.T) {
 
 			app.router.ServeHTTP(w, req)
 
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
+	})
+
+	t.Run("redis integration", func(t *testing.T) {
+		defer gock.Off()
+		defer gock.DisableNetworkingFilters()
+		defer gock.DisableNetworking()
+		gock.EnableNetworking()
+		gock.NetworkingFilter(func(r *http.Request) bool {
+			if r.URL.Path == "/documentation/json" {
+				return false
+			}
+			if r.URL.Path == "/users/" && r.URL.Host == "localhost:3060" {
+				return false
+			}
+			if r.URL.Path == "/with-redis-get/test:mykey" && r.URL.Host == "localhost:3060" {
+				return false
+			}
+			if r.URL.Path == "/with-redis-set" && r.URL.Host == "localhost:3060" {
+				return false
+			}
+			if r.URL.Path == "/with-redis-del/test:delkey" && r.URL.Host == "localhost:3060" {
+				return false
+			}
+			return true
+		})
+
+		gock.New("http://localhost:3060").
+			Get("/documentation/json").
+			Reply(200).
+			File("./mocks/simplifiedMockWithRedisBuiltins.json")
+
+		redisURL := testutils.GetRedisURL(t)
+
+		envs := getEnvs(t, map[string]string{
+			"HTTP_PORT":               "3061",
+			"TARGET_SERVICE_HOST":     "localhost:3060",
+			"TARGET_SERVICE_OAS_PATH": "/documentation/json",
+			"OPA_MODULES_DIRECTORY":   "./mocks/rego-policies-with-redis-builtins",
+			"REDIS_URL":               redisURL,
+			"LOG_LEVEL":               "fatal",
+		})
+
+		// Create a separate Redis client for test setup
+		rondLogger := rondlogrus.NewLogger(log)
+		testRedisClient, err := redisclient.NewRedisClient(rondLogger, redisURL)
+		require.NoError(t, err)
+		defer testRedisClient.Close()
+
+		app, err := setupService(envs, log)
+		require.NoError(t, err)
+		require.True(t, <-app.sdkBootState.IsReadyChan())
+
+		ctx := context.Background()
+
+		t.Run("200 - even without headers", func(t *testing.T) {
+			gock.Flush()
+			gock.New("http://localhost:3060/users/").
+				Get("/users/").
+				Reply(200)
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/users/", nil)
+			app.router.ServeHTTP(w, req)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
+
+		t.Run("200 - integration passed", func(t *testing.T) {
+			gock.Flush()
+			gock.New("http://localhost:3060/users/").
+				Get("/users/").
+				Reply(200).
+				SetHeader("someuserheader", "user1").
+				JSON(map[string]string{"foo": "bar"})
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/users/", nil)
+			req.Header.Set("miauserid", "user1")
+			req.Header.Set("miausergroups", "user1,user2")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
+
+			app.router.ServeHTTP(w, req)
+			require.Equal(t, "user1", w.Result().Header.Get("someuserheader"))
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
+
+		t.Run("200 - integration redis_get builtin", func(t *testing.T) {
+			// Setup: Set a value in Redis using test client (JSON-serialized to match builtin behavior)
+			err := testRedisClient.Set(ctx, "test:mykey", `"test-value"`, 0)
+			require.NoError(t, err)
+			defer testRedisClient.Del(ctx, "test:mykey")
+
+			gock.Flush()
+			gock.New("http://localhost:3060/").
+				Get("/with-redis-get/test:mykey").
+				Reply(200).
+				SetHeader("someuserheader", "user1").
+				JSON(map[string]string{"foo": "bar"})
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "http://localhost:3061/with-redis-get/test:mykey", nil)
+			req.Header.Set("miauserid", "user1")
+			req.Header.Set("miausergroups", "user1,user2")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
+
+			app.router.ServeHTTP(w, req)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		})
+
+		t.Run("403 - integration redis_get builtin with wrong value", func(t *testing.T) {
+			// Setup: Set a different value in Redis using test client (JSON-serialized to match builtin behavior)
+			err := testRedisClient.Set(ctx, "test:wrongkey", `"wrong-value"`, 0)
+			require.NoError(t, err)
+			defer testRedisClient.Del(ctx, "test:wrongkey")
+
+			gock.Flush()
+			gock.New("http://localhost:3060/").
+				Get("/with-redis-get/test:wrongkey").
+				Reply(200).
+				SetHeader("someuserheader", "user1").
+				JSON(map[string]string{"foo": "bar"})
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/with-redis-get/test:wrongkey", nil)
+			req.Header.Set("miauserid", "user1")
+			req.Header.Set("miausergroups", "user1,user2")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
+
+			app.router.ServeHTTP(w, req)
+			require.Equal(t, http.StatusForbidden, w.Result().StatusCode)
+		})
+
+		t.Run("200 - integration redis_set builtin", func(t *testing.T) {
+			defer testRedisClient.Del(ctx, "test:key")
+
+			gock.Flush()
+			gock.New("http://localhost:3060/").
+				Post("/with-redis-set").
+				Reply(200).
+				SetHeader("someuserheader", "user1").
+				JSON(map[string]string{"foo": "bar"})
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/with-redis-set", nil)
+			req.Header.Set("miauserid", "user1")
+			req.Header.Set("miausergroups", "user1,user2")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
+
+			app.router.ServeHTTP(w, req)
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+			// Verify the value was set using test client (check JSON-serialized format)
+			val, err := testRedisClient.Get(ctx, "test:key")
+			require.NoError(t, err)
+			require.Equal(t, `"test-value"`, val)
+		})
+
+		t.Run("200 - integration redis_del builtin", func(t *testing.T) {
+			// Setup: Set a value in Redis using test client (JSON-serialized to match builtin behavior)
+			err := testRedisClient.Set(ctx, "test:delkey", `"value-to-delete"`, 0)
+			require.NoError(t, err)
+
+			gock.Flush()
+			gock.New("http://localhost:3060/").
+				Delete("/with-redis-del/test:delkey").
+				Reply(200).
+				SetHeader("someuserheader", "user1").
+				JSON(map[string]string{"foo": "bar"})
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodDelete, "/with-redis-del/test:delkey", nil)
+			req.Header.Set("miauserid", "user1")
+			req.Header.Set("miausergroups", "user1,user2")
+			req.Header.Set(utils.ContentTypeHeaderKey, "application/json")
+
+			app.router.ServeHTTP(w, req)
 			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 		})
 	})
